@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BacktestPro — Plataforma de Backtesting</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d0f12;
+    --bg2:      #13161b;
+    --bg3:      #1a1e26;
+    --bg4:      #222733;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.12);
+    --text:     #e8eaf0;
+    --muted:    #6b7280;
+    --muted2:   #9ca3af;
+    --green:    #10b981;
+    --green2:   #059669;
+    --green-bg: rgba(16,185,129,0.1);
+    --red:      #ef4444;
+    --red-bg:   rgba(239,68,68,0.1);
+    --amber:    #f59e0b;
+    --blue:     #3b82f6;
+    --font:     'DM Sans', sans-serif;
+    --mono:     'JetBrains Mono', monospace;
+    --radius:   8px;
+    --radius-lg: 12px;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px; min-width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 0;
+  }
+  .sidebar-logo {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--green);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #fff; flex-shrink: 0;
+  }
+  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-badge {
+    font-size: 9px; background: var(--green-bg); color: var(--green);
+    padding: 2px 6px; border-radius: 4px; font-weight: 500;
+    border: 1px solid rgba(16,185,129,0.2);
+  }
+
+  .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 8px 8px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius);
+    color: var(--muted2); cursor: pointer; font-size: 13px;
+    transition: all 0.15s; border: 1px solid transparent;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--green-bg); color: var(--green); border-color: rgba(16,185,129,0.2); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+  .lang-switcher { display: flex; gap: 4px; }
+  .lang-btn {
+    flex: 1; padding: 5px 4px; border-radius: 6px;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--muted2); font-size: 11px; cursor: pointer;
+    transition: all 0.15s; font-family: var(--font);
+  }
+  .lang-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .lang-btn:hover:not(.active) { background: var(--bg3); color: var(--text); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    height: 52px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; background: var(--bg2); flex-shrink: 0;
+  }
+  .topbar-title { font-size: 15px; font-weight: 500; }
+  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .topbar-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted2);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .page { flex: 1; overflow-y: auto; display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  /* Backtest page */
+  .backtest-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
+
+  .config-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+    position: sticky; top: 0;
+  }
+  .config-section-title {
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 12px; color: var(--muted2); }
+  .field-select, .field-input {
+    width: 100%; padding: 8px 10px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); color: var(--text);
+    font-family: var(--font); font-size: 13px; outline: none;
+    transition: border-color 0.15s; cursor: pointer;
+    appearance: none;
+  }
+  .field-select:focus, .field-input:focus { border-color: var(--green); }
+  .tf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tf-btn {
+    padding: 6px; text-align: center; border-radius: var(--radius);
+    border: 1px solid var(--border2); background: var(--bg3);
+    color: var(--muted2); font-size: 12px; cursor: pointer;
+    transition: all 0.15s; font-family: var(--font);
+  }
+  .tf-btn.active { background: var(--green-bg); color: var(--green); border-color: rgba(16,185,129,0.3); }
+  .tf-btn:hover:not(.active) { background: var(--bg4); color: var(--text); }
+  .divider { height: 1px; background: var(--border); }
+  .run-btn {
+    width: 100%; padding: 11px;
+    background: var(--green); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.15s; font-family: var(--font);
+  }
+  .run-btn:hover { background: var(--green2); }
+  .run-btn:disabled { background: var(--bg4); color: var(--muted); cursor: not-allowed; }
+
+  /* Results */
+  .results-area { display: flex; flex-direction: column; gap: 16px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .metric-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 500; line-height: 1; }
+  .metric-value.pos { color: var(--green); }
+  .metric-value.neg { color: var(--red); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .chart-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 20px;
+  }
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .card-title { font-size: 13px; font-weight: 500; }
+  .card-tag {
+    font-size: 11px; color: var(--muted); background: var(--bg3);
+    padding: 3px 8px; border-radius: 4px; font-family: var(--mono);
+  }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+  .trades-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .trades-table th {
+    text-align: left; padding: 8px 12px;
+    border-bottom: 1px solid var(--border2);
+    color: var(--muted); font-weight: 500; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .trades-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 11px; }
+  .trades-table tr:last-child td { border-bottom: none; }
+  .trades-table tr:hover td { background: var(--bg3); }
+  .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+    font-family: var(--font);
+  }
+  .badge.win { background: var(--green-bg); color: var(--green); }
+  .badge.loss { background: var(--red-bg); color: var(--red); }
+
+  /* Empty / Loading */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 380px; gap: 12px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; opacity: 0.15; }
+  .empty-text { font-size: 13px; }
+  .loading-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 380px; gap: 12px; color: var(--muted);
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* History page */
+  .history-grid { display: flex; flex-direction: column; gap: 10px; }
+  .history-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 18px;
+    display: flex; align-items: center; gap: 16px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .history-card:hover { border-color: var(--border2); }
+  .history-asset {
+    font-size: 14px; font-weight: 500; min-width: 90px;
+    font-family: var(--mono);
+  }
+  .history-meta { flex: 1; display: flex; gap: 20px; flex-wrap: wrap; }
+  .history-item { display: flex; flex-direction: column; gap: 2px; }
+  .history-item-label { font-size: 10px; color: var(--muted); }
+  .history-item-val { font-size: 12px; font-family: var(--mono); }
+  .history-return { font-size: 18px; font-weight: 500; min-width: 80px; text-align: right; }
+  .history-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 300px; gap: 12px; color: var(--muted);
+  }
+
+  /* Settings page */
+  .settings-grid { display: flex; flex-direction: column; gap: 16px; max-width: 540px; }
+  .settings-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+  }
+  .settings-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+  .settings-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label { font-size: 13px; color: var(--muted2); }
+  .settings-row-val { font-size: 13px; font-family: var(--mono); color: var(--green); }
+  .api-url {
+    font-size: 11px; font-family: var(--mono); color: var(--muted);
+    background: var(--bg3); padding: 8px 10px; border-radius: var(--radius);
+    border: 1px solid var(--border); margin-top: 8px; word-break: break-all;
+  }
+
+  /* Page header */
+  .page-header { margin-bottom: 20px; }
+  .page-title { font-size: 18px; font-weight: 500; }
+  .page-subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📈</div>
+      <div>
+        <div class="logo-text">BacktestPro</div>
+      </div>
+      <span class="logo-badge">BETA</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label" data-i18n="menu">Menu</div>
+
+      <a class="nav-item active" onclick="showPage('backtest')" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span data-i18n="dashboard">Dashboard</span>
+      </a>
+
+      <a class="nav-item" onclick="showPage('new')" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span data-i18n="newBacktest">Novo Backtest</span>
+      </a>
+
+      <a class="nav-item" onclick="showPage('history')" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span data-i18n="history">Histórico</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px" data-i18n="system">Sistema</div>
+
+      <a class="nav-item" onclick="showPage('settings')" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span data-i18n="settings">Configurações</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="lang-switcher">
+        <button class="lang-btn active" onclick="setLang('pt')">🇧🇷 PT</button>
+        <button class="lang-btn" onclick="setLang('en')">🇺🇸 EN</button>
+        <button class="lang-btn" onclick="setLang('es')">🇪🇸 ES</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-sub" id="topbar-sub">EMA Channel Strategy</div>
+      </div>
+      <div class="topbar-status">
+        <div class="status-dot"></div>
+        <span data-i18n="apiOnline">API Online</span>
+      </div>
+    </div>
+
+    <!-- Dashboard / Backtest Page -->
+    <div class="page active" id="page-backtest">
+      <div class="backtest-layout">
+
+        <!-- Config Panel -->
+        <div class="config-panel">
+          <div class="config-section-title" data-i18n="config">Configuração</div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="asset">Ativo</label>
+            <select class="field-select" id="sel-ativo">
+              <optgroup label="Forex">
+                <option value="EUR/USD">EUR/USD</option>
+                <option value="GBP/USD">GBP/USD</option>
+                <option value="USD/JPY">USD/JPY</option>
+                <option value="AUD/USD">AUD/USD</option>
+                <option value="USD/CAD">USD/CAD</option>
+                <option value="NZD/USD">NZD/USD</option>
+              </optgroup>
+              <optgroup label="Commodities">
+                <option value="XAU/USD">XAU/USD — Ouro</option>
+              </optgroup>
+              <optgroup label="Crypto">
+                <option value="BTC/USD">BTC/USD</option>
+              </optgroup>
+              <optgroup label="🇧🇷 B3 Brasil">
+                <option value="IBOVESPA">IBOVESPA (Mini Índice)</option>
+                <option value="USD/BRL">USD/BRL (Mini Dólar)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="period">Período</label>
+            <select class="field-select" id="sel-periodo">
+              <option value="6 meses">6 meses</option>
+              <option value="1 ano">1 ano</option>
+              <option value="2 anos" selected>2 anos</option>
+              <option value="3 anos">3 anos</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="timeframe">Timeframe</label>
+            <div class="tf-grid">
+              <button class="tf-btn" onclick="setTf(this,'5m')">5m</button>
+              <button class="tf-btn" onclick="setTf(this,'15m')">15m</button>
+              <button class="tf-btn" onclick="setTf(this,'30m')">30m</button>
+              <button class="tf-btn" onclick="setTf(this,'1h')">1H</button>
+              <button class="tf-btn" onclick="setTf(this,'4h')">4H</button>
+              <button class="tf-btn active" onclick="setTf(this,'1d')">1D</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="capital">Capital Inicial (USD)</label>
+            <input class="field-input" type="number" id="inp-capital" value="10000" min="100" step="100" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="ema">EMA Period</label>
+            <input class="field-input" type="number" id="inp-ema" value="20" min="5" max="200" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" data-i18n="commission">Comissão</label>
+            <input class="field-input" type="number" id="inp-comissao" value="0.0002" step="0.0001" />
+          </div>
+
+          <button class="run-btn" id="btn-run" onclick="runBacktest()">
+            ▶ <span data-i18n="run">Rodar Backtest</span>
+          </button>
+        </div>
+
+        <!-- Results -->
+        <div class="results-area" id="results-area">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-text" data-i18n="empty">Configure os parâmetros e rode um backtest</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- New Backtest Page (same as backtest) -->
+    <div class="page" id="page-new">
+      <div class="page-header">
+        <div class="page-title" data-i18n="newBacktest">Novo Backtest</div>
+        <div class="page-subtitle" data-i18n="newSub">Configure uma nova estratégia para testar</div>
+      </div>
+      <div style="color:var(--muted); font-size:13px;" data-i18n="newRedirect">A redirecionar para o Dashboard...</div>
+    </div>
+
+    <!-- History Page -->
+    <div class="page" id="page-history">
+      <div class="page-header">
+        <div class="page-title" data-i18n="history">Histórico</div>
+        <div class="page-subtitle" data-i18n="historySub">Todos os backtests realizados nesta sessão</div>
+      </div>
+      <div class="history-grid" id="history-grid">
+        <div class="history-empty">
+          <div class="empty-icon">🕐</div>
+          <div class="empty-text" data-i18n="historyEmpty">Nenhum backtest realizado ainda</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title" data-i18n="settings">Configurações</div>
+        <div class="page-subtitle" data-i18n="settingsSub">Informações da plataforma e API</div>
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <div class="settings-title" data-i18n="platformInfo">Informações da Plataforma</div>
+          <div class="settings-row">
+            <span class="settings-row-label" data-i18n="version">Versão</span>
+            <span class="settings-row-val">v2.1</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label" data-i18n="strategy">Estratégia</span>
+            <span class="settings-row-val">EMA Channel 20 H/L</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label" data-i18n="assets">Ativos</span>
+            <span class="settings-row-val">10 ativos</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label" data-i18n="timeframes">Timeframes</span>
+            <span class="settings-row-val">5m · 15m · 30m · 1h · 4h · 1d</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label" data-i18n="markets">Mercados</span>
+            <span class="settings-row-val">Forex · Crypto · B3 🇧🇷</span>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-title">API</div>
+          <div class="settings-row">
+            <span class="settings-row-label">Status</span>
+            <span class="settings-row-val" id="api-status">● Online</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Endpoint</span>
+            <span class="settings-row-val">Railway</span>
+          </div>
+          <div class="api-url" id="api-url-display">https://backtestpro-production-eb9a.up.railway.app</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'https://backtestpro-production-eb9a.up.railway.app';
+let currentTf = '1d';
+let equityChart = null;
+let history = [];
+let lang = 'pt';
+
+const i18n = {
+  pt: {
+    menu: 'Menu', dashboard: 'Dashboard', newBacktest: 'Novo Backtest',
+    history: 'Histórico', system: 'Sistema', settings: 'Configurações',
+    apiOnline: 'API Online', config: 'Configuração', asset: 'Ativo',
+    period: 'Período', timeframe: 'Timeframe', capital: 'Capital Inicial (USD)',
+    ema: 'EMA Period', commission: 'Comissão', run: 'Rodar Backtest',
+    empty: 'Configure os parâmetros e rode um backtest',
+    loading: 'Rodando backtest...', equity: 'Equity Curve',
+    tradesTitle: 'Histórico de Trades', entry: 'Entrada', exit: 'Saída',
+    ret: 'Retorno', profit: 'Lucro', result: 'Resultado', win: 'Ganho', loss: 'Perda',
+    totalReturn: 'Retorno Total', annReturn: 'Retorno Anual', winRate: 'Win Rate',
+    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
+    profitFactor: 'Profit Factor', finalCapital: 'Capital Final',
+    candles: 'candles', error: 'Erro',
+    newSub: 'Configure uma nova estratégia para testar',
+    newRedirect: 'A redirecionar para o Dashboard...',
+    historySub: 'Todos os backtests realizados nesta sessão',
+    historyEmpty: 'Nenhum backtest realizado ainda',
+    settingsSub: 'Informações da plataforma e API',
+    platformInfo: 'Informações da Plataforma', version: 'Versão',
+    strategy: 'Estratégia', assets: 'Ativos', timeframes: 'Timeframes', markets: 'Mercados',
+    periodos: { '6 meses': '6 meses', '1 ano': '1 ano', '2 anos': '2 anos', '3 anos': '3 anos' }
+  },
+  en: {
+    menu: 'Menu', dashboard: 'Dashboard', newBacktest: 'New Backtest',
+    history: 'History', system: 'System', settings: 'Settings',
+    apiOnline: 'API Online', config: 'Configuration', asset: 'Asset',
+    period: 'Period', timeframe: 'Timeframe', capital: 'Initial Capital (USD)',
+    ema: 'EMA Period', commission: 'Commission', run: 'Run Backtest',
+    empty: 'Configure parameters and run a backtest',
+    loading: 'Running backtest...', equity: 'Equity Curve',
+    tradesTitle: 'Trade History', entry: 'Entry', exit: 'Exit',
+    ret: 'Return', profit: 'Profit', result: 'Result', win: 'Win', loss: 'Loss',
+    totalReturn: 'Total Return', annReturn: 'Annual Return', winRate: 'Win Rate',
+    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
+    profitFactor: 'Profit Factor', finalCapital: 'Final Capital',
+    candles: 'candles', error: 'Error',
+    newSub: 'Configure a new strategy to test',
+    newRedirect: 'Redirecting to Dashboard...',
+    historySub: 'All backtests run in this session',
+    historyEmpty: 'No backtests run yet',
+    settingsSub: 'Platform and API information',
+    platformInfo: 'Platform Information', version: 'Version',
+    strategy: 'Strategy', assets: 'Assets', timeframes: 'Timeframes', markets: 'Markets',
+    periodos: { '6 meses': '6 months', '1 ano': '1 year', '2 anos': '2 years', '3 anos': '3 years' }
+  },
+  es: {
+    menu: 'Menú', dashboard: 'Dashboard', newBacktest: 'Nuevo Backtest',
+    history: 'Historial', system: 'Sistema', settings: 'Configuración',
+    apiOnline: 'API Online', config: 'Configuración', asset: 'Activo',
+    period: 'Período', timeframe: 'Timeframe', capital: 'Capital Inicial (USD)',
+    ema: 'Período EMA', commission: 'Comisión', run: 'Ejecutar Backtest',
+    empty: 'Configure los parámetros y ejecute un backtest',
+    loading: 'Ejecutando backtest...', equity: 'Curva de Equity',
+    tradesTitle: 'Historial de Trades', entry: 'Entrada', exit: 'Salida',
+    ret: 'Retorno', profit: 'Ganancia', result: 'Resultado', win: 'Ganancia', loss: 'Pérdida',
+    totalReturn: 'Retorno Total', annReturn: 'Retorno Anual', winRate: 'Win Rate',
+    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
+    profitFactor: 'Factor Ganancia', finalCapital: 'Capital Final',
+    candles: 'velas', error: 'Error',
+    newSub: 'Configure una nueva estrategia para probar',
+    newRedirect: 'Redirigiendo al Dashboard...',
+    historySub: 'Todos los backtests realizados en esta sesión',
+    historyEmpty: 'Ningún backtest realizado aún',
+    settingsSub: 'Información de plataforma y API',
+    platformInfo: 'Información de Plataforma', version: 'Versión',
+    strategy: 'Estrategia', assets: 'Activos', timeframes: 'Timeframes', markets: 'Mercados',
+    periodos: { '6 meses': '6 meses', '1 ano': '1 año', '2 anos': '2 años', '3 anos': '3 años' }
+  }
+};
+
+function t(k) { return i18n[lang][k] || k; }
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach((b,i) => b.classList.toggle('active', ['pt','en','es'][i] === l));
+  document.documentElement.lang = l;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (i18n[l][k]) el.textContent = i18n[l][k];
+  });
+  const sel = document.getElementById('sel-periodo');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = Object.entries(i18n[l].periodos).map(([v,label]) =>
+      `<option value="${v}" ${v === cur ? 'selected' : ''}>${label}</option>`
+    ).join('');
+  }
+  renderHistory();
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item')[['backtest','new','history','settings'].indexOf(page)]?.classList.add('active');
+  const titles = { backtest: 'Dashboard', new: t('newBacktest'), history: t('history'), settings: t('settings') };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  if (page === 'new') { setTimeout(() => showPage('backtest'), 800); }
+  if (page === 'history') renderHistory();
+}
+
+function setTf(btn, tf) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTf = tf;
+}
+
+async function runBacktest() {
+  const btn = document.getElementById('btn-run');
+  const area = document.getElementById('results-area');
+  btn.disabled = true;
+  area.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>${t('loading')}</span></div>`;
+
+  const payload = {
+    ativo: document.getElementById('sel-ativo').value,
+    periodo: document.getElementById('sel-periodo').value,
+    capital: parseFloat(document.getElementById('inp-capital').value),
+    comissao: parseFloat(document.getElementById('inp-comissao').value),
+    ema_period: parseInt(document.getElementById('inp-ema').value),
+    timeframe: currentTf
+  };
+
+  try {
+    const res = await fetch(`${API}/backtest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.erro) throw new Error(data.erro);
+    data._ts = new Date().toLocaleTimeString();
+    history.unshift(data);
+    renderResults(data);
+  } catch(e) {
+    area.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${t('error')}: ${e.message}</div></div>`;
+  }
+  btn.disabled = false;
+}
+
+function renderResults(d) {
+  const area = document.getElementById('results-area');
+  const retPos = d.retorno >= 0;
+
+  area.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">${t('totalReturn')}</div>
+        <div class="metric-value ${retPos ? 'pos' : 'neg'}">${retPos ? '+' : ''}${d.retorno.toFixed(2)}%</div>
+        <div class="metric-sub">${t('annReturn')}: ${d.retorno_anual.toFixed(2)}%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('winRate')}</div>
+        <div class="metric-value">${d.win_rate.toFixed(1)}%</div>
+        <div class="metric-sub">${d.total_trades} ${t('trades')}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('sharpe')} / ${t('profitFactor')}</div>
+        <div class="metric-value">${d.sharpe.toFixed(2)}</div>
+        <div class="metric-sub">PF: ${d.profit_factor.toFixed(2)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('drawdown')}</div>
+        <div class="metric-value neg">${d.max_drawdown.toFixed(2)}%</div>
+        <div class="metric-sub">${t('finalCapital')}: $${d.capital_final.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-header">
+        <span class="card-title">${t('equity')} — ${d.ativo}</span>
+        <span class="card-tag">${d.ema_period} · ${d.timeframe} · ${d.candles} ${t('candles')}</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="equityChart" role="img" aria-label="Equity curve for ${d.ativo}">Equity curve chart.</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-header">
+        <span class="card-title">${t('tradesTitle')}</span>
+        <span class="card-tag">${d.trades.length} trades</span>
+      </div>
+      <table class="trades-table">
+        <thead>
+          <tr>
+            <th>${t('entry')}</th><th>${t('exit')}</th>
+            <th>${t('ret')}</th><th>${t('profit')}</th><th>${t('result')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.trades.map(tr => `
+            <tr>
+              <td>${tr.entrada.slice(0,10)}</td>
+              <td>${tr.saida.slice(0,10)}</td>
+              <td style="color:${tr.retorno>=0?'var(--green)':'var(--red)'}">${tr.retorno>=0?'+':''}${tr.retorno.toFixed(2)}%</td>
+              <td style="color:${tr.lucro>=0?'var(--green)':'var(--red)'}">${tr.lucro>=0?'+':''}$${Math.abs(tr.lucro).toFixed(2)}</td>
+              <td><span class="badge ${tr.retorno>=0?'win':'loss'}">${tr.retorno>=0?t('win'):t('loss')}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  if (equityChart) { equityChart.destroy(); equityChart = null; }
+  equityChart = new Chart(document.getElementById('equityChart'), {
+    type: 'line',
+    data: {
+      labels: d.datas_equity.map(dt => dt.slice(0,10)),
+      datasets: [{
+        label: 'Equity', data: d.equity_curve,
+        borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)',
+        borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `$${ctx.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } },
+        y: { ticks: { color: '#6b7280', font: { size: 10 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } }
+      }
+    }
+  });
+}
+
+function renderHistory() {
+  const grid = document.getElementById('history-grid');
+  if (!grid) return;
+  if (history.length === 0) {
+    grid.innerHTML = `<div class="history-empty"><div class="empty-icon">🕐</div><div class="empty-text">${t('historyEmpty')}</div></div>`;
+    return;
+  }
+  grid.innerHTML = history.map((d,i) => `
+    <div class="history-card" onclick="reloadResult(${i})">
+      <div class="history-asset">${d.ativo}</div>
+      <div class="history-meta">
+        <div class="history-item"><div class="history-item-label">${t('period')}</div><div class="history-item-val">${d.periodo}</div></div>
+        <div class="history-item"><div class="history-item-label">TF</div><div class="history-item-val">${d.timeframe}</div></div>
+        <div class="history-item"><div class="history-item-label">EMA</div><div class="history-item-val">${d.ema_period}</div></div>
+        <div class="history-item"><div class="history-item-label">${t('winRate')}</div><div class="history-item-val">${d.win_rate.toFixed(1)}%</div></div>
+        <div class="history-item"><div class="history-item-label">${t('sharpe')}</div><div class="history-item-val">${d.sharpe.toFixed(2)}</div></div>
+        <div class="history-item"><div class="history-item-label">${t('trades')}</div><div class="history-item-val">${d.total_trades}</div></div>
+      </div>
+      <div class="history-return" style="color:${d.retorno>=0?'var(--green)':'var(--red)'}">${d.retorno>=0?'+':''}${d.retorno.toFixed(2)}%</div>
+    </div>
+  `).join('');
+}
+
+function reloadResult(i) {
+  showPage('backtest');
+  setTimeout(() => renderResults(history[i]), 100);
+}
+
+fetch(`${API}/`).then(r => r.json()).then(() => {
+  const el = document.getElementById('api-status');
+  if (el) el.textContent = '● Online';
+}).catch(() => {
+  const el = document.getElementById('api-status');
+  if (el) { el.textContent = '● Offline'; el.style.color = 'var(--red)'; }
+});
+</script>
+</body>
+</html>
