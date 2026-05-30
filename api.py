@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import yfinance as yf
 import pandas as pd
 from backtesting import Backtest, Strategy
+from datetime import datetime, timedelta
 import traceback
 
 app = FastAPI(title="BacktestPro API")
@@ -17,18 +18,48 @@ app.add_middleware(
 
 # Mapa de ativos
 ATIVOS = {
+    # Forex
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
     "USD/JPY": "USDJPY=X",
-    "XAU/USD": "GC=F",
-    "BTC/USD": "BTC-USD",
     "AUD/USD": "AUDUSD=X",
+    "USD/CAD": "USDCAD=X",
+    "NZD/USD": "NZDUSD=X",
+    # Commodities
+    "XAU/USD": "GC=F",        # Ouro Futures
+    # Crypto
+    "BTC/USD": "BTC-USD",
+    # Brasil B3
+    "IBOVESPA": "^BVSP",      # Proxy Mini Índice (WIN)
+    "USD/BRL":  "USDBRL=X",   # Proxy Mini Dólar (WDO)
 }
 
-PERIODOS = {
-    "1 ano":  ("2024-01-01", "2025-01-01"),
-    "2 anos": ("2023-01-01", "2025-01-01"),
-    "3 anos": ("2022-01-01", "2025-01-01"),
+# Categorias para exibição no frontend
+CATEGORIAS = {
+    "Forex":     ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "NZD/USD"],
+    "Commodities": ["XAU/USD"],
+    "Crypto":    ["BTC/USD"],
+    "B3 Brasil": ["IBOVESPA", "USD/BRL"],
+}
+
+# Timeframes suportados pelo yfinance
+TIMEFRAMES = {
+    "1d":  "1d",
+    "4h":  "1h",   # reamostrado de 1h → 4h
+    "1h":  "1h",
+    "30m": "30m",  # novo
+    "15m": "15m",
+    "5m":  "5m",   # novo
+}
+
+# Limites de histórico do yfinance por timeframe (em dias)
+LIMITE_DIAS = {
+    "1d":  1095,   # 3 anos
+    "4h":  59,
+    "1h":  729,    # ~2 anos (yfinance permite até 730d para 1h)
+    "30m": 59,
+    "15m": 59,
+    "5m":  59,
 }
 
 class BacktestRequest(BaseModel):
@@ -36,18 +67,59 @@ class BacktestRequest(BaseModel):
     periodo: str = "2 anos"
     capital: float = 10000
     comissao: float = 0.0002
-    ema_period: int = 85
+    ema_period: int = 20          # EMA 20 High/Low — padrão do TrailingBot
+    timeframe: str = "1d"         # Novo: timeframe configurável
+
+
+def get_datas(periodo: str, timeframe: str = "1d"):
+    """Gera datas dinâmicas respeitando os limites do yfinance por timeframe."""
+    hoje = datetime.today()
+    mapa = {
+        "6 meses": hoje - timedelta(days=183),
+        "1 ano":   hoje - timedelta(days=365),
+        "2 anos":  hoje - timedelta(days=730),
+        "3 anos":  hoje - timedelta(days=1095),
+    }
+    inicio = mapa.get(periodo, hoje - timedelta(days=730))
+
+    # Respeitar limite do yfinance para timeframes intraday
+    limite = LIMITE_DIAS.get(timeframe, 1095)
+    inicio_minimo = hoje - timedelta(days=limite)
+    if inicio < inicio_minimo:
+        inicio = inicio_minimo
+
+    return inicio.strftime("%Y-%m-%d"), hoje.strftime("%Y-%m-%d")
+
+
+def resample_4h(df: pd.DataFrame) -> pd.DataFrame:
+    """Reamostra dados de 1h para 4h."""
+    df = df.resample("4h").agg({
+        "Open":   "first",
+        "High":   "max",
+        "Low":    "min",
+        "Close":  "last",
+        "Volume": "sum",
+    }).dropna()
+    return df
+
 
 class EMAChannel(Strategy):
-    ema_period = 85
+    """
+    EMA Channel Strategy — padrão TrailingBot
+    - Linha superior: EMA(period) aplicada no High
+    - Linha inferior: EMA(period) aplicada no Low
+    - Compra: preço fecha ACIMA do canal (breakout)
+    - Fecha: preço fecha ABAIXO da linha inferior
+    """
+    ema_period = 20
 
     def init(self):
         self.ema_high = self.I(
-            lambda h: pd.Series(h).ewm(span=self.ema_period).mean().values,
+            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
             self.data.High
         )
         self.ema_low = self.I(
-            lambda l: pd.Series(l).ewm(span=self.ema_period).mean().values,
+            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
             self.data.Low
         )
 
@@ -60,67 +132,111 @@ class EMAChannel(Strategy):
             if preco < self.ema_low[-1]:
                 self.position.close()
 
+
 @app.get("/")
 def root():
-    return {"status": "BacktestPro API rodando!", "versao": "1.0"}
+    return {
+        "status": "BacktestPro API rodando!",
+        "versao": "2.1",
+        "estrategia": "EMA Channel (High/Low)",
+        "ema_padrao": 20,
+        "ativos": len(ATIVOS),
+        "timeframes": list(TIMEFRAMES.keys()),
+    }
+
 
 @app.get("/ativos")
 def listar_ativos():
-    return {"ativos": list(ATIVOS.keys())}
+    return {"ativos": list(ATIVOS.keys()), "categorias": CATEGORIAS}
+
+
+@app.get("/timeframes")
+def listar_timeframes():
+    return {
+        "timeframes": list(TIMEFRAMES.keys()),
+        "limites_dias": LIMITE_DIAS,
+        "nota": "Timeframes intraday (5m, 15m, 30m, 4h) limitados a 59 dias de histórico pelo yfinance"
+    }
+
 
 @app.post("/backtest")
 def rodar_backtest(req: BacktestRequest):
     try:
         ticker = ATIVOS.get(req.ativo, "EURUSD=X")
-        inicio, fim = PERIODOS.get(req.periodo, ("2023-01-01", "2025-01-01"))
+        tf = req.timeframe if req.timeframe in TIMEFRAMES else "1d"
+        inicio, fim = get_datas(req.periodo, tf)
+        yf_interval = TIMEFRAMES[tf]
 
-        print(f"Rodando backtest: {req.ativo} | {req.periodo} | Capital: {req.capital}")
+        print(f"Backtest: {req.ativo} | {req.periodo} | TF: {tf} | EMA: {req.ema_period} | Capital: {req.capital}")
 
-        data = yf.download(ticker, start=inicio, end=fim, interval="1d", progress=False)
-        data.columns = data.columns.droplevel(1)
+        data = yf.download(ticker, start=inicio, end=fim, interval=yf_interval, progress=False)
+
+        if data.empty:
+            return {"erro": f"Sem dados para {req.ativo} no período selecionado"}
+
+        # Flatten multi-index se existir
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.droplevel(1)
+
         data = data[["Open", "High", "Low", "Close", "Volume"]].dropna()
         data.index = pd.to_datetime(data.index)
 
+        # Resample 4h
+        if tf == "4h":
+            data = resample_4h(data)
+
         if len(data) < 50:
-            return {"erro": "Dados insuficientes para o período selecionado"}
+            return {"erro": f"Dados insuficientes ({len(data)} candles). Tente um período maior ou timeframe diário."}
 
         EMAChannel.ema_period = req.ema_period
         bt = Backtest(data, EMAChannel, cash=req.capital, commission=req.comissao)
         r = bt.run()
 
-        # Equity curve
+        # Equity curve (amostrada para não sobrecarregar)
         equity = r["_equity_curve"]["Equity"].tolist()
-        datas  = r["_equity_curve"].index.strftime("%Y-%m-%d").tolist()
+        datas  = r["_equity_curve"].index.strftime("%Y-%m-%d %H:%M").tolist()
+        step   = max(1, len(equity) // 200)
 
         # Trades
         trades = []
         if len(r["_trades"]) > 0:
             for _, t in r["_trades"].iterrows():
                 trades.append({
-                    "entrada": str(t.get("EntryTime", ""))[:10],
-                    "saida":   str(t.get("ExitTime",  ""))[:10],
+                    "entrada": str(t.get("EntryTime", ""))[:16],
+                    "saida":   str(t.get("ExitTime",  ""))[:16],
                     "retorno": round(float(t.get("ReturnPct", 0)) * 100, 2),
                     "lucro":   round(float(t.get("PnL", 0)), 2),
                 })
 
+        def safe(val):
+            try:
+                v = float(val)
+                return round(v, 2) if not (v != v) else 0.0  # NaN check
+            except:
+                return 0.0
+
         return {
             "ativo":          req.ativo,
             "periodo":        req.periodo,
-            "retorno":        round(float(r["Return [%]"]), 2),
-            "retorno_anual":  round(float(r["Return (Ann.) [%]"]), 2),
-            "win_rate":       round(float(r["Win Rate [%]"]), 2),
-            "sharpe":         round(float(r["Sharpe Ratio"]), 2),
-            "max_drawdown":   round(float(r["Max. Drawdown [%]"]), 2),
+            "timeframe":      tf,
+            "ema_period":     req.ema_period,
+            "candles":        len(data),
+            "retorno":        safe(r["Return [%]"]),
+            "retorno_anual":  safe(r["Return (Ann.) [%]"]),
+            "win_rate":       safe(r["Win Rate [%]"]),
+            "sharpe":         safe(r["Sharpe Ratio"]),
+            "max_drawdown":   safe(r["Max. Drawdown [%]"]),
             "total_trades":   int(r["# Trades"]),
-            "profit_factor":  round(float(r["Profit Factor"]), 2),
-            "capital_final":  round(float(r["Equity Final [$]"]), 2),
-            "equity_curve":   equity[::5],
-            "datas_equity":   datas[::5],
+            "profit_factor":  safe(r["Profit Factor"]),
+            "capital_final":  safe(r["Equity Final [$]"]),
+            "equity_curve":   equity[::step],
+            "datas_equity":   datas[::step],
             "trades":         trades[-20:],
         }
 
     except Exception as e:
         return {"erro": str(e), "detalhe": traceback.format_exc()}
+
 
 if __name__ == "__main__":
     import uvicorn
