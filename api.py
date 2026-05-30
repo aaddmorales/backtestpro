@@ -36,7 +36,10 @@ app.add_middleware(
 
 # ── Base de Dados ────────────────────────────────────────────
 def get_db():
-    return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
+    url = os.environ["DATABASE_URL"]
+    if "sslmode" not in url:
+        url += "?sslmode=require"
+    return psycopg2.connect(url)
 
 def init_db():
     """Cria as tabelas se não existirem."""
