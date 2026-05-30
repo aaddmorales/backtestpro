@@ -37,7 +37,11 @@ app.add_middleware(
 # ── Base de Dados ────────────────────────────────────────────
 def get_db():
     url = os.environ["DATABASE_URL"]
-    if "sslmode" not in url:
+    # Railway PostgreSQL ja inclui SSL na URL
+    if "?" in url:
+        if "sslmode" not in url:
+            url += "&sslmode=require"
+    else:
         url += "?sslmode=require"
     return psycopg2.connect(url)
 
