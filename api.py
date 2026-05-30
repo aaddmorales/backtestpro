@@ -1,6 +1,6 @@
 # ============================================================
-# BacktestPro API — v2.5
-# Versao: 2.5 | Data: 2026-05-30
+# BacktestPro API — v2.6
+# Versao: 2.6 | Data: 2026-05-30
 # Autor: aaddmorales | Deploy: Railway
 # Novidade: PostgreSQL — guardar estratégias e backtests
 # ============================================================
@@ -21,7 +21,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 # ── Versão ──────────────────────────────────────────────────
-VERSION = "2.5"
+VERSION = "2.6"
 BUILD_DATE = "2026-05-30"
 # ────────────────────────────────────────────────────────────
 
@@ -37,7 +37,8 @@ app.add_middleware(
 # ── Base de Dados ────────────────────────────────────────────
 def get_db():
     url = os.environ["DATABASE_URL"].strip()
-    return psycopg2.connect(url, sslmode="require")
+    # Railway ja configura SSL na URL automaticamente
+    return psycopg2.connect(url)
 
 def init_db():
     """Cria as tabelas se não existirem."""
@@ -600,7 +601,7 @@ def listar_templates():
     }
 
 # ============================================================
-# BacktestPro API — v2.5 | FIM DO FICHEIRO
+# BacktestPro API — v2.6 | FIM DO FICHEIRO
 # ============================================================
 
 if __name__ == "__main__":
