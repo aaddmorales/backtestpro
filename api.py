@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import yfinance as yf
 import pandas as pd
 from backtesting import Backtest, Strategy
 from datetime import datetime, timedelta
 import traceback
+import os
 
 app = FastAPI(title="BacktestPro API")
 
@@ -26,15 +28,14 @@ ATIVOS = {
     "USD/CAD": "USDCAD=X",
     "NZD/USD": "NZDUSD=X",
     # Commodities
-    "XAU/USD": "GC=F",        # Ouro Futures
+    "XAU/USD": "GC=F",
     # Crypto
     "BTC/USD": "BTC-USD",
     # Brasil B3
-    "IBOVESPA": "^BVSP",      # Proxy Mini Índice (WIN)
-    "USD/BRL":  "USDBRL=X",   # Proxy Mini Dólar (WDO)
+    "IBOVESPA": "^BVSP",
+    "USD/BRL":  "USDBRL=X",
 }
 
-# Categorias para exibição no frontend
 CATEGORIAS = {
     "Forex":     ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "NZD/USD"],
     "Commodities": ["XAU/USD"],
@@ -42,21 +43,19 @@ CATEGORIAS = {
     "B3 Brasil": ["IBOVESPA", "USD/BRL"],
 }
 
-# Timeframes suportados pelo yfinance
 TIMEFRAMES = {
     "1d":  "1d",
-    "4h":  "1h",   # reamostrado de 1h → 4h
+    "4h":  "1h",
     "1h":  "1h",
-    "30m": "30m",  # novo
+    "30m": "30m",
     "15m": "15m",
-    "5m":  "5m",   # novo
+    "5m":  "5m",
 }
 
-# Limites de histórico do yfinance por timeframe (em dias)
 LIMITE_DIAS = {
-    "1d":  1095,   # 3 anos
+    "1d":  1095,
     "4h":  59,
-    "1h":  729,    # ~2 anos (yfinance permite até 730d para 1h)
+    "1h":  729,
     "30m": 59,
     "15m": 59,
     "5m":  59,
@@ -67,12 +66,11 @@ class BacktestRequest(BaseModel):
     periodo: str = "2 anos"
     capital: float = 10000
     comissao: float = 0.0002
-    ema_period: int = 20          # EMA 20 High/Low — padrão do TrailingBot
-    timeframe: str = "1d"         # Novo: timeframe configurável
+    ema_period: int = 20
+    timeframe: str = "1d"
 
 
 def get_datas(periodo: str, timeframe: str = "1d"):
-    """Gera datas dinâmicas respeitando os limites do yfinance por timeframe."""
     hoje = datetime.today()
     mapa = {
         "6 meses": hoje - timedelta(days=183),
@@ -81,18 +79,14 @@ def get_datas(periodo: str, timeframe: str = "1d"):
         "3 anos":  hoje - timedelta(days=1095),
     }
     inicio = mapa.get(periodo, hoje - timedelta(days=730))
-
-    # Respeitar limite do yfinance para timeframes intraday
     limite = LIMITE_DIAS.get(timeframe, 1095)
     inicio_minimo = hoje - timedelta(days=limite)
     if inicio < inicio_minimo:
         inicio = inicio_minimo
-
     return inicio.strftime("%Y-%m-%d"), hoje.strftime("%Y-%m-%d")
 
 
 def resample_4h(df: pd.DataFrame) -> pd.DataFrame:
-    """Reamostra dados de 1h para 4h."""
     df = df.resample("4h").agg({
         "Open":   "first",
         "High":   "max",
@@ -104,13 +98,6 @@ def resample_4h(df: pd.DataFrame) -> pd.DataFrame:
 
 
 class EMAChannel(Strategy):
-    """
-    EMA Channel Strategy — padrão TrailingBot
-    - Linha superior: EMA(period) aplicada no High
-    - Linha inferior: EMA(period) aplicada no Low
-    - Compra: preço fecha ACIMA do canal (breakout)
-    - Fecha: preço fecha ABAIXO da linha inferior
-    """
     ema_period = 20
 
     def init(self):
@@ -133,15 +120,16 @@ class EMAChannel(Strategy):
                 self.position.close()
 
 
+# Serve o frontend (index.html)
 @app.get("/")
 def root():
+    if os.path.exists("index.html"):
+        return FileResponse("index.html", media_type="text/html")
     return {
         "status": "BacktestPro API rodando!",
         "versao": "2.1",
-        "estrategia": "EMA Channel (High/Low)",
-        "ema_padrao": 20,
-        "ativos": len(ATIVOS),
-        "timeframes": list(TIMEFRAMES.keys()),
+        "frontend": "index.html não encontrado",
+        "docs": "/docs",
     }
 
 
@@ -155,7 +143,6 @@ def listar_timeframes():
     return {
         "timeframes": list(TIMEFRAMES.keys()),
         "limites_dias": LIMITE_DIAS,
-        "nota": "Timeframes intraday (5m, 15m, 30m, 4h) limitados a 59 dias de histórico pelo yfinance"
     }
 
 
@@ -174,14 +161,12 @@ def rodar_backtest(req: BacktestRequest):
         if data.empty:
             return {"erro": f"Sem dados para {req.ativo} no período selecionado"}
 
-        # Flatten multi-index se existir
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.droplevel(1)
 
         data = data[["Open", "High", "Low", "Close", "Volume"]].dropna()
         data.index = pd.to_datetime(data.index)
 
-        # Resample 4h
         if tf == "4h":
             data = resample_4h(data)
 
@@ -192,12 +177,10 @@ def rodar_backtest(req: BacktestRequest):
         bt = Backtest(data, EMAChannel, cash=req.capital, commission=req.comissao)
         r = bt.run()
 
-        # Equity curve (amostrada para não sobrecarregar)
         equity = r["_equity_curve"]["Equity"].tolist()
         datas  = r["_equity_curve"].index.strftime("%Y-%m-%d %H:%M").tolist()
         step   = max(1, len(equity) // 200)
 
-        # Trades
         trades = []
         if len(r["_trades"]) > 0:
             for _, t in r["_trades"].iterrows():
@@ -211,7 +194,7 @@ def rodar_backtest(req: BacktestRequest):
         def safe(val):
             try:
                 v = float(val)
-                return round(v, 2) if not (v != v) else 0.0  # NaN check
+                return round(v, 2) if v == v else 0.0
             except:
                 return 0.0
 
