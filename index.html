@@ -775,3 +775,399 @@ fetch(`${API}/`).then(r => r.json()).then(() => {
 </script>
 </body>
 </html>
+<script>
+// ── PATCH: Adicionar página Editor ao index.html existente ──
+
+// Injetar estilos do editor
+const editorStyles = document.createElement('style');
+editorStyles.textContent = `
+  .editor-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+  .editor-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .editor-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .editor-title { font-size: 12px; color: var(--muted2); font-family: var(--mono); }
+  .editor-actions { display: flex; gap: 6px; }
+  .editor-btn {
+    font-size: 11px; padding: 4px 10px; border-radius: 5px;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--muted2); cursor: pointer; font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .editor-btn:hover { background: var(--bg4); color: var(--text); }
+  .editor-btn.primary { background: var(--green); color: #fff; border-color: var(--green); }
+  .editor-btn.primary:hover { background: var(--green2); }
+  .code-editor {
+    width: 100%; min-height: 420px; padding: 16px;
+    background: var(--bg); color: #e8eaf0;
+    border: none; outline: none; resize: vertical;
+    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    tab-size: 4;
+  }
+  .templates-panel {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .template-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .template-card:hover { border-color: var(--green); }
+  .template-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .template-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .template-asset {
+    font-size: 10px; font-family: var(--mono);
+    color: var(--green); background: var(--green-bg);
+    padding: 2px 8px; border-radius: 4px;
+    border: 1px solid rgba(16,185,129,0.2);
+    display: inline-block;
+  }
+  .exec-panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .exec-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .exec-run-btn {
+    width: 100%; padding: 11px; background: var(--green); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 14px;
+    font-weight: 500; cursor: pointer; font-family: var(--font);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.15s;
+  }
+  .exec-run-btn:hover { background: var(--green2); }
+  .exec-run-btn:disabled { background: var(--bg4); color: var(--muted); cursor: not-allowed; }
+  .sandbox-note {
+    font-size: 11px; color: var(--muted); text-align: center;
+    padding: 8px; background: var(--bg3); border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+`;
+document.head.appendChild(editorStyles);
+
+// Templates
+const TEMPLATES = [
+  {
+    nome: "EMA Channel — XAU/USD",
+    desc: "Canal EMA 20 High/Low. Padrão TrailingBot.",
+    ativo: "XAU/USD",
+    codigo: `class EMAChannelStrategy(Strategy):
+    ema_period = 20
+
+    def init(self):
+        self.ema_high = self.I(
+            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.High
+        )
+        self.ema_low = self.I(
+            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.Low
+        )
+
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]:
+                self.buy()
+        else:
+            if preco < self.ema_low[-1]:
+                self.position.close()`
+  },
+  {
+    nome: "Cruzamento de Médias — EUR/USD",
+    desc: "EMA 9 cruza EMA 21. Estratégia clássica.",
+    ativo: "EUR/USD",
+    codigo: `class CrossoverStrategy(Strategy):
+    fast = 9
+    slow = 21
+
+    def init(self):
+        self.ema_fast = self.I(
+            lambda x: pd.Series(x).ewm(span=self.fast, adjust=False).mean().values,
+            self.data.Close
+        )
+        self.ema_slow = self.I(
+            lambda x: pd.Series(x).ewm(span=self.slow, adjust=False).mean().values,
+            self.data.Close
+        )
+
+    def next(self):
+        if not self.position:
+            if self.ema_fast[-1] > self.ema_slow[-1]:
+                self.buy()
+        else:
+            if self.ema_fast[-1] < self.ema_slow[-1]:
+                self.position.close()`
+  },
+  {
+    nome: "RSI Reversal — BTC/USD",
+    desc: "Compra RSI < 30, vende RSI > 70.",
+    ativo: "BTC/USD",
+    codigo: `class RSIStrategy(Strategy):
+    rsi_period = 14
+    rsi_low  = 30
+    rsi_high = 70
+
+    def init(self):
+        def rsi(close, period=14):
+            s = pd.Series(close)
+            delta = s.diff()
+            gain = delta.clip(lower=0).ewm(span=period, adjust=False).mean()
+            loss = (-delta.clip(upper=0)).ewm(span=period, adjust=False).mean()
+            rs = gain / loss
+            return (100 - (100 / (1 + rs))).values
+        self.rsi = self.I(rsi, self.data.Close, self.rsi_period)
+
+    def next(self):
+        if not self.position:
+            if self.rsi[-1] < self.rsi_low:
+                self.buy()
+        else:
+            if self.rsi[-1] > self.rsi_high:
+                self.position.close()`
+  },
+  {
+    nome: "Mini Índice — IBOVESPA 🇧🇷",
+    desc: "EMA Channel para o mercado brasileiro.",
+    ativo: "IBOVESPA",
+    codigo: `class B3EMAStrategy(Strategy):
+    ema_period = 20
+
+    def init(self):
+        self.ema_high = self.I(
+            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.High
+        )
+        self.ema_low = self.I(
+            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.Low
+        )
+
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]:
+                self.buy()
+        else:
+            if preco < self.ema_low[-1]:
+                self.position.close()`
+  }
+];
+
+// Injetar página editor
+const editorPage = document.createElement('div');
+editorPage.className = 'page';
+editorPage.id = 'page-editor';
+editorPage.innerHTML = `
+  <div class="page-header">
+    <div class="page-title" id="editor-title">🤖 Bot Test</div>
+    <div class="page-subtitle" id="editor-sub">Cole o código do seu bot e execute o backtest</div>
+  </div>
+  <div class="editor-layout">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="editor-box">
+        <div class="editor-header">
+          <span class="editor-title">strategy.py</span>
+          <div class="editor-actions">
+            <button class="editor-btn" onclick="limparEditor()">Limpar</button>
+            <button class="editor-btn" onclick="copiarCodigo()">Copiar</button>
+          </div>
+        </div>
+        <textarea class="code-editor" id="code-editor" spellcheck="false"
+          placeholder="# Cole aqui o código do seu bot Python
+# Exemplo:
+class MinhaEstrategia(Strategy):
+    def init(self):
+        pass
+    def next(self):
+        pass"></textarea>
+      </div>
+      <div id="editor-results"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="exec-panel">
+        <div class="exec-title" id="exec-config-title">Configuração</div>
+        <div class="field">
+          <label class="field-label" id="exec-asset-label">Ativo</label>
+          <select class="field-select" id="exec-ativo">
+            <optgroup label="Forex">
+              <option value="EUR/USD">EUR/USD</option>
+              <option value="GBP/USD">GBP/USD</option>
+              <option value="USD/JPY">USD/JPY</option>
+            </optgroup>
+            <optgroup label="Commodities">
+              <option value="XAU/USD" selected>XAU/USD — Ouro</option>
+            </optgroup>
+            <optgroup label="Crypto">
+              <option value="BTC/USD">BTC/USD</option>
+            </optgroup>
+            <optgroup label="🇧🇷 B3 Brasil">
+              <option value="IBOVESPA">IBOVESPA</option>
+              <option value="USD/BRL">USD/BRL</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" id="exec-period-label">Período</label>
+          <select class="field-select" id="exec-periodo">
+            <option value="6 meses">6 meses</option>
+            <option value="1 ano">1 ano</option>
+            <option value="2 anos" selected>2 anos</option>
+            <option value="3 anos">3 anos</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Timeframe</label>
+          <select class="field-select" id="exec-tf">
+            <option value="5m">5m</option>
+            <option value="15m">15m</option>
+            <option value="30m">30m</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+            <option value="1d" selected>1D</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" id="exec-capital-label">Capital (USD)</label>
+          <input class="field-input" type="number" id="exec-capital" value="10000" />
+        </div>
+        <button class="exec-run-btn" id="exec-btn" onclick="executarCustom()">
+          ▶ <span id="exec-btn-text">Executar Backtest</span>
+        </button>
+        <div class="sandbox-note" id="sandbox-note">
+          🔒 Sandbox seguro — só pandas e numpy permitidos
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;padding:4px 0;" id="templates-title">Templates</div>
+        ${TEMPLATES.map((t, i) => `
+          <div class="template-card" onclick="carregarTemplate(${i})">
+            <div class="template-name">${t.nome}</div>
+            <div class="template-desc">${t.desc}</div>
+            <span class="template-asset">${t.ativo}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+`;
+document.querySelector('.main').appendChild(editorPage);
+
+// Adicionar nav item para editor
+const navEditor = document.createElement('a');
+navEditor.className = 'nav-item';
+navEditor.href = '#';
+navEditor.onclick = () => showPageEditor();
+navEditor.innerHTML = `
+  <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;">
+    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+  </svg>
+  <span id="nav-editor-label">🤖 Bot Test</span>
+`;
+document.querySelector('.sidebar-nav').insertBefore(navEditor, document.querySelectorAll('.nav-item')[2]);
+
+function showPageEditor() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-editor').classList.add('active');
+  navEditor.classList.add('active');
+  document.getElementById('topbar-title').textContent = '🤖 Bot Test';
+  document.getElementById('topbar-sub').textContent = i18n[lang]['editorSub'] || 'Custom Strategy';
+}
+
+// Patch showPage para incluir editor
+const _origShowPage = showPage;
+window.showPage = function(page) {
+  if (page === 'editor') { showPageEditor(); return; }
+  navEditor.classList.remove('active');
+  _origShowPage(page);
+};
+
+// Patch i18n
+['pt','en','es'].forEach(l => {
+  i18n[l].editor    = { pt:'Editor', en:'Editor', es:'Editor' }[l];
+  i18n[l].editorSub = {
+    pt:'Cole o código do seu bot e execute o backtest',
+    en:'Paste your bot code and run the backtest',
+    es:'Pega el código de tu bot y ejecuta el backtest'
+  }[l];
+});
+
+function carregarTemplate(idx) {
+  const t = TEMPLATES[idx];
+  document.getElementById('code-editor').value = t.codigo;
+  document.getElementById('exec-ativo').value = t.ativo;
+}
+
+function limparEditor() {
+  document.getElementById('code-editor').value = '';
+  document.getElementById('editor-results').innerHTML = '';
+}
+
+function copiarCodigo() {
+  const code = document.getElementById('code-editor').value;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = event.target;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar', 1500);
+  });
+}
+
+async function executarCustom() {
+  const codigo = document.getElementById('code-editor').value.trim();
+  if (!codigo) {
+    alert('Cole o código da estratégia primeiro!');
+    return;
+  }
+  const btn = document.getElementById('exec-btn');
+  const btnText = document.getElementById('exec-btn-text');
+  const results = document.getElementById('editor-results');
+  btn.disabled = true;
+  btnText.textContent = 'Executando...';
+  results.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Rodando backtest...</span></div>`;
+
+  try {
+    const res = await fetch(`${API}/backtest/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        codigo,
+        ativo:    document.getElementById('exec-ativo').value,
+        periodo:  document.getElementById('exec-periodo').value,
+        capital:  parseFloat(document.getElementById('exec-capital').value),
+        comissao: 0.0002,
+        timeframe: document.getElementById('exec-tf').value,
+      })
+    });
+    const data = await res.json();
+    if (data.erro) throw new Error(data.erro);
+    data._ts = new Date().toLocaleTimeString();
+    history.unshift(data);
+    renderResults(data);
+    results.innerHTML = '';
+  } catch(e) {
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erro: ${e.message}</div></div>`;
+    document.getElementById('results-area').innerHTML = '';
+  }
+  btn.disabled = false;
+  btnText.textContent = 'Executar Backtest';
+}
+
+// Tab key no editor
+document.getElementById('code-editor').addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = this.selectionStart;
+    const end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 4;
+  }
+});
+</script>
