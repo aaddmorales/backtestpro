@@ -1,3 +1,9 @@
+# ============================================================
+# BacktestPro API — v2.2
+# Versao: 2.2 | Data: 2026-05-30
+# Autor: aaddmorales | Deploy: Railway
+# ============================================================
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -9,7 +15,12 @@ from datetime import datetime, timedelta
 import traceback
 import os
 
-app = FastAPI(title="BacktestPro API")
+# ── Versão ──────────────────────────────────────────────────
+VERSION = "2.2"
+BUILD_DATE = "2026-05-30"
+# ────────────────────────────────────────────────────────────
+
+app = FastAPI(title="BacktestPro API", version=VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mapa de ativos
+# ── Ativos ───────────────────────────────────────────────────
 ATIVOS = {
     # Forex
     "EUR/USD": "EURUSD=X",
@@ -43,6 +54,7 @@ CATEGORIAS = {
     "B3 Brasil": ["IBOVESPA", "USD/BRL"],
 }
 
+# ── Timeframes ───────────────────────────────────────────────
 TIMEFRAMES = {
     "1d":  "1d",
     "4h":  "1h",
@@ -61,6 +73,7 @@ LIMITE_DIAS = {
     "5m":  59,
 }
 
+# ── Request Model ────────────────────────────────────────────
 class BacktestRequest(BaseModel):
     ativo: str = "EUR/USD"
     periodo: str = "2 anos"
@@ -69,7 +82,7 @@ class BacktestRequest(BaseModel):
     ema_period: int = 20
     timeframe: str = "1d"
 
-
+# ── Helpers ──────────────────────────────────────────────────
 def get_datas(periodo: str, timeframe: str = "1d"):
     hoje = datetime.today()
     mapa = {
@@ -96,8 +109,15 @@ def resample_4h(df: pd.DataFrame) -> pd.DataFrame:
     }).dropna()
     return df
 
-
+# ── Estratégia EMA Channel ───────────────────────────────────
 class EMAChannel(Strategy):
+    """
+    EMA Channel — padrão TrailingBot
+    Linha superior : EMA(period, High)
+    Linha inferior : EMA(period, Low)
+    Compra  : Close > EMA High (breakout)
+    Fecha   : Close < EMA Low
+    """
     ema_period = 20
 
     def init(self):
@@ -119,17 +139,31 @@ class EMAChannel(Strategy):
             if preco < self.ema_low[-1]:
                 self.position.close()
 
-
-# Serve o frontend (index.html)
+# ── Endpoints ────────────────────────────────────────────────
 @app.get("/")
 def root():
     if os.path.exists("index.html"):
         return FileResponse("index.html", media_type="text/html")
     return {
-        "status": "BacktestPro API rodando!",
-        "versao": "2.1",
-        "frontend": "index.html não encontrado",
-        "docs": "/docs",
+        "app":       "BacktestPro API",
+        "versao":    VERSION,
+        "build":     BUILD_DATE,
+        "status":    "online",
+        "docs":      "/docs",
+        "endpoints": ["/ativos", "/timeframes", "/backtest", "/version"],
+    }
+
+
+@app.get("/version")
+def get_version():
+    return {
+        "versao":     VERSION,
+        "build":      BUILD_DATE,
+        "estrategia": "EMA Channel High/Low",
+        "ema_padrao": 20,
+        "ativos":     len(ATIVOS),
+        "timeframes": list(TIMEFRAMES.keys()),
+        "mercados":   list(CATEGORIAS.keys()),
     }
 
 
@@ -141,7 +175,7 @@ def listar_ativos():
 @app.get("/timeframes")
 def listar_timeframes():
     return {
-        "timeframes": list(TIMEFRAMES.keys()),
+        "timeframes":   list(TIMEFRAMES.keys()),
         "limites_dias": LIMITE_DIAS,
     }
 
@@ -154,7 +188,7 @@ def rodar_backtest(req: BacktestRequest):
         inicio, fim = get_datas(req.periodo, tf)
         yf_interval = TIMEFRAMES[tf]
 
-        print(f"Backtest: {req.ativo} | {req.periodo} | TF: {tf} | EMA: {req.ema_period} | Capital: {req.capital}")
+        print(f"[v{VERSION}] Backtest: {req.ativo} | {req.periodo} | TF:{tf} | EMA:{req.ema_period} | Capital:{req.capital}")
 
         data = yf.download(ticker, start=inicio, end=fim, interval=yf_interval, progress=False)
 
@@ -171,7 +205,7 @@ def rodar_backtest(req: BacktestRequest):
             data = resample_4h(data)
 
         if len(data) < 50:
-            return {"erro": f"Dados insuficientes ({len(data)} candles). Tente um período maior ou timeframe diário."}
+            return {"erro": f"Dados insuficientes ({len(data)} candles). Tente período maior ou timeframe diário."}
 
         EMAChannel.ema_period = req.ema_period
         bt = Backtest(data, EMAChannel, cash=req.capital, commission=req.comissao)
@@ -199,27 +233,31 @@ def rodar_backtest(req: BacktestRequest):
                 return 0.0
 
         return {
-            "ativo":          req.ativo,
-            "periodo":        req.periodo,
-            "timeframe":      tf,
-            "ema_period":     req.ema_period,
-            "candles":        len(data),
-            "retorno":        safe(r["Return [%]"]),
-            "retorno_anual":  safe(r["Return (Ann.) [%]"]),
-            "win_rate":       safe(r["Win Rate [%]"]),
-            "sharpe":         safe(r["Sharpe Ratio"]),
-            "max_drawdown":   safe(r["Max. Drawdown [%]"]),
-            "total_trades":   int(r["# Trades"]),
-            "profit_factor":  safe(r["Profit Factor"]),
-            "capital_final":  safe(r["Equity Final [$]"]),
-            "equity_curve":   equity[::step],
-            "datas_equity":   datas[::step],
-            "trades":         trades[-20:],
+            "versao":        VERSION,
+            "ativo":         req.ativo,
+            "periodo":       req.periodo,
+            "timeframe":     tf,
+            "ema_period":    req.ema_period,
+            "candles":       len(data),
+            "retorno":       safe(r["Return [%]"]),
+            "retorno_anual": safe(r["Return (Ann.) [%]"]),
+            "win_rate":      safe(r["Win Rate [%]"]),
+            "sharpe":        safe(r["Sharpe Ratio"]),
+            "max_drawdown":  safe(r["Max. Drawdown [%]"]),
+            "total_trades":  int(r["# Trades"]),
+            "profit_factor": safe(r["Profit Factor"]),
+            "capital_final": safe(r["Equity Final [$]"]),
+            "equity_curve":  equity[::step],
+            "datas_equity":  datas[::step],
+            "trades":        trades[-20:],
         }
 
     except Exception as e:
         return {"erro": str(e), "detalhe": traceback.format_exc()}
 
+# ============================================================
+# BacktestPro API — v2.2 | FIM DO FICHEIRO
+# ============================================================
 
 if __name__ == "__main__":
     import uvicorn
