@@ -1,7 +1,8 @@
 <!-- ============================================================
-    BacktestPro Frontend — v2.3
-    Versao: 2.3 | Data: 2026-05-30
+    BacktestPro Frontend — v2.7
+    Versao: 2.7 | Data: 2026-05-31
     Autor: aaddmorales | Deploy: Railway
+    Novidade: Configurador visual + IA gera bots + Exporta NTSL
     ============================================================ -->
 <!DOCTYPE html>
 <html lang="pt">
@@ -10,1005 +11,234 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BacktestPro — Plataforma de Backtesting</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f12;--bg2:#13161b;--bg3:#1a1e26;--bg4:#222733;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e8eaf0;--muted:#6b7280;--muted2:#9ca3af;
+  --green:#10b981;--green2:#059669;--green-bg:rgba(16,185,129,0.1);
+  --red:#ef4444;--red-bg:rgba(239,68,68,0.1);
+  --amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+  --radius:8px;--radius-lg:12px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;overflow:hidden}
+.app{display:flex;height:100vh}
 
-  :root {
-    --bg:       #0d0f12;
-    --bg2:      #13161b;
-    --bg3:      #1a1e26;
-    --bg4:      #222733;
-    --border:   rgba(255,255,255,0.07);
-    --border2:  rgba(255,255,255,0.12);
-    --text:     #e8eaf0;
-    --muted:    #6b7280;
-    --muted2:   #9ca3af;
-    --green:    #10b981;
-    --green2:   #059669;
-    --green-bg: rgba(16,185,129,0.1);
-    --red:      #ef4444;
-    --red-bg:   rgba(239,68,68,0.1);
-    --amber:    #f59e0b;
-    --blue:     #3b82f6;
-    --font:     'DM Sans', sans-serif;
-    --mono:     'JetBrains Mono', monospace;
-    --radius:   8px;
-    --radius-lg: 12px;
-  }
+/* Sidebar */
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:var(--green);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.logo-text{font-size:15px;font-weight:600;letter-spacing:-0.3px}
+.logo-badge{font-size:9px;background:var(--green-bg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:500;border:1px solid rgba(16,185,129,0.2)}
+.sidebar-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.nav-section-label{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);color:var(--muted2);cursor:pointer;font-size:13px;transition:all 0.15s;border:1px solid transparent;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--green-bg);color:var(--green);border-color:rgba(16,185,129,0.2)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{padding:12px;border-top:1px solid var(--border)}
+.version-tag{font-size:10px;color:var(--muted);font-family:var(--mono);text-align:center;margin-bottom:6px}
+.lang-switcher{display:flex;gap:4px}
+.lang-btn{flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:11px;cursor:pointer;transition:all 0.15s;font-family:var(--font)}
+.lang-btn.active{background:var(--green);color:#fff;border-color:var(--green)}
+.lang-btn:hover:not(.active){background:var(--bg3);color:var(--text)}
 
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; overflow: hidden; }
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--bg2);flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:500}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.topbar-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted2)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.page{flex:1;overflow-y:auto;display:none;padding:24px}
+.page.active{display:block}
 
-  /* Layout */
-  .app { display: flex; height: 100vh; }
+/* Dashboard layout */
+.dash-layout{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
 
-  /* Sidebar */
-  .sidebar {
-    width: 220px; min-width: 220px;
-    background: var(--bg2);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    padding: 0;
-  }
-  .sidebar-logo {
-    padding: 20px 16px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .logo-icon {
-    width: 32px; height: 32px;
-    background: var(--green);
-    border-radius: var(--radius);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; color: #fff; flex-shrink: 0;
-  }
-  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-  .logo-badge {
-    font-size: 9px; background: var(--green-bg); color: var(--green);
-    padding: 2px 6px; border-radius: 4px; font-weight: 500;
-    border: 1px solid rgba(16,185,129,0.2);
-  }
+/* Config panel */
+.config-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0}
+.config-section{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:12px;color:var(--muted2)}
+.field-select,.field-input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;cursor:pointer;appearance:none}
+.field-select:focus,.field-input:focus{border-color:var(--green)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tf-btn{padding:6px;text-align:center;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:var(--font)}
+.tf-btn.active{background:var(--green-bg);color:var(--green);border-color:rgba(16,185,129,0.3)}
+.tf-btn:hover:not(.active){background:var(--bg4);color:var(--text)}
+.divider{height:1px;background:var(--border)}
+.run-btn{width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;font-family:var(--font)}
+.run-btn:hover{background:var(--green2)}
+.run-btn:disabled{background:var(--bg4);color:var(--muted);cursor:not-allowed}
+.ntsl-btn{width:100%;padding:9px;background:transparent;color:var(--purple);border:1px solid var(--purple);border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.15s;font-family:var(--font)}
+.ntsl-btn:hover{background:rgba(139,92,246,0.1)}
 
-  .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
-  .nav-section-label {
-    font-size: 10px; font-weight: 500; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 1px;
-    padding: 8px 8px 4px;
-  }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: var(--radius);
-    color: var(--muted2); cursor: pointer; font-size: 13px;
-    transition: all 0.15s; border: 1px solid transparent;
-    text-decoration: none;
-  }
-  .nav-item:hover { background: var(--bg3); color: var(--text); }
-  .nav-item.active { background: var(--green-bg); color: var(--green); border-color: rgba(16,185,129,0.2); }
-  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Results */
+.results-area{display:flex;flex-direction:column;gap:16px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--muted);margin-bottom:6px}
+.metric-value{font-size:24px;font-weight:500;line-height:1}
+.metric-value.pos{color:var(--green)}
+.metric-value.neg{color:var(--red)}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:500}
+.card-tag{font-size:11px;color:var(--muted);background:var(--bg3);padding:3px 8px;border-radius:4px;font-family:var(--mono)}
+.chart-wrap{position:relative;width:100%;height:200px}
+.trades-table{width:100%;border-collapse:collapse;font-size:12px}
+.trades-table th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border2);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+.trades-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px}
+.trades-table tr:last-child td{border-bottom:none}
+.trades-table tr:hover td{background:var(--bg3)}
+.badge{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:500;font-family:var(--font)}
+.badge.win{background:var(--green-bg);color:var(--green)}
+.badge.loss{background:var(--red-bg);color:var(--red)}
 
-  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
-  .lang-switcher { display: flex; gap: 4px; }
-  .lang-btn {
-    flex: 1; padding: 5px 4px; border-radius: 6px;
-    border: 1px solid var(--border2); background: transparent;
-    color: var(--muted2); font-size: 11px; cursor: pointer;
-    transition: all 0.15s; font-family: var(--font);
-  }
-  .lang-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
-  .lang-btn:hover:not(.active) { background: var(--bg3); color: var(--text); }
+/* Empty / Loading */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:380px;gap:12px;color:var(--muted)}
+.empty-icon{font-size:48px;opacity:0.15}
+.loading-state{display:flex;align-items:center;justify-content:center;height:380px;gap:12px;color:var(--muted)}
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Main */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* Bot Test / Editor */
+.editor-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+.editor-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.editor-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.editor-title{font-size:12px;color:var(--muted2);font-family:var(--mono)}
+.editor-actions{display:flex;gap:6px}
+.editor-btn{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-family:var(--font);transition:all 0.15s}
+.editor-btn:hover{background:var(--bg4);color:var(--text)}
+.editor-btn.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.editor-btn.ai{background:rgba(139,92,246,0.15);color:var(--purple);border-color:var(--purple)}
+.editor-btn.ntsl{background:rgba(245,158,11,0.15);color:var(--amber);border-color:var(--amber)}
+.code-editor{width:100%;min-height:380px;padding:16px;background:var(--bg);color:#e8eaf0;border:none;outline:none;resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.7;tab-size:4}
+.ai-input-wrap{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-top:1px solid var(--border);background:var(--bg3)}
+.ai-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
+.ai-textarea{width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;resize:none;outline:none;min-height:70px}
+.ai-textarea:focus{border-color:var(--purple)}
+.ai-btn{width:100%;padding:9px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:background 0.15s}
+.ai-btn:hover{background:#7c3aed}
+.ai-btn:disabled{background:var(--bg4);color:var(--muted);cursor:not-allowed}
+.exec-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:12px}
+.template-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;cursor:pointer;transition:border-color 0.15s}
+.template-card:hover{border-color:var(--green)}
+.template-name{font-size:13px;font-weight:500;margin-bottom:4px}
+.template-desc{font-size:11px;color:var(--muted);margin-bottom:8px}
+.template-asset{font-size:10px;font-family:var(--mono);color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:4px;border:1px solid rgba(16,185,129,0.2);display:inline-block}
+.ntsl-output{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;color:#e8eaf0;white-space:pre-wrap;max-height:300px;overflow-y:auto;display:none}
 
-  .topbar {
-    height: 52px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; background: var(--bg2); flex-shrink: 0;
-  }
-  .topbar-title { font-size: 15px; font-weight: 500; }
-  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .topbar-status {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: var(--muted2);
-  }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+/* History */
+.history-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color 0.15s;margin-bottom:10px}
+.history-card:hover{border-color:var(--border2)}
+.history-asset{font-size:14px;font-weight:500;min-width:90px;font-family:var(--mono)}
+.history-meta{flex:1;display:flex;gap:20px;flex-wrap:wrap}
+.history-item{display:flex;flex-direction:column;gap:2px}
+.history-item-label{font-size:10px;color:var(--muted)}
+.history-item-val{font-size:12px;font-family:var(--mono)}
+.history-return{font-size:18px;font-weight:500;min-width:80px;text-align:right}
 
-  .page { flex: 1; overflow-y: auto; display: none; padding: 24px; }
-  .page.active { display: block; }
+/* Settings */
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:16px;max-width:540px}
+.settings-title{font-size:13px;font-weight:500;margin-bottom:12px}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-row-label{font-size:13px;color:var(--muted2)}
+.settings-row-val{font-size:13px;font-family:var(--mono);color:var(--green)}
 
-  /* Backtest page */
-  .backtest-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
+/* Page header */
+.page-header{margin-bottom:20px}
+.page-title{font-size:18px;font-weight:500}
+.page-subtitle{font-size:12px;color:var(--muted);margin-top:3px}
 
-  .config-panel {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    display: flex; flex-direction: column; gap: 16px;
-    position: sticky; top: 0;
-  }
-  .config-section-title {
-    font-size: 11px; font-weight: 500; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 0.8px;
-  }
-  .field { display: flex; flex-direction: column; gap: 6px; }
-  .field-label { font-size: 12px; color: var(--muted2); }
-  .field-select, .field-input {
-    width: 100%; padding: 8px 10px;
-    background: var(--bg3); border: 1px solid var(--border2);
-    border-radius: var(--radius); color: var(--text);
-    font-family: var(--font); font-size: 13px; outline: none;
-    transition: border-color 0.15s; cursor: pointer;
-    appearance: none;
-  }
-  .field-select:focus, .field-input:focus { border-color: var(--green); }
-  .tf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .tf-btn {
-    padding: 6px; text-align: center; border-radius: var(--radius);
-    border: 1px solid var(--border2); background: var(--bg3);
-    color: var(--muted2); font-size: 12px; cursor: pointer;
-    transition: all 0.15s; font-family: var(--font);
-  }
-  .tf-btn.active { background: var(--green-bg); color: var(--green); border-color: rgba(16,185,129,0.3); }
-  .tf-btn:hover:not(.active) { background: var(--bg4); color: var(--text); }
-  .divider { height: 1px; background: var(--border); }
-  .run-btn {
-    width: 100%; padding: 11px;
-    background: var(--green); color: #fff;
-    border: none; border-radius: var(--radius);
-    font-size: 14px; font-weight: 500; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: background 0.15s; font-family: var(--font);
-  }
-  .run-btn:hover { background: var(--green2); }
-  .run-btn:disabled { background: var(--bg4); color: var(--muted); cursor: not-allowed; }
+/* Indicator params */
+.ind-params{display:flex;flex-direction:column;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)}
 
-  /* Results */
-  .results-area { display: flex; flex-direction: column; gap: 16px; }
-  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .metric-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 14px 16px;
-  }
-  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-  .metric-value { font-size: 24px; font-weight: 500; line-height: 1; }
-  .metric-value.pos { color: var(--green); }
-  .metric-value.neg { color: var(--red); }
-  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-  .chart-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 16px 20px;
-  }
-  .card-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px;
-  }
-  .card-title { font-size: 13px; font-weight: 500; }
-  .card-tag {
-    font-size: 11px; color: var(--muted); background: var(--bg3);
-    padding: 3px 8px; border-radius: 4px; font-family: var(--mono);
-  }
-  .chart-wrap { position: relative; width: 100%; height: 200px; }
-
-  .trades-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .trades-table th {
-    text-align: left; padding: 8px 12px;
-    border-bottom: 1px solid var(--border2);
-    color: var(--muted); font-weight: 500; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .trades-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 11px; }
-  .trades-table tr:last-child td { border-bottom: none; }
-  .trades-table tr:hover td { background: var(--bg3); }
-  .badge {
-    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
-    font-family: var(--font);
-  }
-  .badge.win { background: var(--green-bg); color: var(--green); }
-  .badge.loss { background: var(--red-bg); color: var(--red); }
-
-  /* Empty / Loading */
-  .empty-state {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; height: 380px; gap: 12px;
-    color: var(--muted);
-  }
-  .empty-icon { font-size: 48px; opacity: 0.15; }
-  .empty-text { font-size: 13px; }
-  .loading-state {
-    display: flex; align-items: center; justify-content: center;
-    height: 380px; gap: 12px; color: var(--muted);
-  }
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid var(--border2);
-    border-top-color: var(--green);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* History page */
-  .history-grid { display: flex; flex-direction: column; gap: 10px; }
-  .history-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 14px 18px;
-    display: flex; align-items: center; gap: 16px;
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .history-card:hover { border-color: var(--border2); }
-  .history-asset {
-    font-size: 14px; font-weight: 500; min-width: 90px;
-    font-family: var(--mono);
-  }
-  .history-meta { flex: 1; display: flex; gap: 20px; flex-wrap: wrap; }
-  .history-item { display: flex; flex-direction: column; gap: 2px; }
-  .history-item-label { font-size: 10px; color: var(--muted); }
-  .history-item-val { font-size: 12px; font-family: var(--mono); }
-  .history-return { font-size: 18px; font-weight: 500; min-width: 80px; text-align: right; }
-  .history-empty {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; height: 300px; gap: 12px; color: var(--muted);
-  }
-
-  /* Settings page */
-  .settings-grid { display: flex; flex-direction: column; gap: 16px; max-width: 540px; }
-  .settings-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 18px 20px;
-  }
-  .settings-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
-  .settings-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid var(--border);
-  }
-  .settings-row:last-child { border-bottom: none; }
-  .settings-row-label { font-size: 13px; color: var(--muted2); }
-  .settings-row-val { font-size: 13px; font-family: var(--mono); color: var(--green); }
-  .api-url {
-    font-size: 11px; font-family: var(--mono); color: var(--muted);
-    background: var(--bg3); padding: 8px 10px; border-radius: var(--radius);
-    border: 1px solid var(--border); margin-top: 8px; word-break: break-all;
-  }
-
-  /* Page header */
-  .page-header { margin-bottom: 20px; }
-  .page-title { font-size: 18px; font-weight: 500; }
-  .page-subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">📈</div>
-      <div>
-        <div class="logo-text">BacktestPro</div>
-      </div>
-      <span class="logo-badge">BETA</span>
-    </div>
-
-    <nav class="sidebar-nav">
-      <div class="nav-section-label" data-i18n="menu">Menu</div>
-
-      <a class="nav-item active" onclick="showPage('backtest')" href="#">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <span data-i18n="dashboard">Dashboard</span>
-      </a>
-
-      <a class="nav-item" onclick="showPage('new')" href="#">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        <span data-i18n="newBacktest">Novo Backtest</span>
-      </a>
-
-      <a class="nav-item" onclick="showPage('history')" href="#">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span data-i18n="history">Histórico</span>
-      </a>
-
-      <div class="nav-section-label" style="margin-top:8px" data-i18n="system">Sistema</div>
-
-      <a class="nav-item" onclick="showPage('settings')" href="#">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span data-i18n="settings">Configurações</span>
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;font-family:var(--mono);">v2.3 — 2026-05-30</div>
-      <div class="lang-switcher">
-        <button class="lang-btn active" onclick="setLang('pt')">🇧🇷 PT</button>
-        <button class="lang-btn" onclick="setLang('en')">🇺🇸 EN</button>
-        <button class="lang-btn" onclick="setLang('es')">🇪🇸 ES</button>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <div class="main">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title" id="topbar-title">Dashboard</div>
-        <div class="topbar-sub" id="topbar-sub">EMA Channel Strategy</div>
-      </div>
-      <div class="topbar-status">
-        <div class="status-dot"></div>
-        <span data-i18n="apiOnline">API Online</span>
-      </div>
-    </div>
-
-    <!-- Dashboard / Backtest Page -->
-    <div class="page active" id="page-backtest">
-      <div class="backtest-layout">
-
-        <!-- Config Panel -->
-        <div class="config-panel">
-          <div class="config-section-title" data-i18n="config">Configuração</div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="asset">Ativo</label>
-            <select class="field-select" id="sel-ativo">
-              <optgroup label="Forex">
-                <option value="EUR/USD">EUR/USD</option>
-                <option value="GBP/USD">GBP/USD</option>
-                <option value="USD/JPY">USD/JPY</option>
-                <option value="AUD/USD">AUD/USD</option>
-                <option value="USD/CAD">USD/CAD</option>
-                <option value="NZD/USD">NZD/USD</option>
-              </optgroup>
-              <optgroup label="Commodities">
-                <option value="XAU/USD">XAU/USD — Ouro</option>
-              </optgroup>
-              <optgroup label="Crypto">
-                <option value="BTC/USD">BTC/USD</option>
-              </optgroup>
-              <optgroup label="🇧🇷 B3 Brasil">
-                <option value="IBOVESPA">IBOVESPA (Mini Índice)</option>
-                <option value="USD/BRL">USD/BRL (Mini Dólar)</option>
-              </optgroup>
-            </select>
-          </div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="period">Período</label>
-            <select class="field-select" id="sel-periodo">
-              <option value="6 meses">6 meses</option>
-              <option value="1 ano">1 ano</option>
-              <option value="2 anos" selected>2 anos</option>
-              <option value="3 anos">3 anos</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="timeframe">Timeframe</label>
-            <div class="tf-grid">
-              <button class="tf-btn" onclick="setTf(this,'5m')">5m</button>
-              <button class="tf-btn" onclick="setTf(this,'15m')">15m</button>
-              <button class="tf-btn" onclick="setTf(this,'30m')">30m</button>
-              <button class="tf-btn" onclick="setTf(this,'1h')">1H</button>
-              <button class="tf-btn" onclick="setTf(this,'4h')">4H</button>
-              <button class="tf-btn active" onclick="setTf(this,'1d')">1D</button>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="capital">Capital Inicial (USD)</label>
-            <input class="field-input" type="number" id="inp-capital" value="10000" min="100" step="100" />
-          </div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="ema">EMA Period</label>
-            <input class="field-input" type="number" id="inp-ema" value="20" min="5" max="200" />
-          </div>
-
-          <div class="field">
-            <label class="field-label" data-i18n="commission">Comissão</label>
-            <input class="field-input" type="number" id="inp-comissao" value="0.0002" step="0.0001" />
-          </div>
-
-          <button class="run-btn" id="btn-run" onclick="runBacktest()">
-            ▶ <span data-i18n="run">Rodar Backtest</span>
-          </button>
-        </div>
-
-        <!-- Results -->
-        <div class="results-area" id="results-area">
-          <div class="empty-state" id="empty-state">
-            <div class="empty-icon">📊</div>
-            <div class="empty-text" data-i18n="empty">Configure os parâmetros e rode um backtest</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- New Backtest Page (same as backtest) -->
-    <div class="page" id="page-new">
-      <div class="page-header">
-        <div class="page-title" data-i18n="newBacktest">Novo Backtest</div>
-        <div class="page-subtitle" data-i18n="newSub">Configure uma nova estratégia para testar</div>
-      </div>
-      <div style="color:var(--muted); font-size:13px;" data-i18n="newRedirect">A redirecionar para o Dashboard...</div>
-    </div>
-
-    <!-- History Page -->
-    <div class="page" id="page-history">
-      <div class="page-header">
-        <div class="page-title" data-i18n="history">Histórico</div>
-        <div class="page-subtitle" data-i18n="historySub">Todos os backtests realizados nesta sessão</div>
-      </div>
-      <div class="history-grid" id="history-grid">
-        <div class="history-empty">
-          <div class="empty-icon">🕐</div>
-          <div class="empty-text" data-i18n="historyEmpty">Nenhum backtest realizado ainda</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Page -->
-    <div class="page" id="page-settings">
-      <div class="page-header">
-        <div class="page-title" data-i18n="settings">Configurações</div>
-        <div class="page-subtitle" data-i18n="settingsSub">Informações da plataforma e API</div>
-      </div>
-      <div class="settings-grid">
-        <div class="settings-card">
-          <div class="settings-title" data-i18n="platformInfo">Informações da Plataforma</div>
-          <div class="settings-row">
-            <span class="settings-row-label" data-i18n="version">Versão</span>
-            <span class="settings-row-val">v2.1</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-label" data-i18n="strategy">Estratégia</span>
-            <span class="settings-row-val">EMA Channel 20 H/L</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-label" data-i18n="assets">Ativos</span>
-            <span class="settings-row-val">10 ativos</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-label" data-i18n="timeframes">Timeframes</span>
-            <span class="settings-row-val">5m · 15m · 30m · 1h · 4h · 1d</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-label" data-i18n="markets">Mercados</span>
-            <span class="settings-row-val">Forex · Crypto · B3 🇧🇷</span>
-          </div>
-        </div>
-        <div class="settings-card">
-          <div class="settings-title">API</div>
-          <div class="settings-row">
-            <span class="settings-row-label">Status</span>
-            <span class="settings-row-val" id="api-status">● Online</span>
-          </div>
-          <div class="settings-row">
-            <span class="settings-row-label">Endpoint</span>
-            <span class="settings-row-val">Railway</span>
-          </div>
-          <div class="api-url" id="api-url-display">https://backtestpro-production-eb9a.up.railway.app</div>
-        </div>
-      </div>
-    </div>
-
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📈</div>
+    <div><div class="logo-text">BacktestPro</div></div>
+    <span class="logo-badge">BETA</span>
   </div>
-</div>
-
-<script>
-const API = 'https://backtestpro-production-eb9a.up.railway.app';
-let currentTf = '1d';
-let equityChart = null;
-let history = [];
-let lang = 'pt';
-
-const i18n = {
-  pt: {
-    menu: 'Menu', dashboard: 'Dashboard', newBacktest: 'Novo Backtest',
-    history: 'Histórico', system: 'Sistema', settings: 'Configurações',
-    apiOnline: 'API Online', config: 'Configuração', asset: 'Ativo',
-    period: 'Período', timeframe: 'Timeframe', capital: 'Capital Inicial (USD)',
-    ema: 'EMA Period', commission: 'Comissão', run: 'Rodar Backtest',
-    empty: 'Configure os parâmetros e rode um backtest',
-    loading: 'Rodando backtest...', equity: 'Equity Curve',
-    tradesTitle: 'Histórico de Trades', entry: 'Entrada', exit: 'Saída',
-    ret: 'Retorno', profit: 'Lucro', result: 'Resultado', win: 'Ganho', loss: 'Perda',
-    totalReturn: 'Retorno Total', annReturn: 'Retorno Anual', winRate: 'Win Rate',
-    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
-    profitFactor: 'Profit Factor', finalCapital: 'Capital Final',
-    candles: 'candles', error: 'Erro',
-    newSub: 'Configure uma nova estratégia para testar',
-    newRedirect: 'A redirecionar para o Dashboard...',
-    historySub: 'Todos os backtests realizados nesta sessão',
-    historyEmpty: 'Nenhum backtest realizado ainda',
-    settingsSub: 'Informações da plataforma e API',
-    platformInfo: 'Informações da Plataforma', version: 'Versão',
-    strategy: 'Estratégia', assets: 'Ativos', timeframes: 'Timeframes', markets: 'Mercados',
-    periodos: { '6 meses': '6 meses', '1 ano': '1 ano', '2 anos': '2 anos', '3 anos': '3 anos' }
-  },
-  en: {
-    menu: 'Menu', dashboard: 'Dashboard', newBacktest: 'New Backtest',
-    history: 'History', system: 'System', settings: 'Settings',
-    apiOnline: 'API Online', config: 'Configuration', asset: 'Asset',
-    period: 'Period', timeframe: 'Timeframe', capital: 'Initial Capital (USD)',
-    ema: 'EMA Period', commission: 'Commission', run: 'Run Backtest',
-    empty: 'Configure parameters and run a backtest',
-    loading: 'Running backtest...', equity: 'Equity Curve',
-    tradesTitle: 'Trade History', entry: 'Entry', exit: 'Exit',
-    ret: 'Return', profit: 'Profit', result: 'Result', win: 'Win', loss: 'Loss',
-    totalReturn: 'Total Return', annReturn: 'Annual Return', winRate: 'Win Rate',
-    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
-    profitFactor: 'Profit Factor', finalCapital: 'Final Capital',
-    candles: 'candles', error: 'Error',
-    newSub: 'Configure a new strategy to test',
-    newRedirect: 'Redirecting to Dashboard...',
-    historySub: 'All backtests run in this session',
-    historyEmpty: 'No backtests run yet',
-    settingsSub: 'Platform and API information',
-    platformInfo: 'Platform Information', version: 'Version',
-    strategy: 'Strategy', assets: 'Assets', timeframes: 'Timeframes', markets: 'Markets',
-    periodos: { '6 meses': '6 months', '1 ano': '1 year', '2 anos': '2 years', '3 anos': '3 years' }
-  },
-  es: {
-    menu: 'Menú', dashboard: 'Dashboard', newBacktest: 'Nuevo Backtest',
-    history: 'Historial', system: 'Sistema', settings: 'Configuración',
-    apiOnline: 'API Online', config: 'Configuración', asset: 'Activo',
-    period: 'Período', timeframe: 'Timeframe', capital: 'Capital Inicial (USD)',
-    ema: 'Período EMA', commission: 'Comisión', run: 'Ejecutar Backtest',
-    empty: 'Configure los parámetros y ejecute un backtest',
-    loading: 'Ejecutando backtest...', equity: 'Curva de Equity',
-    tradesTitle: 'Historial de Trades', entry: 'Entrada', exit: 'Salida',
-    ret: 'Retorno', profit: 'Ganancia', result: 'Resultado', win: 'Ganancia', loss: 'Pérdida',
-    totalReturn: 'Retorno Total', annReturn: 'Retorno Anual', winRate: 'Win Rate',
-    sharpe: 'Sharpe', drawdown: 'Drawdown', trades: 'Trades',
-    profitFactor: 'Factor Ganancia', finalCapital: 'Capital Final',
-    candles: 'velas', error: 'Error',
-    newSub: 'Configure una nueva estrategia para probar',
-    newRedirect: 'Redirigiendo al Dashboard...',
-    historySub: 'Todos los backtests realizados en esta sesión',
-    historyEmpty: 'Ningún backtest realizado aún',
-    settingsSub: 'Información de plataforma y API',
-    platformInfo: 'Información de Plataforma', version: 'Versión',
-    strategy: 'Estrategia', assets: 'Activos', timeframes: 'Timeframes', markets: 'Mercados',
-    periodos: { '6 meses': '6 meses', '1 ano': '1 año', '2 anos': '2 años', '3 anos': '3 años' }
-  }
-};
-
-function t(k) { return i18n[lang][k] || k; }
-
-function setLang(l) {
-  lang = l;
-  document.querySelectorAll('.lang-btn').forEach((b,i) => b.classList.toggle('active', ['pt','en','es'][i] === l));
-  document.documentElement.lang = l;
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const k = el.getAttribute('data-i18n');
-    if (i18n[l][k]) el.textContent = i18n[l][k];
-  });
-  const sel = document.getElementById('sel-periodo');
-  if (sel) {
-    const cur = sel.value;
-    sel.innerHTML = Object.entries(i18n[l].periodos).map(([v,label]) =>
-      `<option value="${v}" ${v === cur ? 'selected' : ''}>${label}</option>`
-    ).join('');
-  }
-  renderHistory();
-}
-
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.querySelectorAll('.nav-item')[['backtest','new','history','settings'].indexOf(page)]?.classList.add('active');
-  const titles = { backtest: 'Dashboard', new: t('newBacktest'), history: t('history'), settings: t('settings') };
-  document.getElementById('topbar-title').textContent = titles[page] || page;
-  if (page === 'new') { setTimeout(() => showPage('backtest'), 800); }
-  if (page === 'history') renderHistory();
-}
-
-function setTf(btn, tf) {
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentTf = tf;
-}
-
-async function runBacktest() {
-  const btn = document.getElementById('btn-run');
-  const area = document.getElementById('results-area');
-  btn.disabled = true;
-  area.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>${t('loading')}</span></div>`;
-
-  const payload = {
-    ativo: document.getElementById('sel-ativo').value,
-    periodo: document.getElementById('sel-periodo').value,
-    capital: parseFloat(document.getElementById('inp-capital').value),
-    comissao: parseFloat(document.getElementById('inp-comissao').value),
-    ema_period: parseInt(document.getElementById('inp-ema').value),
-    timeframe: currentTf
-  };
-
-  try {
-    const res = await fetch(`${API}/backtest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.erro) throw new Error(data.erro);
-    data._ts = new Date().toLocaleTimeString();
-    history.unshift(data);
-    renderResults(data);
-  } catch(e) {
-    area.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${t('error')}: ${e.message}</div></div>`;
-  }
-  btn.disabled = false;
-}
-
-function renderResults(d) {
-  const area = document.getElementById('results-area');
-  const retPos = d.retorno >= 0;
-
-  area.innerHTML = `
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-label">${t('totalReturn')}</div>
-        <div class="metric-value ${retPos ? 'pos' : 'neg'}">${retPos ? '+' : ''}${d.retorno.toFixed(2)}%</div>
-        <div class="metric-sub">${t('annReturn')}: ${d.retorno_anual.toFixed(2)}%</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">${t('winRate')}</div>
-        <div class="metric-value">${d.win_rate.toFixed(1)}%</div>
-        <div class="metric-sub">${d.total_trades} ${t('trades')}</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">${t('sharpe')} / ${t('profitFactor')}</div>
-        <div class="metric-value">${d.sharpe.toFixed(2)}</div>
-        <div class="metric-sub">PF: ${d.profit_factor.toFixed(2)}</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">${t('drawdown')}</div>
-        <div class="metric-value neg">${d.max_drawdown.toFixed(2)}%</div>
-        <div class="metric-sub">${t('finalCapital')}: $${d.capital_final.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label" data-i18n="menu">Menu</div>
+    <a class="nav-item active" onclick="showPage('backtest')" href="#">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span data-i18n="dashboard">Dashboard</span>
+    </a>
+    <a class="nav-item" onclick="showPage('editor')" href="#">
+      <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      <span data-i18n="botTest">🤖 Bot Test</span>
+    </a>
+    <a class="nav-item" onclick="showPage('history')" href="#">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span data-i18n="history">Histórico</span>
+    </a>
+    <div class="nav-section-label" data-i18n="system">Sistema</div>
+    <a class="nav-item" onclick="showPage('settings')" href="#">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span data-i18n="settings">Configurações</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-tag">v2.7 — 2026-05-31</div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('pt')">🇧🇷 PT</button>
+      <button class="lang-btn" onclick="setLang('en')">🇺🇸 EN</button>
+      <button class="lang-btn" onclick="setLang('es')">🇪🇸 ES</button>
     </div>
-
-    <div class="chart-card">
-      <div class="card-header">
-        <span class="card-title">${t('equity')} — ${d.ativo}</span>
-        <span class="card-tag">${d.ema_period} · ${d.timeframe} · ${d.candles} ${t('candles')}</span>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="equityChart" role="img" aria-label="Equity curve for ${d.ativo}">Equity curve chart.</canvas>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="card-header">
-        <span class="card-title">${t('tradesTitle')}</span>
-        <span class="card-tag">${d.trades.length} trades</span>
-      </div>
-      <table class="trades-table">
-        <thead>
-          <tr>
-            <th>${t('entry')}</th><th>${t('exit')}</th>
-            <th>${t('ret')}</th><th>${t('profit')}</th><th>${t('result')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${d.trades.map(tr => `
-            <tr>
-              <td>${tr.entrada.slice(0,10)}</td>
-              <td>${tr.saida.slice(0,10)}</td>
-              <td style="color:${tr.retorno>=0?'var(--green)':'var(--red)'}">${tr.retorno>=0?'+':''}${tr.retorno.toFixed(2)}%</td>
-              <td style="color:${tr.lucro>=0?'var(--green)':'var(--red)'}">${tr.lucro>=0?'+':''}$${Math.abs(tr.lucro).toFixed(2)}</td>
-              <td><span class="badge ${tr.retorno>=0?'win':'loss'}">${tr.retorno>=0?t('win'):t('loss')}</span></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  if (equityChart) { equityChart.destroy(); equityChart = null; }
-  equityChart = new Chart(document.getElementById('equityChart'), {
-    type: 'line',
-    data: {
-      labels: d.datas_equity.map(dt => dt.slice(0,10)),
-      datasets: [{
-        label: 'Equity', data: d.equity_curve,
-        borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)',
-        borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `$${ctx.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` } }
-      },
-      scales: {
-        x: { ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } },
-        y: { ticks: { color: '#6b7280', font: { size: 10 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } }
-      }
-    }
-  });
-}
-
-function renderHistory() {
-  const grid = document.getElementById('history-grid');
-  if (!grid) return;
-  if (history.length === 0) {
-    grid.innerHTML = `<div class="history-empty"><div class="empty-icon">🕐</div><div class="empty-text">${t('historyEmpty')}</div></div>`;
-    return;
-  }
-  grid.innerHTML = history.map((d,i) => `
-    <div class="history-card" onclick="reloadResult(${i})">
-      <div class="history-asset">${d.ativo}</div>
-      <div class="history-meta">
-        <div class="history-item"><div class="history-item-label">${t('period')}</div><div class="history-item-val">${d.periodo}</div></div>
-        <div class="history-item"><div class="history-item-label">TF</div><div class="history-item-val">${d.timeframe}</div></div>
-        <div class="history-item"><div class="history-item-label">EMA</div><div class="history-item-val">${d.ema_period}</div></div>
-        <div class="history-item"><div class="history-item-label">${t('winRate')}</div><div class="history-item-val">${d.win_rate.toFixed(1)}%</div></div>
-        <div class="history-item"><div class="history-item-label">${t('sharpe')}</div><div class="history-item-val">${d.sharpe.toFixed(2)}</div></div>
-        <div class="history-item"><div class="history-item-label">${t('trades')}</div><div class="history-item-val">${d.total_trades}</div></div>
-      </div>
-      <div class="history-return" style="color:${d.retorno>=0?'var(--green)':'var(--red)'}">${d.retorno>=0?'+':''}${d.retorno.toFixed(2)}%</div>
-    </div>
-  `).join('');
-}
-
-function reloadResult(i) {
-  showPage('backtest');
-  setTimeout(() => renderResults(history[i]), 100);
-}
-
-fetch(`${API}/`).then(r => r.json()).then(() => {
-  const el = document.getElementById('api-status');
-  if (el) el.textContent = '● Online';
-}).catch(() => {
-  const el = document.getElementById('api-status');
-  if (el) { el.textContent = '● Offline'; el.style.color = 'var(--red)'; }
-});
-</script>
-</body>
-</html>
-<script>
-// ── PATCH: Adicionar página Editor ao index.html existente ──
-
-// Injetar estilos do editor
-const editorStyles = document.createElement('style');
-editorStyles.textContent = `
-  .editor-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
-  .editor-box {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); overflow: hidden;
-  }
-  .editor-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; border-bottom: 1px solid var(--border);
-    background: var(--bg3);
-  }
-  .editor-title { font-size: 12px; color: var(--muted2); font-family: var(--mono); }
-  .editor-actions { display: flex; gap: 6px; }
-  .editor-btn {
-    font-size: 11px; padding: 4px 10px; border-radius: 5px;
-    border: 1px solid var(--border2); background: transparent;
-    color: var(--muted2); cursor: pointer; font-family: var(--font);
-    transition: all 0.15s;
-  }
-  .editor-btn:hover { background: var(--bg4); color: var(--text); }
-  .editor-btn.primary { background: var(--green); color: #fff; border-color: var(--green); }
-  .editor-btn.primary:hover { background: var(--green2); }
-  .code-editor {
-    width: 100%; min-height: 420px; padding: 16px;
-    background: var(--bg); color: #e8eaf0;
-    border: none; outline: none; resize: vertical;
-    font-family: var(--mono); font-size: 12px; line-height: 1.7;
-    tab-size: 4;
-  }
-  .templates-panel {
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .template-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 14px 16px;
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .template-card:hover { border-color: var(--green); }
-  .template-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-  .template-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-  .template-asset {
-    font-size: 10px; font-family: var(--mono);
-    color: var(--green); background: var(--green-bg);
-    padding: 2px 8px; border-radius: 4px;
-    border: 1px solid rgba(16,185,129,0.2);
-    display: inline-block;
-  }
-  .exec-panel {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 16px;
-    display: flex; flex-direction: column; gap: 12px;
-  }
-  .exec-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-  .exec-run-btn {
-    width: 100%; padding: 11px; background: var(--green); color: #fff;
-    border: none; border-radius: var(--radius); font-size: 14px;
-    font-weight: 500; cursor: pointer; font-family: var(--font);
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: background 0.15s;
-  }
-  .exec-run-btn:hover { background: var(--green2); }
-  .exec-run-btn:disabled { background: var(--bg4); color: var(--muted); cursor: not-allowed; }
-  .sandbox-note {
-    font-size: 11px; color: var(--muted); text-align: center;
-    padding: 8px; background: var(--bg3); border-radius: var(--radius);
-    border: 1px solid var(--border);
-  }
-`;
-document.head.appendChild(editorStyles);
-
-// Templates
-const TEMPLATES = [
-  {
-    nome: "EMA Channel — XAU/USD",
-    desc: "Canal EMA 20 High/Low. Padrão TrailingBot.",
-    ativo: "XAU/USD",
-    codigo: `class EMAChannelStrategy(Strategy):
-    ema_period = 20
-
-    def init(self):
-        self.ema_high = self.I(
-            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
-            self.data.High
-        )
-        self.ema_low = self.I(
-            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
-            self.data.Low
-        )
-
-    def next(self):
-        preco = self.data.Close[-1]
-        if not self.position:
-            if preco > self.ema_high[-1]:
-                self.buy()
-        else:
-            if preco < self.ema_low[-1]:
-                self.position.close()`
-  },
-  {
-    nome: "Cruzamento de Médias — EUR/USD",
-    desc: "EMA 9 cruza EMA 21. Estratégia clássica.",
-    ativo: "EUR/USD",
-    codigo: `class CrossoverStrategy(Strategy):
-    fast = 9
-    slow = 21
-
-    def init(self):
-        self.ema_fast = self.I(
-            lambda x: pd.Series(x).ewm(span=self.fast, adjust=False).mean().values,
-            self.data.Close
-        )
-        self.ema_slow = self.I(
-            lambda x: pd.Series(x).ewm(span=self.slow, adjust=False).mean().values,
-            self.data.Close
-        )
-
-    def next(self):
-        if not self.position:
-            if self.ema_fast[-1] > self.ema_slow[-1]:
-                self.buy()
-        else:
-            if self.ema_fast[-1] < self.ema_slow[-1]:
-                self.position.close()`
-  },
-  {
-    nome: "RSI Reversal — BTC/USD",
-    desc: "Compra RSI < 30, vende RSI > 70.",
-    ativo: "BTC/USD",
-    codigo: `class RSIStrategy(Strategy):
-    rsi_period = 14
-    rsi_low  = 30
-    rsi_high = 70
-
-    def init(self):
-        def rsi(close, period=14):
-            s = pd.Series(close)
-            delta = s.diff()
-            gain = delta.clip(lower=0).ewm(span=period, adjust=False).mean()
-            loss = (-delta.clip(upper=0)).ewm(span=period, adjust=False).mean()
-            rs = gain / loss
-            return (100 - (100 / (1 + rs))).values
-        self.rsi = self.I(rsi, self.data.Close, self.rsi_period)
-
-    def next(self):
-        if not self.position:
-            if self.rsi[-1] < self.rsi_low:
-                self.buy()
-        else:
-            if self.rsi[-1] > self.rsi_high:
-                self.position.close()`
-  },
-  {
-    nome: "Mini Índice — IBOVESPA 🇧🇷",
-    desc: "EMA Channel para o mercado brasileiro.",
-    ativo: "IBOVESPA",
-    codigo: `class B3EMAStrategy(Strategy):
-    ema_period = 20
-
-    def init(self):
-        self.ema_high = self.I(
-            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
-            self.data.High
-        )
-        self.ema_low = self.I(
-            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
-            self.data.Low
-        )
-
-    def next(self):
-        preco = self.data.Close[-1]
-        if not self.position:
-            if preco > self.ema_high[-1]:
-                self.buy()
-        else:
-            if preco < self.ema_low[-1]:
-                self.position.close()`
-  }
-];
-
-// Injetar página editor
-const editorPage = document.createElement('div');
-editorPage.className = 'page';
-editorPage.id = 'page-editor';
-editorPage.innerHTML = `
-  <div class="page-header">
-    <div class="page-title" id="editor-title">🤖 Bot Test</div>
-    <div class="page-subtitle" id="editor-sub">Cole o código do seu bot e execute o backtest</div>
   </div>
-  <div class="editor-layout">
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <div class="editor-box">
-        <div class="editor-header">
-          <span class="editor-title">strategy.py</span>
-          <div class="editor-actions">
-            <button class="editor-btn" onclick="limparEditor()">Limpar</button>
-            <button class="editor-btn" onclick="copiarCodigo()">Copiar</button>
-          </div>
-        </div>
-        <textarea class="code-editor" id="code-editor" spellcheck="false"
-          placeholder="# Cole aqui o código do seu bot Python
-# Exemplo:
-class MinhaEstrategia(Strategy):
-    def init(self):
-        pass
-    def next(self):
-        pass"></textarea>
-      </div>
-      <div id="editor-results"></div>
-    </div>
+</aside>
 
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div class="exec-panel">
-        <div class="exec-title" id="exec-config-title">Configuração</div>
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sub" id="topbar-sub">Configurador de Estratégia</div>
+    </div>
+    <div class="topbar-status">
+      <div class="status-dot"></div>
+      <span data-i18n="apiOnline">API Online</span>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-backtest">
+    <div class="dash-layout">
+      <div class="config-panel">
+        <div class="config-section" data-i18n="config">Configuração</div>
+
         <div class="field">
-          <label class="field-label" id="exec-asset-label">Ativo</label>
-          <select class="field-select" id="exec-ativo">
+          <label class="field-label" data-i18n="asset">Ativo</label>
+          <select class="field-select" id="sel-ativo">
             <optgroup label="Forex">
               <option value="EUR/USD">EUR/USD</option>
               <option value="GBP/USD">GBP/USD</option>
               <option value="USD/JPY">USD/JPY</option>
+              <option value="AUD/USD">AUD/USD</option>
+              <option value="USD/CAD">USD/CAD</option>
+              <option value="NZD/USD">NZD/USD</option>
             </optgroup>
             <optgroup label="Commodities">
-              <option value="XAU/USD" selected>XAU/USD — Ouro</option>
+              <option value="XAU/USD">XAU/USD — Ouro</option>
             </optgroup>
             <optgroup label="Crypto">
               <option value="BTC/USD">BTC/USD</option>
@@ -1019,93 +249,581 @@ class MinhaEstrategia(Strategy):
             </optgroup>
           </select>
         </div>
+
         <div class="field">
-          <label class="field-label" id="exec-period-label">Período</label>
-          <select class="field-select" id="exec-periodo">
+          <label class="field-label" data-i18n="period">Período</label>
+          <select class="field-select" id="sel-periodo">
             <option value="6 meses">6 meses</option>
             <option value="1 ano">1 ano</option>
             <option value="2 anos" selected>2 anos</option>
             <option value="3 anos">3 anos</option>
           </select>
         </div>
+
         <div class="field">
-          <label class="field-label">Timeframe</label>
-          <select class="field-select" id="exec-tf">
-            <option value="5m">5m</option>
-            <option value="15m">15m</option>
-            <option value="30m">30m</option>
-            <option value="1h">1h</option>
-            <option value="4h">4h</option>
-            <option value="1d" selected>1D</option>
+          <label class="field-label" data-i18n="timeframe">Timeframe</label>
+          <div class="tf-grid">
+            <button class="tf-btn" onclick="setTf(this,'5m')">5m</button>
+            <button class="tf-btn" onclick="setTf(this,'15m')">15m</button>
+            <button class="tf-btn" onclick="setTf(this,'30m')">30m</button>
+            <button class="tf-btn" onclick="setTf(this,'1h')">1H</button>
+            <button class="tf-btn" onclick="setTf(this,'4h')">4H</button>
+            <button class="tf-btn active" onclick="setTf(this,'1d')">1D</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- INDICADOR -->
+        <div class="field">
+          <label class="field-label" data-i18n="indicator">Indicador</label>
+          <select class="field-select" id="sel-indicador" onchange="atualizarParamsIndicador()">
+            <optgroup label="📈 Médias Móveis">
+              <option value="EMA_CHANNEL">EMA Channel High/Low</option>
+              <option value="EMA">EMA — Exponencial</option>
+              <option value="SMA">SMA — Simples</option>
+              <option value="WMA">WMA — Ponderada</option>
+              <option value="DEMA">DEMA — Dupla EMA</option>
+              <option value="TEMA">TEMA — Tripla EMA</option>
+              <option value="HMA">HMA — Hull MA</option>
+              <option value="VWMA">VWMA — Por Volume</option>
+              <option value="CROSS">Cruzamento de 2 Médias</option>
+            </optgroup>
+            <optgroup label="📊 Osciladores">
+              <option value="RSI">RSI</option>
+              <option value="MACD">MACD</option>
+            </optgroup>
+            <optgroup label="📉 Volatilidade">
+              <option value="BB">Bollinger Bands</option>
+            </optgroup>
           </select>
         </div>
-        <div class="field">
-          <label class="field-label" id="exec-capital-label">Capital (USD)</label>
-          <input class="field-input" type="number" id="exec-capital" value="10000" />
+
+        <!-- PARAMS DINÂMICOS -->
+        <div class="ind-params" id="ind-params">
+          <div class="field">
+            <label class="field-label" data-i18n="indPeriod">Período do Indicador</label>
+            <input class="field-input" type="number" id="inp-periodo-ind" value="20" min="2" max="500" />
+          </div>
+          <div class="field" id="field-desvio">
+            <label class="field-label" data-i18n="deviation">Desvio / Multiplicador</label>
+            <input class="field-input" type="number" id="inp-desvio" value="2.0" min="0.1" step="0.1" />
+          </div>
+          <div id="cross-params" style="display:none;flex-direction:column;gap:10px">
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Período Rápida</label>
+                <input class="field-input" type="number" id="inp-per-rapida" value="9" min="2" />
+              </div>
+              <div class="field">
+                <label class="field-label">Período Lenta</label>
+                <input class="field-input" type="number" id="inp-per-lenta" value="21" min="2" />
+              </div>
+            </div>
+          </div>
+          <div id="rsi-params" style="display:none;flex-direction:column;gap:10px">
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Sobrecompra</label>
+                <input class="field-input" type="number" id="inp-sobrecompra" value="70" min="50" max="100" />
+              </div>
+              <div class="field">
+                <label class="field-label">Sobrevenda</label>
+                <input class="field-input" type="number" id="inp-sobrevenda" value="30" min="0" max="50" />
+              </div>
+            </div>
+          </div>
         </div>
-        <button class="exec-run-btn" id="exec-btn" onclick="executarCustom()">
-          ▶ <span id="exec-btn-text">Executar Backtest</span>
+
+        <div class="divider"></div>
+
+        <!-- GESTÃO DE RISCO -->
+        <div class="config-section" data-i18n="riskMgmt">Gestão de Risco</div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Stop Loss (pts)</label>
+            <input class="field-input" type="number" id="inp-sl" value="50" min="1" />
+          </div>
+          <div class="field">
+            <label class="field-label">Take Profit (pts)</label>
+            <input class="field-input" type="number" id="inp-tp" value="100" min="1" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Capital (USD)</label>
+            <input class="field-input" type="number" id="inp-capital" value="10000" min="100" step="100" />
+          </div>
+          <div class="field">
+            <label class="field-label" data-i18n="maxOps">Máx. Operações</label>
+            <input class="field-input" type="number" id="inp-maxops" value="5" min="1" max="20" />
+          </div>
+        </div>
+
+        <button class="run-btn" id="btn-run" onclick="runBacktest()">
+          ▶ <span data-i18n="run">Rodar Backtest</span>
         </button>
-        <div class="sandbox-note" id="sandbox-note">
-          🔒 Sandbox seguro — só pandas e numpy permitidos
-        </div>
+        <button class="ntsl-btn" id="btn-ntsl" onclick="exportarNTSL()">
+          📥 <span data-i18n="exportNTSL">Exportar para NTSL</span>
+        </button>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;padding:4px 0;" id="templates-title">Templates</div>
-        ${TEMPLATES.map((t, i) => `
-          <div class="template-card" onclick="carregarTemplate(${i})">
-            <div class="template-name">${t.nome}</div>
-            <div class="template-desc">${t.desc}</div>
-            <span class="template-asset">${t.ativo}</span>
-          </div>
-        `).join('')}
+      <!-- RESULTS -->
+      <div class="results-area" id="results-area">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div data-i18n="empty">Configure os parâmetros e rode um backtest</div>
+        </div>
       </div>
     </div>
   </div>
-`;
-document.querySelector('.main').appendChild(editorPage);
 
-// Adicionar nav item para editor
-const navEditor = document.createElement('a');
-navEditor.className = 'nav-item';
-navEditor.href = '#';
-navEditor.onclick = () => showPageEditor();
-navEditor.innerHTML = `
-  <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;">
-    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-  </svg>
-  <span id="nav-editor-label">🤖 Bot Test</span>
-`;
-document.querySelector('.sidebar-nav').insertBefore(navEditor, document.querySelectorAll('.nav-item')[2]);
+  <!-- BOT TEST PAGE -->
+  <div class="page" id="page-editor">
+    <div class="page-header">
+      <div class="page-title">🤖 Bot Test</div>
+      <div class="page-subtitle" data-i18n="botSub">Cole o código, descreve em português ou carrega um template</div>
+    </div>
+    <div class="editor-layout">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="editor-box">
+          <div class="editor-header">
+            <span class="editor-title">strategy.py</span>
+            <div class="editor-actions">
+              <button class="editor-btn" onclick="limparEditor()">Limpar</button>
+              <button class="editor-btn" onclick="copiarCodigo()">Copiar</button>
+              <button class="editor-btn ntsl" onclick="exportarNTSLEditor()">📥 NTSL</button>
+            </div>
+          </div>
+          <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="# Cole aqui o código do seu bot Python&#10;# Ou descreve abaixo e clica ✨ Gerar Bot com IA&#10;&#10;class MinhaEstrategia(Strategy):&#10;    def init(self): pass&#10;    def next(self): pass"></textarea>
+          <div class="ai-input-wrap">
+            <div class="ai-label">✨ <span data-i18n="aiLabel">Descreve a tua estratégia em português</span></div>
+            <textarea class="ai-textarea" id="ai-descricao" placeholder="Ex: Cria um bot para XAU/USD que compra quando o preço rompe a EMA 20 para cima e vende quando volta ao canal. Stop de 50 pontos e alvo de 100 pontos."></textarea>
+            <button class="ai-btn" id="ai-btn" onclick="gerarComIA()">✨ <span data-i18n="generateAI">Gerar Bot com IA</span></button>
+          </div>
+        </div>
+        <div id="editor-results"></div>
+        <div id="ntsl-output-wrap" style="display:none">
+          <div class="chart-card">
+            <div class="card-header">
+              <span class="card-title">📥 Código NTSL — Para colar no Profit (Nelogica)</span>
+              <button class="editor-btn" onclick="copiarNTSL()">Copiar NTSL</button>
+            </div>
+            <pre class="ntsl-output" id="ntsl-output" style="display:block"></pre>
+          </div>
+        </div>
+      </div>
 
-function showPageEditor() {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-editor').classList.add('active');
-  navEditor.classList.add('active');
-  document.getElementById('topbar-title').textContent = '🤖 Bot Test';
-  document.getElementById('topbar-sub').textContent = i18n[lang]['editorSub'] || 'Custom Strategy';
-}
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="exec-panel">
+          <div class="config-section" data-i18n="config">Configuração</div>
+          <div class="field">
+            <label class="field-label" data-i18n="asset">Ativo</label>
+            <select class="field-select" id="exec-ativo">
+              <optgroup label="Forex"><option value="EUR/USD">EUR/USD</option><option value="GBP/USD">GBP/USD</option></optgroup>
+              <optgroup label="Commodities"><option value="XAU/USD" selected>XAU/USD</option></optgroup>
+              <optgroup label="Crypto"><option value="BTC/USD">BTC/USD</option></optgroup>
+              <optgroup label="🇧🇷 B3"><option value="IBOVESPA">IBOVESPA</option><option value="USD/BRL">USD/BRL</option></optgroup>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" data-i18n="period">Período</label>
+            <select class="field-select" id="exec-periodo">
+              <option value="6 meses">6 meses</option>
+              <option value="1 ano">1 ano</option>
+              <option value="2 anos" selected>2 anos</option>
+              <option value="3 anos">3 anos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Timeframe</label>
+            <select class="field-select" id="exec-tf">
+              <option value="5m">5m</option><option value="15m">15m</option><option value="30m">30m</option>
+              <option value="1h">1h</option><option value="4h">4h</option><option value="1d" selected>1D</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Capital (USD)</label>
+            <input class="field-input" type="number" id="exec-capital" value="10000" />
+          </div>
+          <button class="run-btn" id="exec-btn" onclick="executarCustom()">▶ <span data-i18n="run">Executar Backtest</span></button>
+        </div>
 
-// Patch showPage para incluir editor
-const _origShowPage = showPage;
-window.showPage = function(page) {
-  if (page === 'editor') { showPageEditor(); return; }
-  navEditor.classList.remove('active');
-  _origShowPage(page);
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="config-section" style="padding:4px 0" data-i18n="templates">Templates</div>
+          <div class="template-card" onclick="carregarTemplate(0)">
+            <div class="template-name">EMA Channel — XAU/USD</div>
+            <div class="template-desc">Canal EMA 20 High/Low. Padrão TrailingBot.</div>
+            <span class="template-asset">XAU/USD</span>
+          </div>
+          <div class="template-card" onclick="carregarTemplate(1)">
+            <div class="template-name">Cruzamento EMA 9/21</div>
+            <div class="template-desc">Média rápida cruza média lenta.</div>
+            <span class="template-asset">EUR/USD</span>
+          </div>
+          <div class="template-card" onclick="carregarTemplate(2)">
+            <div class="template-name">RSI Reversal</div>
+            <div class="template-desc">Compra RSI&lt;30, vende RSI&gt;70.</div>
+            <span class="template-asset">BTC/USD</span>
+          </div>
+          <div class="template-card" onclick="carregarTemplate(3)">
+            <div class="template-name">Mini Índice 🇧🇷</div>
+            <div class="template-desc">EMA Channel para B3.</div>
+            <span class="template-asset">IBOVESPA</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY PAGE -->
+  <div class="page" id="page-history">
+    <div class="page-header">
+      <div class="page-title" data-i18n="history">Histórico</div>
+      <div class="page-subtitle" data-i18n="historySub">Todos os backtests guardados na base de dados</div>
+    </div>
+    <div id="history-grid"><div class="empty-state"><div class="empty-icon">🕐</div><div data-i18n="historyEmpty">Nenhum backtest ainda</div></div></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div class="page-title" data-i18n="settings">Configurações</div>
+      <div class="page-subtitle" data-i18n="settingsSub">Informações da plataforma</div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title" data-i18n="platformInfo">Plataforma</div>
+      <div class="settings-row"><span class="settings-row-label">Versão</span><span class="settings-row-val">v2.7</span></div>
+      <div class="settings-row"><span class="settings-row-label">Indicadores</span><span class="settings-row-val">11 indicadores</span></div>
+      <div class="settings-row"><span class="settings-row-label">Ativos</span><span class="settings-row-val">10 ativos</span></div>
+      <div class="settings-row"><span class="settings-row-label">Timeframes</span><span class="settings-row-val">5m · 15m · 30m · 1h · 4h · 1d</span></div>
+      <div class="settings-row"><span class="settings-row-label">Mercados</span><span class="settings-row-val">Forex · Crypto · B3 🇧🇷</span></div>
+      <div class="settings-row"><span class="settings-row-label">Exportação</span><span class="settings-row-val">Python + NTSL</span></div>
+      <div class="settings-row"><span class="settings-row-label">IA</span><span class="settings-row-val">✅ Gera bots em PT</span></div>
+      <div class="settings-row"><span class="settings-row-label">Base de dados</span><span class="settings-row-val" id="api-status">● Online</span></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const API = 'https://backtestpro-production-eb9a.up.railway.app';
+let currentTf = '1d';
+let equityChart = null;
+let historyData = [];
+let lang = 'pt';
+let lastNTSL = '';
+
+const i18n = {
+  pt: {
+    menu:'Menu', dashboard:'Dashboard', botTest:'🤖 Bot Test', history:'Histórico',
+    system:'Sistema', settings:'Configurações', apiOnline:'API Online',
+    config:'Configuração', asset:'Ativo', period:'Período', timeframe:'Timeframe',
+    indicator:'Indicador', indPeriod:'Período do Indicador', deviation:'Desvio / Multiplicador',
+    riskMgmt:'Gestão de Risco', maxOps:'Máx. Operações', run:'Rodar Backtest',
+    exportNTSL:'Exportar para NTSL', empty:'Configure os parâmetros e rode um backtest',
+    equity:'Equity Curve', tradesTitle:'Histórico de Trades',
+    entry:'Entrada', exit:'Saída', ret:'Retorno', profit:'Lucro', result:'Resultado',
+    win:'Ganho', loss:'Perda', totalReturn:'Retorno Total', annReturn:'Retorno Anual',
+    winRate:'Win Rate', sharpe:'Sharpe', drawdown:'Drawdown', trades:'Trades',
+    profitFactor:'Profit Factor', finalCapital:'Capital Final', candles:'candles',
+    historySub:'Todos os backtests guardados na base de dados',
+    historyEmpty:'Nenhum backtest ainda', settingsSub:'Informações da plataforma',
+    platformInfo:'Plataforma', templates:'Templates',
+    aiLabel:'Descreve a tua estratégia em português',
+    generateAI:'Gerar Bot com IA', botSub:'Cole o código, descreve em português ou carrega um template',
+    loading:'A rodar backtest...', aiLoading:'A gerar bot com IA...',
+  },
+  en: {
+    menu:'Menu', dashboard:'Dashboard', botTest:'🤖 Bot Test', history:'History',
+    system:'System', settings:'Settings', apiOnline:'API Online',
+    config:'Configuration', asset:'Asset', period:'Period', timeframe:'Timeframe',
+    indicator:'Indicator', indPeriod:'Indicator Period', deviation:'Deviation / Multiplier',
+    riskMgmt:'Risk Management', maxOps:'Max. Trades', run:'Run Backtest',
+    exportNTSL:'Export to NTSL', empty:'Configure parameters and run a backtest',
+    equity:'Equity Curve', tradesTitle:'Trade History',
+    entry:'Entry', exit:'Exit', ret:'Return', profit:'Profit', result:'Result',
+    win:'Win', loss:'Loss', totalReturn:'Total Return', annReturn:'Annual Return',
+    winRate:'Win Rate', sharpe:'Sharpe', drawdown:'Drawdown', trades:'Trades',
+    profitFactor:'Profit Factor', finalCapital:'Final Capital', candles:'candles',
+    historySub:'All backtests saved in database',
+    historyEmpty:'No backtests yet', settingsSub:'Platform information',
+    platformInfo:'Platform', templates:'Templates',
+    aiLabel:'Describe your strategy in English',
+    generateAI:'Generate Bot with AI', botSub:'Paste code, describe in English or load a template',
+    loading:'Running backtest...', aiLoading:'Generating bot with AI...',
+  },
+  es: {
+    menu:'Menú', dashboard:'Dashboard', botTest:'🤖 Bot Test', history:'Historial',
+    system:'Sistema', settings:'Configuración', apiOnline:'API Online',
+    config:'Configuración', asset:'Activo', period:'Período', timeframe:'Timeframe',
+    indicator:'Indicador', indPeriod:'Período del Indicador', deviation:'Desviación / Multiplicador',
+    riskMgmt:'Gestión de Riesgo', maxOps:'Máx. Operaciones', run:'Ejecutar Backtest',
+    exportNTSL:'Exportar a NTSL', empty:'Configure los parámetros y ejecute un backtest',
+    equity:'Curva de Equity', tradesTitle:'Historial de Trades',
+    entry:'Entrada', exit:'Salida', ret:'Retorno', profit:'Ganancia', result:'Resultado',
+    win:'Ganancia', loss:'Pérdida', totalReturn:'Retorno Total', annReturn:'Retorno Anual',
+    winRate:'Win Rate', sharpe:'Sharpe', drawdown:'Drawdown', trades:'Trades',
+    profitFactor:'Factor Ganancia', finalCapital:'Capital Final', candles:'velas',
+    historySub:'Todos los backtests guardados en base de datos',
+    historyEmpty:'Ningún backtest aún', settingsSub:'Información de plataforma',
+    platformInfo:'Plataforma', templates:'Templates',
+    aiLabel:'Describe tu estrategia en español',
+    generateAI:'Generar Bot con IA', botSub:'Pega el código, describe en español o carga un template',
+    loading:'Ejecutando backtest...', aiLoading:'Generando bot con IA...',
+  }
 };
 
-// Patch i18n
-['pt','en','es'].forEach(l => {
-  i18n[l].editor    = { pt:'Editor', en:'Editor', es:'Editor' }[l];
-  i18n[l].editorSub = {
-    pt:'Cole o código do seu bot e execute o backtest',
-    en:'Paste your bot code and run the backtest',
-    es:'Pega el código de tu bot y ejecuta el backtest'
-  }[l];
-});
+const TEMPLATES = [
+  { ativo: 'XAU/USD', codigo: `class EMAChannelStrategy(Strategy):
+    ema_period = 20
+    def init(self):
+        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values, self.data.High)
+        self.ema_low  = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values, self.data.Low)
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]: self.buy()
+        else:
+            if preco < self.ema_low[-1]: self.position.close()` },
+  { ativo: 'EUR/USD', codigo: `class CrossoverStrategy(Strategy):
+    fast = 9
+    slow = 21
+    def init(self):
+        self.ema_fast = self.I(lambda x: pd.Series(x).ewm(span=self.fast, adjust=False).mean().values, self.data.Close)
+        self.ema_slow = self.I(lambda x: pd.Series(x).ewm(span=self.slow, adjust=False).mean().values, self.data.Close)
+    def next(self):
+        if not self.position:
+            if self.ema_fast[-1] > self.ema_slow[-1]: self.buy()
+        else:
+            if self.ema_fast[-1] < self.ema_slow[-1]: self.position.close()` },
+  { ativo: 'BTC/USD', codigo: `class RSIStrategy(Strategy):
+    rsi_period = 14
+    rsi_low = 30
+    rsi_high = 70
+    def init(self):
+        def rsi(close, period=14):
+            s=pd.Series(close); delta=s.diff()
+            gain=delta.clip(lower=0).ewm(span=period,adjust=False).mean()
+            loss=(-delta.clip(upper=0)).ewm(span=period,adjust=False).mean()
+            return (100-(100/(1+gain/loss))).values
+        self.rsi = self.I(rsi, self.data.Close, self.rsi_period)
+    def next(self):
+        if not self.position:
+            if self.rsi[-1] < self.rsi_low: self.buy()
+        else:
+            if self.rsi[-1] > self.rsi_high: self.position.close()` },
+  { ativo: 'IBOVESPA', codigo: `class B3EMAStrategy(Strategy):
+    ema_period = 20
+    def init(self):
+        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values, self.data.High)
+        self.ema_low  = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values, self.data.Low)
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]: self.buy()
+        else:
+            if preco < self.ema_low[-1]: self.position.close()` },
+];
 
+function t(k) { return i18n[lang][k] || k; }
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach((b,i) => b.classList.toggle('active', ['pt','en','es'][i] === l));
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (i18n[l][k]) el.textContent = i18n[l][k];
+  });
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = ['backtest','editor','history','settings'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0) navItems[idx]?.classList.add('active');
+  const titles = { backtest: 'Dashboard', editor: '🤖 Bot Test', history: t('history'), settings: t('settings') };
+  const subs = { backtest: t('config'), editor: t('botSub'), history: t('historySub'), settings: t('settingsSub') };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  document.getElementById('topbar-sub').textContent = subs[page] || '';
+  if (page === 'history') carregarHistorico();
+}
+
+function setTf(btn, tf) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTf = tf;
+}
+
+function atualizarParamsIndicador() {
+  const ind = document.getElementById('sel-indicador').value;
+  const crossParams = document.getElementById('cross-params');
+  const rsiParams   = document.getElementById('rsi-params');
+  const fieldDesvio = document.getElementById('field-desvio');
+  const perInd      = document.getElementById('inp-periodo-ind').parentElement;
+
+  crossParams.style.display = 'none';
+  rsiParams.style.display   = 'none';
+  fieldDesvio.style.display = 'flex';
+  perInd.style.display      = 'flex';
+
+  if (ind === 'CROSS') {
+    crossParams.style.display = 'flex';
+    perInd.style.display      = 'none';
+    fieldDesvio.style.display = 'none';
+  } else if (ind === 'RSI' || ind === 'STOCH') {
+    rsiParams.style.display   = 'flex';
+    fieldDesvio.style.display = 'none';
+  } else if (['EMA','SMA','WMA','DEMA','TEMA','HMA','VWMA','EMA_CHANNEL','MACD','ATR','KELTNER'].includes(ind)) {
+    fieldDesvio.style.display = ['BB','ATR','KELTNER','MACD'].includes(ind) ? 'flex' : 'none';
+  }
+}
+
+function getVisualPayload() {
+  const ind = document.getElementById('sel-indicador').value;
+  return {
+    ativo:         document.getElementById('sel-ativo').value,
+    periodo:       document.getElementById('sel-periodo').value,
+    timeframe:     currentTf,
+    capital:       parseFloat(document.getElementById('inp-capital').value),
+    comissao:      0.0002,
+    indicador:     ind,
+    periodo_ind:   parseInt(document.getElementById('inp-periodo-ind').value) || 20,
+    desvio:        parseFloat(document.getElementById('inp-desvio').value) || 2.0,
+    periodo_rapida:parseInt(document.getElementById('inp-per-rapida').value) || 9,
+    periodo_lenta: parseInt(document.getElementById('inp-per-lenta').value) || 21,
+    tipo_rapida:   'EMA',
+    tipo_lenta:    'EMA',
+    stop_loss_pts: parseFloat(document.getElementById('inp-sl').value) || 50,
+    take_profit_pts: parseFloat(document.getElementById('inp-tp').value) || 100,
+    max_operacoes: parseInt(document.getElementById('inp-maxops').value) || 5,
+    sobrecompra:   parseFloat(document.getElementById('inp-sobrecompra').value) || 70,
+    sobrevenda:    parseFloat(document.getElementById('inp-sobrevenda').value) || 30,
+  };
+}
+
+async function runBacktest() {
+  const btn  = document.getElementById('btn-run');
+  const area = document.getElementById('results-area');
+  btn.disabled = true;
+  area.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>${t('loading')}</span></div>`;
+  try {
+    const payload = getVisualPayload();
+    const res  = await fetch(`${API}/backtest/visual`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.erro) throw new Error(data.erro);
+    data._ts = new Date().toLocaleTimeString();
+    historyData.unshift(data);
+    if (data.codigo_ntsl) lastNTSL = data.codigo_ntsl;
+    renderResults(data, area);
+  } catch(e) {
+    area.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div>Erro: ${e.message}</div></div>`;
+  }
+  btn.disabled = false;
+}
+
+async function exportarNTSL() {
+  const payload = getVisualPayload();
+  try {
+    const res  = await fetch(`${API}/exportar/ntsl`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.erro) throw new Error(data.erro);
+    lastNTSL = data.ntsl;
+    mostrarNTSLModal(data.ntsl);
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+function mostrarNTSLModal(ntsl) {
+  const existing = document.getElementById('ntsl-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ntsl-modal';
+  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px`;
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:15px;font-weight:500">📥 Código NTSL — Profit (Nelogica)</div>
+        <button onclick="document.getElementById('ntsl-modal').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:var(--green-bg);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius);padding:10px">
+        ✅ Cole este código no <strong>Editor de Estratégias do Profit</strong> para usar na B3
+      </div>
+      <pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:11px;color:#e8eaf0;overflow-y:auto;flex:1;white-space:pre-wrap">${ntsl}</pre>
+      <div style="display:flex;gap:10px">
+        <button onclick="navigator.clipboard.writeText(document.querySelector('#ntsl-modal pre').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='📋 Copiar NTSL',1500)})" style="flex:1;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-weight:500">📋 Copiar NTSL</button>
+        <button onclick="document.getElementById('ntsl-modal').remove()" style="padding:10px 20px;background:var(--bg3);color:var(--muted2);border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-family:var(--font)">Fechar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function renderResults(d, container) {
+  const area = container || document.getElementById('results-area');
+  const retPos = d.retorno >= 0;
+  area.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">${t('totalReturn')}</div>
+        <div class="metric-value ${retPos?'pos':'neg'}">${retPos?'+':''}${d.retorno?.toFixed(2)}%</div>
+        <div class="metric-sub">${t('annReturn')}: ${d.retorno_anual?.toFixed(2)}%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('winRate')}</div>
+        <div class="metric-value">${d.win_rate?.toFixed(1)}%</div>
+        <div class="metric-sub">${d.total_trades} ${t('trades')}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('sharpe')} / PF</div>
+        <div class="metric-value">${d.sharpe?.toFixed(2)}</div>
+        <div class="metric-sub">PF: ${d.profit_factor?.toFixed(2)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('drawdown')}</div>
+        <div class="metric-value neg">${d.max_drawdown?.toFixed(2)}%</div>
+        <div class="metric-sub">${t('finalCapital')}: $${d.capital_final?.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <span class="card-title">${t('equity')} — ${d.ativo}</span>
+        <span class="card-tag">${d.estrategia||d.ema_period||'EMA'} · ${d.timeframe} · ${d.candles} ${t('candles')}</span>
+      </div>
+      <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <span class="card-title">${t('tradesTitle')}</span>
+        <span class="card-tag">${d.trades?.length} trades</span>
+      </div>
+      <table class="trades-table">
+        <thead><tr><th>${t('entry')}</th><th>${t('exit')}</th><th>${t('ret')}</th><th>${t('profit')}</th><th>${t('result')}</th></tr></thead>
+        <tbody>${(d.trades||[]).map(tr=>`
+          <tr>
+            <td>${tr.entrada?.slice(0,10)}</td>
+            <td>${tr.saida?.slice(0,10)}</td>
+            <td style="color:${tr.retorno>=0?'var(--green)':'var(--red)'}">${tr.retorno>=0?'+':''}${tr.retorno?.toFixed(2)}%</td>
+            <td style="color:${tr.lucro>=0?'var(--green)':'var(--red)'}">${tr.lucro>=0?'+':''}$${Math.abs(tr.lucro).toFixed(2)}</td>
+            <td><span class="badge ${tr.retorno>=0?'win':'loss'}">${tr.retorno>=0?t('win'):t('loss')}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  if (equityChart) { equityChart.destroy(); equityChart = null; }
+  equityChart = new Chart(document.getElementById('equityChart'), {
+    type: 'line',
+    data: { labels: (d.datas_equity||[]).map(dt=>dt.slice(0,10)), datasets: [{ label:'Equity', data: d.equity_curve, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.08)', borderWidth:1.5, fill:true, tension:0.3, pointRadius:0, pointHoverRadius:4 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`}} }, scales:{ x:{ticks:{color:'#6b7280',font:{size:10},maxTicksLimit:8,maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}, y:{ticks:{color:'#6b7280',font:{size:10},callback:v=>'$'+Math.round(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}} } }
+  });
+}
+
+// Bot Test functions
 function carregarTemplate(idx) {
   const t = TEMPLATES[idx];
   document.getElementById('code-editor').value = t.codigo;
@@ -1115,55 +833,136 @@ function carregarTemplate(idx) {
 function limparEditor() {
   document.getElementById('code-editor').value = '';
   document.getElementById('editor-results').innerHTML = '';
+  document.getElementById('ntsl-output-wrap').style.display = 'none';
 }
 
 function copiarCodigo() {
   const code = document.getElementById('code-editor').value;
   navigator.clipboard.writeText(code).then(() => {
-    const btn = event.target;
-    btn.textContent = '✓ Copiado!';
-    setTimeout(() => btn.textContent = 'Copiar', 1500);
+    const btns = document.querySelectorAll('.editor-btn');
+    btns.forEach(b => { if(b.textContent==='Copiar'){b.textContent='✓';setTimeout(()=>b.textContent='Copiar',1500)} });
   });
+}
+
+function copiarNTSL() {
+  const ntsl = document.getElementById('ntsl-output').textContent;
+  navigator.clipboard.writeText(ntsl).then(() => alert('NTSL copiado!'));
+}
+
+function exportarNTSLEditor() {
+  if (lastNTSL) {
+    mostrarNTSLModal(lastNTSL);
+  } else {
+    alert('Executa primeiro um backtest para gerar o código NTSL!');
+  }
+}
+
+async function gerarComIA() {
+  const descricao = document.getElementById('ai-descricao').value.trim();
+  if (!descricao) { alert('Descreve a estratégia primeiro!'); return; }
+  const btn = document.getElementById('ai-btn');
+  btn.disabled = true;
+  btn.textContent = t('aiLoading');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Gera um bot de trading em Python para a biblioteca backtesting.py baseado nesta descrição: "${descricao}"
+
+REGRAS OBRIGATÓRIAS:
+1. A classe DEVE herdar de Strategy
+2. Usa apenas pd (pandas) e np (numpy) — já importados
+3. NÃO importes nada
+4. Implementa init() e next()
+5. Retorna APENAS o código Python, sem explicações, sem \`\`\`python
+
+Exemplo de formato correto:
+class MinhaEstrategia(Strategy):
+    periodo = 20
+    def init(self):
+        self.ema = self.I(lambda x: pd.Series(x).ewm(span=self.periodo).mean().values, self.data.Close)
+    def next(self):
+        if not self.position:
+            if self.data.Close[-1] > self.ema[-1]: self.buy()
+        else:
+            if self.data.Close[-1] < self.ema[-1]: self.position.close()`
+        }]
+      })
+    });
+    const data = await response.json();
+    const codigo = data.content[0].text.trim();
+    document.getElementById('code-editor').value = codigo;
+  } catch(e) {
+    alert('Erro ao gerar bot: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = '✨ ' + t('generateAI');
 }
 
 async function executarCustom() {
   const codigo = document.getElementById('code-editor').value.trim();
-  if (!codigo) {
-    alert('Cole o código da estratégia primeiro!');
-    return;
-  }
-  const btn = document.getElementById('exec-btn');
-  const btnText = document.getElementById('exec-btn-text');
+  if (!codigo) { alert('Cole o código da estratégia primeiro!'); return; }
+  const btn     = document.getElementById('exec-btn');
   const results = document.getElementById('editor-results');
-  btn.disabled = true;
-  btnText.textContent = 'Executando...';
-  results.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Rodando backtest...</span></div>`;
+  btn.disabled  = true;
+  results.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>${t('loading')}</span></div>`;
 
   try {
-    const res = await fetch(`${API}/backtest/custom`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res  = await fetch(`${API}/backtest/custom`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         codigo,
         ativo:    document.getElementById('exec-ativo').value,
         periodo:  document.getElementById('exec-periodo').value,
         capital:  parseFloat(document.getElementById('exec-capital').value),
         comissao: 0.0002,
-        timeframe: document.getElementById('exec-tf').value,
+        timeframe:document.getElementById('exec-tf').value,
+        guardar:  true,
       })
     });
     const data = await res.json();
     if (data.erro) throw new Error(data.erro);
     data._ts = new Date().toLocaleTimeString();
-    history.unshift(data);
-    renderResults(data);
-    results.innerHTML = '';
+    historyData.unshift(data);
+    renderResults(data, results);
   } catch(e) {
-    results.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erro: ${e.message}</div></div>`;
-    document.getElementById('results-area').innerHTML = '';
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div>Erro: ${e.message}</div></div>`;
   }
   btn.disabled = false;
-  btnText.textContent = 'Executar Backtest';
+}
+
+async function carregarHistorico() {
+  const grid = document.getElementById('history-grid');
+  grid.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>A carregar...</span></div>`;
+  try {
+    const res  = await fetch(`${API}/historico?limite=50`);
+    const data = await res.json();
+    if (!data.historico || data.historico.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><div>${t('historyEmpty')}</div></div>`;
+      return;
+    }
+    grid.innerHTML = data.historico.map(d => `
+      <div class="history-card">
+        <div class="history-asset">${d.ativo}</div>
+        <div class="history-meta">
+          <div class="history-item"><div class="history-item-label">Estratégia</div><div class="history-item-val">${d.nome_estrategia||'-'}</div></div>
+          <div class="history-item"><div class="history-item-label">TF</div><div class="history-item-val">${d.timeframe}</div></div>
+          <div class="history-item"><div class="history-item-label">${t('winRate')}</div><div class="history-item-val">${parseFloat(d.win_rate||0).toFixed(1)}%</div></div>
+          <div class="history-item"><div class="history-item-label">${t('sharpe')}</div><div class="history-item-val">${parseFloat(d.sharpe||0).toFixed(2)}</div></div>
+          <div class="history-item"><div class="history-item-label">${t('trades')}</div><div class="history-item-val">${d.total_trades}</div></div>
+          <div class="history-item"><div class="history-item-label">Data</div><div class="history-item-val">${(d.criado_em||'').slice(0,10)}</div></div>
+        </div>
+        <div class="history-return" style="color:${parseFloat(d.retorno)>=0?'var(--green)':'var(--red)'}">${parseFloat(d.retorno)>=0?'+':''}${parseFloat(d.retorno||0).toFixed(2)}%</div>
+      </div>`).join('');
+  } catch(e) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div>Erro ao carregar histórico</div></div>`;
+  }
 }
 
 // Tab key no editor
@@ -1171,9 +970,22 @@ document.getElementById('code-editor').addEventListener('keydown', function(e) {
   if (e.key === 'Tab') {
     e.preventDefault();
     const start = this.selectionStart;
-    const end = this.selectionEnd;
-    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+    this.value = this.value.substring(0,start) + '    ' + this.value.substring(this.selectionEnd);
     this.selectionStart = this.selectionEnd = start + 4;
   }
 });
+
+// API status check
+fetch(`${API}/`).then(r=>r.ok).then(ok => {
+  const el = document.getElementById('api-status');
+  if (el) el.textContent = ok ? '● Online' : '● Offline';
+}).catch(() => {
+  const el = document.getElementById('api-status');
+  if (el) { el.textContent = '● Offline'; el.style.color = 'var(--red)'; }
+});
+
+// Init
+atualizarParamsIndicador();
 </script>
+</body>
+</html>
