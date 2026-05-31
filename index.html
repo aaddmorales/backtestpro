@@ -1,5 +1,5 @@
 <!--
-  BacktestPro Frontend — v4.1
+  BacktestPro Frontend — v4.2
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
   Ajustes v4.1:
   - Métricas: cor verde igual botão Rodar Backtest + glow
@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BacktestPro v4.1 — Plataforma de Backtesting</title>
+<title>BacktestPro v4.2 — Plataforma de Backtesting</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -88,6 +88,58 @@ body::after{
 .api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
 .api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
+
+/* ── LIGHT THEME ── */
+body.light{
+  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#111827;--muted:#9ca3af;--muted2:#6b7280;
+}
+body.light::after{
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(232,115,74,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
+}
+body.light .topbar{background:rgba(255,255,255,0.95);border-bottom:1px solid rgba(0,0,0,0.08)}
+body.light .col-left{background:rgba(255,255,255,0.9)}
+body.light .col-right{background:rgba(255,255,255,0.9)}
+body.light .metrics-bar{background:rgba(255,255,255,0.97)}
+body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.1);color:var(--text)}
+body.light select option{background:#ffffff}
+body.light #code-editor{background:#f8f9fb;color:#383a42}
+body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
+body.light .editor-drop-zone{background:rgba(240,242,245,0.8);border-color:rgba(0,0,0,0.12)}
+body.light .edz-hint{background:rgba(157,111,255,0.06);border-color:rgba(157,111,255,0.15)}
+body.light .charts-2col,body.light .cp{background:#ffffff}
+body.light .bottom3col,body.light .b3p{background:#ffffff}
+body.light .ia-sug{background:rgba(157,111,255,0.04);border-color:rgba(157,111,255,0.12)}
+body.light .tpl-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
+body.light .tpl-card:hover{background:#f0f2f5}
+body.light .tpl-robot{background:linear-gradient(180deg,transparent 0%,rgba(232,115,74,0.05) 100%)}
+body.light .rank-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
+body.light .rank-card:hover{background:#f0f2f5}
+body.light .podium-block{border-color:rgba(0,0,0,0.1)}
+body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
+body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
+body.light .tbtn:hover,.body.light .tbtn.active{background:#f0f2f5}
+body.light .trades-tbl tr:hover td{background:#f0f2f5}
+
+/* toggle button */
+.theme-toggle{
+  width:32px;height:20px;border-radius:10px;
+  background:var(--bg3);border:1px solid var(--border2);
+  cursor:pointer;position:relative;transition:all .25s;
+  flex-shrink:0;padding:0;
+}
+.theme-toggle::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--muted2);transition:all .25s;
+}
+body.light .theme-toggle{background:#e2e8f0;border-color:rgba(0,0,0,0.15)}
+body.light .theme-toggle::after{background:var(--orange);left:14px}
+.theme-icon{font-size:13px;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;padding:2px;color:var(--text)}
+.theme-icon:hover{opacity:1}
 
 /* ── MAIN LAYOUT ── */
 .main{display:flex;height:calc(100vh - 46px);overflow:hidden;position:relative;z-index:1}
@@ -451,6 +503,8 @@ select option{background:#141920}
   <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
   <button class="tbtn tbtn-amber" onclick="abrirNTSL()">📥 NTSL</button>
   <div class="spacer"></div>
+  <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
+  <div class="tsep"></div>
   <button class="lang-btn active">PT</button>
   <button class="lang-btn">EN</button>
   <button class="lang-btn">ES</button>
@@ -1269,6 +1323,18 @@ fetch(API+'/').then(r=>{
   document.getElementById('api-dot').style.background='var(--red)';
   document.getElementById('api-dot').style.animation='none';
 });
+
+// Theme toggle
+function toggleTheme(){
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('btp-theme', isLight ? 'light' : 'dark');
+}
+// Restore saved theme
+if(localStorage.getItem('btp-theme')==='light'){
+  document.body.classList.add('light');
+  document.getElementById('theme-btn').textContent = '☀️';
+}
 </script>
 </body>
 </html>
