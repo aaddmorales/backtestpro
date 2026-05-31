@@ -429,6 +429,27 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 
 # ── ENDPOINTS ───────────────────────────────────────────────
 
+@app.get("/debug")
+def debug_backtest():
+    """Roda backtest de diagnóstico e retorna erro completo"""
+    from fastapi.responses import PlainTextResponse
+    try:
+        params = BacktestParams(
+            ativo="XAU/USD", periodo="6 meses", timeframe="1d",
+            indicador="EMA Channel High/Low", ema_period=20,
+            stop_loss=50, take_profit=100, capital=10000,
+            max_ops=5, comissao=0.0002
+        )
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        log = f"✅ Dados baixados: {len(df)} linhas\nColunas: {list(df.columns)}\n\n"
+        resultado = rodar_estrategia(df, params)
+        log += f"✅ Estratégia rodada: {len(resultado['trades'])} trades\n\n"
+        metricas = calcular_metricas_completas(resultado, params, df)
+        log += f"✅ Métricas calculadas\nRetorno: {metricas['retorno']}%\n"
+        return PlainTextResponse(log)
+    except Exception as e:
+        return PlainTextResponse(f"❌ ERRO: {str(e)}\n\n{traceback.format_exc()}")
+
 @app.get("/teste")
 def teste_conexao():
     """Testa se yfinance consegue baixar dados"""
@@ -473,23 +494,44 @@ def get_timeframes():
 def get_indicadores():
     return {"indicadores": ["EMA Channel High/Low","EMA","SMA","RSI","MACD","Bollinger Bands"]}
 
+def converter_para_python(obj):
+    """Converte tipos numpy para tipos Python nativos serializáveis"""
+    if isinstance(obj, dict):
+        return {k: converter_para_python(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [converter_para_python(i) for i in obj]
+    elif isinstance(obj, (np.integer,)):
+        return int(obj)
+    elif isinstance(obj, (np.floating,)):
+        return float(obj)
+    elif isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return [converter_para_python(i) for i in obj.tolist()]
+    elif hasattr(obj, 'item'):
+        return obj.item()
+    return obj
+
 @app.post("/backtest/visual")
 def backtest_visual(params: BacktestParams):
+    import sys
     try:
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
         resultado = rodar_estrategia(df, params)
-        return calcular_metricas_completas(resultado, params, df)
+        metricas = calcular_metricas_completas(resultado, params, df)
+        return converter_para_python(metricas)
     except HTTPException:
         raise
     except Exception as e:
         tb = traceback.format_exc()
-        raise HTTPException(500, f"Erro no backtest: {str(e)}\n\nDetalhes:\n{tb}")
+        print(f"ERRO BACKTEST: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
 
 @app.post("/backtest/custom")
 def backtest_custom(params: BacktestCustom):
+    import sys
     try:
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
-        # Tenta executar código customizado
         if params.codigo and len(params.codigo.strip()) > 20:
             try:
                 resultado = rodar_codigo_custom(df, params)
@@ -497,11 +539,14 @@ def backtest_custom(params: BacktestCustom):
                 resultado = rodar_estrategia(df, params)
         else:
             resultado = rodar_estrategia(df, params)
-        return calcular_metricas_completas(resultado, params, df)
+        metricas = calcular_metricas_completas(resultado, params, df)
+        return converter_para_python(metricas)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Erro no backtest custom: {str(e)}")
+        tb = traceback.format_exc()
+        print(f"ERRO CUSTOM: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
 
 def rodar_codigo_custom(df: pd.DataFrame, params: BacktestCustom) -> dict:
     """Executa estratégia Python customizada do usuário"""
