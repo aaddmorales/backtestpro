@@ -1,8 +1,9 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-yfinance==0.2.36
-pandas==2.1.4
-numpy==1.26.2
-pydantic==2.5.0
-python-multipart==0.0.6
-requests==2.31.0
+fastapi==0.136.3
+uvicorn==0.48.0
+yfinance==1.4.1
+backtesting==0.6.5
+pandas
+numpy
+python-multipart
+requests
+psycopg2-binary
