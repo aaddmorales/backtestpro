@@ -1,5 +1,5 @@
 <!--
-  BacktestPro Frontend — v4.2
+  BacktestPro Frontend — v4.3
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
   Ajustes v4.1:
   - Métricas: cor verde igual botão Rodar Backtest + glow
@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BacktestPro v4.2 — Plataforma de Backtesting</title>
+<title>BacktestPro v4.3 — Plataforma de Backtesting</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -1157,6 +1157,45 @@ async function rodarBacktest() {
   txt.textContent = 'Rodar Backtest';
 }
 
+function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) {
+  if(chartEq) chartEq.destroy();
+  if(chartPr) chartPr.destroy();
+  if(chartDo) chartDo.destroy();
+
+  const equity = d.equity_curve||[];
+  const color = pos?'#00d084':'#ff4d6a';
+  const colorBg = pos?'rgba(0,208,132,0.1)':'rgba(255,77,106,0.1)';
+  const lucro = parseFloat(d.lucro_perda||0);
+
+  if(equity.length>0 && document.getElementById('ch-eq')) {
+    chartEq = new Chart(document.getElementById('ch-eq'),{
+      type:'line',data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{display:false},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+  if(document.getElementById('ch-pr')) {
+    chartPr = new Chart(document.getElementById('ch-pr'),{
+      type:'bar',data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',lucro>=0?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',lucro>=0?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+  if(document.getElementById('ch-do')) {
+    chartDo = new Chart(document.getElementById('ch-do'),{
+      type:'doughnut',data:{labels:['Winners','Losers','Breakevens'],datasets:[{data:[winners||1,losers||1,0],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)','rgba(90,100,120,.5)'],borderColor:['#00d084','#ff4d6a','#5a6478'],borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}
+    });
+  }
+  if(document.getElementById('ch-roi') && roiDist && roiDist.length>0) {
+    const labels = roiDist.map(r=>r.bin.toFixed(2)+'%');
+    const data   = roiDist.map(r=>r.count);
+    const colors = roiDist.map(r=>r.positivo?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)');
+    new Chart(document.getElementById('ch-roi'),{
+      type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,borderRadius:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:8},maxRotation:0},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+}
+
 function renderOverview(d, params) {
   document.getElementById('ov-empty').style.display = 'none';
   const area = document.getElementById('ov-result');
@@ -1164,105 +1203,192 @@ function renderOverview(d, params) {
 
   const ret = parseFloat(d.retorno||0);
   const pos = ret >= 0;
-  const cap = parseFloat(params.capital||10000);
-  const capFinal = d.capital_final || cap*(1+ret/100);
-  const lucro = capFinal - cap;
+  const cap = parseFloat(d.capital_inicial||params.capital||10000);
+  const capFinal = parseFloat(d.capital_final||cap);
+  const lucro = parseFloat(d.lucro_perda||capFinal-cap);
   const wr = parseFloat(d.win_rate||0);
   const sh = parseFloat(d.sharpe||0);
   const dd = parseFloat(d.max_drawdown||0);
   const pf = parseFloat(d.profit_factor||0);
   const total = parseInt(d.total_trades||0);
-  const winners = Math.round(total*wr/100);
-  const losers = total - winners;
-  const bh = parseFloat(d.buy_hold || ret*0.28);
+  const winners = parseInt(d.winners||Math.round(total*wr/100));
+  const losers = parseInt(d.losers||total-winners);
+  const breakevens = parseInt(d.breakevens||0);
+  const bh = parseFloat(d.buy_hold||0);
+  const alpha = parseFloat(d.alpha||ret-bh);
+  const cagr = parseFloat(d.cagr||0);
   const equity = d.equity_curve||[];
   const trades = d.trades||[];
-  const iaSug = d.sugestao || (ret<0 ? 'Resultado negativo. Ajuste o ratio SL/TP — tente TP pelo menos 2x o SL.' : wr<45 ? 'Win Rate baixo. Considere ajustar o período do indicador ou adicionar um filtro de tendência.' : sh<0.5 ? 'Sharpe baixo. A estratégia tem alta volatilidade — reduza o tamanho das posições.' : 'Resultado positivo! Considere otimizar o período do indicador para melhorar ainda mais.');
-  const grossProfit = pf > 0 ? Math.abs(lucro*pf/(pf-1)) : Math.abs(lucro)*1.5;
-  const grossLoss = grossProfit - Math.abs(lucro);
+  const roiDist = d.roi_distribution||[];
+  const iaSug = d.sugestao||'';
+  const avgPnl = parseFloat(d.avg_pnl||0);
+  const avgBars = parseInt(d.avg_bars_in_trades||0);
+  const maiorGanho = parseFloat(d.maior_ganho||0);
+  const maiorPerda = parseFloat(d.maior_perda||0);
+  const avgRunup = parseFloat(d.avg_runup||0);
+  const avgDdTrade = parseFloat(d.avg_drawdown_trade||0);
+  const accountReq = parseFloat(d.account_size_required||cap);
+  const grossProfit = parseFloat(d.gross_profit||0);
+  const grossLoss = parseFloat(d.gross_loss||0);
 
   area.innerHTML = `
   <div class="ov-header">
-    <div style="display:flex;align-items:center;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span class="${pos?'ov-badge-lucro':'ov-badge-prej'}">${pos?'LUCRO':'PREJUÍZO'}</span>
       <span class="ov-meta">${d.ativo||params.ativo} · ${params.periodo} · ${params.timeframe.toUpperCase()} · ${d.candles||'-'} candles · ${total} trades</span>
     </div>
-    <span class="ov-meta">${new Date().toLocaleDateString('pt-BR')}</span>
+    <span class="ov-meta">${d.data_backtest||new Date().toLocaleDateString('pt-BR')}</span>
   </div>
   <div class="${pos?'retorno-pos':'retorno-neg'} ov-retorno" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div>
   <div class="ov-cap-row">
     <div><div class="ov-cap-label">Capital Inicial</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Capital Final</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${parseFloat(capFinal).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div><div class="ov-cap-label">Capital Final</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div><div class="ov-cap-label">Lucro / Perda</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div><div class="ov-cap-label">Retorno Anual (CAGR)</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
   </div>
+
+  <!-- KEY STATS BAR -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total P&L</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${lucro>=0?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Max Drawdown</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">$${(cap*Math.abs(dd)/100).toFixed(2)}</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profitable Trades</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${wr>=50?'var(--green)':'var(--red)'}">${wr.toFixed(2)}% ${winners}/${total}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">Winners: ${winners} · Losers: ${losers}</div>
+    </div>
+    <div style="padding:10px 14px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profit Factor</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${pf>=1.5?'var(--green)':pf>=1?'var(--amber)':'var(--red)'}">${pf.toFixed(3)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">Sharpe: ${sh.toFixed(2)}</div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE: EQUITY + PROFIT STRUCTURE -->
+  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Performance</div>
   <div class="charts-2col">
     <div class="cp"><div class="cp-title">Equity Curve <span class="cp-tag">${params.timeframe.toUpperCase()}</span></div><div style="position:relative;height:160px"><canvas id="ch-eq"></canvas></div></div>
     <div class="cp"><div class="cp-title">Profit Structure <span class="cp-tag">por operação</span></div><div style="position:relative;height:160px"><canvas id="ch-pr"></canvas></div></div>
   </div>
-  <div class="bottom3col">
-    <div class="b3p">
-      <div class="b3-title">Trades</div>
-      <div style="position:relative;height:100px;width:100px;margin:8px auto 0"><canvas id="ch-do"></canvas></div>
-      <div class="donut-stats">
-        <div class="ds-row"><div class="ds-dot" style="background:var(--green)"></div><div class="ds-lbl">Winners</div><div class="ds-val" style="color:var(--green)">${winners}</div></div>
-        <div class="ds-row"><div class="ds-dot" style="background:var(--red)"></div><div class="ds-lbl">Losers</div><div class="ds-val" style="color:var(--red)">${losers}</div></div>
-        <div class="ds-row"><div class="ds-dot" style="background:var(--muted)"></div><div class="ds-lbl">Total</div><div class="ds-val">${total}</div></div>
+
+  <!-- TRADES ANALYSIS -->
+  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Trades Analysis</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Average P&L</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${avgPnl.toFixed(2)}</div>
+      <div style="font-size:10px;color:var(--muted)">${d.avg_pnl_pct>0?'+':''}${(d.avg_pnl_pct||0).toFixed(3)}%</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Bars in Trades</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text)">${avgBars}</div>
+      <div style="font-size:10px;color:var(--muted)">candles por trade</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Profit</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">$${maiorGanho.toFixed(2)}</div>
+    </div>
+    <div style="padding:10px 14px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Loss</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">$${maiorPerda.toFixed(2)}</div>
+    </div>
+  </div>
+
+  <!-- ROI DIST + TRADES DIST -->
+  <div class="charts-2col" style="border-bottom:1px solid var(--border)">
+    <div class="cp">
+      <div class="cp-title">ROI Distribution <span class="cp-tag">por trade</span></div>
+      <div style="position:relative;height:140px"><canvas id="ch-roi"></canvas></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
+        <span>── Average loss: ${(d.avg_drawdown_trade||0).toFixed(3)}%</span>
+        <span>── Average profit: ${(d.avg_runup||0).toFixed(3)}%</span>
       </div>
     </div>
-    <div class="b3p">
-      <div class="b3-title">Benchmark — Estratégia vs Buy & Hold</div>
-      <div class="bench-row"><div class="bench-lbl">Estratégia</div><div class="bench-bg"><div class="bench-fill" style="width:${Math.min(Math.max((ret+50)/100*100,0),100)}%;background:${pos?'var(--green)':'var(--red)'}"></div></div><div class="bench-v" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div></div>
-      <div class="bench-row"><div class="bench-lbl">Buy & Hold</div><div class="bench-bg"><div class="bench-fill" style="width:${Math.min(Math.max((bh+50)/100*100,0),100)}%;background:var(--blue)"></div></div><div class="bench-v" style="color:var(--blue)">${bh>=0?'+':''}${bh.toFixed(2)}%</div></div>
-      <div class="bench-row"><div class="bench-lbl">Alpha</div><div class="bench-bg"><div class="bench-fill" style="width:50%;background:var(--purple)"></div></div><div class="bench-v" style="color:var(--purple)">${(ret-bh)>=0?'+':''}${(ret-bh).toFixed(2)}%</div></div>
-    </div>
-    <div class="b3p">
-      <div class="b3-title">Resumo</div>
-      <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Win Rate</span><span style="font-family:var(--mono);color:${wr>=55?'var(--green)':wr>=45?'var(--amber)':'var(--red)'}">${wr.toFixed(1)}%</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Sharpe</span><span style="font-family:var(--mono);color:${sh>=1.5?'var(--green)':sh>=0.5?'var(--amber)':'var(--red)'}">${sh.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Max DD</span><span style="font-family:var(--mono);color:${Math.abs(dd)<=10?'var(--green)':Math.abs(dd)<=20?'var(--amber)':'var(--red)'}">${dd.toFixed(2)}%</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Profit Factor</span><span style="font-family:var(--mono);color:${pf>=1.5?'var(--green)':pf>=1?'var(--amber)':'var(--red)'}">${pf.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Total Trades</span><span style="font-family:var(--mono)">${total}</span></div>
+    <div class="cp">
+      <div class="cp-title">Trades Distribution</div>
+      <div style="display:flex;align-items:center;gap:20px;height:140px">
+        <div style="position:relative;height:120px;width:120px;flex-shrink:0"><canvas id="ch-do"></canvas></div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--green)"></div><span style="color:var(--muted2)">Winners</span><span style="font-family:var(--mono);font-weight:600;color:var(--green);margin-left:auto">${winners} trades</span><span style="color:var(--muted);font-family:var(--mono)">${wr.toFixed(2)}%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div><span style="color:var(--muted2)">Losers</span><span style="font-family:var(--mono);font-weight:600;color:var(--red);margin-left:auto">${losers} trades</span><span style="color:var(--muted);font-family:var(--mono)">${(100-wr).toFixed(2)}%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div><span style="color:var(--muted2)">Breakevens</span><span style="font-family:var(--mono);font-weight:600;margin-left:auto">${breakevens} trades</span><span style="color:var(--muted);font-family:var(--mono)">0.00%</span></div>
+          <div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);font-weight:700;color:var(--text);font-family:var(--mono)">${total} Total trades</div>
+        </div>
       </div>
     </div>
   </div>
-  <div class="ia-sug"><div class="ia-sug-title">💡 Sugestão da IA</div><div class="ia-sug-text">${iaSug}</div></div>
+
+  <!-- EQUITY RUN-UPS AND DRAWDOWNS -->
+  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Run-ups and Drawdowns</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Run-up</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">${avgRunup.toFixed(3)}%</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Drawdown</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${avgDdTrade.toFixed(3)}%</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Max DD as % of capital</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
+    </div>
+    <div style="padding:10px 14px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return at max DD</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+    </div>
+  </div>
+
+  <!-- CAPITAL EFFICIENCY -->
+  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Capital Efficiency</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">CAGR</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Account Size Required</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);">$${accountReq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+    </div>
+    <div style="padding:10px 14px;border-right:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return on Initial Capital</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+    </div>
+    <div style="padding:10px 14px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Benchmark vs Buy & Hold</div>
+      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${alpha>=0?'var(--green)':'var(--red)'}">Alpha: ${alpha>=0?'+':''}${alpha.toFixed(2)}%</div>
+      <div style="font-size:10px;color:var(--muted)">B&H: ${bh>=0?'+':''}${bh.toFixed(2)}%</div>
+    </div>
+  </div>
+
+  <!-- IA SUGGESTION -->
+  ${iaSug ? `<div class="ia-sug"><div class="ia-sug-title">💡 Sugestão da IA</div><div class="ia-sug-text">${iaSug}</div></div>` : ''}
+
+  <!-- TRADES TABLE -->
   <div class="trades-panel">
     <div class="tp-title">Histórico de Trades <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">${trades.length} registros</span></div>
     <table class="trades-tbl">
-      <thead><tr><th>Entrada</th><th>Saída</th><th>Retorno</th><th>P&L</th><th>Resultado</th></tr></thead>
+      <thead><tr><th>Entrada</th><th>Saída</th><th>Preço Entrada</th><th>Preço Saída</th><th>Retorno</th><th>P&L</th><th>Resultado</th></tr></thead>
       <tbody>
-        ${trades.slice(0,25).map(t=>{
-          const r=parseFloat(t.retorno_pct||t.retorno||0);
-          const pl=parseFloat(t.pl||t.pnl||0);
-          return `<tr><td>${t.entrada||t.data_entrada||'-'}</td><td>${t.saida||t.data_saida||'-'}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'+':''}${r.toFixed(2)}%</td><td class="${r>=0?'tg':'tr'}">$${pl.toFixed(2)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'Ganho':'Perda'}</td></tr>`;
+        ${trades.slice(0,30).map(t=>{
+          const r=parseFloat(t.retorno_pct||0);
+          const pl=parseFloat(t.pl||0);
+          return `<tr><td>${t.entrada||'-'}</td><td>${t.saida||'-'}</td><td style="font-family:var(--mono)">${(t.preco_entrada||0).toFixed(4)}</td><td style="font-family:var(--mono)">${(t.preco_saida||0).toFixed(4)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'+':''}${r.toFixed(3)}%</td><td class="${r>=0?'tg':'tr'}">$${pl.toFixed(2)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'Ganho':'Perda'}</td></tr>`;
         }).join('')}
-        ${trades.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">Nenhum trade registrado</td></tr>':''}
+        ${trades.length===0?'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">Nenhum trade registrado</td></tr>':''}
       </tbody>
     </table>
   </div>`;
 
-  setTimeout(()=>{
-    if(chartEq) chartEq.destroy();
-    if(chartPr) chartPr.destroy();
-    if(chartDo) chartDo.destroy();
-    const color = pos?'#00d084':'#ff4d6a';
-    const colorBg = pos?'rgba(0,208,132,0.1)':'rgba(255,77,106,0.1)';
-    if(equity.length>0){
-      chartEq = new Chart(document.getElementById('ch-eq'),{
-        type:'line',data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString()}}},scales:{x:{display:false},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
-      });
-    }
-    chartPr = new Chart(document.getElementById('ch-pr'),{
-      type:'bar',data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',pos?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',pos?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-    chartDo = new Chart(document.getElementById('ch-do'),{
-      type:'doughnut',data:{labels:['Winners','Losers'],datasets:[{data:[winners||1,losers||1],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)'],borderColor:['#00d084','#ff4d6a'],borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
-    });
-  },50);
+  // Renderiza gráficos
+  setTimeout(()=>{ renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist); }, 60);
 }
 
 function usarTemplate(el, key) {
