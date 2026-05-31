@@ -13,7 +13,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>BacktestPro — Plataforma de Backtesting</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<title>BacktestPro v4.1 — Plataforma de Backtesting</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -211,12 +213,16 @@ select option{background:#141920}
 #ia-desc::placeholder{color:var(--muted)}
 #ia-desc:focus{border-color:rgba(157,111,255,0.4)}
 .ia-gen-btn{
-  width:100%;height:30px;
-  background:var(--purple-bg);border:1px solid rgba(157,111,255,0.25);
-  border-radius:5px;color:var(--purple);font-size:12px;font-family:var(--sans);
-  cursor:pointer;font-weight:600;transition:all .12s;
+  width:100%;height:38px;
+  background:linear-gradient(135deg,rgba(157,111,255,0.15) 0%,rgba(157,111,255,0.07) 100%);
+  border:1px solid rgba(157,111,255,0.3);
+  border-radius:7px;color:var(--purple);font-size:13px;font-family:var(--sans);
+  cursor:pointer;font-weight:700;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  box-shadow:0 4px 14px rgba(157,111,255,0.08);
 }
-.ia-gen-btn:hover{background:rgba(157,111,255,0.16)}
+.ia-gen-btn:hover{background:linear-gradient(135deg,rgba(157,111,255,0.22) 0%,rgba(157,111,255,0.12) 100%);border-color:rgba(157,111,255,0.5);box-shadow:0 6px 18px rgba(157,111,255,0.15);transform:translateY(-1px)}
+.ia-gen-btn:active{transform:translateY(0)}
 .paste-code-btn{
   width:100%;height:38px;
   background:linear-gradient(135deg,rgba(0,208,132,0.12) 0%,rgba(0,208,132,0.06) 100%);
