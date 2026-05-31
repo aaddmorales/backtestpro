@@ -12,6 +12,8 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import yfinance as yf
@@ -20,6 +22,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import traceback
+import os
 
 app = FastAPI(title="BacktestPro API", version="3.0.0")
 
@@ -415,6 +418,9 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 
 @app.get("/")
 def root():
+    # Serve o frontend se index.html existir
+    if os.path.exists("index.html"):
+        return FileResponse("index.html", media_type="text/html")
     return {
         "status": "online",
         "version": "3.0.0",
