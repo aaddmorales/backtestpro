@@ -1,12 +1,11 @@
 <!--
-  BacktestPro Frontend — v4.3
+  BacktestPro Frontend — v4.6
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  Ajustes v4.1:
-  - Métricas: cor verde igual botão Rodar Backtest + glow
-  - Botão Exportar NTSL: mesmo tamanho do Rodar Backtest, mais atrativo
-  - Botão Colar código IA: mesmo padrão visual dos demais
-  - Gráficos: fundo dark em todos os painéis (sem branco)
-  - Donut: mais para baixo e melhor centralizado
+  Novidades v4.6:
+  - Candle chart com lightweight-charts (mesma lib TradingView)
+  - Markers BUY/SELL em cima dos candles
+  - Cumulative PnL + Run-ups/Drawdowns toggle
+  - Multi-indicadores: até 3 overlays (EMA/SMA) com cor e fonte configuráveis
 -->
 <!DOCTYPE html>
 <html lang="pt">
@@ -15,8 +14,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BacktestPro v4.3 — Plataforma de Backtesting</title>
+<title>BacktestPro v4.6 — Plataforma de Backtesting</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -477,6 +477,16 @@ select option{background:#141920}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:13px;height:13px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
 
+/* ── INDICADORES MULTI-SELECT ── */
+.ind-row{border-radius:5px;padding:5px 6px;background:var(--bg3);border:1px solid var(--border)}
+.ind-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+.ind-label{font-size:12px;color:var(--text);font-weight:500}
+.ind-controls{padding-top:2px}
+.color-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
+.color-btn.active{border-color:var(--text);transform:scale(1.2)}
+.color-btn:hover{transform:scale(1.15)}
+
 /* ── MODAL ── */
 .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;display:none}
 .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:500px;max-width:94vw;padding:20px}
@@ -563,18 +573,130 @@ select option{background:#141920}
       <input type="hidden" id="timeframe" value="1d">
     </div>
     <div class="ps">
-      <div class="pl">Indicador</div>
+      <div class="pl" style="margin-bottom:8px">Indicadores <span style="color:var(--muted);font-size:9px;font-weight:400">(até 3)</span></div>
+
+      <!-- Indicador principal (estratégia) -->
+      <div class="pli" style="margin-bottom:4px">Estratégia principal</div>
       <select id="indicador">
         <option value="EMA Channel High/Low">EMA Channel High/Low</option>
-        <option value="EMA">EMA</option>
+        <option value="EMA">EMA Simples</option>
         <option value="SMA">SMA</option>
         <option value="RSI">RSI</option>
         <option value="MACD">MACD</option>
         <option value="Bollinger Bands">Bollinger Bands</option>
       </select>
-      <div style="margin-top:6px">
+      <div style="margin-top:5px">
         <div class="pli">Período</div>
         <input type="number" id="ema_period" value="20" min="2" max="200">
+      </div>
+
+      <!-- Overlay indicators -->
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+        <div class="pli" style="margin-bottom:6px">Overlay no gráfico</div>
+
+        <!-- EMA 1 -->
+        <div class="ind-row" id="ind-row-1">
+          <label class="ind-check">
+            <input type="checkbox" id="ind1-active" onchange="toggleIndicador(1)">
+            <span class="ind-label">EMA</span>
+          </label>
+          <div class="ind-controls" id="ind1-controls" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+              <div>
+                <div class="pli">Período</div>
+                <input type="number" id="ind1-period" value="9" min="2" max="500" style="height:26px;font-size:11px">
+              </div>
+              <div>
+                <div class="pli">Aplicar em</div>
+                <select id="ind1-source" style="height:26px;font-size:11px">
+                  <option value="close">Close</option>
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                  <option value="open">Open</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:4px">
+              <div class="pli">Cor</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="color-btn active" data-color="#3b82f6" onclick="setIndColor(1,this)" style="background:#3b82f6"></button>
+                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(1,this)" style="background:#f59e0b"></button>
+                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(1,this)" style="background:#8b5cf6"></button>
+                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(1,this)" style="background:#ec4899"></button>
+                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(1,this)" style="background:#ffffff"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMA 2 -->
+        <div class="ind-row" id="ind-row-2" style="margin-top:6px">
+          <label class="ind-check">
+            <input type="checkbox" id="ind2-active" onchange="toggleIndicador(2)">
+            <span class="ind-label">EMA</span>
+          </label>
+          <div class="ind-controls" id="ind2-controls" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+              <div>
+                <div class="pli">Período</div>
+                <input type="number" id="ind2-period" value="21" min="2" max="500" style="height:26px;font-size:11px">
+              </div>
+              <div>
+                <div class="pli">Aplicar em</div>
+                <select id="ind2-source" style="height:26px;font-size:11px">
+                  <option value="close">Close</option>
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                  <option value="open">Open</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:4px">
+              <div class="pli">Cor</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(2,this)" style="background:#3b82f6"></button>
+                <button class="color-btn active" data-color="#f59e0b" onclick="setIndColor(2,this)" style="background:#f59e0b"></button>
+                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(2,this)" style="background:#8b5cf6"></button>
+                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(2,this)" style="background:#ec4899"></button>
+                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(2,this)" style="background:#ffffff"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SMA -->
+        <div class="ind-row" id="ind-row-3" style="margin-top:6px">
+          <label class="ind-check">
+            <input type="checkbox" id="ind3-active" onchange="toggleIndicador(3)">
+            <span class="ind-label">SMA</span>
+          </label>
+          <div class="ind-controls" id="ind3-controls" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+              <div>
+                <div class="pli">Período</div>
+                <input type="number" id="ind3-period" value="50" min="2" max="500" style="height:26px;font-size:11px">
+              </div>
+              <div>
+                <div class="pli">Aplicar em</div>
+                <select id="ind3-source" style="height:26px;font-size:11px">
+                  <option value="close">Close</option>
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:4px">
+              <div class="pli">Cor</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(3,this)" style="background:#3b82f6"></button>
+                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(3,this)" style="background:#f59e0b"></button>
+                <button class="color-btn active" data-color="#8b5cf6" onclick="setIndColor(3,this)" style="background:#8b5cf6"></button>
+                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(3,this)" style="background:#ec4899"></button>
+                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(3,this)" style="background:#ffffff"></button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="ps">
@@ -1123,7 +1245,7 @@ async function rodarBacktest() {
   const txt = document.getElementById('run-txt');
   btn.disabled = true;
   icon.innerHTML = '<div class="spinner"></div>';
-  txt.textContent = 'Rodando...';
+  txt.textContent = 'Baixando dados...';
 
   const codigo = document.getElementById('code-editor').value.trim();
   const params = {
@@ -1139,22 +1261,266 @@ async function rodarBacktest() {
     comissao: parseFloat(document.getElementById('comissao').value),
   };
 
+  // Feedback progressivo
+  const msgs = ['Baixando dados...','Calculando indicadores...','Rodando estratégia...','Calculando métricas...'];
+  let mi = 0;
+  const msgInterval = setInterval(()=>{ mi=(mi+1)%msgs.length; txt.textContent=msgs[mi]; }, 3000);
+
   try {
     const endpoint = (codigo && codigo.length > 10 && !codigo.startsWith('#')) ? '/backtest/custom' : '/backtest/visual';
     const body = endpoint === '/backtest/custom' ? {...params, codigo} : params;
-    const r = await fetch(API+endpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+
+    // Controller para timeout de 120 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(()=>controller.abort(), 120000);
+
+    const r = await fetch(API+endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if(!r.ok) {
+      const err = await r.json().catch(()=>({detail:'Erro desconhecido'}));
+      throw new Error(err.detail||'Erro na API');
+    }
+
     const d = await r.json();
     lastResult = d;
     atualizarMetricsBar(d);
     renderOverview(d, params);
     switchTab('overview');
   } catch(e) {
-    alert('Erro ao conectar com a API. Verifique se está online.');
+    if(e.name==='AbortError') {
+      alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
+    } else {
+      alert('Erro: ' + e.message);
+    }
+  } finally {
+    clearInterval(msgInterval);
+    btn.disabled = false;
+    icon.textContent = '▶';
+    txt.textContent = 'Rodar Backtest';
+  }
+}
+
+let candleChart = null;
+let perfChartObj = null;
+let perfData = {equity:[], trades:[]};
+
+function switchPerfChart(tipo) {
+  document.getElementById('perf-btn-cumul').style.background = tipo==='cumul'?'var(--green-bg)':'var(--bg3)';
+  document.getElementById('perf-btn-cumul').style.color = tipo==='cumul'?'var(--green)':'var(--muted2)';
+  document.getElementById('perf-btn-runup').style.background = tipo==='runup'?'rgba(255,77,106,0.1)':'var(--bg3)';
+  document.getElementById('perf-btn-runup').style.color = tipo==='runup'?'var(--red)':'var(--muted2)';
+  renderPerfChart(tipo);
+}
+
+function renderPerfChart(tipo) {
+  if(perfChartObj) perfChartObj.destroy();
+  const canvas = document.getElementById('ch-perf');
+  if(!canvas) return;
+  const equity = perfData.equity;
+  const trades = perfData.trades;
+  const cap = equity.length > 0 ? equity[0] : 10000;
+
+  if(tipo === 'cumul') {
+    // Cumulative PnL = equity - capital inicial
+    const pnlData = equity.map(v => parseFloat((v - cap).toFixed(2)));
+    const color = pnlData[pnlData.length-1] >= 0 ? '#00d084' : '#ff4d6a';
+    const bgColor = pnlData[pnlData.length-1] >= 0 ? 'rgba(0,208,132,0.08)' : 'rgba(255,77,106,0.08)';
+    perfChartObj = new Chart(canvas, {
+      type:'line',
+      data:{labels:pnlData.map((_,i)=>i), datasets:[{
+        data:pnlData, borderColor:color, backgroundColor:bgColor,
+        borderWidth:1.5, fill:true, tension:.3, pointRadius:0
+      }]},
+      options:{responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},
+        scales:{
+          x:{display:false},
+          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toFixed(0)}, grid:{color:'rgba(255,255,255,0.04)'},
+             position:'right'}
+        }
+      }
+    });
+  } else {
+    // Run-ups (verde) e Drawdowns (vermelho) por trade
+    const runups = trades.map(t => t.retorno_pct > 0 ? t.retorno_pct : 0);
+    const ddowns = trades.map(t => t.retorno_pct < 0 ? t.retorno_pct : 0);
+    perfChartObj = new Chart(canvas, {
+      type:'bar',
+      data:{
+        labels: trades.map((_,i) => i+1),
+        datasets:[
+          {label:'Run-up', data:runups, backgroundColor:'rgba(0,208,132,0.6)', borderWidth:0, borderRadius:1},
+          {label:'Drawdown', data:ddowns, backgroundColor:'rgba(255,77,106,0.6)', borderWidth:0, borderRadius:1},
+        ]
+      },
+      options:{responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(3)}%`}}},
+        scales:{
+          x:{display:false},
+          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>v.toFixed(2)+'%'}, grid:{color:'rgba(255,255,255,0.04)'},
+             position:'right'}
+        }
+      }
+    });
+  }
+}
+
+// ── INDICADORES MULTI-SELECT ──
+const indColors = {1:'#3b82f6', 2:'#f59e0b', 3:'#8b5cf6'};
+
+function toggleIndicador(n) {
+  const active = document.getElementById(`ind${n}-active`).checked;
+  document.getElementById(`ind${n}-controls`).style.display = active ? 'block' : 'none';
+}
+
+function setIndColor(n, btn) {
+  document.querySelectorAll(`#ind${n}-controls .color-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  indColors[n] = btn.dataset.color;
+}
+
+function getOverlays() {
+  const overlays = [];
+  for(let n=1; n<=3; n++) {
+    const active = document.getElementById(`ind${n}-active`)?.checked;
+    if(!active) continue;
+    const period = parseInt(document.getElementById(`ind${n}-period`)?.value || 20);
+    const source = document.getElementById(`ind${n}-source`)?.value || 'close';
+    const tipo = n <= 2 ? 'EMA' : 'SMA';
+    overlays.push({tipo, period, source, color: indColors[n]});
+  }
+  return overlays;
+}
+
+function calcEMA(data, period) {
+  const k = 2/(period+1);
+  const result = [];
+  let ema = null;
+  for(let i=0; i<data.length; i++) {
+    if(data[i] === null || data[i] === undefined) { result.push(null); continue; }
+    if(ema === null) { ema = data[i]; }
+    else { ema = data[i]*k + ema*(1-k); }
+    result.push(ema);
+  }
+  return result;
+}
+
+function calcSMA(data, period) {
+  return data.map((_, i) => {
+    if(i < period-1) return null;
+    const slice = data.slice(i-period+1, i+1).filter(v => v !== null);
+    return slice.length > 0 ? slice.reduce((a,b)=>a+b,0)/slice.length : null;
+  });
+}
+
+function addOverlaysToChart(chart, candlesData, overlays) {
+  if(!chart || !candlesData || !overlays.length) return;
+  overlays.forEach(ov => {
+    const sourceMap = {close:'c', high:'h', low:'l', open:'o'};
+    const key = sourceMap[ov.source] || 'c';
+    const values = candlesData.map(c => parseFloat(c[key]));
+    const times = candlesData.map(c => c.t);
+    const calc = ov.tipo === 'EMA' ? calcEMA(values, ov.period) : calcSMA(values, ov.period);
+    const lineData = calc.map((v,i) => v !== null ? {time: times[i], value: v} : null).filter(Boolean);
+    if(lineData.length > 0) {
+      const line = chart.addLineSeries({
+        color: ov.color,
+        lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: `${ov.tipo}(${ov.period})`,
+      });
+      line.setData(lineData);
+    }
+  });
+}
+
+let lastCandlesData = [];
+let lastMarkers = [];
+
+function renderCandleChart(candlesData, markers, isLight, overlays) {
+  lastCandlesData = candlesData || [];
+  lastMarkers = markers || [];
+
+  const container = document.getElementById('candle-chart');
+  if(!container || !candlesData || candlesData.length === 0) return;
+
+  container.innerHTML = '';
+
+  if(typeof LightweightCharts === 'undefined') {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px">Carregando gráfico...</div>';
+    return;
   }
 
-  btn.disabled = false;
-  icon.textContent = '▶';
-  txt.textContent = 'Rodar Backtest';
+  const bgColor = isLight ? '#ffffff' : '#0e1117';
+  const textColor = isLight ? '#6b7280' : '#5a6478';
+  const gridColor = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
+  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: 220,
+    layout: { background:{type:'solid',color:bgColor}, textColor },
+    grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor },
+    timeScale: { borderColor, timeVisible:true, secondsVisible:false },
+    handleScroll: true,
+    handleScale: true,
+  });
+
+  if(candleChart) { try { candleChart.remove(); } catch(e) {} }
+  candleChart = chart;
+
+  const candleSeries = chart.addCandlestickSeries({
+    upColor: '#00d084', downColor: '#ff4d6a',
+    borderUpColor: '#00d084', borderDownColor: '#ff4d6a',
+    wickUpColor: '#00d084', wickDownColor: '#ff4d6a',
+  });
+
+  const candleFormatted = candlesData
+    .filter(c => c.o && c.h && c.l && c.c)
+    .map(c => ({ time: c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c) }))
+    .filter((c,i,arr) => i===0 || c.time !== arr[i-1].time)
+    .sort((a,b) => a.time > b.time ? 1 : -1);
+
+  if(candleFormatted.length > 0) {
+    candleSeries.setData(candleFormatted);
+
+    if(markers && markers.length > 0) {
+      const validTimes = new Set(candleFormatted.map(c=>c.time));
+      const mks = markers
+        .filter(m => validTimes.has(m.data?.substring(0,10)))
+        .map(m => ({
+          time: m.data?.substring(0,10),
+          position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
+          color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
+          shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
+          text: m.tipo === 'BUY' ? `B ${parseFloat(m.preco||0).toFixed(2)}` : `S ${parseFloat(m.preco||0).toFixed(2)}`,
+          size: 1,
+        }))
+        .sort((a,b) => a.time > b.time ? 1 : -1);
+      if(mks.length > 0) candleSeries.setMarkers(mks);
+    }
+
+    // Aplicar overlays (EMA/SMA) em cima dos candles
+    if(overlays && overlays.length > 0) {
+      addOverlaysToChart(chart, candlesData, overlays);
+    }
+
+    chart.timeScale().fitContent();
+  }
+
+  const resizeObs = new ResizeObserver(() => {
+    if(container.clientWidth > 0) chart.resize(container.clientWidth, 220);
+  });
+  resizeObs.observe(container);
 }
 
 function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) {
@@ -1163,34 +1529,57 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
   if(chartDo) chartDo.destroy();
 
   const equity = d.equity_curve||[];
+  const trades = d.trades||[];
   const color = pos?'#00d084':'#ff4d6a';
   const colorBg = pos?'rgba(0,208,132,0.1)':'rgba(255,77,106,0.1)';
   const lucro = parseFloat(d.lucro_perda||0);
+  const isLight = document.body.classList.contains('light');
 
+  // Salvar dados para o toggle do perf chart
+  perfData = {equity, trades};
+
+  // Candle chart com overlays
+  const overlays = getOverlays();
+  setTimeout(() => {
+    renderCandleChart(d.candles_data||[], d.markers||[], isLight, overlays);
+    renderPerfChart('cumul');
+  }, 80);
+
+  // Equity Curve
   if(equity.length>0 && document.getElementById('ch-eq')) {
     chartEq = new Chart(document.getElementById('ch-eq'),{
-      type:'line',data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:3}]},
+      type:'line',
+      data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:3}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{display:false},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
     });
   }
+
+  // Profit Structure
   if(document.getElementById('ch-pr')) {
     chartPr = new Chart(document.getElementById('ch-pr'),{
-      type:'bar',data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',lucro>=0?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',lucro>=0?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+      type:'bar',
+      data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',lucro>=0?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',lucro>=0?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+Math.abs(c.parsed.y).toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+Math.abs(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
     });
   }
+
+  // Donut
   if(document.getElementById('ch-do')) {
     chartDo = new Chart(document.getElementById('ch-do'),{
-      type:'doughnut',data:{labels:['Winners','Losers','Breakevens'],datasets:[{data:[winners||1,losers||1,0],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)','rgba(90,100,120,.5)'],borderColor:['#00d084','#ff4d6a','#5a6478'],borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}
+      type:'doughnut',
+      data:{labels:['Winners','Losers','Breakevens'],datasets:[{data:[winners||1,losers||1,0],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)','rgba(90,100,120,.5)'],borderColor:['#00d084','#ff4d6a','#5a6478'],borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}`}}}}
     });
   }
-  if(document.getElementById('ch-roi') && roiDist && roiDist.length>0) {
+
+  // ROI Distribution
+  if(document.getElementById('ch-roi') && roiDist && roiDist.length > 0) {
     const labels = roiDist.map(r=>r.bin.toFixed(2)+'%');
     const data   = roiDist.map(r=>r.count);
     const colors = roiDist.map(r=>r.positivo?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)');
     new Chart(document.getElementById('ch-roi'),{
-      type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,borderRadius:2}]},
+      type:'bar',
+      data:{labels, datasets:[{data, backgroundColor:colors, borderWidth:0, borderRadius:2}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:8},maxRotation:0},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
     });
   }
@@ -1247,6 +1636,17 @@ function renderOverview(d, params) {
     <div><div class="ov-cap-label">Retorno Anual (CAGR)</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
   </div>
 
+  <!-- CANDLE CHART -->
+  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${d.ativo||params.ativo} · ${params.timeframe.toUpperCase()} · Candles + Operações</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">
+        <span style="color:var(--green)">▲ BUY</span> &nbsp; <span style="color:var(--red)">▼ SELL</span>
+      </div>
+    </div>
+    <div id="candle-chart" style="height:220px;width:100%"></div>
+  </div>
+
   <!-- KEY STATS BAR -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
     <div style="padding:10px 14px;border-right:1px solid var(--border)">
@@ -1271,8 +1671,20 @@ function renderOverview(d, params) {
     </div>
   </div>
 
+  <!-- CUMULATIVE PNL + RUN-UPS DRAWDOWNS -->
+  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
+    <div style="padding:8px 14px 4px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Performance</div>
+      <div style="display:flex;gap:6px">
+        <span id="perf-btn-cumul" onclick="switchPerfChart('cumul')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25)">Cumulative PnL</span>
+        <span id="perf-btn-runup" onclick="switchPerfChart('runup')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--muted2);border:1px solid var(--border)">Run-ups & Drawdowns</span>
+      </div>
+    </div>
+    <div id="perf-chart-area" style="height:140px;padding:0 14px 10px"><canvas id="ch-perf"></canvas></div>
+  </div>
+
   <!-- PERFORMANCE: EQUITY + PROFIT STRUCTURE -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Performance</div>
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Curve & Profit Structure</div>
   <div class="charts-2col">
     <div class="cp"><div class="cp-title">Equity Curve <span class="cp-tag">${params.timeframe.toUpperCase()}</span></div><div style="position:relative;height:160px"><canvas id="ch-eq"></canvas></div></div>
     <div class="cp"><div class="cp-title">Profit Structure <span class="cp-tag">por operação</span></div><div style="position:relative;height:160px"><canvas id="ch-pr"></canvas></div></div>
