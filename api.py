@@ -78,17 +78,52 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     periodo_yf = PERIODOS_MAP.get(periodo, "2y")
     intervalo_yf = INTERVALOS_MAP.get(timeframe, "1d")
 
-    # yfinance não suporta intraday >60d
-    if intervalo_yf in ["5m","15m","30m"] and periodo_yf not in ["6mo"]:
+    if intervalo_yf in ["5m","15m","30m"]:
         periodo_yf = "60d"
 
-    df = yf.download(ticker, period=periodo_yf, interval=intervalo_yf,
-                     auto_adjust=True, progress=False)
-    if df.empty:
-        raise HTTPException(400, f"Sem dados para {ativo}")
+    df = None
+    # Tenta múltiplas abordagens para compatibilidade com yfinance 1.x e 2.x
+    try:
+        df = yf.download(ticker, period=periodo_yf, interval=intervalo_yf,
+                         auto_adjust=True, progress=False, multi_level_index=False)
+    except Exception:
+        pass
 
-    df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+    if df is None or df.empty:
+        try:
+            tk = yf.Ticker(ticker)
+            df = tk.history(period=periodo_yf, interval=intervalo_yf)
+        except Exception:
+            pass
+
+    if df is None or df.empty:
+        raise HTTPException(400, f"Sem dados para {ativo}. Tente outro ativo ou período.")
+
+    # Flatten MultiIndex se existir
+    if hasattr(df.columns, 'levels'):
+        df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+
+    # Normalizar nomes das colunas
+    col_map = {}
+    for c in df.columns:
+        cl = str(c).lower().strip()
+        if cl == 'open': col_map[c] = 'Open'
+        elif cl == 'high': col_map[c] = 'High'
+        elif cl == 'low': col_map[c] = 'Low'
+        elif cl in ['close', 'adj close', 'adjclose']: col_map[c] = 'Close'
+        elif cl == 'volume': col_map[c] = 'Volume'
+    df = df.rename(columns=col_map)
+
+    for col in ['Open','High','Low','Close']:
+        if col not in df.columns:
+            raise HTTPException(400, f"Dados incompletos para {ativo}: coluna {col} não encontrada.")
+
+    df = df[['Open','High','Low','Close'] + (['Volume'] if 'Volume' in df.columns else [])]
     df = df.dropna()
+
+    if len(df) < 5:
+        raise HTTPException(400, f"Dados insuficientes para {ativo}.")
+
     return df
 
 def calcular_ema_channel(df: pd.DataFrame, period: int):
@@ -449,7 +484,8 @@ def backtest_visual(params: BacktestParams):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Erro no backtest: {str(e)}\n{traceback.format_exc()}")
+        tb = traceback.format_exc()
+        raise HTTPException(500, f"Erro no backtest: {str(e)}\n\nDetalhes:\n{tb}")
 
 @app.post("/backtest/custom")
 def backtest_custom(params: BacktestCustom):
