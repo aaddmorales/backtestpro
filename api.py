@@ -450,6 +450,25 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 
 # ── ENDPOINTS ───────────────────────────────────────────────
 
+@app.get("/teste")
+def teste_conexao():
+    """Testa se yfinance consegue baixar dados"""
+    try:
+        import yfinance as yf
+        tk = yf.Ticker("GC=F")
+        df = tk.history(period="5d", interval="1d")
+        if df.empty:
+            return {"status": "erro", "msg": "yfinance retornou dados vazios"}
+        return {
+            "status": "ok",
+            "yfinance_version": yf.__version__,
+            "linhas": len(df),
+            "colunas": list(df.columns),
+            "ultimo_preco": float(df['Close'].iloc[-1]) if 'Close' in df.columns else None
+        }
+    except Exception as e:
+        return {"status": "erro", "msg": str(e), "traceback": traceback.format_exc()}
+
 @app.get("/")
 def root():
     # Serve o frontend se index.html existir
