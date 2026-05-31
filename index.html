@@ -1,8 +1,8 @@
 <!-- ============================================================
-    BacktestPro Frontend — v2.8
-    Versao: 2.8 | Data: 2026-05-31
+    BacktestPro Frontend — v2.9
+    Versao: 2.9 | Data: 2026-05-31
     Autor: aaddmorales | Deploy: Railway
-    Novidade: Layout 3 colunas + Relatório completo + IA analisa
+    Novidade: Layout melhorado + botao na direita + editor maior
     ============================================================ -->
 <!DOCTYPE html>
 <html lang="pt">
@@ -21,7 +21,7 @@
   --green:#10b981;--green2:#059669;--green-bg:rgba(16,185,129,0.1);
   --red:#ef4444;--red-bg:rgba(239,68,68,0.1);
   --amber:#f59e0b;--amber-bg:rgba(245,158,11,0.1);
-  --blue:#3b82f6;--purple:#8b5cf6;--purple-bg:rgba(139,92,246,0.1);
+  --purple:#8b5cf6;--purple-bg:rgba(139,92,246,0.1);
   --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
   --radius:8px;--radius-lg:12px;
 }
@@ -29,178 +29,154 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .app{display:flex;height:100vh;flex-direction:column}
 
 /* Topbar */
-.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg2);flex-shrink:0}
-.topbar-left{display:flex;align-items:center;gap:16px}
-.logo{display:flex;align-items:center;gap:8px}
-.logo-icon{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
-.logo-text{font-size:15px;font-weight:600;letter-spacing:-0.3px}
-.logo-badge{font-size:9px;background:var(--green-bg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:500;border:1px solid rgba(16,185,129,0.2)}
-.topbar-btns{display:flex;gap:8px}
-.top-btn{padding:6px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);border:none;transition:all 0.15s;display:flex;align-items:center;gap:6px}
+.topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg2);flex-shrink:0;gap:12px}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.logo-icon{width:26px;height:26px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.logo-text{font-size:14px;font-weight:600;letter-spacing:-0.3px}
+.logo-badge{font-size:9px;background:var(--green-bg);color:var(--green);padding:2px 5px;border-radius:4px;font-weight:500;border:1px solid rgba(16,185,129,0.2)}
+.topbar-btns{display:flex;gap:6px;flex:1;justify-content:center}
+.top-btn{padding:5px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);border:none;transition:all 0.15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .top-btn.run{background:var(--green);color:#fff}
 .top-btn.run:hover{background:var(--green2)}
-.top-btn.run:disabled{background:var(--bg4);color:var(--muted);cursor:not-allowed}
 .top-btn.ai{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple)}
-.top-btn.ai:hover{background:rgba(139,92,246,0.2)}
 .top-btn.ntsl{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber)}
-.top-btn.ntsl:hover{background:rgba(245,158,11,0.2)}
 .top-btn.outline{background:transparent;color:var(--muted2);border:1px solid var(--border2)}
 .top-btn.outline:hover{background:var(--bg3);color:var(--text)}
 .top-btn.outline.active{background:var(--green-bg);color:var(--green);border-color:rgba(16,185,129,0.3)}
-.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.status-text{font-size:12px;color:var(--muted2);display:flex;align-items:center;gap:5px}
+.status-text{font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:4px}
 .lang-switcher{display:flex;gap:3px}
-.lang-btn{padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s}
+.lang-btn{padding:3px 7px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:10px;cursor:pointer;font-family:var(--font);transition:all 0.15s}
 .lang-btn.active{background:var(--green);color:#fff;border-color:var(--green)}
 
-/* Main 3-column layout */
-.main-layout{display:grid;grid-template-columns:280px 1fr 300px;flex:1;overflow:hidden}
+/* Layout */
+.main-layout{display:grid;grid-template-columns:260px 1fr 280px;flex:1;overflow:hidden}
 
-/* LEFT — Editor */
+/* LEFT */
 .col-left{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.col-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.col-title{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px}
+.col-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.col-title{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px}
 .col-actions{display:flex;gap:4px}
-.mini-btn{font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-family:var(--font);transition:all 0.15s}
+.mini-btn{font-size:10px;padding:3px 7px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-family:var(--font);transition:all 0.15s}
 .mini-btn:hover{background:var(--bg3);color:var(--text)}
-.mini-btn.amber{border-color:var(--amber);color:var(--amber)}
-.mini-btn.purple{border-color:var(--purple);color:var(--purple)}
 
-/* Tabs */
-.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg3)}
-.tab{flex:1;padding:8px;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
+/* Tab system */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.tab{flex:1;padding:7px 4px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
 .tab.active{color:var(--green);border-bottom-color:var(--green);background:var(--bg2)}
 
-/* Editor area */
-.editor-area{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.code-editor{flex:1;width:100%;padding:14px;background:var(--bg);color:#e8eaf0;border:none;outline:none;resize:none;font-family:var(--mono);font-size:11px;line-height:1.7;tab-size:4}
-.ai-area{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--bg3)}
-.ai-label{font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;font-weight:500}
-.ai-textarea{width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;resize:none;outline:none;min-height:60px}
+/* Editor */
+.editor-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.code-editor{flex:1;width:100%;padding:12px;background:var(--bg);color:#e8eaf0;border:none;outline:none;resize:none;font-family:var(--mono);font-size:11px;line-height:1.7;tab-size:4;min-height:0}
+.ai-area{border-top:1px solid var(--border);padding:10px;display:flex;flex-direction:column;gap:6px;background:var(--bg3);flex-shrink:0}
+.ai-label{font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:0.5px;font-weight:500}
+.ai-textarea{width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:11px;resize:none;outline:none;min-height:55px}
 .ai-textarea:focus{border-color:var(--purple)}
-.ai-gen-btn{width:100%;padding:8px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:background 0.15s}
-.ai-gen-btn:hover{background:#7c3aed}
+.ai-gen-btn{width:100%;padding:7px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)}
 .ai-gen-btn:disabled{background:var(--bg4);color:var(--muted);cursor:not-allowed}
 
 /* Templates */
-.templates-area{padding:10px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.templates-scroll{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
 .tpl-card{padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);cursor:pointer;transition:border-color 0.15s}
 .tpl-card:hover{border-color:var(--green)}
 .tpl-name{font-size:12px;font-weight:500;margin-bottom:2px}
-.tpl-desc{font-size:10px;color:var(--muted)}
-.tpl-asset{font-size:9px;font-family:var(--mono);color:var(--green);background:var(--green-bg);padding:1px 6px;border-radius:3px;border:1px solid rgba(16,185,129,0.2);display:inline-block;margin-top:4px}
+.tpl-desc{font-size:10px;color:var(--muted);margin-bottom:4px}
+.tpl-asset{font-size:9px;font-family:var(--mono);color:var(--green);background:var(--green-bg);padding:1px 6px;border-radius:3px;border:1px solid rgba(16,185,129,0.2);display:inline-block}
 
-/* CENTER — Results */
+/* CENTER */
 .col-center{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
-
-/* Empty state */
-.center-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--muted);padding:40px}
-.center-empty-icon{font-size:64px;opacity:0.1}
-.center-empty-title{font-size:16px;font-weight:500;color:var(--muted2)}
-.center-empty-sub{font-size:13px;text-align:center;max-width:300px;line-height:1.6}
-
-/* Loading */
-.center-loading{flex:1;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--muted)}
-.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite}
+.center-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);padding:40px;text-align:center}
+.center-empty-icon{font-size:56px;opacity:0.1}
+.center-empty-title{font-size:15px;font-weight:500;color:var(--muted2)}
+.center-empty-sub{font-size:12px;max-width:280px;line-height:1.6}
+.center-loading{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Report */
-.report{padding:20px;display:flex;flex-direction:column;gap:16px}
-
-/* Financial result card */
-.financial-card{border-radius:var(--radius-lg);padding:20px;border:1px solid}
+.report{padding:16px;display:flex;flex-direction:column;gap:14px}
+.financial-card{border-radius:var(--radius-lg);padding:18px;border:1px solid}
 .financial-card.profit{background:var(--green-bg);border-color:rgba(16,185,129,0.3)}
 .financial-card.loss{background:var(--red-bg);border-color:rgba(239,68,68,0.3)}
 .financial-card.neutral{background:var(--amber-bg);border-color:rgba(245,158,11,0.3)}
-.financial-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.financial-status{display:flex;align-items:center;gap:8px}
-.financial-badge{font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
+.financial-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.financial-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
 .financial-badge.profit{background:var(--green);color:#fff}
 .financial-badge.loss{background:var(--red);color:#fff}
 .financial-badge.neutral{background:var(--amber);color:#fff}
-.financial-title{font-size:15px;font-weight:500}
-.financial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.financial-item{display:flex;flex-direction:column;gap:3px}
-.financial-label{font-size:11px;color:var(--muted)}
-.financial-value{font-size:18px;font-weight:500}
-.financial-value.pos{color:var(--green)}
-.financial-value.neg{color:var(--red)}
-.financial-value.neutral{color:var(--amber)}
-.financial-sub{font-size:11px;color:var(--muted)}
-.pnl-big{font-size:32px;font-weight:600;margin-top:4px}
+.financial-info{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.financial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.financial-item .f-label{font-size:10px;color:var(--muted);margin-bottom:3px}
+.financial-item .f-value{font-size:16px;font-weight:500}
+.financial-item .f-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.pnl-big{font-size:36px;font-weight:600;line-height:1}
 .pnl-big.pos{color:var(--green)}
 .pnl-big.neg{color:var(--red)}
-
-/* Metrics */
-.metrics-section{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px}
-.metric-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.metric-name{font-size:11px;color:var(--muted)}
-.metric-signal{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.pnl-big.neut{color:var(--amber)}
+.metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px}
+.metric-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.metric-name{font-size:10px;color:var(--muted)}
+.metric-signal{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:500}
 .metric-signal.good{background:var(--green-bg);color:var(--green)}
 .metric-signal.ok{background:var(--amber-bg);color:var(--amber)}
 .metric-signal.bad{background:var(--red-bg);color:var(--red)}
-.metric-value{font-size:22px;font-weight:500}
+.metric-val{font-size:20px;font-weight:500}
 .metric-bar{height:3px;background:var(--bg4);border-radius:2px;margin-top:6px;overflow:hidden}
-.metric-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease}
+.metric-bar-fill{height:100%;border-radius:2px}
 .metric-bar-fill.good{background:var(--green)}
 .metric-bar-fill.ok{background:var(--amber)}
 .metric-bar-fill.bad{background:var(--red)}
-
-/* Chart */
-.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
-.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.chart-title{font-size:13px;font-weight:500}
-.chart-tag{font-size:11px;color:var(--muted);background:var(--bg3);padding:3px 8px;border-radius:4px;font-family:var(--mono)}
-.chart-wrap{position:relative;width:100%;height:180px}
-
-/* AI Analysis */
-.ai-analysis{border-radius:var(--radius-lg);border:1px solid rgba(139,92,246,0.3);background:var(--purple-bg);padding:16px;display:flex;flex-direction:column;gap:12px}
-.ai-analysis-header{display:flex;align-items:center;gap:8px}
-.ai-analysis-icon{font-size:20px}
-.ai-analysis-title{font-size:14px;font-weight:500;color:var(--purple)}
-.ai-analysis-loading{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
-.ai-problems{display:flex;flex-direction:column;gap:8px}
-.ai-problem{padding:10px 12px;background:rgba(0,0,0,0.2);border-radius:var(--radius);border-left:3px solid var(--red)}
-.ai-problem-title{font-size:12px;font-weight:500;color:var(--red);margin-bottom:3px}
-.ai-problem-desc{font-size:12px;color:var(--muted2);line-height:1.5}
-.ai-suggestion{padding:12px;background:rgba(16,185,129,0.1);border-radius:var(--radius);border:1px solid rgba(16,185,129,0.2)}
-.ai-suggestion-title{font-size:12px;font-weight:500;color:var(--green);margin-bottom:6px}
-.ai-suggestion-text{font-size:12px;color:var(--muted2);line-height:1.6}
-.ai-apply-btn{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.ai-apply-btn:hover{background:var(--green2)}
-
-/* Trades */
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:500}
+.card-tag{font-size:10px;color:var(--muted);background:var(--bg3);padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+.chart-wrap{position:relative;width:100%;height:160px}
+.ai-box{border-radius:var(--radius-lg);border:1px solid rgba(139,92,246,0.3);background:var(--purple-bg);padding:14px;display:flex;flex-direction:column;gap:10px}
+.ai-box-header{display:flex;align-items:center;gap:8px}
+.ai-box-title{font-size:13px;font-weight:500;color:var(--purple)}
+.ai-problem{padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:var(--radius);border-left:3px solid var(--red)}
+.ai-problem-title{font-size:11px;font-weight:500;color:var(--red);margin-bottom:2px}
+.ai-problem-desc{font-size:11px;color:var(--muted2);line-height:1.5}
+.ai-sugg{padding:10px;background:rgba(16,185,129,0.1);border-radius:var(--radius);border:1px solid rgba(16,185,129,0.2)}
+.ai-sugg-title{font-size:11px;font-weight:500;color:var(--green);margin-bottom:4px}
+.ai-sugg-text{font-size:11px;color:var(--muted2);line-height:1.6}
+.ai-apply-btn{width:100%;padding:9px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)}
 .trades-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
-.trades-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.trades-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 .trades-table{width:100%;border-collapse:collapse;font-size:11px}
-.trades-table th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border2);color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
-.trades-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono)}
+.trades-table th{text-align:left;padding:7px 12px;border-bottom:1px solid var(--border2);color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+.trades-table td{padding:6px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px}
 .trades-table tr:last-child td{border-bottom:none}
 .trades-table tr:hover td{background:var(--bg3)}
-.badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;font-family:var(--font)}
+.badge{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:500;font-family:var(--font)}
 .badge.win{background:var(--green-bg);color:var(--green)}
 .badge.loss{background:var(--red-bg);color:var(--red)}
 
-/* RIGHT — Config */
-.col-right{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
-.config-section{padding:14px;border-bottom:1px solid var(--border)}
-.config-label{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px}
-.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
-.field:last-child{margin-bottom:0}
-.field-label{font-size:11px;color:var(--muted2)}
-.field-select,.field-input{width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 0.15s;cursor:pointer;appearance:none}
-.field-select:focus,.field-input:focus{border-color:var(--green)}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.tf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+/* RIGHT */
+.col-right{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.config-block{padding:12px 14px;border-bottom:1px solid var(--border)}
+.config-block:last-child{border-bottom:none}
+.config-lbl{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px}
+.f-select,.f-input{width:100%;padding:7px 9px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;outline:none;cursor:pointer;appearance:none;transition:border-color 0.15s}
+.f-select:focus,.f-input:focus{border-color:var(--green)}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.f-field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.f-field:last-child{margin-bottom:0}
+.f-label{font-size:11px;color:var(--muted2)}
+.tf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .tf-btn{padding:5px;text-align:center;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);font-size:11px;cursor:pointer;transition:all 0.15s;font-family:var(--font)}
 .tf-btn.active{background:var(--green-bg);color:var(--green);border-color:rgba(16,185,129,0.3)}
 .tf-btn:hover:not(.active){background:var(--bg4);color:var(--text)}
-.ind-params{padding:10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);margin-top:6px}
+.ind-box{margin-top:8px;padding:10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)}
+.run-big-btn{width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.run-big-btn:hover{background:var(--green2)}
+.run-big-btn:disabled{background:var(--bg4);color:var(--muted);cursor:not-allowed}
+.ntsl-right-btn{width:100%;padding:9px;background:transparent;color:var(--amber);border:1px solid var(--amber);border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);margin-top:6px}
+.ntsl-right-btn:hover{background:var(--amber-bg)}
 
-/* Scrollbar */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
@@ -211,20 +187,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-left">
-    <div class="logo">
-      <div class="logo-icon">📈</div>
-      <div class="logo-text">BacktestPro</div>
-      <span class="logo-badge">v2.8</span>
-    </div>
-    <div class="topbar-btns">
-      <button class="top-btn run" id="btn-run" onclick="runBacktest()">▶ <span data-i18n="run">Rodar Backtest</span></button>
-      <button class="top-btn ai" onclick="focusAI()">✨ <span data-i18n="generateAI">Gerar com IA</span></button>
-      <button class="top-btn ntsl" onclick="exportNTSL()">📥 NTSL</button>
-      <button class="top-btn outline active" onclick="showTab('editor')" id="tab-editor">⌨️ Editor</button>
-      <button class="top-btn outline" onclick="showTab('templates')" id="tab-templates">📋 Templates</button>
-      <button class="top-btn outline" onclick="showTab('history')" id="tab-history">🕐 Histórico</button>
-    </div>
+  <div class="logo">
+    <div class="logo-icon">📈</div>
+    <div class="logo-text">BacktestPro</div>
+    <span class="logo-badge">v2.9</span>
+  </div>
+  <div class="topbar-btns">
+    <button class="top-btn outline active" onclick="showTab('editor')" id="tab-editor">⌨️ Editor</button>
+    <button class="top-btn outline" onclick="showTab('templates')" id="tab-templates">📋 Templates</button>
+    <button class="top-btn outline" onclick="showTab('history')" id="tab-history">🕐 <span data-i18n="history">Histórico</span></button>
+    <button class="top-btn ai" onclick="focusAI()">✨ <span data-i18n="generateAI">Gerar com IA</span></button>
+    <button class="top-btn ntsl" onclick="exportNTSL()">📥 NTSL</button>
   </div>
   <div class="topbar-right">
     <div class="lang-switcher">
@@ -236,13 +209,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   </div>
 </div>
 
-<!-- MAIN 3 COLUMNS -->
+<!-- 3 COLUMNS -->
 <div class="main-layout">
 
-  <!-- LEFT — Editor / Templates / History -->
+  <!-- LEFT — Editor -->
   <div class="col-left">
+
     <!-- Editor Tab -->
-    <div id="tab-content-editor">
+    <div id="tc-editor" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
       <div class="col-header">
         <span class="col-title">strategy.py</span>
         <div class="col-actions">
@@ -250,20 +224,48 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
           <button class="mini-btn" onclick="copiarCodigo()">Copiar</button>
         </div>
       </div>
-      <div class="editor-area">
-        <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="# Cole o código do teu bot aqui&#10;# Ou descreve abaixo e clica ✨ Gerar com IA&#10;&#10;class MinhaEstrategia(Strategy):&#10;    def init(self): pass&#10;    def next(self): pass"></textarea>
+      <div class="editor-wrap">
+        <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="# Cole o código aqui ou usa um Template
+# Ou descreve abaixo e clica Gerar com IA
+
+# EXEMPLO — EMA Channel XAU/USD:
+class EMAChannelStrategy(Strategy):
+    ema_period = 20
+
+    def init(self):
+        self.ema_high = self.I(
+            lambda h: pd.Series(h).ewm(
+                span=self.ema_period, adjust=False
+            ).mean().values,
+            self.data.High
+        )
+        self.ema_low = self.I(
+            lambda l: pd.Series(l).ewm(
+                span=self.ema_period, adjust=False
+            ).mean().values,
+            self.data.Low
+        )
+
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]:
+                self.buy()
+        else:
+            if preco < self.ema_low[-1]:
+                self.position.close()"></textarea>
         <div class="ai-area">
-          <div class="ai-label">✨ <span data-i18n="aiLabel">Descreve a estratégia em português</span></div>
-          <textarea class="ai-textarea" id="ai-descricao" placeholder="Ex: Bot para XAU/USD com EMA 20, stop 50 pontos..."></textarea>
+          <div class="ai-label">✨ <span data-i18n="aiLabel">Descreve a estratégia</span></div>
+          <textarea class="ai-textarea" id="ai-descricao" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts..."></textarea>
           <button class="ai-gen-btn" id="ai-btn" onclick="gerarComIA()">✨ <span data-i18n="generateAI">Gerar Bot com IA</span></button>
         </div>
       </div>
     </div>
 
     <!-- Templates Tab -->
-    <div id="tab-content-templates" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div id="tc-templates" style="display:none;flex-direction:column;flex:1;overflow:hidden">
       <div class="col-header"><span class="col-title" data-i18n="templates">Templates</span></div>
-      <div class="templates-area">
+      <div class="templates-scroll">
         <div class="tpl-card" onclick="carregarTemplate(0)">
           <div class="tpl-name">EMA Channel High/Low</div>
           <div class="tpl-desc">Canal EMA 20. Padrão TrailingBot.</div>
@@ -271,7 +273,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         </div>
         <div class="tpl-card" onclick="carregarTemplate(1)">
           <div class="tpl-name">Cruzamento EMA 9/21</div>
-          <div class="tpl-desc">Média rápida cruza média lenta.</div>
+          <div class="tpl-desc">Média rápida cruza lenta.</div>
           <span class="tpl-asset">EUR/USD</span>
         </div>
         <div class="tpl-card" onclick="carregarTemplate(2)">
@@ -281,7 +283,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         </div>
         <div class="tpl-card" onclick="carregarTemplate(3)">
           <div class="tpl-name">Bollinger Bands</div>
-          <div class="tpl-desc">Compra na banda inferior, vende superior.</div>
+          <div class="tpl-desc">Compra banda inferior, vende superior.</div>
           <span class="tpl-asset">EUR/USD</span>
         </div>
         <div class="tpl-card" onclick="carregarTemplate(4)">
@@ -298,29 +300,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
 
     <!-- History Tab -->
-    <div id="tab-content-history" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div id="tc-history" style="display:none;flex-direction:column;flex:1;overflow:hidden">
       <div class="col-header"><span class="col-title" data-i18n="history">Histórico</span></div>
-      <div id="history-list" style="padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px">
-        <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">A carregar...</div>
-      </div>
+      <div id="history-list" style="padding:8px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:5px"></div>
     </div>
+
   </div>
 
-  <!-- CENTER — Results Report -->
+  <!-- CENTER — Report -->
   <div class="col-center" id="col-center">
     <div class="center-empty" id="center-empty">
       <div class="center-empty-icon">📊</div>
       <div class="center-empty-title" data-i18n="emptyTitle">Pronto para testar</div>
-      <div class="center-empty-sub" data-i18n="emptySub">Cola o código do teu bot, configura os parâmetros à direita e clica <strong>Rodar Backtest</strong></div>
+      <div class="center-empty-sub" data-i18n="emptySub">Configura os parâmetros à direita e clica <strong>Rodar Backtest</strong></div>
     </div>
   </div>
 
-  <!-- RIGHT — Configuration -->
+  <!-- RIGHT — Config + Run Button -->
   <div class="col-right">
 
-    <div class="config-section">
-      <div class="config-label" data-i18n="asset">Ativo</div>
-      <select class="field-select" id="sel-ativo">
+    <div class="config-block">
+      <div class="config-lbl" data-i18n="asset">Ativo</div>
+      <select class="f-select" id="sel-ativo">
         <optgroup label="Forex">
           <option value="EUR/USD">EUR/USD</option>
           <option value="GBP/USD">GBP/USD</option>
@@ -342,9 +343,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </select>
     </div>
 
-    <div class="config-section">
-      <div class="config-label" data-i18n="period">Período</div>
-      <select class="field-select" id="sel-periodo">
+    <div class="config-block">
+      <div class="config-lbl" data-i18n="period">Período</div>
+      <select class="f-select" id="sel-periodo">
         <option value="6 meses">6 meses</option>
         <option value="1 ano">1 ano</option>
         <option value="2 anos" selected>2 anos</option>
@@ -352,8 +353,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </select>
     </div>
 
-    <div class="config-section">
-      <div class="config-label" data-i18n="timeframe">Timeframe</div>
+    <div class="config-block">
+      <div class="config-lbl" data-i18n="timeframe">Timeframe</div>
       <div class="tf-grid">
         <button class="tf-btn" onclick="setTf(this,'5m')">5m</button>
         <button class="tf-btn" onclick="setTf(this,'15m')">15m</button>
@@ -364,9 +365,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </div>
     </div>
 
-    <div class="config-section">
-      <div class="config-label" data-i18n="indicator">Indicador</div>
-      <select class="field-select" id="sel-indicador" onchange="atualizarParams()">
+    <div class="config-block">
+      <div class="config-lbl" data-i18n="indicator">Indicador</div>
+      <select class="f-select" id="sel-indicador" onchange="atualizarParams()">
         <optgroup label="📈 Médias Móveis">
           <option value="EMA_CHANNEL">EMA Channel High/Low</option>
           <option value="EMA">EMA — Exponencial</option>
@@ -386,41 +387,49 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
           <option value="BB">Bollinger Bands</option>
         </optgroup>
       </select>
-      <div class="ind-params" id="ind-params">
-        <div class="field">
-          <label class="field-label" data-i18n="indPeriod">Período</label>
-          <input class="field-input" type="number" id="inp-periodo-ind" value="20" min="2" max="500" />
+      <div class="ind-box">
+        <div class="f-field" id="field-periodo">
+          <label class="f-label" data-i18n="indPeriod">Período</label>
+          <input class="f-input" type="number" id="inp-periodo-ind" value="20" min="2" max="500"/>
         </div>
-        <div class="field" id="field-desvio">
-          <label class="field-label" data-i18n="deviation">Desvio</label>
-          <input class="field-input" type="number" id="inp-desvio" value="2.0" min="0.1" step="0.1" />
+        <div class="f-field" id="field-desvio" style="display:none">
+          <label class="f-label" data-i18n="deviation">Desvio</label>
+          <input class="f-input" type="number" id="inp-desvio" value="2.0" min="0.1" step="0.1"/>
         </div>
         <div id="cross-params" style="display:none">
-          <div class="field-row">
-            <div class="field"><label class="field-label">Rápida</label><input class="field-input" type="number" id="inp-per-rapida" value="9" min="2"/></div>
-            <div class="field"><label class="field-label">Lenta</label><input class="field-input" type="number" id="inp-per-lenta" value="21" min="2"/></div>
+          <div class="f-row">
+            <div class="f-field"><label class="f-label">Rápida</label><input class="f-input" type="number" id="inp-per-rapida" value="9" min="2"/></div>
+            <div class="f-field"><label class="f-label">Lenta</label><input class="f-input" type="number" id="inp-per-lenta" value="21" min="2"/></div>
           </div>
         </div>
         <div id="rsi-params" style="display:none">
-          <div class="field-row">
-            <div class="field"><label class="field-label">Sobrecompra</label><input class="field-input" type="number" id="inp-sobrecompra" value="70"/></div>
-            <div class="field"><label class="field-label">Sobrevenda</label><input class="field-input" type="number" id="inp-sobrevenda" value="30"/></div>
+          <div class="f-row">
+            <div class="f-field"><label class="f-label">Sobrecompra</label><input class="f-input" type="number" id="inp-sobrecompra" value="70"/></div>
+            <div class="f-field"><label class="f-label">Sobrevenda</label><input class="f-input" type="number" id="inp-sobrevenda" value="30"/></div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="config-section">
-      <div class="config-label" data-i18n="riskMgmt">Gestão de Risco</div>
-      <div class="field-row">
-        <div class="field"><label class="field-label">Stop Loss (pts)</label><input class="field-input" type="number" id="inp-sl" value="50" min="1"/></div>
-        <div class="field"><label class="field-label">Take Profit (pts)</label><input class="field-input" type="number" id="inp-tp" value="100" min="1"/></div>
+    <div class="config-block">
+      <div class="config-lbl" data-i18n="riskMgmt">Gestão de Risco</div>
+      <div class="f-row">
+        <div class="f-field"><label class="f-label">Stop Loss (pts)</label><input class="f-input" type="number" id="inp-sl" value="50" min="1"/></div>
+        <div class="f-field"><label class="f-label">Take Profit (pts)</label><input class="f-input" type="number" id="inp-tp" value="100" min="1"/></div>
       </div>
-      <div class="field-row">
-        <div class="field"><label class="field-label">Capital (USD)</label><input class="field-input" type="number" id="inp-capital" value="10000" min="100" step="100"/></div>
-        <div class="field"><label class="field-label" data-i18n="maxOps">Máx. Ops</label><input class="field-input" type="number" id="inp-maxops" value="5" min="1" max="20"/></div>
+      <div class="f-row">
+        <div class="f-field"><label class="f-label">Capital (USD)</label><input class="f-input" type="number" id="inp-capital" value="10000" min="100" step="100"/></div>
+        <div class="f-field"><label class="f-label" data-i18n="maxOps">Máx. Ops</label><input class="f-input" type="number" id="inp-maxops" value="5" min="1" max="20"/></div>
       </div>
-      <div class="field"><label class="field-label">Comissão</label><input class="field-input" type="number" id="inp-comissao" value="0.0002" step="0.0001"/></div>
+      <div class="f-field"><label class="f-label">Comissão</label><input class="f-input" type="number" id="inp-comissao" value="0.0002" step="0.0001"/></div>
+    </div>
+
+    <!-- BOTÃO RODAR — fixo no fundo -->
+    <div class="config-block" style="margin-top:auto;border-top:1px solid var(--border2)">
+      <button class="run-big-btn" id="btn-run" onclick="runBacktest()">
+        ▶ <span data-i18n="run">Rodar Backtest</span>
+      </button>
+      <button class="ntsl-right-btn" onclick="exportNTSL()">📥 Exportar para NTSL</button>
     </div>
 
   </div>
@@ -433,489 +442,345 @@ let currentTf = '1d';
 let equityChart = null;
 let lang = 'pt';
 let lastNTSL = '';
-let lastResult = null;
 
 const i18n = {
-  pt: {
-    run:'Rodar Backtest', generateAI:'Gerar com IA', apiOnline:'API Online',
-    asset:'Ativo', period:'Período', timeframe:'Timeframe', indicator:'Indicador',
-    indPeriod:'Período', deviation:'Desvio', riskMgmt:'Gestão de Risco', maxOps:'Máx. Ops',
-    aiLabel:'Descreve a estratégia em português', templates:'Templates', history:'Histórico',
+  pt:{run:'Rodar Backtest',generateAI:'Gerar com IA',apiOnline:'API Online',asset:'Ativo',
+    period:'Período',timeframe:'Timeframe',indicator:'Indicador',indPeriod:'Período',
+    deviation:'Desvio',riskMgmt:'Gestão de Risco',maxOps:'Máx. Ops',
+    aiLabel:'Descreve a estratégia',templates:'Templates',history:'Histórico',
     emptyTitle:'Pronto para testar',
-    emptySub:'Cola o código do teu bot, configura os parâmetros à direita e clica Rodar Backtest',
-    loading:'A rodar backtest...', aiLoading:'A gerar com IA...',
-    profit:'LUCRO', loss:'PREJUÍZO', neutral:'NEUTRO',
-    capitalInicial:'Capital Inicial', capitalFinal:'Capital Final',
-    lucroValor:'Lucro / Perda', retorno:'Retorno Total', retornoAnual:'Retorno Anual',
-    winRate:'Win Rate', sharpe:'Sharpe Ratio', drawdown:'Max Drawdown',
-    profitFactor:'Profit Factor', totalTrades:'Total Trades',
-    equityCurve:'Equity Curve', tradeHistory:'Histórico de Trades',
-    entry:'Entrada', exit:'Saída', ret:'Retorno', pnl:'P&L', result:'Resultado',
-    win:'Ganho', lose:'Perda',
-    aiAnalysis:'🤖 Análise da IA — Problemas Detectados',
-    aiSuggestion:'💡 Sugestão da IA para Melhorar',
-    aiApply:'✨ Aplicar Sugestão Automaticamente',
-    aiGenerating:'A IA está a analisar a estratégia...',
-  },
-  en: {
-    run:'Run Backtest', generateAI:'Generate with AI', apiOnline:'API Online',
-    asset:'Asset', period:'Period', timeframe:'Timeframe', indicator:'Indicator',
-    indPeriod:'Period', deviation:'Deviation', riskMgmt:'Risk Management', maxOps:'Max Ops',
-    aiLabel:'Describe your strategy in English', templates:'Templates', history:'History',
+    emptySub:'Configura os parâmetros à direita e clica Rodar Backtest',
+    loading:'A rodar backtest...',aiLoading:'A gerar...',
+    profit:'LUCRO',loss:'PREJUÍZO',neutral:'NEUTRO',
+    capInicial:'Capital Inicial',capFinal:'Capital Final',lucro:'Lucro / Perda',
+    retorno:'Retorno Total',retAnual:'Retorno Anual',winRate:'Win Rate',
+    sharpe:'Sharpe Ratio',drawdown:'Max Drawdown',pf:'Profit Factor',
+    trades:'Trades',equity:'Equity Curve',tradeHist:'Histórico de Trades',
+    entry:'Entrada',exit:'Saída',ret:'Retorno',pnl:'P&L',result:'Resultado',
+    win:'Ganho',lose:'Perda',
+    aiTitle:'🤖 Análise da IA — Problemas Detectados',
+    aiSugg:'💡 Sugestão para Melhorar',
+    aiApply:'✨ Aplicar Sugestão',
+    aiAnalysing:'A IA está a analisar...',
+    bom:'Bom',medio:'Médio',fraco:'Fraco'},
+  en:{run:'Run Backtest',generateAI:'Generate with AI',apiOnline:'API Online',asset:'Asset',
+    period:'Period',timeframe:'Timeframe',indicator:'Indicator',indPeriod:'Period',
+    deviation:'Deviation',riskMgmt:'Risk Management',maxOps:'Max Ops',
+    aiLabel:'Describe your strategy',templates:'Templates',history:'History',
     emptyTitle:'Ready to test',
-    emptySub:'Paste your bot code, configure parameters on the right and click Run Backtest',
-    loading:'Running backtest...', aiLoading:'Generating with AI...',
-    profit:'PROFIT', loss:'LOSS', neutral:'NEUTRAL',
-    capitalInicial:'Initial Capital', capitalFinal:'Final Capital',
-    lucroValor:'Profit / Loss', retorno:'Total Return', retornoAnual:'Annual Return',
-    winRate:'Win Rate', sharpe:'Sharpe Ratio', drawdown:'Max Drawdown',
-    profitFactor:'Profit Factor', totalTrades:'Total Trades',
-    equityCurve:'Equity Curve', tradeHistory:'Trade History',
-    entry:'Entry', exit:'Exit', ret:'Return', pnl:'P&L', result:'Result',
-    win:'Win', lose:'Loss',
-    aiAnalysis:'🤖 AI Analysis — Issues Detected',
-    aiSuggestion:'💡 AI Suggestion to Improve',
-    aiApply:'✨ Apply Suggestion Automatically',
-    aiGenerating:'AI is analysing the strategy...',
-  },
-  es: {
-    run:'Ejecutar Backtest', generateAI:'Generar con IA', apiOnline:'API Online',
-    asset:'Activo', period:'Período', timeframe:'Timeframe', indicator:'Indicador',
-    indPeriod:'Período', deviation:'Desviación', riskMgmt:'Gestión de Riesgo', maxOps:'Máx. Ops',
-    aiLabel:'Describe tu estrategia en español', templates:'Templates', history:'Historial',
+    emptySub:'Configure parameters on the right and click Run Backtest',
+    loading:'Running backtest...',aiLoading:'Generating...',
+    profit:'PROFIT',loss:'LOSS',neutral:'NEUTRAL',
+    capInicial:'Initial Capital',capFinal:'Final Capital',lucro:'Profit / Loss',
+    retorno:'Total Return',retAnual:'Annual Return',winRate:'Win Rate',
+    sharpe:'Sharpe Ratio',drawdown:'Max Drawdown',pf:'Profit Factor',
+    trades:'Trades',equity:'Equity Curve',tradeHist:'Trade History',
+    entry:'Entry',exit:'Exit',ret:'Return',pnl:'P&L',result:'Result',
+    win:'Win',lose:'Loss',
+    aiTitle:'🤖 AI Analysis — Issues Detected',
+    aiSugg:'💡 Suggestion to Improve',
+    aiApply:'✨ Apply Suggestion',
+    aiAnalysing:'AI is analysing...',
+    bom:'Good',medio:'Fair',fraco:'Poor'},
+  es:{run:'Ejecutar Backtest',generateAI:'Generar con IA',apiOnline:'API Online',asset:'Activo',
+    period:'Período',timeframe:'Timeframe',indicator:'Indicador',indPeriod:'Período',
+    deviation:'Desviación',riskMgmt:'Gestión de Riesgo',maxOps:'Máx. Ops',
+    aiLabel:'Describe tu estrategia',templates:'Templates',history:'Historial',
     emptyTitle:'Listo para probar',
-    emptySub:'Pega el código de tu bot, configura los parámetros a la derecha y haz clic en Ejecutar Backtest',
-    loading:'Ejecutando backtest...', aiLoading:'Generando con IA...',
-    profit:'GANANCIA', loss:'PÉRDIDA', neutral:'NEUTRO',
-    capitalInicial:'Capital Inicial', capitalFinal:'Capital Final',
-    lucroValor:'Ganancia / Pérdida', retorno:'Retorno Total', retornoAnual:'Retorno Anual',
-    winRate:'Win Rate', sharpe:'Sharpe Ratio', drawdown:'Max Drawdown',
-    profitFactor:'Factor Ganancia', totalTrades:'Total Trades',
-    equityCurve:'Curva de Equity', tradeHistory:'Historial de Trades',
-    entry:'Entrada', exit:'Salida', ret:'Retorno', pnl:'P&L', result:'Resultado',
-    win:'Ganancia', lose:'Pérdida',
-    aiAnalysis:'🤖 Análisis IA — Problemas Detectados',
-    aiSuggestion:'💡 Sugerencia IA para Mejorar',
-    aiApply:'✨ Aplicar Sugerencia Automáticamente',
-    aiGenerating:'La IA está analizando la estrategia...',
-  }
+    emptySub:'Configura los parámetros a la derecha y haz clic en Ejecutar Backtest',
+    loading:'Ejecutando backtest...',aiLoading:'Generando...',
+    profit:'GANANCIA',loss:'PÉRDIDA',neutral:'NEUTRO',
+    capInicial:'Capital Inicial',capFinal:'Capital Final',lucro:'Ganancia / Pérdida',
+    retorno:'Retorno Total',retAnual:'Retorno Anual',winRate:'Win Rate',
+    sharpe:'Ratio Sharpe',drawdown:'Max Drawdown',pf:'Factor Ganancia',
+    trades:'Trades',equity:'Curva Equity',tradeHist:'Historial Trades',
+    entry:'Entrada',exit:'Salida',ret:'Retorno',pnl:'P&L',result:'Resultado',
+    win:'Ganancia',lose:'Pérdida',
+    aiTitle:'🤖 Análisis IA — Problemas Detectados',
+    aiSugg:'💡 Sugerencia para Mejorar',
+    aiApply:'✨ Aplicar Sugerencia',
+    aiAnalysing:'La IA está analizando...',
+    bom:'Bueno',medio:'Regular',fraco:'Débil'},
 };
 
-function t(k) { return i18n[lang][k] || k; }
+function t(k){return i18n[lang][k]||k}
 
-function setLang(l) {
-  lang = l;
-  document.querySelectorAll('.lang-btn').forEach((b,i) => b.classList.toggle('active', ['pt','en','es'][i] === l));
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const k = el.getAttribute('data-i18n');
-    if (i18n[l][k]) el.textContent = i18n[l][k];
-  });
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach((b,i)=>b.classList.toggle('active',['pt','en','es'][i]===l));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(i18n[l][k])el.textContent=i18n[l][k]});
 }
 
-function showTab(tab) {
-  ['editor','templates','history'].forEach(t => {
-    const content = document.getElementById(`tab-content-${t}`);
-    const btn     = document.getElementById(`tab-${t}`);
-    if (content) content.style.display = t === tab ? 'flex' : 'none';
-    if (btn) btn.classList.toggle('active', t === tab);
+function showTab(tab){
+  ['editor','templates','history'].forEach(t=>{
+    const c=document.getElementById(`tc-${t}`);
+    const b=document.getElementById(`tab-${t}`);
+    if(c)c.style.display=t===tab?'flex':'none';
+    if(b)b.classList.toggle('active',t===tab);
   });
-  if (tab === 'history') carregarHistorico();
+  if(tab==='history')loadHistory();
 }
 
-function setTf(btn, tf) {
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+function setTf(btn,tf){
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  currentTf = tf;
+  currentTf=tf;
 }
 
-function atualizarParams() {
-  const ind = document.getElementById('sel-indicador').value;
-  document.getElementById('cross-params').style.display = ind === 'CROSS' ? 'block' : 'none';
-  document.getElementById('rsi-params').style.display   = ['RSI','STOCH'].includes(ind) ? 'block' : 'none';
-  document.getElementById('field-desvio').style.display = ['BB','ATR','KELTNER'].includes(ind) ? 'flex' : 'none';
-  document.getElementById('inp-periodo-ind').parentElement.style.display = ind === 'CROSS' ? 'none' : 'flex';
+function atualizarParams(){
+  const ind=document.getElementById('sel-indicador').value;
+  document.getElementById('cross-params').style.display=ind==='CROSS'?'block':'none';
+  document.getElementById('rsi-params').style.display=['RSI','STOCH'].includes(ind)?'block':'none';
+  document.getElementById('field-desvio').style.display=['BB','ATR','KELTNER'].includes(ind)?'flex':'none';
+  document.getElementById('field-periodo').style.display=ind==='CROSS'?'none':'flex';
 }
 
-function focusAI() {
+function focusAI(){showTab('editor');setTimeout(()=>document.getElementById('ai-descricao').focus(),100)}
+
+function getPayload(){
+  const codigo=document.getElementById('code-editor').value.trim();
+  const capital=parseFloat(document.getElementById('inp-capital').value);
+  const ind=document.getElementById('sel-indicador').value;
+  if(codigo&&codigo.includes('class')&&codigo.includes('Strategy')&&!codigo.startsWith('#')){
+    return{type:'custom',payload:{codigo,ativo:document.getElementById('sel-ativo').value,
+      periodo:document.getElementById('sel-periodo').value,capital,
+      comissao:parseFloat(document.getElementById('inp-comissao').value),
+      timeframe:currentTf,guardar:true,nome:'Estratégia Personalizada'}};
+  }
+  return{type:'visual',payload:{
+    ativo:document.getElementById('sel-ativo').value,
+    periodo:document.getElementById('sel-periodo').value,capital,
+    comissao:parseFloat(document.getElementById('inp-comissao').value),
+    timeframe:currentTf,indicador:ind,
+    periodo_ind:parseInt(document.getElementById('inp-periodo-ind').value)||20,
+    desvio:parseFloat(document.getElementById('inp-desvio').value)||2.0,
+    periodo_rapida:parseInt(document.getElementById('inp-per-rapida').value)||9,
+    periodo_lenta:parseInt(document.getElementById('inp-per-lenta').value)||21,
+    tipo_rapida:'EMA',tipo_lenta:'EMA',
+    stop_loss_pts:parseFloat(document.getElementById('inp-sl').value)||50,
+    take_profit_pts:parseFloat(document.getElementById('inp-tp').value)||100,
+    max_operacoes:parseInt(document.getElementById('inp-maxops').value)||5,
+    sobrecompra:parseFloat(document.getElementById('inp-sobrecompra').value)||70,
+    sobrevenda:parseFloat(document.getElementById('inp-sobrevenda').value)||30,
+  }};
+}
+
+async function runBacktest(){
+  const btn=document.getElementById('btn-run');
+  const center=document.getElementById('col-center');
+  btn.disabled=true;
+  center.innerHTML=`<div class="center-loading"><div class="spinner"></div><span>${t('loading')}</span></div>`;
+  try{
+    const{type,payload}=getPayload();
+    const ep=type==='custom'?`${API}/backtest/custom`:`${API}/backtest/visual`;
+    const res=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(data.erro)throw new Error(data.erro);
+    if(data.codigo_ntsl)lastNTSL=data.codigo_ntsl;
+    renderReport(data,parseFloat(payload.capital));
+  }catch(e){
+    center.innerHTML=`<div class="center-empty"><div class="center-empty-icon">⚠️</div><div class="center-empty-title">Erro</div><div class="center-empty-sub">${e.message}</div></div>`;
+  }
+  btn.disabled=false;
+}
+
+function sem(val,th){return val>=th[0]?'good':val>=th[1]?'ok':'bad'}
+function semLabel(s){return{good:t('bom'),ok:t('medio'),bad:t('fraco')}[s]}
+function barW(val,min,max){return Math.min(100,Math.max(0,((val-min)/(max-min))*100))}
+
+function renderReport(d,capInicial){
+  const center=document.getElementById('col-center');
+  const ret=d.retorno||0;
+  const capFinal=d.capital_final||capInicial;
+  const pnl=capFinal-capInicial;
+  const isP=pnl>0,isL=pnl<0;
+  const cls=isP?'profit':isL?'loss':'neutral';
+  const statusLabel=isP?t('profit'):isL?t('loss'):t('neutral');
+  const wrS=sem(d.win_rate,[55,45]);
+  const shS=sem(d.sharpe,[0.5,0]);
+  const ddS=sem(-d.max_drawdown,[0,10]);
+  const pfS=sem(d.profit_factor,[1.5,1]);
+  const lineColor=isP?'#10b981':isL?'#ef4444':'#f59e0b';
+  const fillColor=isP?'rgba(16,185,129,0.08)':isL?'rgba(239,68,68,0.08)':'rgba(245,158,11,0.08)';
+
+  center.innerHTML=`<div class="report">
+
+  <div class="financial-card ${cls}">
+    <div class="financial-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="financial-badge ${cls}">${statusLabel}</span>
+        <span style="font-size:12px;font-weight:500">${d.ativo} · ${d.periodo} · ${d.timeframe}</span>
+      </div>
+      <div class="financial-info">${d.candles} candles · ${d.total_trades} ${t('trades')}</div>
+    </div>
+    <div class="financial-grid">
+      <div class="financial-item">
+        <div class="f-label">${t('capInicial')}</div>
+        <div class="f-value">$${capInicial.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>
+      <div class="financial-item">
+        <div class="f-label">${t('capFinal')}</div>
+        <div class="f-value" style="color:${isP?'var(--green)':isL?'var(--red)':'var(--amber)'}">$${capFinal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>
+      <div class="financial-item">
+        <div class="f-label">${t('lucro')}</div>
+        <div class="f-value" style="color:${isP?'var(--green)':isL?'var(--red)':'var(--amber)'}">${isP?'+':''}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="f-sub">${t('retAnual')}: ${d.retorno_anual?.toFixed(2)}%</div>
+      </div>
+    </div>
+    <div class="pnl-big ${isP?'pos':isL?'neg':'neut'}">${isP?'+':''}${ret.toFixed(2)}%</div>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-header"><span class="metric-name">${t('winRate')}</span><span class="metric-signal ${wrS}">${semLabel(wrS)}</span></div>
+      <div class="metric-val">${d.win_rate?.toFixed(1)}%</div>
+      <div class="metric-bar"><div class="metric-bar-fill ${wrS}" style="width:${barW(d.win_rate,0,100)}%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-header"><span class="metric-name">${t('sharpe')}</span><span class="metric-signal ${shS}">${semLabel(shS)}</span></div>
+      <div class="metric-val">${d.sharpe?.toFixed(2)}</div>
+      <div class="metric-bar"><div class="metric-bar-fill ${shS}" style="width:${barW(Math.max(0,d.sharpe),0,3)*33}%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-header"><span class="metric-name">${t('drawdown')}</span><span class="metric-signal ${ddS}">${semLabel(ddS)}</span></div>
+      <div class="metric-val" style="color:var(--red)">${d.max_drawdown?.toFixed(2)}%</div>
+      <div class="metric-bar"><div class="metric-bar-fill ${ddS}" style="width:${barW(-d.max_drawdown,0,50)}%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-header"><span class="metric-name">${t('pf')}</span><span class="metric-signal ${pfS}">${semLabel(pfS)}</span></div>
+      <div class="metric-val">${d.profit_factor?.toFixed(2)}</div>
+      <div class="metric-bar"><div class="metric-bar-fill ${pfS}" style="width:${barW(d.profit_factor,0,3)*33}%"></div></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="card-header">
+      <span class="card-title">${t('equity')}</span>
+      <span class="card-tag">${d.estrategia||'EMA'} · ${d.timeframe}</span>
+    </div>
+    <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
+  </div>
+
+  ${ret<10?`<div class="ai-box" id="ai-box">
+    <div class="ai-box-header"><span style="font-size:18px">🤖</span><span class="ai-box-title">${ret<0?t('aiTitle'):'💡 Sugestões de Melhoria'}</span></div>
+    <div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px"><div class="spinner" style="border-top-color:var(--purple)"></div>${t('aiAnalysing')}</div>
+  </div>`:`<div class="ai-box" style="border-color:rgba(16,185,129,0.3);background:var(--green-bg)">
+    <div class="ai-box-header"><span style="font-size:18px">🟢</span><span class="ai-box-title" style="color:var(--green)">Estratégia Sólida!</span></div>
+    <div style="font-size:12px;color:var(--muted2)">Retorno de <strong style="color:var(--green)">+${ret.toFixed(2)}%</strong> com Win Rate <strong>${d.win_rate?.toFixed(1)}%</strong>. Considera testar em mais ativos e timeframes.</div>
+  </div>`}
+
+  <div class="trades-card">
+    <div class="trades-header">
+      <span class="card-title">${t('tradeHist')}</span>
+      <span class="card-tag">${(d.trades||[]).length} trades</span>
+    </div>
+    <table class="trades-table">
+      <thead><tr><th>${t('entry')}</th><th>${t('exit')}</th><th>${t('ret')}</th><th>${t('pnl')}</th><th>${t('result')}</th></tr></thead>
+      <tbody>${(d.trades||[]).map(tr=>`<tr>
+        <td>${tr.entrada?.slice(0,16)}</td>
+        <td>${tr.saida?.slice(0,16)}</td>
+        <td style="color:${tr.retorno>=0?'var(--green)':'var(--red)'}">${tr.retorno>=0?'+':''}${tr.retorno?.toFixed(2)}%</td>
+        <td style="color:${tr.lucro>=0?'var(--green)':'var(--red)'}">${tr.lucro>=0?'+':''}$${Math.abs(tr.lucro).toFixed(2)}</td>
+        <td><span class="badge ${tr.retorno>=0?'win':'loss'}">${tr.retorno>=0?t('win'):t('lose')}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>
+  </div>`;
+
+  if(equityChart){equityChart.destroy();equityChart=null}
+  equityChart=new Chart(document.getElementById('equityChart'),{
+    type:'line',
+    data:{labels:(d.datas_equity||[]).map(dt=>dt.slice(0,10)),datasets:[{
+      label:'Equity',data:d.equity_curve,borderColor:lineColor,
+      backgroundColor:fillColor,borderWidth:1.5,fill:true,tension:0.3,
+      pointRadius:0,pointHoverRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`}}},
+      scales:{
+        x:{ticks:{color:'#6b7280',font:{size:9},maxTicksLimit:6,maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},
+        y:{ticks:{color:'#6b7280',font:{size:9},callback:v=>'$'+Math.round(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}
+      }}
+  });
+
+  if(ret<10)setTimeout(()=>analisarIA(d,ret,capInicial),600);
+}
+
+async function analisarIA(d,ret,capInicial){
+  const box=document.getElementById('ai-box');
+  if(!box)return;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
+        messages:[{role:'user',content:`Analisa backtest e responde APENAS em JSON válido sem markdown:
+Ativo:${d.ativo} Período:${d.periodo} TF:${d.timeframe}
+Capital:$${capInicial}→$${d.capital_final} Retorno:${ret.toFixed(2)}%
+WinRate:${d.win_rate?.toFixed(1)}% Trades:${d.total_trades} Sharpe:${d.sharpe?.toFixed(2)} DD:${d.max_drawdown?.toFixed(2)}% PF:${d.profit_factor?.toFixed(2)}
+Estratégia:${d.estrategia||'EMA Channel'}
+
+{"problemas":[{"titulo":"...","descricao":"..."}],"sugestao":"...","parametros":"..."}`}]})
+    });
+    const rd=await resp.json();
+    let txt=rd.content[0].text.trim().replace(/```json|```/g,'').trim();
+    const an=JSON.parse(txt);
+    box.innerHTML=`
+      <div class="ai-box-header"><span style="font-size:18px">🤖</span><span class="ai-box-title">${ret<0?t('aiTitle'):'💡 Sugestões'}</span></div>
+      ${(an.problemas||[]).map(p=>`<div class="ai-problem"><div class="ai-problem-title">⚠️ ${p.titulo}</div><div class="ai-problem-desc">${p.descricao}</div></div>`).join('')}
+      <div class="ai-sugg">
+        <div class="ai-sugg-title">${t('aiSugg')}</div>
+        <div class="ai-sugg-text">${an.sugestao}</div>
+        ${an.parametros?`<div style="margin-top:6px;font-size:10px;color:var(--green);font-family:var(--mono)">🎯 ${an.parametros}</div>`:''}
+      </div>
+      <button class="ai-apply-btn" onclick="aplicarSugestao('${encodeURIComponent(an.sugestao||'')}')">
+        ${t('aiApply')}
+      </button>`;
+  }catch(e){
+    if(box)box.innerHTML=`<div class="ai-box-header"><span style="font-size:18px">💡</span><span class="ai-box-title">${t('aiSugg')}</span></div>
+      <div class="ai-sugg"><div class="ai-sugg-text">${ret<-10?`Win Rate muito baixo (${d.win_rate?.toFixed(1)}%). Aumenta o período do indicador e usa timeframe maior (1H ou 1D).`:ret<0?'Resultado negativo. Ajusta o SL/TP para melhor ratio risco/recompensa.':'Testa em diferentes ativos e timeframes.'}</div></div>`;
+  }
+}
+
+function aplicarSugestao(enc){
+  const txt=decodeURIComponent(enc);
+  document.getElementById('ai-descricao').value='Melhora esta estratégia: '+txt;
   showTab('editor');
   document.getElementById('ai-descricao').focus();
 }
 
-function getPayload() {
-  const codigo = document.getElementById('code-editor').value.trim();
-  const capital = parseFloat(document.getElementById('inp-capital').value);
-  const ind     = document.getElementById('sel-indicador').value;
-  if (codigo && codigo.includes('class') && codigo.includes('Strategy')) {
-    return {
-      type: 'custom',
-      payload: {
-        codigo,
-        ativo:    document.getElementById('sel-ativo').value,
-        periodo:  document.getElementById('sel-periodo').value,
-        capital,
-        comissao: parseFloat(document.getElementById('inp-comissao').value),
-        timeframe: currentTf,
-        guardar:  true,
-        nome:     'Estratégia Personalizada',
-      }
-    };
-  }
-  return {
-    type: 'visual',
-    payload: {
-      ativo:          document.getElementById('sel-ativo').value,
-      periodo:        document.getElementById('sel-periodo').value,
-      capital,
-      comissao:       parseFloat(document.getElementById('inp-comissao').value),
-      timeframe:      currentTf,
-      indicador:      ind,
-      periodo_ind:    parseInt(document.getElementById('inp-periodo-ind').value) || 20,
-      desvio:         parseFloat(document.getElementById('inp-desvio').value) || 2.0,
-      periodo_rapida: parseInt(document.getElementById('inp-per-rapida').value) || 9,
-      periodo_lenta:  parseInt(document.getElementById('inp-per-lenta').value) || 21,
-      tipo_rapida:    'EMA', tipo_lenta: 'EMA',
-      stop_loss_pts:  parseFloat(document.getElementById('inp-sl').value) || 50,
-      take_profit_pts:parseFloat(document.getElementById('inp-tp').value) || 100,
-      max_operacoes:  parseInt(document.getElementById('inp-maxops').value) || 5,
-      sobrecompra:    parseFloat(document.getElementById('inp-sobrecompra').value) || 70,
-      sobrevenda:     parseFloat(document.getElementById('inp-sobrevenda').value) || 30,
-    }
-  };
+async function exportNTSL(){
+  if(lastNTSL){mostrarNTSL(lastNTSL);return}
+  const{type,payload}=getPayload();
+  if(type==='visual'){
+    try{
+      const res=await fetch(`${API}/exportar/ntsl`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json();
+      if(data.ntsl){lastNTSL=data.ntsl;mostrarNTSL(data.ntsl)}
+    }catch(e){alert('Primeiro roda um backtest!')}
+  }else{alert('Exportação NTSL disponível para estratégias configuradas à direita.')}
 }
 
-async function runBacktest() {
-  const btn    = document.getElementById('btn-run');
-  const center = document.getElementById('col-center');
-  btn.disabled = true;
-  center.innerHTML = `<div class="center-loading"><div class="spinner"></div><span>${t('loading')}</span></div>`;
-
-  try {
-    const { type, payload } = getPayload();
-    const endpoint = type === 'custom' ? `${API}/backtest/custom` : `${API}/backtest/visual`;
-    const res  = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    const data = await res.json();
-    if (data.erro) throw new Error(data.erro);
-    lastResult = data;
-    if (data.codigo_ntsl) lastNTSL = data.codigo_ntsl;
-    renderReport(data, parseFloat(payload.capital));
-  } catch(e) {
-    center.innerHTML = `<div class="center-empty"><div class="center-empty-icon">⚠️</div><div class="center-empty-title">Erro</div><div class="center-empty-sub">${e.message}</div></div>`;
-  }
-  btn.disabled = false;
-}
-
-function renderReport(d, capitalInicial) {
-  const center   = document.getElementById('col-center');
-  const retorno  = d.retorno || 0;
-  const capFinal = d.capital_final || capitalInicial;
-  const pnl      = capFinal - capitalInicial;
-  const pnlPct   = retorno;
-  const isProfit = pnl > 0;
-  const isLoss   = pnl < 0;
-  const cardClass= isProfit ? 'profit' : isLoss ? 'loss' : 'neutral';
-  const statusLabel = isProfit ? t('profit') : isLoss ? t('loss') : t('neutral');
-
-  // Semáforos de qualidade
-  function semaforo(val, thresholds) {
-    if (val >= thresholds[0]) return 'good';
-    if (val >= thresholds[1]) return 'ok';
-    return 'bad';
-  }
-  function semaforoLabel(s) {
-    const labels = { good: { pt:'Bom', en:'Good', es:'Bueno' }, ok: { pt:'Médio', en:'Fair', es:'Regular' }, bad: { pt:'Fraco', en:'Poor', es:'Débil' } };
-    return labels[s][lang] || s;
-  }
-  function barWidth(val, min, max) {
-    return Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
-  }
-
-  const wrSem  = semaforo(d.win_rate,     [55, 45]);
-  const shSem  = semaforo(d.sharpe,       [0.5, 0]);
-  const ddSem  = semaforo(-d.max_drawdown,[0, 10]);
-  const pfSem  = semaforo(d.profit_factor,[1.5, 1]);
-
-  center.innerHTML = `
-  <div class="report">
-
-    <!-- RESULTADO FINANCEIRO -->
-    <div class="financial-card ${cardClass}">
-      <div class="financial-header">
-        <div class="financial-status">
-          <span class="financial-badge ${cardClass}">${statusLabel}</span>
-          <span class="financial-title">${d.ativo} · ${d.periodo} · ${d.timeframe}</span>
-        </div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${d.candles} candles · ${d.total_trades} trades</div>
-      </div>
-      <div class="financial-grid">
-        <div class="financial-item">
-          <div class="financial-label">${t('capitalInicial')}</div>
-          <div class="financial-value">$${capitalInicial.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-        </div>
-        <div class="financial-item">
-          <div class="financial-label">${t('capitalFinal')}</div>
-          <div class="financial-value ${isProfit?'pos':isLoss?'neg':'neutral'}">$${capFinal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-        </div>
-        <div class="financial-item">
-          <div class="financial-label">${t('lucroValor')}</div>
-          <div class="financial-value ${isProfit?'pos':isLoss?'neg':'neutral'}">${isProfit?'+':''}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-          <div class="financial-sub">${isProfit?'+':''}${pnlPct.toFixed(2)}% · ${t('retornoAnual')}: ${d.retorno_anual?.toFixed(2)}%</div>
-        </div>
-      </div>
-      <div class="pnl-big ${isProfit?'pos':isLoss?'neg':'neutral'}">${isProfit?'+':''}${pnlPct.toFixed(2)}%</div>
+function mostrarNTSL(ntsl){
+  const ex=document.getElementById('ntsl-modal');if(ex)ex.remove();
+  const m=document.createElement('div');m.id='ntsl-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+  m.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:22px;max-width:620px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:14px;font-weight:500">📥 Código NTSL — Profit (Nelogica)</div>
+      <button onclick="document.getElementById('ntsl-modal').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
     </div>
-
-    <!-- MÉTRICAS DE QUALIDADE -->
-    <div class="metrics-section">
-      <div class="metric-card">
-        <div class="metric-header">
-          <span class="metric-name">${t('winRate')}</span>
-          <span class="metric-signal ${wrSem}">${semaforoLabel(wrSem)}</span>
-        </div>
-        <div class="metric-value">${d.win_rate?.toFixed(1)}%</div>
-        <div class="metric-bar"><div class="metric-bar-fill ${wrSem}" style="width:${barWidth(d.win_rate,0,100)}%"></div></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-header">
-          <span class="metric-name">${t('sharpe')}</span>
-          <span class="metric-signal ${shSem}">${semaforoLabel(shSem)}</span>
-        </div>
-        <div class="metric-value">${d.sharpe?.toFixed(2)}</div>
-        <div class="metric-bar"><div class="metric-bar-fill ${shSem}" style="width:${barWidth(Math.max(0,d.sharpe),-1,3)*100/300}%"></div></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-header">
-          <span class="metric-name">${t('drawdown')}</span>
-          <span class="metric-signal ${ddSem}">${semaforoLabel(ddSem)}</span>
-        </div>
-        <div class="metric-value neg">${d.max_drawdown?.toFixed(2)}%</div>
-        <div class="metric-bar"><div class="metric-bar-fill ${ddSem}" style="width:${barWidth(-d.max_drawdown,0,50)}%"></div></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-header">
-          <span class="metric-name">${t('profitFactor')}</span>
-          <span class="metric-signal ${pfSem}">${semaforoLabel(pfSem)}</span>
-        </div>
-        <div class="metric-value">${d.profit_factor?.toFixed(2)}</div>
-        <div class="metric-bar"><div class="metric-bar-fill ${pfSem}" style="width:${barWidth(d.profit_factor,0,3)*100/300}%"></div></div>
-      </div>
-    </div>
-
-    <!-- EQUITY CURVE -->
-    <div class="chart-card">
-      <div class="chart-header">
-        <span class="chart-title">${t('equityCurve')}</span>
-        <span class="chart-tag">${d.estrategia||d.ema_period||'EMA'} · ${d.timeframe}</span>
-      </div>
-      <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
-    </div>
-
-    <!-- AI ANALYSIS (só se resultado negativo) -->
-    ${isLoss ? `
-    <div class="ai-analysis" id="ai-analysis-box">
-      <div class="ai-analysis-header">
-        <span class="ai-analysis-icon">🤖</span>
-        <span class="ai-analysis-title">${t('aiAnalysis')}</span>
-      </div>
-      <div class="ai-analysis-loading"><div class="spinner" style="border-top-color:var(--purple)"></div><span>${t('aiGenerating')}</span></div>
-    </div>` : isProfit && pnlPct < 5 ? `
-    <div class="ai-analysis" id="ai-analysis-box" style="border-color:rgba(245,158,11,0.3);background:var(--amber-bg)">
-      <div class="ai-analysis-header">
-        <span class="ai-analysis-icon">💡</span>
-        <span class="ai-analysis-title" style="color:var(--amber)">Resultado Moderado — A IA tem sugestões</span>
-      </div>
-      <div class="ai-analysis-loading"><div class="spinner" style="border-top-color:var(--amber)"></div><span>${t('aiGenerating')}</span></div>
-    </div>` : `
-    <div class="ai-analysis" id="ai-analysis-box" style="border-color:rgba(16,185,129,0.3);background:var(--green-bg)">
-      <div class="ai-analysis-header">
-        <span class="ai-analysis-icon">🟢</span>
-        <span class="ai-analysis-title" style="color:var(--green)">Estratégia Sólida!</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted2)">Retorno de <strong style="color:var(--green)">+${pnlPct.toFixed(2)}%</strong> com Win Rate de <strong>${d.win_rate?.toFixed(1)}%</strong>. Considera aumentar o capital ou testar em mais ativos.</div>
-    </div>`}
-
-    <!-- TRADE HISTORY -->
-    <div class="trades-card">
-      <div class="trades-header">
-        <span class="chart-title">${t('tradeHistory')}</span>
-        <span class="chart-tag">${(d.trades||[]).length} trades</span>
-      </div>
-      <table class="trades-table">
-        <thead><tr>
-          <th>${t('entry')}</th><th>${t('exit')}</th>
-          <th>${t('ret')}</th><th>${t('pnl')}</th><th>${t('result')}</th>
-        </tr></thead>
-        <tbody>${(d.trades||[]).map(tr=>`
-          <tr>
-            <td>${tr.entrada?.slice(0,16)}</td>
-            <td>${tr.saida?.slice(0,16)}</td>
-            <td style="color:${tr.retorno>=0?'var(--green)':'var(--red)'}">${tr.retorno>=0?'+':''}${tr.retorno?.toFixed(2)}%</td>
-            <td style="color:${tr.lucro>=0?'var(--green)':'var(--red)'}">${tr.lucro>=0?'+':''}$${Math.abs(tr.lucro).toFixed(2)}</td>
-            <td><span class="badge ${tr.retorno>=0?'win':'loss'}">${tr.retorno>=0?t('win'):t('lose')}</span></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
+    <div style="font-size:11px;color:var(--muted2);background:var(--green-bg);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius);padding:8px">✅ Cole no <strong>Editor de Estratégias do Profit</strong> para usar na B3</div>
+    <pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;color:#e8eaf0;overflow-y:auto;flex:1;white-space:pre-wrap">${ntsl}</pre>
+    <div style="display:flex;gap:8px">
+      <button onclick="navigator.clipboard.writeText(document.querySelector('#ntsl-modal pre').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='📋 Copiar',1500)})" style="flex:1;padding:9px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-weight:500">📋 Copiar NTSL</button>
+      <button onclick="document.getElementById('ntsl-modal').remove()" style="padding:9px 16px;background:var(--bg3);color:var(--muted2);border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-family:var(--font)">Fechar</button>
     </div>
   </div>`;
-
-  // Chart
-  if (equityChart) { equityChart.destroy(); equityChart = null; }
-  const lineColor = isProfit ? '#10b981' : isLoss ? '#ef4444' : '#f59e0b';
-  const fillColor = isProfit ? 'rgba(16,185,129,0.08)' : isLoss ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
-  equityChart = new Chart(document.getElementById('equityChart'), {
-    type: 'line',
-    data: {
-      labels: (d.datas_equity||[]).map(dt=>dt.slice(0,10)),
-      datasets: [{ label:'Equity', data:d.equity_curve, borderColor:lineColor, backgroundColor:fillColor, borderWidth:1.5, fill:true, tension:0.3, pointRadius:0, pointHoverRadius:4 }]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`}} },
-      scales:{
-        x:{ticks:{color:'#6b7280',font:{size:10},maxTicksLimit:6,maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}},
-        y:{ticks:{color:'#6b7280',font:{size:10},callback:v=>'$'+Math.round(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}
-      }
-    }
-  });
-
-  // AI Analysis (só se não for muito bom)
-  if (pnlPct < 10) {
-    setTimeout(() => analisarComIA(d, pnlPct, capitalInicial), 500);
-  }
+  document.body.appendChild(m);
 }
 
-async function analisarComIA(d, pnlPct, capitalInicial) {
-  const box = document.getElementById('ai-analysis-box');
-  if (!box) return;
-
-  try {
-    const isLoss = pnlPct < 0;
-    const prompt = `Analisa este resultado de backtest de trading e responde APENAS em JSON válido:
-
-DADOS:
-- Ativo: ${d.ativo} | Período: ${d.periodo} | Timeframe: ${d.timeframe}
-- Capital inicial: $${capitalInicial} | Capital final: $${d.capital_final}
-- Retorno: ${pnlPct.toFixed(2)}% | Retorno anual: ${d.retorno_anual?.toFixed(2)}%
-- Win Rate: ${d.win_rate?.toFixed(1)}% | Total trades: ${d.total_trades}
-- Sharpe: ${d.sharpe?.toFixed(2)} | Max Drawdown: ${d.max_drawdown?.toFixed(2)}%
-- Profit Factor: ${d.profit_factor?.toFixed(2)}
-- Estratégia: ${d.estrategia || 'EMA Channel'}
-
-Responde APENAS com este JSON (sem texto extra, sem markdown):
-{
-  "problemas": [
-    {"titulo": "...", "descricao": "..."},
-    {"titulo": "...", "descricao": "..."}
-  ],
-  "sugestao": "Sugestão específica e concreta para melhorar a performance",
-  "parametros_sugeridos": "Ex: Aumentar período EMA para 20, usar timeframe diário, adicionar filtro ATR"
-}`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await response.json();
-    let text = data.content[0].text.trim();
-    text = text.replace(/```json|```/g, '').trim();
-    const analysis = JSON.parse(text);
-
-    const isLossClass = pnlPct < 0;
-    box.innerHTML = `
-      <div class="ai-analysis-header">
-        <span class="ai-analysis-icon">${isLossClass ? '🤖' : '💡'}</span>
-        <span class="ai-analysis-title">${isLossClass ? t('aiAnalysis') : 'Sugestões de Melhoria'}</span>
-      </div>
-      <div class="ai-problems">
-        ${(analysis.problemas||[]).map(p=>`
-          <div class="ai-problem">
-            <div class="ai-problem-title">⚠️ ${p.titulo}</div>
-            <div class="ai-problem-desc">${p.descricao}</div>
-          </div>`).join('')}
-      </div>
-      <div class="ai-suggestion">
-        <div class="ai-suggestion-title">${t('aiSuggestion')}</div>
-        <div class="ai-suggestion-text">${analysis.sugestao}</div>
-        ${analysis.parametros_sugeridos ? `<div style="margin-top:8px;font-size:11px;color:var(--green);font-family:var(--mono)">🎯 ${analysis.parametros_sugeridos}</div>` : ''}
-      </div>
-      <button class="ai-apply-btn" onclick="aplicarSugestaoIA('${encodeURIComponent(JSON.stringify(analysis))}')">
-        ${t('aiApply')}
-      </button>`;
-
-  } catch(e) {
-    const box2 = document.getElementById('ai-analysis-box');
-    if (box2) {
-      box2.innerHTML = `
-        <div class="ai-analysis-header"><span class="ai-analysis-icon">🤖</span><span class="ai-analysis-title">${t('aiAnalysis')}</span></div>
-        <div class="ai-suggestion">
-          <div class="ai-suggestion-title">${t('aiSuggestion')}</div>
-          <div class="ai-suggestion-text">
-            ${pnlPct < -10 ? 'Win Rate muito baixo (' + d.win_rate?.toFixed(1) + '%). Estratégia gera demasiados sinais falsos. Sugestão: aumentar o período do indicador e usar timeframe maior (1H ou 1D) para filtrar ruído.' :
-              pnlPct < 0 ? 'Resultado negativo. Considera ajustar o Stop Loss e Take Profit para melhorar o ratio risco/recompensa.' :
-              'Resultado moderado. Testa em diferentes ativos e timeframes para identificar onde a estratégia performa melhor.'}
-          </div>
-        </div>`;
-    }
-  }
-}
-
-function aplicarSugestaoIA(encodedAnalysis) {
-  try {
-    const analysis = JSON.parse(decodeURIComponent(encodedAnalysis));
-    const texto = analysis.sugestao + '\n\nParâmetros: ' + (analysis.parametros_sugeridos || '');
-    document.getElementById('ai-descricao').value = 'Melhora esta estratégia: ' + texto;
-    showTab('editor');
-    document.getElementById('ai-descricao').focus();
-  } catch(e) {
-    showTab('editor');
-    document.getElementById('ai-descricao').focus();
-  }
-}
-
-async function exportNTSL() {
-  if (lastNTSL) { mostrarNTSLModal(lastNTSL); return; }
-  const { type, payload } = getPayload();
-  if (type === 'visual') {
-    try {
-      const res  = await fetch(`${API}/exportar/ntsl`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-      const data = await res.json();
-      if (data.ntsl) { lastNTSL = data.ntsl; mostrarNTSLModal(data.ntsl); }
-    } catch(e) { alert('Primeiro roda um backtest!'); }
-  } else {
-    alert('Exportação NTSL disponível para estratégias visuais. Configure um indicador à direita.');
-  }
-}
-
-function mostrarNTSLModal(ntsl) {
-  const existing = document.getElementById('ntsl-modal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'ntsl-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
-  modal.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:15px;font-weight:500">📥 Código NTSL — Profit (Nelogica)</div>
-        <button onclick="document.getElementById('ntsl-modal').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
-      </div>
-      <div style="font-size:12px;color:var(--muted2);background:var(--green-bg);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius);padding:10px">
-        ✅ Cole no <strong>Editor de Estratégias do Profit</strong> para usar na B3
-      </div>
-      <pre style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:11px;color:#e8eaf0;overflow-y:auto;flex:1;white-space:pre-wrap">${ntsl}</pre>
-      <div style="display:flex;gap:10px">
-        <button onclick="navigator.clipboard.writeText(document.querySelector('#ntsl-modal pre').textContent).then(()=>{this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='📋 Copiar',1500)})" style="flex:1;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-weight:500">📋 Copiar NTSL</button>
-        <button onclick="document.getElementById('ntsl-modal').remove()" style="padding:10px 20px;background:var(--bg3);color:var(--muted2);border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-family:var(--font)">Fechar</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-const TEMPLATES = [
-  { ativo:'XAU/USD', codigo:`class EMAChannelStrategy(Strategy):
+const TEMPLATES=[
+  {ativo:'XAU/USD',codigo:`class EMAChannelStrategy(Strategy):
     ema_period = 20
     def init(self):
         self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values, self.data.High)
@@ -925,8 +790,8 @@ const TEMPLATES = [
         if not self.position:
             if preco > self.ema_high[-1]: self.buy()
         else:
-            if preco < self.ema_low[-1]: self.position.close()` },
-  { ativo:'EUR/USD', codigo:`class CrossoverStrategy(Strategy):
+            if preco < self.ema_low[-1]: self.position.close()`},
+  {ativo:'EUR/USD',codigo:`class CrossoverStrategy(Strategy):
     fast = 9
     slow = 21
     def init(self):
@@ -936,142 +801,111 @@ const TEMPLATES = [
         if not self.position:
             if self.ema_fast[-1] > self.ema_slow[-1]: self.buy()
         else:
-            if self.ema_fast[-1] < self.ema_slow[-1]: self.position.close()` },
-  { ativo:'BTC/USD', codigo:`class RSIStrategy(Strategy):
-    rsi_period = 14
-    rsi_low = 30
-    rsi_high = 70
+            if self.ema_fast[-1] < self.ema_slow[-1]: self.position.close()`},
+  {ativo:'BTC/USD',codigo:`class RSIStrategy(Strategy):
+    rsi_period = 14; rsi_low = 30; rsi_high = 70
     def init(self):
-        def rsi(close, period=14):
-            s=pd.Series(close); delta=s.diff()
-            gain=delta.clip(lower=0).ewm(span=period,adjust=False).mean()
-            loss=(-delta.clip(upper=0)).ewm(span=period,adjust=False).mean()
-            return (100-(100/(1+gain/loss))).values
-        self.rsi = self.I(rsi, self.data.Close, self.rsi_period)
+        def rsi(c,p=14):
+            s=pd.Series(c);d=s.diff()
+            g=d.clip(lower=0).ewm(span=p,adjust=False).mean()
+            l=(-d.clip(upper=0)).ewm(span=p,adjust=False).mean()
+            return (100-(100/(1+g/l))).values
+        self.rsi=self.I(rsi,self.data.Close,self.rsi_period)
     def next(self):
         if not self.position:
-            if self.rsi[-1] < self.rsi_low: self.buy()
+            if self.rsi[-1]<self.rsi_low: self.buy()
         else:
-            if self.rsi[-1] > self.rsi_high: self.position.close()` },
-  { ativo:'EUR/USD', codigo:`class BollingerStrategy(Strategy):
-    periodo = 20
-    desvio  = 2.0
+            if self.rsi[-1]>self.rsi_high: self.position.close()`},
+  {ativo:'EUR/USD',codigo:`class BollingerStrategy(Strategy):
+    periodo=20; desvio=2.0
     def init(self):
         def bb_up(c,p,d): s=pd.Series(c); return (s.rolling(p).mean()+d*s.rolling(p).std()).values
         def bb_dn(c,p,d): s=pd.Series(c); return (s.rolling(p).mean()-d*s.rolling(p).std()).values
-        self.upper = self.I(bb_up, self.data.Close, self.periodo, self.desvio)
-        self.lower = self.I(bb_dn, self.data.Close, self.periodo, self.desvio)
+        self.upper=self.I(bb_up,self.data.Close,self.periodo,self.desvio)
+        self.lower=self.I(bb_dn,self.data.Close,self.periodo,self.desvio)
     def next(self):
         if not self.position:
-            if self.data.Close[-1] < self.lower[-1]: self.buy()
+            if self.data.Close[-1]<self.lower[-1]: self.buy()
         else:
-            if self.data.Close[-1] > self.upper[-1]: self.position.close()` },
-  { ativo:'GBP/USD', codigo:`class MACDStrategy(Strategy):
-    rapida = 12
-    lenta  = 26
-    sinal  = 9
+            if self.data.Close[-1]>self.upper[-1]: self.position.close()`},
+  {ativo:'GBP/USD',codigo:`class MACDStrategy(Strategy):
+    rapida=12; lenta=26; sinal=9
     def init(self):
         def macd(c,f,s): return (pd.Series(c).ewm(span=f).mean()-pd.Series(c).ewm(span=s).mean()).values
-        def sig(c,f,s,sg):
-            m=pd.Series(c).ewm(span=f).mean()-pd.Series(c).ewm(span=s).mean()
-            return m.ewm(span=sg).mean().values
-        self.macd = self.I(macd, self.data.Close, self.rapida, self.lenta)
-        self.sig  = self.I(sig,  self.data.Close, self.rapida, self.lenta, self.sinal)
+        def sig(c,f,s,sg): m=pd.Series(c).ewm(span=f).mean()-pd.Series(c).ewm(span=s).mean(); return m.ewm(span=sg).mean().values
+        self.macd=self.I(macd,self.data.Close,self.rapida,self.lenta)
+        self.sig=self.I(sig,self.data.Close,self.rapida,self.lenta,self.sinal)
     def next(self):
         if not self.position:
             if self.macd[-1]>self.sig[-1] and self.macd[-2]<=self.sig[-2]: self.buy()
         else:
-            if self.macd[-1]<self.sig[-1]: self.position.close()` },
-  { ativo:'IBOVESPA', codigo:`class B3EMAStrategy(Strategy):
-    ema_period = 20
+            if self.macd[-1]<self.sig[-1]: self.position.close()`},
+  {ativo:'IBOVESPA',codigo:`class B3EMAStrategy(Strategy):
+    ema_period=20
     def init(self):
-        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values, self.data.High)
-        self.ema_low  = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values, self.data.Low)
+        self.ema_high=self.I(lambda h: pd.Series(h).ewm(span=self.ema_period,adjust=False).mean().values,self.data.High)
+        self.ema_low=self.I(lambda l: pd.Series(l).ewm(span=self.ema_period,adjust=False).mean().values,self.data.Low)
     def next(self):
-        preco = self.data.Close[-1]
+        preco=self.data.Close[-1]
         if not self.position:
-            if preco > self.ema_high[-1]: self.buy()
+            if preco>self.ema_high[-1]: self.buy()
         else:
-            if preco < self.ema_low[-1]: self.position.close()` },
+            if preco<self.ema_low[-1]: self.position.close()`},
 ];
 
-function carregarTemplate(idx) {
-  const tpl = TEMPLATES[idx];
-  document.getElementById('code-editor').value = tpl.codigo;
-  document.getElementById('sel-ativo').value = tpl.ativo;
+function carregarTemplate(idx){
+  const tpl=TEMPLATES[idx];
+  document.getElementById('code-editor').value=tpl.codigo;
+  document.getElementById('sel-ativo').value=tpl.ativo;
   showTab('editor');
 }
+function limparEditor(){document.getElementById('code-editor').value=''}
+function copiarCodigo(){navigator.clipboard.writeText(document.getElementById('code-editor').value)}
 
-function limparEditor() {
-  document.getElementById('code-editor').value = '';
-}
-
-function copiarCodigo() {
-  navigator.clipboard.writeText(document.getElementById('code-editor').value);
-}
-
-async function gerarComIA() {
-  const descricao = document.getElementById('ai-descricao').value.trim();
-  if (!descricao) { alert('Descreve a estratégia primeiro!'); return; }
-  const btn = document.getElementById('ai-btn');
-  btn.disabled = true;
-  btn.textContent = t('aiLoading');
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
-        messages:[{ role:'user', content:`Gera código Python para backtesting.py baseado em: "${descricao}"\n\nREGRAS:\n1. Classe herda de Strategy\n2. Usa apenas pd e np (já importados)\n3. NÃO importes nada\n4. Implementa init() e next()\n5. Retorna APENAS o código Python, sem explicações` }]
-      })
+async function gerarComIA(){
+  const desc=document.getElementById('ai-descricao').value.trim();
+  if(!desc){alert('Descreve a estratégia primeiro!');return}
+  const btn=document.getElementById('ai-btn');
+  btn.disabled=true;btn.textContent=t('aiLoading');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
+        messages:[{role:'user',content:`Gera código Python para backtesting.py: "${desc}"\nREGRAS: herda Strategy, usa só pd e np, sem imports, retorna APENAS código Python`}]})
     });
-    const data = await response.json();
-    document.getElementById('code-editor').value = data.content[0].text.trim();
-  } catch(e) {
-    alert('Erro: ' + e.message);
-  }
-  btn.disabled = false;
-  btn.textContent = '✨ ' + t('generateAI');
+    const data=await r.json();
+    document.getElementById('code-editor').value=data.content[0].text.trim();
+  }catch(e){alert('Erro: '+e.message)}
+  btn.disabled=false;btn.innerHTML='✨ <span>'+t('generateAI')+'</span>';
 }
 
-async function carregarHistorico() {
-  const list = document.getElementById('history-list');
-  if (!list) return;
-  list.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">A carregar...</div>';
-  try {
-    const res  = await fetch(`${API}/historico?limite=30`);
-    const data = await res.json();
-    if (!data.historico?.length) {
-      list.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Nenhum backtest ainda</div>';
-      return;
-    }
-    list.innerHTML = data.historico.map(d => {
-      const ret = parseFloat(d.retorno||0);
-      const col = ret > 0 ? 'var(--green)' : ret < 0 ? 'var(--red)' : 'var(--amber)';
-      return `<div class="tpl-card" style="cursor:default">
+async function loadHistory(){
+  const list=document.getElementById('history-list');
+  if(!list)return;
+  list.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">A carregar...</div>';
+  try{
+    const res=await fetch(`${API}/historico?limite=30`);
+    const data=await res.json();
+    if(!data.historico?.length){list.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Nenhum backtest ainda</div>';return}
+    list.innerHTML=data.historico.map(d=>{
+      const ret=parseFloat(d.retorno||0);
+      const col=ret>0?'var(--green)':ret<0?'var(--red)':'var(--amber)';
+      return`<div class="tpl-card" style="cursor:default">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:12px;font-weight:500;font-family:var(--mono)">${d.ativo}</div>
-          <div style="font-size:14px;font-weight:500;color:${col}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+          <div style="font-size:11px;font-weight:500;font-family:var(--mono)">${d.ativo}</div>
+          <div style="font-size:13px;font-weight:500;color:${col}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">${d.nome_estrategia||'-'} · ${d.timeframe} · ${d.total_trades} trades</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${d.nome_estrategia||'-'} · ${d.timeframe} · ${d.total_trades} trades</div>
         <div style="font-size:10px;color:var(--muted)">${(d.criado_em||'').slice(0,16)}</div>
       </div>`;
     }).join('');
-  } catch(e) {
-    list.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">Erro ao carregar</div>';
-  }
+  }catch(e){list.innerHTML='<div style="color:var(--red);font-size:11px;text-align:center;padding:16px">Erro</div>'}
 }
 
-// Tab key no editor
-document.getElementById('code-editor').addEventListener('keydown', function(e) {
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const s = this.selectionStart;
-    this.value = this.value.substring(0,s) + '    ' + this.value.substring(this.selectionEnd);
-    this.selectionStart = this.selectionEnd = s + 4;
-  }
+document.getElementById('code-editor').addEventListener('keydown',function(e){
+  if(e.key==='Tab'){e.preventDefault();const s=this.selectionStart;this.value=this.value.substring(0,s)+'    '+this.value.substring(this.selectionEnd);this.selectionStart=this.selectionEnd=s+4}
 });
 
-// API check
 fetch(`${API}/`).catch(()=>{});
 atualizarParams();
 </script>
