@@ -81,45 +81,24 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     if intervalo_yf in ["5m","15m","30m"]:
         periodo_yf = "60d"
 
-    df = None
-    # Tenta múltiplas abordagens para compatibilidade com yfinance 1.x e 2.x
     try:
-        df = yf.download(ticker, period=periodo_yf, interval=intervalo_yf,
-                         auto_adjust=True, progress=False, multi_level_index=False)
-    except Exception:
-        pass
+        tk = yf.Ticker(ticker)
+        df = tk.history(period=periodo_yf, interval=intervalo_yf)
+    except Exception as e:
+        raise HTTPException(400, f"Erro ao baixar dados: {str(e)}")
 
     if df is None or df.empty:
-        try:
-            tk = yf.Ticker(ticker)
-            df = tk.history(period=periodo_yf, interval=intervalo_yf)
-        except Exception:
-            pass
-
-    if df is None or df.empty:
-        raise HTTPException(400, f"Sem dados para {ativo}. Tente outro ativo ou período.")
+        raise HTTPException(400, f"Sem dados para {ativo}.")
 
     # Flatten MultiIndex se existir
     if hasattr(df.columns, 'levels'):
         df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
 
-    # Normalizar nomes das colunas
-    col_map = {}
-    for c in df.columns:
-        cl = str(c).lower().strip()
-        if cl == 'open': col_map[c] = 'Open'
-        elif cl == 'high': col_map[c] = 'High'
-        elif cl == 'low': col_map[c] = 'Low'
-        elif cl in ['close', 'adj close', 'adjclose']: col_map[c] = 'Close'
-        elif cl == 'volume': col_map[c] = 'Volume'
-    df = df.rename(columns=col_map)
+    # Manter APENAS colunas OHLCV — ignorar Dividends, Stock Splits, etc.
+    colunas_manter = ['Open','High','Low','Close','Volume']
+    df = df[[c for c in colunas_manter if c in df.columns]]
 
-    for col in ['Open','High','Low','Close']:
-        if col not in df.columns:
-            raise HTTPException(400, f"Dados incompletos para {ativo}: coluna {col} não encontrada.")
-
-    df = df[['Open','High','Low','Close'] + (['Volume'] if 'Volume' in df.columns else [])]
-    df = df.dropna()
+    df = df.dropna(subset=['Open','High','Low','Close'])
 
     if len(df) < 5:
         raise HTTPException(400, f"Dados insuficientes para {ativo}.")
