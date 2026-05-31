@@ -1,14 +1,12 @@
 <!--
-  BacktestPro Frontend — v4.0
+  BacktestPro Frontend — v4.1
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  Novidades v4.0:
-  - Textura grain no fundo (noise overlay profissional)
-  - Abas mudam APENAS o centro: Editor | Overview | Templates | Rank
-  - Editor: área de cole com instrução + botão colar código IA
-  - Overview: layout completo estilo TradingView (candles + stats + donut + equity)
-  - Templates: lista de estratégias prontas + visual robô
-  - Rank Best Bots: pódio + ranking com estrelas
-  - Painéis de métricas fixos sempre visíveis
+  Ajustes v4.1:
+  - Métricas: cor verde igual botão Rodar Backtest + glow
+  - Botão Exportar NTSL: mesmo tamanho do Rodar Backtest, mais atrativo
+  - Botão Colar código IA: mesmo padrão visual dos demais
+  - Gráficos: fundo dark em todos os painéis (sem branco)
+  - Donut: mais para baixo e melhor centralizado
 -->
 <!DOCTYPE html>
 <html lang="pt">
@@ -143,32 +141,38 @@ select option{background:#141920}
 .run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
 .exp-btn{
-  width:100%;height:28px;margin-top:6px;
-  background:transparent;border:1px solid rgba(255,184,48,0.25);
-  border-radius:5px;color:var(--amber);font-size:11px;font-family:var(--sans);
-  cursor:pointer;transition:all .12s;font-weight:500;
+  width:100%;height:38px;margin-top:6px;
+  background:linear-gradient(135deg,rgba(255,184,48,0.15) 0%,rgba(255,184,48,0.08) 100%);
+  border:1px solid rgba(255,184,48,0.35);
+  border-radius:7px;color:var(--amber);font-size:13px;font-family:var(--sans);
+  cursor:pointer;transition:all .15s;font-weight:700;
+  box-shadow:0 4px 14px rgba(255,184,48,0.1);
+  display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.exp-btn:hover{background:var(--amber-bg);border-color:rgba(255,184,48,0.4)}
+.exp-btn:hover{background:linear-gradient(135deg,rgba(255,184,48,0.22) 0%,rgba(255,184,48,0.12) 100%);border-color:rgba(255,184,48,0.5);box-shadow:0 6px 18px rgba(255,184,48,0.18);transform:translateY(-1px)}
+.exp-btn:active{transform:translateY(0)}
 
 /* ── FIXED METRICS BAR (always visible, below topbar above center) ── */
 .metrics-bar{
   display:grid;grid-template-columns:repeat(4,1fr);
   border-bottom:1px solid var(--border);
-  background:rgba(14,17,23,0.9);flex-shrink:0;
+  background:rgba(14,17,23,0.95);flex-shrink:0;
 }
 .mb-card{
-  padding:9px 14px;border-right:1px solid var(--border);
-  position:relative;display:flex;flex-direction:column;gap:3px;
+  padding:10px 14px;border-right:1px solid var(--border);
+  position:relative;display:flex;flex-direction:column;gap:4px;
 }
 .mb-card:last-child{border-right:none}
 .mb-name{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.mb-val{font-size:17px;font-weight:600;font-family:var(--mono);color:var(--text)}
-.mb-bar{height:2px;border-radius:1px;background:var(--border);margin-top:2px}
-.mb-fill{height:100%;border-radius:1px;transition:width .6s ease}
-.sem{position:absolute;top:8px;right:8px;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;letter-spacing:.03em}
-.sem-bom{background:var(--green-bg);color:var(--green)}
-.sem-med{background:var(--amber-bg);color:var(--amber)}
-.sem-fra{background:var(--red-bg);color:var(--red)}
+.mb-val{font-size:19px;font-weight:700;font-family:var(--mono);color:var(--green);text-shadow:0 0 20px rgba(0,208,132,0.3)}
+.mb-val.is-neg{color:var(--red);text-shadow:0 0 20px rgba(255,77,106,0.3)}
+.mb-val.is-neutral{color:var(--muted2);text-shadow:none}
+.mb-bar{height:3px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:3px;overflow:hidden}
+.mb-fill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.sem{position:absolute;top:9px;right:9px;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;letter-spacing:.03em}
+.sem-bom{background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.2)}
+.sem-med{background:rgba(255,184,48,0.12);color:var(--amber);border:1px solid rgba(255,184,48,0.2)}
+.sem-fra{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.2)}
 
 /* ── CENTER — TABS CONTENT ── */
 .col-center-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -214,12 +218,16 @@ select option{background:#141920}
 }
 .ia-gen-btn:hover{background:rgba(157,111,255,0.16)}
 .paste-code-btn{
-  width:100%;height:28px;
-  background:var(--green-bg);border:1px solid rgba(0,208,132,0.2);
-  border-radius:5px;color:var(--green);font-size:11px;font-family:var(--sans);
-  cursor:pointer;font-weight:500;transition:all .12s;
+  width:100%;height:38px;
+  background:linear-gradient(135deg,rgba(0,208,132,0.12) 0%,rgba(0,208,132,0.06) 100%);
+  border:1px solid rgba(0,208,132,0.3);
+  border-radius:7px;color:var(--green);font-size:13px;font-family:var(--sans);
+  cursor:pointer;font-weight:700;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  box-shadow:0 4px 14px rgba(0,208,132,0.08);
 }
-.paste-code-btn:hover{background:rgba(0,208,132,0.14)}
+.paste-code-btn:hover{background:linear-gradient(135deg,rgba(0,208,132,0.2) 0%,rgba(0,208,132,0.1) 100%);border-color:rgba(0,208,132,0.5);box-shadow:0 6px 18px rgba(0,208,132,0.15);transform:translateY(-1px)}
+.paste-code-btn:active{transform:translateY(0)}
 .ed-actions{display:flex;gap:5px}
 .ea-btn{flex:1;height:26px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
 .ea-btn:hover{background:var(--bg3);color:var(--text)}
@@ -270,14 +278,14 @@ select option{background:#141920}
 .ov-cap-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .ov-cap-val{font-size:13px;font-weight:500;color:var(--text);font-family:var(--mono)}
 
-.charts-2col{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
-.cp{padding:12px 14px}
+.charts-2col{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
+.cp{padding:12px 14px;background:var(--bg2)}
 .cp:first-child{border-right:1px solid var(--border)}
 .cp-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .cp-tag{font-size:9px;font-family:var(--mono);color:var(--muted)}
 
-.bottom3col{display:grid;grid-template-columns:170px 1fr 1fr;border-bottom:1px solid var(--border)}
-.b3p{padding:12px 14px}
+.bottom3col{display:grid;grid-template-columns:170px 1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
+.b3p{padding:14px 14px;background:var(--bg2)}
 .b3p:not(:last-child){border-right:1px solid var(--border)}
 .b3-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 
@@ -1011,12 +1019,25 @@ function atualizarMetricsBar(d) {
   const dd = parseFloat(d.max_drawdown||0);
   const pf = parseFloat(d.profit_factor||0);
 
+  // Valores
   document.getElementById('m-wr').textContent = wr.toFixed(1)+'%';
   document.getElementById('m-sh').textContent = sh.toFixed(2);
   document.getElementById('m-dd').textContent = dd.toFixed(2)+'%';
   document.getElementById('m-pf').textContent = pf.toFixed(2);
 
+  // Cores dos valores: verde se bom, vermelho se fraco, âmbar se médio
   const wrC = semCls('wr',wr), shC = semCls('sh',sh), ddC = semCls('dd',dd), pfC = semCls('pf',pf);
+  const colorMap = {'sem-bom':'','sem-med':'is-neutral','sem-fra':'is-neg'};
+
+  ['wr','sh','dd','pf'].forEach((k,i)=>{
+    const el = document.getElementById('m-'+k);
+    const cls = [wrC,shC,ddC,pfC][i];
+    el.className = 'mb-val ' + (cls==='sem-bom'?'':cls==='sem-fra'?'is-neg':'is-neutral');
+  });
+
+  // Drawdown sempre vermelho se negativo
+  if(dd < 0) document.getElementById('m-dd').className = 'mb-val is-neg';
+
   const colors = {'sem-bom':'var(--green)','sem-med':'var(--amber)','sem-fra':'var(--red)'};
 
   document.getElementById('m-wr-bar').style.width = Math.min(wr,100)+'%';
@@ -1121,7 +1142,7 @@ function renderOverview(d, params) {
   <div class="bottom3col">
     <div class="b3p">
       <div class="b3-title">Trades</div>
-      <div style="position:relative;height:90px;width:90px;margin:0 auto"><canvas id="ch-do"></canvas></div>
+      <div style="position:relative;height:100px;width:100px;margin:8px auto 0"><canvas id="ch-do"></canvas></div>
       <div class="donut-stats">
         <div class="ds-row"><div class="ds-dot" style="background:var(--green)"></div><div class="ds-lbl">Winners</div><div class="ds-val" style="color:var(--green)">${winners}</div></div>
         <div class="ds-row"><div class="ds-dot" style="background:var(--red)"></div><div class="ds-lbl">Losers</div><div class="ds-val" style="color:var(--red)">${losers}</div></div>
