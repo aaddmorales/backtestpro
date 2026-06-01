@@ -1,5 +1,5 @@
 <!--
-  BacktestPro Frontend — v4.8
+  BotBacktest Frontend — v1.0
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BacktestPro v4.9 — Plataforma de Backtesting</title>
+<title>BotBacktest v1.0 — Algo Trading Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -31,7 +31,7 @@
   --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
   --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
   --blue:#4d9fff;--blue-bg:rgba(77,159,255,0.08);
-  --orange:#e8734a;--orange-bg:rgba(232,115,74,0.09);
+  --green-primary:#00d084;--green-primary-bg:rgba(0,208,132,0.09);
   --purple:#9d6fff;--purple-bg:rgba(157,111,255,0.09);
   --mono:'JetBrains Mono',monospace;
   --sans:'Syne',sans-serif;
@@ -51,7 +51,7 @@ body::before{
 body::after{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(232,115,74,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.04) 0%, transparent 60%),
     radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.03) 0%, transparent 60%),
     radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,208,132,0.02) 0%, transparent 60%);
 }
@@ -64,9 +64,9 @@ body::after{
   flex-shrink:0;position:relative;z-index:10;
   backdrop-filter:blur(12px);
 }
-.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--text);margin-right:6px;letter-spacing:-.02em}
-.logo-icon{width:22px;height:22px;background:var(--orange);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px}
-.vtag{font-size:10px;background:var(--orange-bg);color:var(--orange);border:1px solid rgba(232,115,74,0.25);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-weight:500}
+.logo{display:flex;align-items:center;gap:8px;margin-right:6px}
+
+.vtag{font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-weight:500}
 .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
 
 .tbtn{
@@ -78,8 +78,8 @@ body::after{
 }
 .tbtn:hover{background:var(--bg3);color:var(--text);border-color:var(--border)}
 .tbtn.active{background:var(--bg3);color:var(--text);border-color:var(--border2)}
-.tbtn-orange{background:var(--orange-bg);border-color:rgba(232,115,74,0.2);color:var(--orange)}
-.tbtn-orange:hover{background:rgba(232,115,74,0.15)}
+.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.2);color:var(--green)}
+.tbtn-orange:hover{background:rgba(0,208,132,0.15)}
 .tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.2);color:var(--purple)}
 .tbtn-purple:hover{background:rgba(157,111,255,0.15)}
 .tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.2);color:var(--amber)}
@@ -100,7 +100,7 @@ body.light{
 }
 body.light::after{
   background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(232,115,74,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.06) 0%, transparent 60%),
     radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
 }
 body.light .topbar{background:rgba(255,255,255,0.95);border-bottom:1px solid rgba(0,0,0,0.08)}
@@ -118,7 +118,7 @@ body.light .bottom3col,body.light .b3p{background:#ffffff}
 body.light .ia-sug{background:rgba(157,111,255,0.04);border-color:rgba(157,111,255,0.12)}
 body.light .tpl-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
 body.light .tpl-card:hover{background:#f0f2f5}
-body.light .tpl-robot{background:linear-gradient(180deg,transparent 0%,rgba(232,115,74,0.05) 100%)}
+body.light .tpl-robot{background:linear-gradient(180deg,transparent 0%,rgba(0,208,132,0.05) 100%)}
 body.light .rank-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
 body.light .rank-card:hover{background:#f0f2f5}
 body.light .podium-block{border-color:rgba(0,0,0,0.1)}
@@ -140,7 +140,7 @@ body.light .trades-tbl tr:hover td{background:#f0f2f5}
   background:var(--muted2);transition:all .25s;
 }
 body.light .theme-toggle{background:#e2e8f0;border-color:rgba(0,0,0,0.15)}
-body.light .theme-toggle::after{background:var(--orange);left:14px}
+body.light .theme-toggle::after{background:var(--green);left:14px}
 .theme-icon{font-size:13px;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;padding:2px;color:var(--text)}
 .theme-icon:hover{opacity:1}
 
@@ -169,7 +169,7 @@ select,input[type=number],input[type=text]{
   font-family:var(--sans);padding:0 8px;outline:none;
   transition:border .15s;
 }
-select:focus,input:focus{border-color:rgba(232,115,74,0.4)}
+select:focus,input:focus{border-color:rgba(0,208,132,0.4)}
 select option{background:#141920}
 
 .tf-group{display:flex;gap:4px;flex-wrap:wrap}
@@ -180,7 +180,7 @@ select option{background:#141920}
   cursor:pointer;transition:all .12s;font-weight:500;
 }
 .tf-btn:hover{background:var(--bg3);color:var(--text)}
-.tf-btn.active{background:var(--orange-bg);border-color:rgba(232,115,74,0.35);color:var(--orange)}
+.tf-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
 
 .pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 
@@ -308,7 +308,7 @@ select option{background:#141920}
   background:rgba(20,25,32,0.5);
   transition:all .2s;cursor:text;
 }
-.editor-drop-zone:hover{border-color:rgba(232,115,74,0.35);background:rgba(232,115,74,0.03)}
+.editor-drop-zone:hover{border-color:rgba(0,208,132,0.35);background:rgba(0,208,132,0.03)}
 .edz-icon{font-size:36px;margin-bottom:12px;opacity:.6}
 .edz-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
 .edz-sub{font-size:12px;color:var(--muted2);line-height:1.7;max-width:380px;margin:0 auto}
@@ -389,7 +389,7 @@ select option{background:#141920}
   transition:all .15s;display:flex;align-items:center;gap:12px;
 }
 .tpl-card:hover{background:var(--bg4);border-color:var(--border2);transform:translateX(2px)}
-.tpl-card.selected{border-color:rgba(232,115,74,0.4);background:var(--orange-bg)}
+.tpl-card.selected{border-color:rgba(0,208,132,0.4);background:var(--green-bg)}
 .tpl-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--bg4)}
 .tpl-info{flex:1}
 .tpl-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
@@ -402,30 +402,30 @@ select option{background:#141920}
   width:260px;flex-shrink:0;
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   padding:0 20px 20px;
-  background:linear-gradient(180deg, transparent 0%, rgba(232,115,74,0.04) 100%);
+  background:linear-gradient(180deg, transparent 0%, rgba(0,208,132,0.04) 100%);
   border-left:1px solid var(--border);position:relative;overflow:hidden;
 }
 .tpl-robot::before{
   content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-  background:radial-gradient(ellipse 80% 60% at 50% 80%, rgba(232,115,74,0.08) 0%, transparent 70%);
+  background:radial-gradient(ellipse 80% 60% at 50% 80%, rgba(0,208,132,0.08) 0%, transparent 70%);
 }
 .robot-placeholder{
   width:180px;height:260px;
-  background:linear-gradient(160deg, rgba(232,115,74,0.15) 0%, rgba(77,159,255,0.08) 100%);
+  background:linear-gradient(160deg, rgba(0,208,132,0.15) 0%, rgba(77,159,255,0.08) 100%);
   border-radius:50% 50% 40% 40%;
   display:flex;align-items:center;justify-content:center;
   font-size:80px;opacity:.8;position:relative;z-index:1;
-  border:1px solid rgba(232,115,74,0.15);
-  box-shadow:0 20px 60px rgba(232,115,74,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
+  border:1px solid rgba(0,208,132,0.15);
+  box-shadow:0 20px 60px rgba(0,208,132,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .tpl-use-btn{
   position:relative;z-index:1;margin-top:14px;
   width:100%;height:36px;
-  background:var(--orange);border:none;border-radius:7px;
+  background:#00d084;border:none;border-radius:7px;
   color:#000;font-size:12px;font-weight:700;font-family:var(--sans);
   cursor:pointer;transition:all .15s;
 }
-.tpl-use-btn:hover{background:#f07d52;transform:translateY(-1px)}
+.tpl-use-btn:hover{background:#00b872;transform:translateY(-1px)}
 
 /* ════════════════════════════
    TAB: RANK BEST BOTS
@@ -482,12 +482,12 @@ select option{background:#141920}
 
 .zoom-btn{height:20px;padding:0 7px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:10px;font-family:var(--mono);cursor:pointer;transition:all .12s;font-weight:500}
 .zoom-btn:hover{background:var(--bg3);color:var(--text)}
-.zoom-btn.active{background:var(--orange-bg);border-color:rgba(232,115,74,0.35);color:var(--orange)}
+.zoom-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
 
 /* ── INDICADORES MULTI-SELECT ── */
 .ind-row{border-radius:5px;padding:5px 6px;background:var(--bg3);border:1px solid var(--border)}
 .ind-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
-.ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+.ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
 .ind-label{font-size:12px;color:var(--text);font-weight:500}
 .ind-controls{padding-top:2px}
 .color-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
@@ -498,7 +498,7 @@ select option{background:#141920}
 .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(6px)}
 .auth-box{background:#0e1117;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:400px;max-width:95vw;padding:32px;position:relative;z-index:9001}
 .auth-logo{display:flex;align-items:center;gap:8px;margin-bottom:20px;justify-content:center}
-.auth-logo-icon{width:28px;height:28px;background:var(--orange);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.auth-logo-icon{width:28px;height:28px;background:#00d084;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
 .auth-logo-name{font-size:17px;font-weight:700;color:var(--text)}
 .auth-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:7px;overflow:hidden;border:1px solid var(--border)}
 .auth-tab{flex:1;height:34px;background:transparent;border:none;color:var(--muted2);font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;transition:all .15s}
@@ -506,9 +506,9 @@ select option{background:#141920}
 .auth-field{margin-bottom:14px}
 .auth-field label{font-size:11px;color:var(--muted2);font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
 .auth-input{width:100%;height:38px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--sans);padding:0 12px;outline:none;transition:border .15s}
-.auth-input:focus{border-color:rgba(232,115,74,0.5)}
-.auth-submit{width:100%;height:40px;background:linear-gradient(135deg,var(--orange) 0%,#d4623a 100%);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;margin-top:6px;transition:all .15s;box-shadow:0 4px 14px rgba(232,115,74,0.25)}
-.auth-submit:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,115,74,0.35)}
+.auth-input:focus{border-color:rgba(0,208,132,0.5)}
+.auth-submit{width:100%;height:40px;background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;margin-top:6px;transition:all .15s;box-shadow:0 4px 14px rgba(0,208,132,0.25)}
+.auth-submit:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,208,132,0.35)}
 .auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
 .auth-error{font-size:12px;color:var(--red);margin-top:8px;text-align:center;min-height:16px}
 .auth-success{font-size:12px;color:var(--green);margin-top:8px;text-align:center}
@@ -520,7 +520,7 @@ select option{background:#141920}
 /* ── USER MENU ── */
 .user-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s}
 .user-btn:hover{background:var(--bg3);border-color:var(--border2)}
-.user-avatar{width:20px;height:20px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.user-avatar{width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
 .user-plano{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;font-family:var(--mono)}
 .plano-free{background:var(--bg3);color:var(--muted2)}
 .plano-pro{background:var(--green-bg);color:var(--green)}
@@ -543,39 +543,6 @@ select option{background:#141920}
 .modal-title{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--amber)}
 .modal-code{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:var(--muted2);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
 .modal-close{margin-top:10px;width:100%;height:30px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted2);font-size:12px;cursor:pointer;font-family:var(--sans)}
-
-/* ── UPGRADE PAGE ── */
-.upgrade-page{padding:32px 24px;overflow-y:auto;height:100%}
-.upgrade-page::-webkit-scrollbar{width:3px}
-.upgrade-page::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-.upgrade-header{text-align:center;margin-bottom:36px}
-.upgrade-title{font-size:28px;font-weight:700;color:var(--text);letter-spacing:-.03em;margin-bottom:8px}
-.upgrade-sub{font-size:14px;color:var(--muted2);max-width:480px;margin:0 auto;line-height:1.6}
-.currency-toggle{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px}
-.curr-btn{height:28px;padding:0 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s;font-weight:500}
-.curr-btn.active{background:var(--orange-bg);border-color:rgba(232,115,74,0.4);color:var(--orange)}
-.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px;margin:0 auto}
-.plan-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;display:flex;flex-direction:column;position:relative;transition:all .2s}
-.plan-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
-.plan-card.featured{border-color:rgba(232,115,74,0.4);background:linear-gradient(180deg,rgba(232,115,74,0.06) 0%,var(--bg2) 100%)}
-.plan-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--orange);color:#000;font-size:10px;font-weight:700;padding:3px 12px;border-radius:10px;white-space:nowrap}
-.plan-icon{font-size:28px;margin-bottom:12px}
-.plan-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
-.plan-desc{font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.5}
-.plan-price{margin-bottom:20px}
-.plan-amount{font-size:36px;font-weight:700;font-family:var(--mono);color:var(--text);letter-spacing:-.02em;line-height:1}
-.plan-period{font-size:12px;color:var(--muted);margin-top:2px}
-.plan-features{flex:1;display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
-.pf-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted2)}
-.pf-row span:first-child{font-size:14px;flex-shrink:0}
-.plan-btn{width:100%;height:40px;border-radius:8px;border:none;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;transition:all .15s}
-.plan-btn-free{background:var(--bg3);color:var(--muted2);border:1px solid var(--border);cursor:default}
-.plan-btn-pro{background:linear-gradient(135deg,var(--orange) 0%,#d4623a 100%);color:#fff;box-shadow:0 4px 14px rgba(232,115,74,0.25)}
-.plan-btn-pro:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(232,115,74,0.35)}
-.plan-btn-trader{background:linear-gradient(135deg,var(--purple) 0%,#7c3aed 100%);color:#fff;box-shadow:0 4px 14px rgba(157,111,255,0.25)}
-.plan-btn-trader:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(157,111,255,0.35)}
-.upgrade-loading{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted2)}
-.plan-current{background:var(--green-bg);border-color:rgba(0,208,132,0.3)!important;color:var(--green)!important;cursor:default}
 </style>
 </head>
 <body>
@@ -583,20 +550,22 @@ select option{background:#141920}
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="logo">
-    <div class="logo-icon">⚡</div>
-    BacktestPro
-    <span class="vtag">v4.9</span>
+    <svg width="230" height="28" viewBox="0 0 230 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="26" height="26" x="0" y="1" rx="7" fill="#00d084"/>
+      <polyline points="5,20 9,14 14,17 21,8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="21" cy="8" r="2.5" fill="#ffb830"/>
+      <text x="34" y="20" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" font-weight="800" fill="#ffb830" letter-spacing="-0.8">Bot</text><text x="75" y="20" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="17" font-weight="800" fill="#ffffff" letter-spacing="-0.8">Backtest</text>
+    </svg>
+    <span class="vtag">v1.0</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
-  <button class="tbtn" id="tab-upgrade-btn" onclick="switchTab('upgrade')">💳 Planos</button>
   <div class="tsep"></div>
   <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
   <button class="tbtn tbtn-amber" onclick="abrirNTSL()">📥 NTSL</button>
-  <button class="tbtn tbtn-orange" id="btn-upgrade-top" onclick="switchTab('upgrade')" style="display:none">⚡ Upgrade</button>
   <div class="spacer"></div>
   <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
   <div class="tsep"></div>
@@ -869,7 +838,7 @@ select option{background:#141920}
               <div class="editor-drop-zone" onclick="document.getElementById('code-editor').focus()">
                 <div class="edz-icon">🐍</div>
                 <div class="edz-title">Cole seu código Python aqui</div>
-                <div class="edz-sub">Sua estratégia será testada com os parâmetros configurados à esquerda. Use a classe <strong style="color:var(--orange);font-family:var(--mono)">Strategy</strong> do backtesting.py.</div>
+                <div class="edz-sub">Sua estratégia será testada com os parâmetros configurados à esquerda. Use a classe <strong style="color:var(--green);font-family:var(--mono)">Strategy</strong> do backtesting.py.</div>
                 <div class="edz-or">ou</div>
                 <div style="font-size:12px;color:var(--muted2)">Descreva sua estratégia abaixo e deixa a IA gerar o código →</div>
               </div>
@@ -918,7 +887,7 @@ select option{background:#141920}
                   <div class="tpl-desc">Compra em sobrevenda RSI &lt;30, venda em sobrecompra &gt;70</div>
                   <div class="tpl-meta">
                     <span class="tpl-tag" style="background:var(--purple-bg);color:var(--purple)">REVERSÃO</span>
-                    <span class="tpl-tag" style="background:var(--orange-bg);color:var(--orange)">RSI</span>
+                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">RSI</span>
                   </div>
                 </div>
                 <div class="tpl-perf" style="color:var(--green)">+8.7%</div>
@@ -966,7 +935,7 @@ select option{background:#141920}
                   <div class="tpl-desc">Operações intraday baseadas no volume price average</div>
                   <div class="tpl-meta">
                     <span class="tpl-tag" style="background:var(--red-bg);color:var(--red)">INTRADAY</span>
-                    <span class="tpl-tag" style="background:var(--orange-bg);color:var(--orange)">VWAP</span>
+                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">VWAP</span>
                   </div>
                 </div>
                 <div class="tpl-perf" style="color:var(--amber)">+5.3%</div>
@@ -1001,83 +970,6 @@ select option{background:#141920}
               <button class="tpl-use-btn" id="tpl-use-btn" onclick="confirmarTemplate()">
                 ▶ Usar este Template
               </button>
-            </div>
-          </div>
-
-          <!-- TAB: UPGRADE -->
-          <div id="tab-upgrade" style="display:none" class="upgrade-page">
-            <div class="upgrade-header">
-              <div class="upgrade-title">Escolha seu Plano</div>
-              <div class="upgrade-sub">Desbloqueie backtests ilimitados, exportação NTSL e muito mais. Cancele quando quiser.</div>
-              <div class="currency-toggle">
-                <button class="curr-btn active" onclick="setCurrency('BRL',this)">🇧🇷 BRL</button>
-                <button class="curr-btn" onclick="setCurrency('USD',this)">🇺🇸 USD</button>
-                <button class="curr-btn" onclick="setCurrency('EUR',this)">🇪🇺 EUR</button>
-              </div>
-            </div>
-            <div class="plans-grid">
-
-              <!-- FREE -->
-              <div class="plan-card">
-                <div class="plan-icon">⚡</div>
-                <div class="plan-name">Free</div>
-                <div class="plan-desc">Para quem está começando a testar estratégias</div>
-                <div class="plan-price">
-                  <div class="plan-amount">R$0</div>
-                  <div class="plan-period">para sempre</div>
-                </div>
-                <div class="plan-features">
-                  <div class="pf-row"><span>✅</span><span>5 backtests por mês</span></div>
-                  <div class="pf-row"><span>✅</span><span>Todos os ativos e timeframes</span></div>
-                  <div class="pf-row"><span>✅</span><span>Relatório básico</span></div>
-                  <div class="pf-row"><span>❌</span><span style="color:var(--muted)">Exportar para NTSL</span></div>
-                  <div class="pf-row"><span>❌</span><span style="color:var(--muted)">Gerar bots com IA</span></div>
-                  <div class="pf-row"><span>❌</span><span style="color:var(--muted)">Suporte prioritário</span></div>
-                </div>
-                <button class="plan-btn plan-btn-free" id="btn-free">Plano Atual</button>
-              </div>
-
-              <!-- PRO -->
-              <div class="plan-card featured">
-                <div class="plan-badge">Mais Popular</div>
-                <div class="plan-icon">🚀</div>
-                <div class="plan-name">Pro</div>
-                <div class="plan-desc">Para traders sérios que testam estratégias regularmente</div>
-                <div class="plan-price">
-                  <div class="plan-amount" id="price-pro">R$67</div>
-                  <div class="plan-period">por mês · cancele quando quiser</div>
-                </div>
-                <div class="plan-features">
-                  <div class="pf-row"><span>✅</span><span>Backtests ilimitados</span></div>
-                  <div class="pf-row"><span>✅</span><span>Todos os ativos e timeframes</span></div>
-                  <div class="pf-row"><span>✅</span><span>Relatório completo estilo TradingView</span></div>
-                  <div class="pf-row"><span>✅</span><span>Exportar para NTSL/Profit</span></div>
-                  <div class="pf-row"><span>✅</span><span>Gerar bots com IA</span></div>
-                  <div class="pf-row"><span>❌</span><span style="color:var(--muted)">Testar bots NTSL</span></div>
-                </div>
-                <button class="plan-btn plan-btn-pro" id="btn-pro" onclick="assinarPlano('pro')">Assinar Pro</button>
-              </div>
-
-              <!-- TRADER PRO -->
-              <div class="plan-card">
-                <div class="plan-icon">👑</div>
-                <div class="plan-name">Trader Pro</div>
-                <div class="plan-desc">Para traders profissionais do mercado B3 e internacional</div>
-                <div class="plan-price">
-                  <div class="plan-amount" id="price-trader">R$97</div>
-                  <div class="plan-period">por mês · cancele quando quiser</div>
-                </div>
-                <div class="plan-features">
-                  <div class="pf-row"><span>✅</span><span>Tudo do plano Pro</span></div>
-                  <div class="pf-row"><span>✅</span><span>Testar bots NTSL na plataforma</span></div>
-                  <div class="pf-row"><span>✅</span><span>Integração total com Profit/Nelogica</span></div>
-                  <div class="pf-row"><span>✅</span><span>Acesso antecipado a novos recursos</span></div>
-                  <div class="pf-row"><span>✅</span><span>Suporte prioritário por email</span></div>
-                  <div class="pf-row"><span>✅</span><span>Badge Trader Pro exclusivo</span></div>
-                </div>
-                <button class="plan-btn plan-btn-trader" id="btn-trader" onclick="assinarPlano('trader')">Assinar Trader Pro</button>
-              </div>
-
             </div>
           </div>
 
@@ -1256,8 +1148,12 @@ select option{background:#141920}
   <div class="auth-box">
     <button class="auth-close" onclick="fecharAuth()">×</button>
     <div class="auth-logo">
-      <div class="auth-logo-icon">⚡</div>
-      <div class="auth-logo-name">BacktestPro</div>
+      <svg width="240" height="36" viewBox="0 0 240 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="34" height="34" x="0" y="1" rx="9" fill="#00d084"/>
+        <polyline points="7,27 13,18 19,22 27,11" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="27" cy="11" r="3.2" fill="#ffb830"/>
+        <text x="44" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" fill="#ffb830" letter-spacing="-0.8">Bot</text><text x="100" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" fill="var(--text)" letter-spacing="-0.8">Backtest</text>
+      </svg>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Entrar</button>
@@ -1295,7 +1191,7 @@ select option{background:#141920}
       </div>
       <button class="auth-submit" id="signup-btn" onclick="fazerCadastro()">Criar conta grátis</button>
       <div class="auth-error" id="signup-error"></div>
-      <div class="auth-success" id="signup-success" style="display:none">✅ Conta criada! Bem-vindo ao BacktestPro.</div>
+      <div class="auth-success" id="signup-success" style="display:none">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
     </div>
   </div>
 </div>
@@ -1584,16 +1480,13 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','upgrade'].forEach(t => {
+  ['editor','overview','templates','rank'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'overview') {
     document.getElementById('tab-overview').style.display = 'block';
-  }
-  if (tab === 'upgrade') {
-    atualizarBotoesPlano();
   }
 }
 
@@ -2337,96 +2230,6 @@ fetch(API+'/').then(r=>{
   document.getElementById('api-dot').style.background='var(--red)';
   document.getElementById('api-dot').style.animation='none';
 });
-
-// ── STRIPE / UPGRADE ──
-let moedaAtual = 'BRL';
-const PRECOS = {
-  pro:    { BRL: 'R$67', USD: '$19', EUR: '€17' },
-  trader: { BRL: 'R$97', USD: '$29', EUR: '€27' }
-};
-
-function setCurrency(moeda, btn) {
-  moedaAtual = moeda;
-  document.querySelectorAll('.curr-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('price-pro').textContent = PRECOS.pro[moeda];
-  document.getElementById('price-trader').textContent = PRECOS.trader[moeda];
-}
-
-function atualizarBotoesPlano() {
-  const plano = perfilAtual?.plano || 'free';
-  const btnFree = document.getElementById('btn-free');
-  const btnPro = document.getElementById('btn-pro');
-  const btnTrader = document.getElementById('btn-trader');
-  if (!btnFree) return;
-
-  // Reset
-  btnFree.className = 'plan-btn plan-btn-free';
-  btnFree.textContent = 'Plano Gratuito';
-  btnFree.onclick = null;
-  btnPro.className = 'plan-btn plan-btn-pro';
-  btnPro.textContent = 'Assinar Pro';
-  btnPro.onclick = () => assinarPlano('pro');
-  btnTrader.className = 'plan-btn plan-btn-trader';
-  btnTrader.textContent = 'Assinar Trader Pro';
-  btnTrader.onclick = () => assinarPlano('trader');
-
-  if (plano === 'pro') {
-    btnFree.textContent = 'Downgrade';
-    btnPro.className = 'plan-btn plan-current';
-    btnPro.textContent = '✅ Plano Atual';
-    btnPro.onclick = null;
-  } else if (plano === 'trader') {
-    btnTrader.className = 'plan-btn plan-current';
-    btnTrader.textContent = '✅ Plano Atual';
-    btnTrader.onclick = null;
-  }
-}
-
-async function assinarPlano(plano) {
-  if (!usuarioAtual) {
-    abrirAuth('login');
-    return;
-  }
-  const btn = document.getElementById('btn-' + plano);
-  const txtOriginal = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '⏳ Aguarde...';
-
-  try {
-    const r = await fetch(API + '/criar-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        plano,
-        user_id: usuarioAtual.id,
-        email: usuarioAtual.email,
-        moeda: moedaAtual
-      })
-    });
-    const d = await r.json();
-    if (d.checkout_url) {
-      window.location.href = d.checkout_url;
-    } else {
-      throw new Error(d.detail || 'Erro ao criar checkout');
-    }
-  } catch (e) {
-    alert('Erro: ' + e.message);
-    btn.disabled = false;
-    btn.textContent = txtOriginal;
-  }
-}
-
-// Verificar retorno do Stripe (success/cancelled)
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('upgrade') === 'success') {
-  const plano = urlParams.get('plano') || 'pro';
-  setTimeout(() => {
-    switchTab('upgrade');
-    alert(`✅ Upgrade para ${plano.toUpperCase()} realizado com sucesso! Bem-vindo!`);
-    window.history.replaceState({}, '', window.location.pathname);
-  }, 1000);
-}
 
 // Theme toggle
 function toggleTheme(){
