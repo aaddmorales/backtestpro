@@ -23,7 +23,7 @@ import json
 import traceback
 import os
 
-app = FastAPI(title="BotBacktest API", version="1.1.0")
+app = FastAPI(title="BotBacktest API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -709,7 +709,7 @@ def gerar_bot_ia(req: IARequest):
 @app.get("/exportar/ntsl")
 def exportar_ntsl():
     codigo = """// ============================================
-// BotBacktest — Exportação NTSL para Profit
+// BacktestPro — Exportação NTSL para Profit
 // Gerado automaticamente
 // ============================================
 
@@ -788,3 +788,87 @@ def get_stats():
         "melhor_retorno": 68.4,
         "versao_api": "1.1.0"
     }
+
+# ── STRIPE ──────────────────────────────────────────────
+
+import stripe, os
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+PRICE_IDS = {
+    "pro": {
+        "BRL": "price_1TdF3TAWeqEnicm4OJJEgFvR",
+        "USD": "price_1TdF5HAWeqEnicm4e5wRK96S",
+        "EUR": "price_1TdF5XAWeqEnicm4dfadId2G",
+    },
+    "trader": {
+        "BRL": "price_1TdF9FAWeqEnicm4dqDhez61",
+        "USD": "price_1TdFAhAWeqEnicm4i0DNuJ2b",
+        "EUR": "price_1TdFBSAWeqEnicm4ZoxIQgBn",
+    }
+}
+
+class CheckoutRequest(BaseModel):
+    plano: str
+    moeda: str = "BRL"
+    user_id: str
+    email: str
+
+@app.post("/criar-checkout")
+def criar_checkout(req: CheckoutRequest):
+    try:
+        price_id = PRICE_IDS.get(req.plano, {}).get(req.moeda)
+        if not price_id:
+            raise HTTPException(status_code=400, detail="Plano ou moeda inválido")
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            customer_email=req.email,
+            client_reference_id=req.user_id,
+            success_url="https://backtestpro-production-eb9a.up.railway.app?checkout=success",
+            cancel_url="https://backtestpro-production-eb9a.up.railway.app?checkout=cancel",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stripe/publishable-key")
+def get_publishable_key():
+    return {"key": os.getenv("STRIPE_PUBLISHABLE_KEY", "")}
+
+@app.post("/webhook/stripe")
+async def webhook_stripe(request: Request):
+    import hmac, hashlib
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, secret)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if event["type"] in ["customer.subscription.created", "customer.subscription.updated"]:
+        sub = event["data"]["object"]
+        user_id = sub.get("client_reference_id") or sub.get("metadata", {}).get("user_id")
+        plano = "pro"
+        for item in sub.get("items", {}).get("data", []):
+            pid = item.get("price", {}).get("id", "")
+            if pid in PRICE_IDS.get("trader", {}).values():
+                plano = "trader"
+                break
+        if user_id:
+            try:
+                from supabase import create_client
+                sb = create_client(
+                    os.getenv("SUPABASE_URL", ""),
+                    os.getenv("SUPABASE_SERVICE_KEY", "")
+                )
+                limite = 999999 if plano == "trader" else 200
+                sb.table("perfis").update({
+                    "plano": plano,
+                    "backtests_limite": limite,
+                    "stripe_subscription_id": sub["id"]
+                }).eq("id", user_id).execute()
+            except Exception as e:
+                print(f"Supabase update error: {e}")
+    return {"ok": True}
