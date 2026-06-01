@@ -1,5 +1,5 @@
 <!--
-  BotBacktest Frontend — v1.2
+  BotBacktest Frontend — v1.3
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BotBacktest v1.2 — Algo Trading Platform</title>
+<title>BotBacktest v1.3 — Algo Trading Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -556,13 +556,14 @@ select option{background:#141920}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v1.2</span>
+    <span class="vtag">v1.3</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
+  <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
   <div class="tsep"></div>
   <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
   <button class="tbtn tbtn-amber" onclick="abrirNTSL()">📥 NTSL</button>
@@ -1086,6 +1087,65 @@ select option{background:#141920}
             </div>
           </div>
 
+        <!-- TAB: PLANOS -->
+        <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
+          <div style="max-width:860px;margin:0 auto;">
+            <h2 style="font-size:22px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px;">Escolha seu plano</h2>
+            <p style="text-align:center;color:var(--muted2);font-size:13px;margin-bottom:24px;">Cancele quando quiser. Sem fidelidade.</p>
+            <div style="display:flex;justify-content:center;gap:6px;margin-bottom:24px;">
+              <button onclick="setMoeda('BRL')" id="btn-brl" style="padding:5px 16px;border-radius:6px;border:1px solid #00d084;background:#00d084;color:#000;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">BRL</button>
+              <button onclick="setMoeda('USD')" id="btn-usd" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">USD</button>
+              <button onclick="setMoeda('EUR')" id="btn-eur" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">EUR</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <!-- FREE -->
+              <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px 20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--muted2);margin-bottom:8px;">FREE</div>
+                <div style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$0</div>
+                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">para sempre</div>
+                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
+                  <li style="font-size:12px;color:var(--muted2);">✅ 5 backtests/mês</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
+                  <li style="font-size:12px;color:#555;">❌ IA ilimitada</li>
+                  <li style="font-size:12px;color:#555;">❌ Exportar NTSL</li>
+                </ul>
+                <button style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:default;font-family:var(--sans);">Plano atual</button>
+              </div>
+              <!-- PRO -->
+              <div style="background:var(--bg2);border:2px solid #00d084;border-radius:12px;padding:24px 20px;position:relative;">
+                <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#00d084;color:#000;font-size:10px;font-weight:700;padding:2px 12px;border-radius:20px;white-space:nowrap;">MAIS POPULAR</div>
+                <div style="font-size:12px;font-weight:600;color:#00d084;margin-bottom:8px;">PRO</div>
+                <div id="preco-pro" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$67</div>
+                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
+                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
+                  <li style="font-size:12px;color:var(--muted2);">✅ 200 backtests/mês</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
+                </ul>
+                <button onclick="assinar('pro')" style="width:100%;padding:9px;border-radius:7px;border:none;background:#00d084;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Pro</button>
+              </div>
+              <!-- TRADER PRO -->
+              <div style="background:var(--bg2);border:1px solid #ffb830;border-radius:12px;padding:24px 20px;">
+                <div style="font-size:12px;font-weight:600;color:#ffb830;margin-bottom:8px;">TRADER PRO</div>
+                <div id="preco-trader" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$97</div>
+                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
+                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
+                  <li style="font-size:12px;color:var(--muted2);">✅ Backtests ilimitados</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
+                  <li style="font-size:12px;color:var(--muted2);">✅ Suporte prioritário</li>
+                </ul>
+                <button onclick="assinar('trader')" style="width:100%;padding:9px;border-radius:7px;border:1px solid #ffb830;background:transparent;color:#ffb830;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Trader Pro</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-planos -->
+
         </div><!-- /col-center -->
       </div><!-- /col-center-wrap -->
 
@@ -1359,6 +1419,35 @@ async function fazerLogout() {
 }
 
 // ── VERIFICAR LIMITE ANTES DO BACKTEST ──
+function setMoeda(moeda) {
+  const precos = {
+    BRL: { pro: 'R$67', trader: 'R$97' },
+    USD: { pro: '$19', trader: '$29' },
+    EUR: { pro: '€17', trader: '€27' }
+  };
+  document.getElementById('preco-pro').textContent = precos[moeda].pro;
+  document.getElementById('preco-trader').textContent = precos[moeda].trader;
+  ['BRL','USD','EUR'].forEach(m => {
+    const btn = document.getElementById('btn-'+m.toLowerCase());
+    if(btn) { btn.style.background = m===moeda?'#00d084':'transparent'; btn.style.color = m===moeda?'#000':'var(--muted2)'; btn.style.borderColor = m===moeda?'#00d084':'var(--border)'; }
+  });
+  window._moedaAtual = moeda;
+}
+
+async function assinar(plano) {
+  if (!usuarioAtual) { abrirAuth('login'); return; }
+  try {
+    const moeda = window._moedaAtual || 'BRL';
+    const resp = await fetch(API+'/criar-checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ plano, moeda, user_id: usuarioAtual.id, email: usuarioAtual.email })
+    });
+    const data = await resp.json();
+    if (data.url) window.open(data.url, '_blank');
+    else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
 async function verificarLimite() {
   console.log('verificarLimite → usuarioAtual:', usuarioAtual?.email, '| perfilAtual:', perfilAtual);
   if (!usuarioAtual) {
@@ -1481,7 +1570,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank'].forEach(t => {
+  ['editor','overview','templates','rank','planos'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
