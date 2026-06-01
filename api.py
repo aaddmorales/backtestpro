@@ -10,7 +10,8 @@
 #    payload completo compatível com o frontend v4.x
 # ============================================================
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+import stripe
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -22,6 +23,8 @@ from datetime import datetime, timedelta
 import json
 import traceback
 import os
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 app = FastAPI(title="BotBacktest API", version="3.0.0")
 
@@ -791,8 +794,6 @@ def get_stats():
 
 # ── STRIPE ──────────────────────────────────────────────
 
-import stripe, os
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 PRICE_IDS = {
     "pro": {
