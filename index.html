@@ -58,11 +58,10 @@ body::after{
 
 /* ── TOPBAR ── */
 .topbar{
-  height:46px;background:rgba(14,17,23,0.95);
-  border-bottom:1px solid var(--border);
+  height:46px;background:#080a0d !important;
+  border-bottom:1px solid rgba(255,255,255,0.06);
   display:flex;align-items:center;padding:0 14px;gap:6px;
   flex-shrink:0;position:relative;z-index:10;
-  backdrop-filter:blur(12px);
 }
 .logo{display:flex;align-items:center;gap:8px;margin-right:6px}
 
@@ -72,12 +71,12 @@ body::after{
 .tbtn{
   height:30px;padding:0 11px;border-radius:6px;
   border:1px solid transparent;background:transparent;
-  color:var(--muted2);font-size:12px;font-family:var(--sans);font-weight:500;
+  color:#8a94a8;font-size:12px;font-family:var(--sans);font-weight:500;
   cursor:pointer;display:flex;align-items:center;gap:5px;
   transition:all .15s;white-space:nowrap;
 }
-.tbtn:hover{background:var(--bg3);color:var(--text);border-color:var(--border)}
-.tbtn.active{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+.tbtn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.1)}
+.tbtn.active{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15)}
 .tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.2);color:var(--green)}
 .tbtn-orange:hover{background:rgba(0,208,132,0.15)}
 .tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.2);color:var(--purple)}
@@ -86,8 +85,8 @@ body::after{
 .tbtn-amber:hover{background:rgba(255,184,48,0.15)}
 
 .spacer{flex:1}
-.lang-btn{height:24px;padding:0 7px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-.lang-btn.active,.lang-btn:hover{color:var(--text);border-color:var(--border2);background:var(--bg3)}
+.lang-btn{height:24px;padding:0 7px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#5a6478;font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
+.lang-btn.active,.lang-btn:hover{color:#fff;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.08)}
 .api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
 .api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
@@ -103,7 +102,7 @@ body.light::after{
     radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.06) 0%, transparent 60%),
     radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
 }
-body.light .topbar{background:rgba(255,255,255,0.95);border-bottom:1px solid rgba(0,0,0,0.08)}
+body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(255,255,255,0.06)}
 body.light .col-left{background:rgba(255,255,255,0.9)}
 body.light .col-right{background:rgba(255,255,255,0.9)}
 body.light .metrics-bar{background:rgba(255,255,255,0.97)}
@@ -124,7 +123,7 @@ body.light .rank-card:hover{background:#f0f2f5}
 body.light .podium-block{border-color:rgba(0,0,0,0.1)}
 body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
 body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tbtn:hover,.body.light .tbtn.active{background:#f0f2f5}
+body.light .tbtn:hover,.body.light .tbtn.active{background:rgba(255,255,255,0.1)}
 body.light .trades-tbl tr:hover td{background:#f0f2f5}
 
 /* toggle button */
@@ -186,7 +185,7 @@ select option{background:#141920}
 
 .run-btn{
   width:100%;height:38px;
-  background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);
+  background:#00d084;
   border:none;border-radius:7px;
   color:#000;font-size:13px;font-weight:700;font-family:var(--sans);
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
@@ -280,14 +279,14 @@ select option{background:#141920}
 .ia-gen-btn:active{transform:translateY(0)}
 .paste-code-btn{
   width:100%;height:38px;
-  background:linear-gradient(135deg,rgba(0,208,132,0.12) 0%,rgba(0,208,132,0.06) 100%);
-  border:1px solid rgba(0,208,132,0.3);
-  border-radius:7px;color:var(--green);font-size:13px;font-family:var(--sans);
+  background:#00d084;
+  border:none;
+  border-radius:7px;color:#000;font-size:13px;font-family:var(--sans);
   cursor:pointer;font-weight:700;transition:all .15s;
   display:flex;align-items:center;justify-content:center;gap:6px;
   box-shadow:0 4px 14px rgba(0,208,132,0.08);
 }
-.paste-code-btn:hover{background:linear-gradient(135deg,rgba(0,208,132,0.2) 0%,rgba(0,208,132,0.1) 100%);border-color:rgba(0,208,132,0.5);box-shadow:0 6px 18px rgba(0,208,132,0.15);transform:translateY(-1px)}
+.paste-code-btn:hover{background:#00b872;transform:translateY(-1px)}
 .paste-code-btn:active{transform:translateY(0)}
 .ed-actions{display:flex;gap:5px}
 .ea-btn{flex:1;height:26px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
@@ -556,7 +555,7 @@ select option{background:#141920}
         <circle cx="20" cy="5" r="3" fill="#ffb830"/>
       </svg>
     </div>
-    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;"><span style="color:#ffb830;">Bot</span><span style="color:#fff;">Backtest</span></span>
+    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
     <span class="vtag">v1.0</span>
   </div>
   <div class="tsep"></div>
