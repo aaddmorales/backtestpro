@@ -1360,6 +1360,7 @@ async function fazerLogout() {
 
 // ── VERIFICAR LIMITE ANTES DO BACKTEST ──
 async function verificarLimite() {
+  console.log('verificarLimite → usuarioAtual:', usuarioAtual?.email, '| perfilAtual:', perfilAtual);
   if (!usuarioAtual) {
     abrirAuth('login');
     return false;
@@ -1555,8 +1556,10 @@ function atualizarMetricsBar(d) {
 }
 
 async function rodarBacktest() {
+  console.log('rodarBacktest() chamado');
   // Verificar login e limite
   const liberado = await verificarLimite();
+  console.log('liberado:', liberado);
   if (!liberado) return;
 
   const btn = document.getElementById('run-btn');
