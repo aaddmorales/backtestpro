@@ -1,11 +1,7 @@
 # ============================================================
-#  BacktestPro API — v3.1
+#  BotBacktest API — v1.1
 #  Data: 2026-05-31 | Deploy: Railway
-#  Novidades v3.1:
-#  - Stripe integrado: /criar-checkout, /webhook/stripe
-#  - Detecção automática de moeda por IP (BRL/USD/EUR)
-#  - Webhook atualiza plano no Supabase automaticamente
-#  Novidades v3.0:
+#  Novidades v1.1:
 #  - Dados completos estilo TradingView:
 #    equity_curve, candles OHLCV, trades com BUY/SELL markers
 #    roi_distribution, trades_distribution, run_ups_drawdowns
@@ -26,39 +22,8 @@ from datetime import datetime, timedelta
 import json
 import traceback
 import os
-import stripe
-from fastapi import Request
 
-# ── STRIPE CONFIG ──────────────────────────────────────────
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_51TdErqAWeqEnicm4Ya3IKFc5fryqodYTzQJXJdXcre3qE9JRxmjl11J5GaeV9EBkPozW1cRBpBP7QFsR7mQKEzPY004z81kvaB")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "pk_test_51TdErqAWeqEnicm48RAElS3i8EBf78hFhxJ4Lm6rnE9insvKUfoleCvekPpKn9nPxHXMH5MO1mxfJpVGvsJujfPB00FlerJcQj")
-
-# Price IDs por plano e moeda
-PRICES = {
-    "pro": {
-        "BRL": "price_1TdF3TAWeqEnicm4OJJEgFvR",
-        "EUR": "price_1TdF5XAWeqEnicm4dfadId2G",
-        "USD": "price_1TdF5HAWeqEnicm4e5wRK96S",
-    },
-    "trader": {
-        "BRL": "price_1TdF9FAWeqEnicm4dqDhez61",
-        "EUR": "price_1TdFBSAWeqEnicm4ZoxIQgBn",
-        "USD": "price_1TdFAhAWeqEnicm4i0DNuJ2b",
-    }
-}
-
-# Detectar moeda por país (via header CF-IPCountry do Railway/Cloudflare)
-def detectar_moeda(request: Request) -> str:
-    country = request.headers.get("CF-IPCountry", "BR")
-    if country == "BR":
-        return "BRL"
-    elif country in ["ES", "PT", "DE", "FR", "IT", "NL"]:
-        return "EUR"
-    else:
-        return "USD"
-
-app = FastAPI(title="BacktestPro API", version="3.0.0")
+app = FastAPI(title="BotBacktest API", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -512,7 +477,7 @@ def root():
     return {
         "status": "online",
         "version": "3.0.0",
-        "name": "BacktestPro API",
+        "name": "BotBacktest API",
         "endpoints": ["/backtest/visual", "/backtest/custom", "/gerar-bot-ia",
                       "/exportar/ntsl", "/historico", "/ranking", "/stats"]
     }
@@ -744,7 +709,7 @@ def gerar_bot_ia(req: IARequest):
 @app.get("/exportar/ntsl")
 def exportar_ntsl():
     codigo = """// ============================================
-// BacktestPro — Exportação NTSL para Profit
+// BotBacktest — Exportação NTSL para Profit
 // Gerado automaticamente
 // ============================================
 
@@ -783,7 +748,7 @@ void OnTick() {
             OrderSend(Symbol(), OP_BUY, Lotes, Ask, 3,
                       Ask - StopLoss * Point,
                       Ask + TakeProfit * Point,
-                      "BacktestPro EMA Channel", 0, 0, clrGreen);
+                      "BotBacktest EMA Channel", 0, 0, clrGreen);
         }
     } else {
         // Verifica saída
@@ -797,97 +762,6 @@ void OnTick() {
     }
 }"""
     return {"codigo": codigo, "formato": "NTSL/MQL4", "plataforma": "Profit/MetaTrader"}
-
-@app.get("/stripe/publishable-key")
-def get_publishable_key():
-    return {"publishable_key": STRIPE_PUBLISHABLE_KEY}
-
-class CheckoutRequest(BaseModel):
-    plano: str  # "pro" ou "trader"
-    user_id: str
-    email: str
-    moeda: Optional[str] = None  # BRL, USD, EUR — se None detecta por IP
-
-@app.post("/criar-checkout")
-async def criar_checkout(req: CheckoutRequest, request: Request):
-    try:
-        moeda = req.moeda or detectar_moeda(request)
-        plano = req.plano.lower()
-
-        if plano not in PRICES:
-            raise HTTPException(status_code=400, detail="Plano inválido. Use 'pro' ou 'trader'.")
-        if moeda not in PRICES[plano]:
-            moeda = "USD"
-
-        price_id = PRICES[plano][moeda]
-        base_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "https://backtestpro-production-eb9a.up.railway.app")
-
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            customer_email=req.email,
-            metadata={"user_id": req.user_id, "plano": plano},
-            success_url=f"https://{base_url}?upgrade=success&plano={plano}",
-            cancel_url=f"https://{base_url}?upgrade=cancelled",
-        )
-        return {"checkout_url": session.url, "session_id": session.id, "moeda": moeda}
-    except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e.user_message))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/webhook/stripe")
-async def webhook_stripe(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature", "")
-
-    try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        else:
-            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        user_id = session.get("metadata", {}).get("user_id")
-        plano = session.get("metadata", {}).get("plano")
-        subscription_id = session.get("subscription")
-
-        if user_id and plano:
-            try:
-                from supabase import create_client
-                sb = create_client(
-                    os.getenv("SUPABASE_URL", "https://hdnhyceyzljommcvkejq.supabase.co"),
-                    os.getenv("SUPABASE_SERVICE_KEY", "")
-                )
-                sb.table("perfis").update({
-                    "plano": plano,
-                    "stripe_subscription_id": subscription_id,
-                    "backtests_limite": 999999,
-                }).eq("id", user_id).execute()
-            except Exception as e:
-                print(f"Erro ao atualizar Supabase: {e}")
-
-    elif event["type"] == "customer.subscription.deleted":
-        subscription_id = event["data"]["object"]["id"]
-        try:
-            from supabase import create_client
-            sb = create_client(
-                os.getenv("SUPABASE_URL", "https://hdnhyceyzljommcvkejq.supabase.co"),
-                os.getenv("SUPABASE_SERVICE_KEY", "")
-            )
-            sb.table("perfis").update({
-                "plano": "free",
-                "stripe_subscription_id": None,
-                "backtests_limite": 5,
-            }).eq("stripe_subscription_id", subscription_id).execute()
-        except Exception as e:
-            print(f"Erro ao rebaixar plano: {e}")
-
-    return {"status": "ok"}
 
 @app.get("/historico")
 def get_historico():
@@ -912,5 +786,5 @@ def get_stats():
         "usuarios_ativos": 89,
         "ativo_mais_testado": "XAU/USD",
         "melhor_retorno": 68.4,
-        "versao_api": "3.0.0"
+        "versao_api": "1.1.0"
     }
