@@ -1,6 +1,6 @@
 # ============================================================
-#  BotBacktest API — v1.1
-#  Data: 2026-05-31 | Deploy: Railway
+#  BotBacktest API — v1.2
+#  Data: 2026-06-02 | Deploy: Railway
 #  Novidades v1.1:
 #  - Dados completos estilo TradingView:
 #    equity_curve, candles OHLCV, trades com BUY/SELL markers
@@ -842,31 +842,29 @@ async def webhook_stripe(request: Request):
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    
-    if not secret:
-        print("ERRO: STRIPE_WEBHOOK_SECRET não configurado!")
-        raise HTTPException(status_code=500, detail="Webhook secret not configured")
-    
+
     try:
         event = stripe.Webhook.construct_event(payload, sig, secret)
     except stripe.error.SignatureVerificationError as e:
-        print(f"Assinatura inválida: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid signature: {str(e)}")
     except Exception as e:
-        print(f"Webhook construct error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
     if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+        # Converte StripeObject para dict puro
+        session_obj = event["data"]["object"]
+        session = session_obj.to_dict() if hasattr(session_obj, "to_dict") else dict(session_obj)
+
         user_id = session.get("client_reference_id")
         subscription_id = session.get("subscription")
         plano = "pro"
-        
+
         print(f"Webhook recebido: user_id={user_id}, subscription_id={subscription_id}")
-        
+
         try:
             if subscription_id:
-                sub = stripe.Subscription.retrieve(subscription_id)
+                sub_obj = stripe.Subscription.retrieve(subscription_id)
+                sub = sub_obj.to_dict() if hasattr(sub_obj, "to_dict") else dict(sub_obj)
                 items = sub.get("items", {}).get("data", [])
                 for item in items:
                     pid = item.get("price", {}).get("id", "")
@@ -881,10 +879,10 @@ async def webhook_stripe(request: Request):
         if user_id:
             try:
                 from supabase import create_client
-                supabase_url = os.getenv("SUPABASE_URL", "")
-                supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
-                print(f"Supabase URL presente: {bool(supabase_url)}, Key presente: {bool(supabase_key)}")
-                sb = create_client(supabase_url, supabase_key)
+                sb = create_client(
+                    os.getenv("SUPABASE_URL", ""),
+                    os.getenv("SUPABASE_SERVICE_KEY", "")
+                )
                 limite = 999999 if plano == "trader" else 200
                 result = sb.table("perfis").update({
                     "plano": plano,
