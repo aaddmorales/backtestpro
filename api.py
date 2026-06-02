@@ -842,47 +842,58 @@ async def webhook_stripe(request: Request):
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    
+    if not secret:
+        print("ERRO: STRIPE_WEBHOOK_SECRET não configurado!")
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    
     try:
         event = stripe.Webhook.construct_event(payload, sig, secret)
+    except stripe.error.SignatureVerificationError as e:
+        print(f"Assinatura inválida: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid signature: {str(e)}")
     except Exception as e:
+        print(f"Webhook construct error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-    # checkout.session.completed — tem o client_reference_id com user_id
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         user_id = session.get("client_reference_id")
         subscription_id = session.get("subscription")
-        price_id = ""
-        # Descobrir plano pelo price_id da subscription
         plano = "pro"
+        
+        print(f"Webhook recebido: user_id={user_id}, subscription_id={subscription_id}")
+        
         try:
             if subscription_id:
                 sub = stripe.Subscription.retrieve(subscription_id)
-                for item in sub["items"]["data"]:
-                    pid = item["price"]["id"]
+                items = sub.get("items", {}).get("data", [])
+                for item in items:
+                    pid = item.get("price", {}).get("id", "")
                     if pid in PRICE_IDS.get("trader", {}).values():
                         plano = "trader"
                         break
         except Exception as e:
             print(f"Stripe subscription retrieve error: {e}")
 
-        print(f"Webhook checkout.session.completed: user_id={user_id} plano={plano}")
+        print(f"Atualizando Supabase: user_id={user_id} plano={plano}")
 
         if user_id:
             try:
                 from supabase import create_client
-                sb = create_client(
-                    os.getenv("SUPABASE_URL", ""),
-                    os.getenv("SUPABASE_SERVICE_KEY", "")
-                )
+                supabase_url = os.getenv("SUPABASE_URL", "")
+                supabase_key = os.getenv("SUPABASE_SERVICE_KEY", "")
+                print(f"Supabase URL presente: {bool(supabase_url)}, Key presente: {bool(supabase_key)}")
+                sb = create_client(supabase_url, supabase_key)
                 limite = 999999 if plano == "trader" else 200
                 result = sb.table("perfis").update({
                     "plano": plano,
                     "backtests_limite": limite,
                     "stripe_subscription_id": subscription_id
                 }).eq("id", user_id).execute()
-                print(f"Supabase update result: {result}")
+                print(f"Supabase update OK: {result}")
             except Exception as e:
                 print(f"Supabase update error: {e}")
+                raise HTTPException(status_code=500, detail=f"Supabase error: {str(e)}")
 
     return {"ok": True}
