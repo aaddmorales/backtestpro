@@ -839,7 +839,6 @@ def get_publishable_key():
 
 @app.post("/webhook/stripe")
 async def webhook_stripe(request: Request):
-    import hmac, hashlib
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -848,15 +847,27 @@ async def webhook_stripe(request: Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    if event["type"] in ["customer.subscription.created", "customer.subscription.updated"]:
-        sub = event["data"]["object"]
-        user_id = sub.get("client_reference_id") or sub.get("metadata", {}).get("user_id")
+    # checkout.session.completed — tem o client_reference_id com user_id
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        user_id = session.get("client_reference_id")
+        subscription_id = session.get("subscription")
+        price_id = ""
+        # Descobrir plano pelo price_id da subscription
         plano = "pro"
-        for item in sub.get("items", {}).get("data", []):
-            pid = item.get("price", {}).get("id", "")
-            if pid in PRICE_IDS.get("trader", {}).values():
-                plano = "trader"
-                break
+        try:
+            if subscription_id:
+                sub = stripe.Subscription.retrieve(subscription_id)
+                for item in sub["items"]["data"]:
+                    pid = item["price"]["id"]
+                    if pid in PRICE_IDS.get("trader", {}).values():
+                        plano = "trader"
+                        break
+        except Exception as e:
+            print(f"Stripe subscription retrieve error: {e}")
+
+        print(f"Webhook checkout.session.completed: user_id={user_id} plano={plano}")
+
         if user_id:
             try:
                 from supabase import create_client
@@ -865,11 +876,13 @@ async def webhook_stripe(request: Request):
                     os.getenv("SUPABASE_SERVICE_KEY", "")
                 )
                 limite = 999999 if plano == "trader" else 200
-                sb.table("perfis").update({
+                result = sb.table("perfis").update({
                     "plano": plano,
                     "backtests_limite": limite,
-                    "stripe_subscription_id": sub["id"]
+                    "stripe_subscription_id": subscription_id
                 }).eq("id", user_id).execute()
+                print(f"Supabase update result: {result}")
             except Exception as e:
                 print(f"Supabase update error: {e}")
+
     return {"ok": True}
