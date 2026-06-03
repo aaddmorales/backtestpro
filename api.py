@@ -1,13 +1,14 @@
 # ============================================================
-#  BotBacktest API — v1.2
-#  Data: 2026-06-02 | Deploy: Railway
-#  Novidades v1.1:
-#  - Dados completos estilo TradingView:
-#    equity_curve, candles OHLCV, trades com BUY/SELL markers
-#    roi_distribution, trades_distribution, run_ups_drawdowns
-#    capital_efficiency, performance_metrics, key_stats
-#  - Endpoint /backtest/visual e /backtest/custom retornam
-#    payload completo compatível com o frontend v4.x
+#  BotBacktest API — v1.3
+#  Data: 2026-06-03 | Deploy: Railway
+#  Novidades v1.3:
+#  - Separacao landing/app:
+#      "/"     serve index.html  (landing page)
+#      "/app"  serve app.html    (antigo index.html do backtest)
+#  - success_url/cancel_url do Stripe apontam para /app
+#  Historico:
+#  - v1.2: fix StripeObject.to_dict() no webhook + SUPABASE_URL
+#  - v1.1: payload completo estilo TradingView (/backtest/visual e /custom)
 # ============================================================
 
 from fastapi import FastAPI, HTTPException, Request
@@ -474,16 +475,23 @@ def teste_conexao():
 
 @app.get("/")
 def root():
-    # Serve o frontend se index.html existir
+    # Serve a LANDING PAGE (index.html). O app de backtest foi movido para /app
     if os.path.exists("index.html"):
         return FileResponse("index.html", media_type="text/html")
     return {
         "status": "online",
         "version": "3.0.0",
         "name": "BotBacktest API",
-        "endpoints": ["/backtest/visual", "/backtest/custom", "/gerar-bot-ia",
+        "endpoints": ["/app", "/backtest/visual", "/backtest/custom", "/gerar-bot-ia",
                       "/exportar/ntsl", "/historico", "/ranking", "/stats"]
     }
+
+@app.get("/app")
+def serve_app():
+    # Serve o app de backtest (antigo index.html, renomeado para app.html)
+    if os.path.exists("app.html"):
+        return FileResponse("app.html", media_type="text/html")
+    raise HTTPException(404, "app.html nao encontrado")
 
 @app.get("/ativos")
 def get_ativos():
@@ -826,8 +834,8 @@ def criar_checkout(req: CheckoutRequest):
             mode="subscription",
             customer_email=req.email,
             client_reference_id=req.user_id,
-            success_url="https://backtestpro-production-eb9a.up.railway.app?checkout=success",
-            cancel_url="https://backtestpro-production-eb9a.up.railway.app?checkout=cancel",
+            success_url="https://backtestpro-production-eb9a.up.railway.app/app?checkout=success",
+            cancel_url="https://backtestpro-production-eb9a.up.railway.app/app?checkout=cancel",
         )
         return {"url": session.url}
     except Exception as e:
