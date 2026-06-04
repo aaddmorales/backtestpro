@@ -1262,6 +1262,74 @@ select option{background:#141920}
   <button onclick="abrirAuth('upgrade')" style="margin-left:auto;background:var(--amber);border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;color:#000">Fazer upgrade</button>
 </div>
 
+<!-- ====================== ONBOARDING POR NÍVEL ====================== -->
+<style>
+.onb-ov{position:fixed;inset:0;z-index:8000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#060f1a}
+.onb-ov.show{display:flex}
+.onb-bg{position:absolute;inset:0;width:100%;height:100%}
+.onb-dim{position:absolute;inset:0;background:rgba(4,10,18,0.20)}
+.onb-card{position:relative;width:460px;max-width:92vw;background:rgba(10,22,34,0.92);border:1px solid rgba(0,208,132,0.18);border-radius:16px;padding:28px 26px 22px;box-shadow:0 0 70px 26px rgba(4,10,18,0.62)}
+.onb-logo{text-align:center;font-size:20px;font-weight:700;font-family:var(--sans)}
+.onb-title{text-align:center;color:#fff;font-size:17px;font-weight:600;margin:12px 0 4px}
+.onb-sub{text-align:center;color:#7d8b99;font-size:13px;margin:0 0 20px}
+.onb-opt{width:100%;text-align:left;background:#0e1c2b;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s,transform .1s}
+.onb-opt:hover{border-color:rgba(0,208,132,0.4);transform:translateY(-1px)}
+.onb-ic{width:40px;height:40px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.onb-ot{display:block;color:#fff;font-size:15px;font-weight:600}
+.onb-od{display:block;color:#7d8b99;font-size:12px;line-height:1.5;margin-top:2px}
+.onb-check{display:flex;align-items:center;justify-content:center;gap:8px;color:#7d8b99;font-size:13px;cursor:pointer;user-select:none}
+.onb-check input{accent-color:var(--green);width:15px;height:15px;cursor:pointer}
+.onb-vid{background:#0e1c2b;border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.onb-vid-ph{aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#5a6478;background:#08131f}
+.onb-vid-ph i{font-size:34px;color:#3a4a5a}
+.onb-vid-cap{padding:10px 14px;color:#dde3ee;font-size:13px;font-weight:500}
+.onb-actions{display:flex;gap:10px;margin-top:6px}
+.onb-btn{flex:1;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9aa6b8;font-family:var(--sans)}
+.onb-btn:hover{border-color:rgba(255,255,255,0.25);color:#fff}
+.onb-btn.primary{background:var(--green);border-color:var(--green);color:#04150d}
+.onb-btn.primary:hover{filter:brightness(1.08)}
+.onb-tut-body{max-height:48vh;overflow-y:auto;margin-bottom:14px;padding-right:4px}
+</style>
+<div class="onb-ov" id="onb-ov">
+  <svg class="onb-bg" id="onb-bgchart" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+  <div class="onb-dim"></div>
+
+  <!-- VIEW 1: seleção de nível -->
+  <div class="onb-card" id="onb-select">
+    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
+    <p class="onb-title">Bem-vindo! Qual seu nível?</p>
+    <p class="onb-sub">Escolha para personalizarmos sua experiência</p>
+
+    <button class="onb-opt" onclick="onbEscolher('iniciante')">
+      <span class="onb-ic" style="background:rgba(0,208,132,0.12);color:#00d084"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10a6 6 0 0 0-6-6H3v2a6 6 0 0 0 6 6h3"/><path d="M12 14a6 6 0 0 1 6-6h3v1a6 6 0 0 1-6 6h-3"/><path d="M12 20v-8"/></svg></span>
+      <span><span class="onb-ot">Iniciante</span><span class="onb-od">Nunca usei um robô. Quero aprender o básico.</span></span>
+    </button>
+    <button class="onb-opt" onclick="onbEscolher('medio')">
+      <span class="onb-ic" style="background:rgba(77,159,255,0.14);color:#4d9fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
+      <span><span class="onb-ot">Conhecimento médio</span><span class="onb-od">Conheço estratégias. Quero aplicar no MT5 / Forex / B3.</span></span>
+    </button>
+    <button class="onb-opt" style="margin-bottom:18px;border-color:rgba(255,184,48,0.25)" onclick="onbEscolher('profissional')">
+      <span class="onb-ic" style="background:rgba(255,184,48,0.14);color:#ffb830"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
+      <span><span class="onb-ot">Profissional</span><span class="onb-od">Já sei operar. Entrar direto na plataforma.</span></span>
+    </button>
+
+    <label class="onb-check"><input type="checkbox" id="onb-naomostrar" checked> Não mostrar esta tela novamente</label>
+  </div>
+
+  <!-- VIEW 2: tutorial / vídeos -->
+  <div class="onb-card" id="onb-tutorial" style="display:none">
+    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
+    <p class="onb-title" id="onb-tut-title">Tutorial</p>
+    <p class="onb-sub" id="onb-tut-sub">Assista para aprender a usar a plataforma</p>
+    <div class="onb-tut-body" id="onb-tut-body"></div>
+    <div class="onb-actions">
+      <button class="onb-btn" onclick="onbVoltar()">← Voltar</button>
+      <button class="onb-btn primary" onclick="onbIrPlataforma()">Ir para a plataforma →</button>
+    </div>
+  </div>
+</div>
+<!-- ==================== FIM ONBOARDING ==================== -->
+
 <script>
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL = 'https://hdnhyceyzljommcvkejq.supabase.co';
@@ -1294,6 +1362,7 @@ async function onLogin(user) {
   const { data: perfil } = await sb.from('perfis').select('*').eq('id', user.id).single();
   perfilAtual = perfil;
   atualizarUI();
+  onbVerificar();
 }
 
 function onLogout() {
@@ -1303,6 +1372,125 @@ function onLogout() {
   document.getElementById('btn-user').style.display = 'none';
   document.getElementById('limit-banner').classList.remove('show');
 }
+
+// ══════════════ ONBOARDING POR NÍVEL ══════════════
+// Vídeos por nível — cole o ID do YouTube em "yt" quando gravar (ex: yt:'dQw4w9WgXcQ')
+const ONB_VIDEOS = {
+  iniciante: {
+    titulo: 'Primeiros passos',
+    sub: 'O básico para começar do zero',
+    videos: [
+      { titulo: 'O que é um robô de trading (bot)?', yt: '' },
+      { titulo: 'Como funciona o backtest', yt: '' },
+      { titulo: 'Como montar seu robô na plataforma', yt: '' }
+    ]
+  },
+  medio: {
+    titulo: 'Aplicando estratégias',
+    sub: 'Para quem já conhece o mercado',
+    videos: [
+      { titulo: 'Como aplicar estratégias na plataforma', yt: '' },
+      { titulo: 'Como colocar o bot no MT5 (Forex)', yt: '' },
+      { titulo: 'Exportar para B3 / Profit (NTSL)', yt: '' }
+    ]
+  }
+};
+const ONB_KEY = 'bb_nivel';
+
+function onbVerificar(){
+  try { if (localStorage.getItem(ONB_KEY)) return; } catch(e){}
+  onbAbrir();
+}
+
+function onbAbrir(){
+  document.getElementById('onb-select').style.display = 'block';
+  document.getElementById('onb-tutorial').style.display = 'none';
+  document.getElementById('onb-ov').classList.add('show');
+  onbDesenharFundo();
+}
+
+function onbFechar(){
+  document.getElementById('onb-ov').classList.remove('show');
+}
+
+function onbSalvar(nivel){
+  const chk = document.getElementById('onb-naomostrar');
+  if (chk && chk.checked) {
+    try { localStorage.setItem(ONB_KEY, nivel); } catch(e){}
+  }
+}
+
+function onbEscolher(nivel){
+  onbSalvar(nivel);
+  if (nivel === 'profissional') { onbFechar(); return; }
+  onbMostrarTutorial(nivel);
+}
+
+function onbMostrarTutorial(nivel){
+  const data = ONB_VIDEOS[nivel];
+  document.getElementById('onb-tut-title').textContent = data.titulo;
+  document.getElementById('onb-tut-sub').textContent = data.sub;
+  const body = document.getElementById('onb-tut-body');
+  body.innerHTML = data.videos.map(v => {
+    const player = v.yt
+      ? `<div style="aspect-ratio:16/9"><iframe width="100%" height="100%" style="border:0;display:block" src="https://www.youtube.com/embed/${v.yt}" allowfullscreen></iframe></div>`
+      : `<div class="onb-vid-ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg><span>Vídeo em breve</span></div>`;
+    return `<div class="onb-vid">${player}<div class="onb-vid-cap">${v.titulo}</div></div>`;
+  }).join('');
+  document.getElementById('onb-select').style.display = 'none';
+  document.getElementById('onb-tutorial').style.display = 'block';
+}
+
+function onbVoltar(){
+  document.getElementById('onb-tutorial').style.display = 'none';
+  document.getElementById('onb-select').style.display = 'block';
+}
+
+function onbIrPlataforma(){ onbFechar(); }
+
+function onbDesenharFundo(){
+  const svg = document.getElementById('onb-bgchart');
+  if (!svg || svg.childElementCount) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  let seed = 73;
+  const rnd = () => { seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff; };
+  function candle(x, cy, bodyH, up){
+    const col = up ? '#16d669' : '#f2403f';
+    const w = 14 + rnd()*5, wickUp = 8 + rnd()*16, wickDn = 8 + rnd()*16, top = cy - bodyH/2;
+    const wk = document.createElementNS(NS,'line');
+    wk.setAttribute('x1',x); wk.setAttribute('x2',x);
+    wk.setAttribute('y1',top-wickUp); wk.setAttribute('y2',top+bodyH+wickDn);
+    wk.setAttribute('stroke',col); wk.setAttribute('stroke-width','2.2'); wk.setAttribute('opacity','0.9');
+    svg.appendChild(wk);
+    const r = document.createElementNS(NS,'rect');
+    r.setAttribute('x',x-w/2); r.setAttribute('y',top); r.setAttribute('width',w); r.setAttribute('height',bodyH);
+    r.setAttribute('rx','2'); r.setAttribute('fill',col); r.setAttribute('opacity','0.9');
+    svg.appendChild(r);
+  }
+  const colStep = 30, bands = [60,155,250,345,440,535];
+  for (let x=18; x<=885; x+=colStep){
+    for (let b=0; b<bands.length; b++){
+      if (rnd()<0.12) continue;
+      candle(x+(rnd()-0.5)*14, bands[b]+(rnd()-0.5)*42, 26+rnd()*52, rnd()<0.56);
+    }
+  }
+  function ma(cy,amp,phase,freq,color,w,dash){
+    let pts='';
+    for (let x=0; x<=900; x+=18){
+      const y = cy + Math.sin((x/900)*Math.PI*freq+phase)*amp + Math.sin((x/900)*Math.PI*freq*2.3+phase)*amp*0.35;
+      pts += x+','+y.toFixed(0)+' ';
+    }
+    const pl=document.createElementNS(NS,'polyline');
+    pl.setAttribute('points',pts.trim()); pl.setAttribute('fill','none');
+    pl.setAttribute('stroke',color); pl.setAttribute('stroke-width',w); pl.setAttribute('opacity','0.85');
+    if (dash) pl.setAttribute('stroke-dasharray',dash);
+    svg.appendChild(pl);
+  }
+  ma(300,150,0.4,3.2,'#00d084','2.6',null);
+  ma(330,150,0.4,3.2,'#ffb830','2.6',null);
+  ma(250,110,2.1,2.4,'#4d9fff','2','7 6');
+}
+// ══════════════ FIM ONBOARDING ══════════════
 
 function atualizarUI() {
   if (!usuarioAtual) return;
