@@ -1,2339 +1,621 @@
-<!--
-  BotBacktest Frontend — v1.4
-  Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
-  Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  Novidades v4.6:
-  - Candle chart com lightweight-charts (mesma lib TradingView)
-  - Markers BUY/SELL em cima dos candles
-  - Cumulative PnL + Run-ups/Drawdowns toggle
-  - Multi-indicadores: até 3 overlays (EMA/SMA) com cor e fonte configuráveis
--->
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<meta http-equiv="Pragma" content="no-cache"/>
-<title>BotBacktest v1.4 — Algo Trading Platform</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BotBacktest — Backtesting profissional para traders</title>
+<meta name="description" content="Plataforma de backtesting em Python com suporte a B3, Forex e Cripto. Geração de bots por IA. Exportação NTSL para Profit/Nelogica.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#080a0d;--bg2:#0e1117;--bg3:#141920;--bg4:#1c2230;
-  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
-  --text:#dde3ee;--muted:#5a6478;--muted2:#8a94a8;
-  --green:#00d084;--green2:#00a868;--green-bg:rgba(0,208,132,0.08);
-  --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
-  --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
-  --blue:#4d9fff;--blue-bg:rgba(77,159,255,0.08);
-  --green-primary:#00d084;--green-primary-bg:rgba(0,208,132,0.09);
-  --purple:#9d6fff;--purple-bg:rgba(157,111,255,0.09);
-  --mono:'JetBrains Mono',monospace;
-  --sans:'Syne',sans-serif;
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:#060f1a;background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='600' viewBox='0 0 1200 600'><line x1='13' y1='130' x2='13' y2='458' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='7' y='162' width='13' height='178' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='39' y1='72' x2='39' y2='513' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='33' y='109' width='13' height='269' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='65' y1='102' x2='65' y2='429' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='59' y='154' width='13' height='178' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='91' y1='109' x2='91' y2='443' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='85' y='334' width='13' height='65' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='117' y1='79' x2='117' y2='477' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='111' y='408' width='13' height='4' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='143' y1='63' x2='143' y2='521' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='137' y='96' width='13' height='88' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='170' y1='82' x2='170' y2='494' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='163' y='163' width='13' height='141' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='196' y1='126' x2='196' y2='466' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='189' y='186' width='13' height='245' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='222' y1='96' x2='222' y2='515' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='215' y='153' width='13' height='231' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='248' y1='63' x2='248' y2='472' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='241' y='325' width='13' height='94' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='274' y1='128' x2='274' y2='539' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='267' y='368' width='13' height='67' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='300' y1='111' x2='300' y2='466' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='294' y='160' width='13' height='83' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='326' y1='174' x2='326' y2='507' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='320' y='329' width='13' height='82' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='352' y1='66' x2='352' y2='450' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='346' y='288' width='13' height='48' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='378' y1='135' x2='378' y2='458' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='372' y='358' width='13' height='35' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='404' y1='67' x2='404' y2='500' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='398' y='249' width='13' height='181' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='430' y1='175' x2='430' y2='536' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='424' y='218' width='13' height='12' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='457' y1='169' x2='457' y2='436' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='450' y='192' width='13' height='172' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='483' y1='162' x2='483' y2='492' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='476' y='347' width='13' height='20' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='509' y1='166' x2='509' y2='510' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='502' y='260' width='13' height='226' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='535' y1='63' x2='535' y2='475' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='528' y='218' width='13' height='246' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='561' y1='111' x2='561' y2='521' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='554' y='319' width='13' height='54' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='587' y1='162' x2='587' y2='522' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='580' y='312' width='13' height='139' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='613' y1='158' x2='613' y2='491' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='607' y='349' width='13' height='29' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='639' y1='145' x2='639' y2='479' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='633' y='195' width='13' height='35' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='665' y1='107' x2='665' y2='479' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='659' y='121' width='13' height='242' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='691' y1='94' x2='691' y2='487' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='685' y='104' width='13' height='142' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='717' y1='142' x2='717' y2='501' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='711' y='214' width='13' height='199' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='743' y1='61' x2='743' y2='536' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='737' y='468' width='13' height='46' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='770' y1='148' x2='770' y2='521' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='763' y='357' width='13' height='4' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='796' y1='150' x2='796' y2='435' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='789' y='192' width='13' height='63' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='822' y1='160' x2='822' y2='461' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='815' y='224' width='13' height='118' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='848' y1='74' x2='848' y2='420' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='841' y='159' width='13' height='213' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='874' y1='141' x2='874' y2='426' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='867' y='185' width='13' height='70' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='900' y1='86' x2='900' y2='484' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='894' y='271' width='13' height='131' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='926' y1='79' x2='926' y2='449' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='920' y='325' width='13' height='11' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='952' y1='127' x2='952' y2='441' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='946' y='187' width='13' height='21' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='978' y1='115' x2='978' y2='542' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='972' y='205' width='13' height='272' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='1004' y1='100' x2='1004' y2='512' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='998' y='183' width='13' height='278' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='1030' y1='54' x2='1030' y2='496' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='1024' y='108' width='13' height='283' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='1057' y1='114' x2='1057' y2='552' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='1050' y='207' width='13' height='102' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='1083' y1='105' x2='1083' y2='548' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='1076' y='281' width='13' height='157' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='1109' y1='97' x2='1109' y2='481' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='1102' y='221' width='13' height='89' rx='1.5' fill='%23ff4d6a' opacity='0.16'/><line x1='1135' y1='174' x2='1135' y2='511' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='1128' y='196' width='13' height='4' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='1161' y1='168' x2='1161' y2='486' stroke='%2300d084' stroke-width='1.4' opacity='0.16'/><rect x='1154' y='275' width='13' height='77' rx='1.5' fill='%2300d084' opacity='0.16'/><line x1='1187' y1='137' x2='1187' y2='513' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.16'/><rect x='1180' y='186' width='13' height='71' rx='1.5' fill='%23ff4d6a' opacity='0.16'/></svg>");background-attachment:fixed;background-size:1200px auto;background-position:center top;background-repeat:repeat;color:#fff;font-size:15px;line-height:1.6;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:0 32px}
+
+/* ── NAV ── */
+nav{background:rgba(6,15,26,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08);padding:0 32px;position:sticky;top:0;z-index:100}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:66px}
+.logo{font-size:21px;font-weight:900;letter-spacing:-0.5px}
+.logo em{font-style:normal;color:#ffb830}
+.nav-menu{display:flex;gap:28px}
+.nav-menu a{font-size:14px;color:rgba(255,255,255,0.65);font-weight:500;transition:color .15s}
+.nav-menu a:hover{color:#fff}
+.nav-actions{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 22px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:all .15s;text-decoration:none}
+.btn-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.35)}
+.btn-outline:hover{border-color:#fff;background:rgba(255,255,255,0.06)}
+.btn-green{background:#00d084;color:#060f1a}
+.btn-green:hover{background:#00e88d;transform:translateY(-1px)}
+.btn-white{background:#fff;color:#060f1a}
+.btn-white:hover{background:#f0fdf8;transform:translateY(-1px)}
+.btn-lg{padding:13px 28px;font-size:15px;border-radius:7px}
+.btn-xl{padding:16px 36px;font-size:16px;border-radius:8px;font-weight:800}
+
+/* ── HERO ── */
+.hero{
+  position:relative;
+  min-height:600px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  background:#060f1a;
 }
-
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;overflow:hidden}
-
-/* ── GRAIN TEXTURE OVERLAY ── */
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
-  opacity:.028;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat:repeat;background-size:128px 128px;
+.hero-bg{
+  position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='560' viewBox='0 0 900 560'><line x1='15' y1='65' x2='15' y2='445' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='7' y='287' width='16' height='139' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='45' y1='105' x2='45' y2='499' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='37' y='223' width='16' height='133' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='75' y1='109' x2='75' y2='415' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='67' y='375' width='16' height='12' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='105' y1='44' x2='105' y2='393' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='97' y='241' width='16' height='110' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='135' y1='62' x2='135' y2='493' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='127' y='188' width='16' height='266' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='165' y1='132' x2='165' y2='397' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='157' y='251' width='16' height='78' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='195' y1='96' x2='195' y2='470' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='187' y='121' width='16' height='209' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='225' y1='113' x2='225' y2='455' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='217' y='180' width='16' height='129' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='255' y1='138' x2='255' y2='496' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='247' y='191' width='16' height='18' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='285' y1='46' x2='285' y2='450' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='277' y='136' width='16' height='200' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='315' y1='95' x2='315' y2='454' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='307' y='180' width='16' height='18' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='345' y1='104' x2='345' y2='502' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='337' y='150' width='16' height='82' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='375' y1='70' x2='375' y2='478' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='367' y='414' width='16' height='50' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='405' y1='158' x2='405' y2='466' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='397' y='202' width='16' height='26' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='435' y1='115' x2='435' y2='497' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='427' y='225' width='16' height='96' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='465' y1='62' x2='465' y2='505' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='457' y='279' width='16' height='65' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='495' y1='166' x2='495' y2='449' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='487' y='371' width='16' height='59' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='525' y1='106' x2='525' y2='441' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='517' y='127' width='16' height='123' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='555' y1='64' x2='555' y2='483' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='547' y='325' width='16' height='113' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='585' y1='52' x2='585' y2='462' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='577' y='366' width='16' height='77' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='615' y1='117' x2='615' y2='469' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='607' y='288' width='16' height='121' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='645' y1='58' x2='645' y2='415' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='637' y='153' width='16' height='233' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='675' y1='162' x2='675' y2='434' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='667' y='326' width='16' height='21' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='705' y1='65' x2='705' y2='400' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='697' y='162' width='16' height='130' rx='1.5' fill='%23ff4d6a' opacity='0.3'/><line x1='735' y1='131' x2='735' y2='396' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='727' y='272' width='16' height='40' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='765' y1='166' x2='765' y2='422' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='757' y='278' width='16' height='130' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='795' y1='167' x2='795' y2='486' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='787' y='182' width='16' height='295' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='825' y1='106' x2='825' y2='456' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='817' y='240' width='16' height='66' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='855' y1='75' x2='855' y2='412' stroke='%2300d084' stroke-width='1.4' opacity='0.3'/><rect x='847' y='118' width='16' height='252' rx='1.5' fill='%2300d084' opacity='0.3'/><line x1='885' y1='96' x2='885' y2='491' stroke='%23ff4d6a' stroke-width='1.4' opacity='0.3'/><rect x='877' y='351' width='16' height='132' rx='1.5' fill='%23ff4d6a' opacity='0.3'/></svg>");
+  background-size:cover;
+  background-position:center right;
+  opacity:0.7;
 }
-
-/* subtle gradient mesh background */
-body::after{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.03) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,208,132,0.02) 0%, transparent 60%);
+.hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(90deg, rgba(6,15,26,0.92) 0%, rgba(6,15,26,0.65) 50%, rgba(6,15,26,0.2) 100%);
 }
-
-/* ── TOPBAR ── */
-.topbar{
-  height:46px;background:#080a0d !important;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-  display:flex;align-items:center;padding:0 14px;gap:6px;
-  flex-shrink:0;position:relative;z-index:10;
+.hero-glow{
+  position:absolute;top:-100px;left:-100px;
+  width:600px;height:600px;
+  background:radial-gradient(ellipse, rgba(0,201,122,0.12) 0%, transparent 65%);
+  pointer-events:none;
 }
-.logo{display:flex;align-items:center;gap:8px;margin-right:6px}
+.hero-content{position:relative;z-index:2;padding:80px 32px;max-width:1100px;margin:0 auto;width:100%;display:grid;grid-template-columns:1fr 420px;gap:56px;align-items:center}
+.hero-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(0,201,122,0.15);border:1px solid rgba(0,201,122,0.3);color:#00d084;font-size:12px;font-weight:700;padding:5px 14px;border-radius:100px;margin-bottom:24px;letter-spacing:.5px}
+.hero h1{font-size:52px;font-weight:900;line-height:1.08;letter-spacing:-2px;margin-bottom:20px;color:#fff}
+.hero h1 em{font-style:normal;color:#00d084}
+.hero-sub{font-size:17px;color:rgba(255,255,255,0.65);line-height:1.75;margin-bottom:28px;max-width:480px}
+.asset-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:30px}
+.asset-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);padding:5px 12px;border-radius:100px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.85)}
+.asset-pill:hover{background:rgba(0,201,122,0.1);border-color:rgba(0,201,122,0.3);color:#00d084}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-gold{background:#f59e0b}
+.dot-btc{background:#f97316}
+.dot-nq{background:#3b82f6}
+.dot-sp{background:#8b5cf6}
+.dot-br{background:#00d084}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.hero-trust{font-size:12px;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:6px}
+.hero-trust svg{color:#00d084;flex-shrink:0}
 
-.vtag{font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-weight:500}
-.tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
+/* HERO CARD */
+.hero-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(0,201,122,0.35);border-radius:16px;padding:26px;backdrop-filter:blur(8px)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.card-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase}
+.card-status{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#00d084;background:rgba(0,201,122,0.12);border:1px solid rgba(0,201,122,0.25);padding:3px 10px;border-radius:100px}
+.card-dot{width:6px;height:6px;border-radius:50%;background:#00d084}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.metric{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px 16px}
+.metric-val{font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1}
+.metric-val.green{color:#00d084}
+.metric-val.white{color:#fff}
+.metric-val.red{color:#f87171}
+.metric-label{font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;font-weight:500}
+.equity-box{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px 16px;margin-bottom:12px}
+.equity-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+.card-footer{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)}
+.card-tag{background:rgba(0,201,122,0.12);color:#00d084;border:1px solid rgba(0,201,122,0.2);font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px}
+.card-info{font-size:11px;color:rgba(255,255,255,0.3);margin-left:auto}
 
-.tbtn{
-  height:30px;padding:0 11px;border-radius:6px;
-  border:1px solid transparent;background:transparent;
-  color:#8a94a8;font-size:12px;font-family:var(--sans);font-weight:500;
-  cursor:pointer;display:flex;align-items:center;gap:5px;
-  transition:all .15s;white-space:nowrap;
+/* STATS */
+.stats-bar{background:rgba(6,15,26,0.70);border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);padding:28px 32px}
+.stats-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.stat{text-align:center;padding:6px 0}
+.stat+.stat{border-left:1px solid rgba(255,255,255,0.08)}
+.stat-val{font-size:28px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1}
+.stat-label{font-size:12px;color:rgba(255,255,255,0.45);margin-top:5px;font-weight:500}
+
+/* SECTIONS */
+.section{padding:84px 32px}
+.section-dark{background:rgba(6,15,26,0.72)}
+.section-mid{background:rgba(6,15,26,0.60)}
+.section-tag{font-size:11px;font-weight:700;color:#00d084;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.section-title{font-size:34px;font-weight:800;color:#fff;letter-spacing:-0.5px;margin-bottom:12px;line-height:1.2}
+.section-sub{font-size:16px;color:rgba(255,255,255,0.5);max-width:520px;line-height:1.7}
+
+/* STEPS */
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px}
+.step-card{background:rgba(4,10,18,0.75);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:30px;transition:border-color .2s,transform .2s,background .2s}
+.step-card:hover{border-color:rgba(0,201,122,0.4);background:rgba(0,201,122,0.04);transform:translateY(-3px)}
+.step-icon{width:46px;height:46px;border-radius:12px;background:rgba(0,201,122,0.12);border:1px solid rgba(0,201,122,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:22px}
+.step-card h3{font-size:16px;font-weight:700;margin-bottom:8px;color:#fff}
+.step-card p{font-size:13px;color:rgba(255,255,255,0.5);line-height:1.65}
+.step-pill{display:inline-block;background:rgba(0,201,122,0.1);color:#00d084;border:1px solid rgba(0,201,122,0.2);font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;margin-top:14px}
+
+/* FEATURES */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+.feat-card{background:rgba(4,10,18,0.75);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:26px;transition:border-color .2s,transform .2s}
+.feat-card:hover{border-color:rgba(0,201,122,0.35);transform:translateY(-2px)}
+.feat-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px;background:rgba(0,201,122,0.1);border:1px solid rgba(0,201,122,0.15)}
+.feat-card h4{font-size:15px;font-weight:700;color:#fff;margin-bottom:7px}
+.feat-card p{font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6}
+
+/* RANKING */
+.rank-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+.rank-card{background:rgba(4,10,18,0.80);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:22px;transition:border-color .2s,transform .2s}
+.rank-card:hover{border-color:rgba(0,201,122,0.35);transform:translateY(-2px)}
+.rank-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.rank-pos{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+.rank-pos.gold{background:#f59e0b}
+.rank-pos.silver{background:#64748b}
+.rank-pos.bronze{background:#cd7c4e}
+.rank-pos.default{background:rgba(255,255,255,0.1)}
+.rank-verified{font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;background:rgba(0,201,122,0.1);color:#00d084;border:1px solid rgba(0,201,122,0.2)}
+.rank-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.rank-asset{font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:14px}
+.rank-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.rank-stat{text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:8px 4px}
+.rank-stat-val{font-size:14px;font-weight:700}
+.rank-stat-val.green{color:#00d084}
+.rank-stat-val.white{color:#fff}
+.rank-stat-val.red{color:#f87171}
+.rank-stat-label{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px}
+.rank-footer{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:6px}
+.stars{color:#f59e0b;font-size:12px}
+.rank-trades{font-size:11px;color:rgba(255,255,255,0.3);margin-left:auto}
+
+/* PRICING */
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:48px}
+.plan{background:rgba(4,10,18,0.72);border:1.5px solid rgba(255,255,255,0.1);border-radius:14px;padding:30px;position:relative;transition:transform .2s,border-color .2s}
+.plan:hover{transform:translateY(-2px);border-color:rgba(255,255,255,0.2)}
+.plan.popular{border:2px solid #00d084;background:rgba(4,10,18,0.82)}
+.pop-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#00d084;color:#060f1a;font-size:11px;font-weight:800;padding:4px 18px;border-radius:100px;white-space:nowrap;letter-spacing:.5px}
+.plan-name{font-size:18px;font-weight:800;color:#fff}
+.plan-price{font-size:38px;font-weight:900;color:#fff;letter-spacing:-1.5px;margin:16px 0 4px;line-height:1}
+.plan-price sub{font-size:14px;color:rgba(255,255,255,0.4);font-weight:400;letter-spacing:0}
+.plan-desc{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.plan-feats{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:26px}
+.plan-feats li{font-size:13px;color:rgba(255,255,255,0.7);display:flex;align-items:center;gap:8px}
+.plan-feats li .chk{color:#00d084;font-size:16px;font-weight:700}
+.plan-feats li.off{color:rgba(255,255,255,0.2)}
+.plan-feats li.off .chk{color:rgba(255,255,255,0.2)}
+
+/* COMPARE */
+.compare-outer{overflow-x:auto;margin-top:48px}
+table.cmp{width:100%;border-collapse:collapse;font-size:13px;min-width:500px}
+table.cmp th{padding:14px 18px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px}
+table.cmp thead tr{background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.1)}
+table.cmp th.hl{background:rgba(0,201,122,0.15);color:#00d084}
+table.cmp td{padding:13px 18px;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.6)}
+table.cmp tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+table.cmp tr:last-child td{border-bottom:none}
+table.cmp td.hl{background:rgba(0,201,122,0.07);font-weight:700;color:#00d084}
+.yes{color:#00d084;font-weight:700;font-size:16px}
+.no{color:rgba(255,255,255,0.2);font-size:16px}
+.partial{color:#f59e0b;font-size:13px;font-weight:600}
+
+/* FAQ */
+.faq-wrap{max-width:720px;margin:48px auto 0}
+.faq-item{border-bottom:1px solid rgba(255,255,255,0.08)}
+.faq-q{padding:18px 0;font-size:15px;font-weight:600;color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;user-select:none}
+.faq-q:hover{color:#00d084}
+.faq-arrow{font-size:22px;color:rgba(255,255,255,0.3);transition:transform .25s,color .15s;flex-shrink:0;line-height:1}
+.faq-a{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.75;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .2s}
+.faq-item.open .faq-a{max-height:180px;padding-bottom:16px}
+.faq-item.open .faq-arrow{transform:rotate(45deg);color:#00d084}
+
+/* CTA */
+.cta-band{background:rgba(6,15,26,0.9);border-top:1px solid rgba(0,201,122,0.15);border-bottom:1px solid rgba(0,201,122,0.15);padding:84px 32px;text-align:center;position:relative;overflow:hidden}
+.cta-band::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(0,201,122,0.1) 0%,transparent 70%);pointer-events:none}
+.cta-band h2{font-size:38px;font-weight:900;color:#fff;letter-spacing:-1px;margin-bottom:12px;position:relative}
+.cta-band p{font-size:16px;color:rgba(255,255,255,0.5);margin-bottom:32px;position:relative}
+.cta-sub{font-size:13px;color:rgba(255,255,255,0.25);margin-top:14px;position:relative}
+
+/* FOOTER */
+footer{background:rgba(4,12,20,0.80);border-top:1px solid rgba(255,255,255,0.07);padding:36px 32px;text-align:center}
+.footer-logo{font-size:20px;font-weight:900;margin-bottom:14px;letter-spacing:-0.5px}
+.footer-logo em{font-style:normal;color:#ffb830}
+.footer-links{display:flex;gap:24px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.footer-links a{font-size:13px;color:rgba(255,255,255,0.4);transition:color .15s}
+.footer-links a:hover{color:#00d084}
+footer p{font-size:12px;color:rgba(255,255,255,0.2)}
+
+@media(max-width:860px){
+  .hero-content{grid-template-columns:1fr}
+  .hero-card{display:none}
+  .hero h1{font-size:36px}
+  .steps-grid,.feat-grid,.plans-grid,.rank-grid{grid-template-columns:1fr 1fr}
 }
-.tbtn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.1)}
-.tbtn.active{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15)}
-.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.2);color:var(--green)}
-.tbtn-orange:hover{background:rgba(0,208,132,0.15)}
-.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.2);color:var(--purple)}
-.tbtn-purple:hover{background:rgba(157,111,255,0.15)}
-.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.2);color:var(--amber)}
-.tbtn-amber:hover{background:rgba(255,184,48,0.15)}
-
-.spacer{flex:1}
-.lang-btn{height:24px;padding:0 7px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#5a6478;font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-.lang-btn.active,.lang-btn:hover{color:#fff;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.08)}
-.api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
-.api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
-@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
-
-/* ── LIGHT THEME ── */
-body.light{
-  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#111827;--muted:#9ca3af;--muted2:#6b7280;
+@media(max-width:580px){
+  .steps-grid,.feat-grid,.plans-grid,.rank-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(2){border-left:none}
+  .nav-menu{display:none}
+  .hero-content{padding:60px 20px}
+  .hero h1{font-size:30px}
+  .section,.cta-band{padding:60px 20px}
 }
-body.light::after{
-  background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
-}
-body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(255,255,255,0.06)}
-body.light .col-left{background:rgba(255,255,255,0.9)}
-body.light .col-right{background:rgba(255,255,255,0.9)}
-body.light .metrics-bar{background:rgba(255,255,255,0.97)}
-body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.1);color:var(--text)}
-body.light select option{background:#ffffff}
-body.light #code-editor{background:#f8f9fb;color:#383a42}
-body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
-body.light .editor-drop-zone{background:rgba(240,242,245,0.8);border-color:rgba(0,0,0,0.12)}
-body.light .edz-hint{background:rgba(157,111,255,0.06);border-color:rgba(157,111,255,0.15)}
-body.light .charts-2col,body.light .cp{background:#ffffff}
-body.light .bottom3col,body.light .b3p{background:#ffffff}
-body.light .ia-sug{background:rgba(157,111,255,0.04);border-color:rgba(157,111,255,0.12)}
-body.light .tpl-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tpl-card:hover{background:#f0f2f5}
-body.light .tpl-robot{background:linear-gradient(180deg,transparent 0%,rgba(0,208,132,0.05) 100%)}
-body.light .rank-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .rank-card:hover{background:#f0f2f5}
-body.light .podium-block{border-color:rgba(0,0,0,0.1)}
-body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
-body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tbtn:hover,.body.light .tbtn.active{background:rgba(255,255,255,0.1)}
-body.light .trades-tbl tr:hover td{background:#f0f2f5}
-
-/* toggle button */
-.theme-toggle{
-  width:32px;height:20px;border-radius:10px;
-  background:var(--bg3);border:1px solid var(--border2);
-  cursor:pointer;position:relative;transition:all .25s;
-  flex-shrink:0;padding:0;
-}
-.theme-toggle::after{
-  content:'';position:absolute;top:2px;left:2px;
-  width:14px;height:14px;border-radius:50%;
-  background:var(--muted2);transition:all .25s;
-}
-body.light .theme-toggle{background:#e2e8f0;border-color:rgba(0,0,0,0.15)}
-body.light .theme-toggle::after{background:var(--green);left:14px}
-.theme-icon{font-size:13px;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;padding:2px;color:var(--text)}
-.theme-icon:hover{opacity:1}
-
-/* ── MAIN LAYOUT ── */
-.main{display:flex;height:calc(100vh - 46px);overflow:hidden;position:relative;z-index:1}
-
-/* ── LEFT — PARAMS (always visible) ── */
-.col-left{
-  width:224px;min-width:224px;
-  background:rgba(14,17,23,0.8);
-  border-right:1px solid var(--border);
-  display:flex;flex-direction:column;overflow-y:auto;
-  backdrop-filter:blur(8px);
-}
-.col-left::-webkit-scrollbar{width:3px}
-.col-left::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-.ps{padding:10px 12px;border-bottom:1px solid var(--border)}
-.pl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
-.pli{font-size:11px;color:var(--muted2);margin-bottom:3px}
-
-select,input[type=number],input[type=text]{
-  width:100%;height:30px;
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:5px;color:var(--text);font-size:12px;
-  font-family:var(--sans);padding:0 8px;outline:none;
-  transition:border .15s;
-}
-select:focus,input:focus{border-color:rgba(0,208,132,0.4)}
-select option{background:#141920}
-
-.tf-group{display:flex;gap:4px;flex-wrap:wrap}
-.tf-btn{
-  height:26px;padding:0 8px;border-radius:4px;
-  border:1px solid var(--border);background:transparent;
-  color:var(--muted2);font-size:11px;font-family:var(--mono);
-  cursor:pointer;transition:all .12s;font-weight:500;
-}
-.tf-btn:hover{background:var(--bg3);color:var(--text)}
-.tf-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
-
-.pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-
-.run-btn{
-  width:100%;height:38px;
-  background:#00d084;
-  border:none;border-radius:7px;
-  color:#000;font-size:13px;font-weight:700;font-family:var(--sans);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
-  transition:all .15s;letter-spacing:.01em;margin-top:2px;
-  box-shadow:0 4px 16px rgba(0,208,132,0.2);
-}
-.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,208,132,0.3)}
-.run-btn:active{transform:translateY(0)}
-.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-
-.exp-btn{
-  width:100%;height:38px;margin-top:6px;
-  background:linear-gradient(135deg,rgba(255,184,48,0.15) 0%,rgba(255,184,48,0.08) 100%);
-  border:1px solid rgba(255,184,48,0.35);
-  border-radius:7px;color:var(--amber);font-size:13px;font-family:var(--sans);
-  cursor:pointer;transition:all .15s;font-weight:700;
-  box-shadow:0 4px 14px rgba(255,184,48,0.1);
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.exp-btn:hover{background:linear-gradient(135deg,rgba(255,184,48,0.22) 0%,rgba(255,184,48,0.12) 100%);border-color:rgba(255,184,48,0.5);box-shadow:0 6px 18px rgba(255,184,48,0.18);transform:translateY(-1px)}
-.exp-btn:active{transform:translateY(0)}
-
-/* ── FIXED METRICS BAR (always visible, below topbar above center) ── */
-.metrics-bar{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  border-bottom:1px solid var(--border);
-  background:rgba(14,17,23,0.95);flex-shrink:0;
-}
-.mb-card{
-  padding:10px 14px;border-right:1px solid var(--border);
-  position:relative;display:flex;flex-direction:column;gap:4px;
-}
-.mb-card:last-child{border-right:none}
-.mb-name{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.mb-val{font-size:19px;font-weight:700;font-family:var(--mono);color:var(--green);text-shadow:0 0 20px rgba(0,208,132,0.3)}
-.mb-val.is-neg{color:var(--red);text-shadow:0 0 20px rgba(255,77,106,0.3)}
-.mb-val.is-neutral{color:var(--muted2);text-shadow:none}
-.mb-bar{height:3px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:3px;overflow:hidden}
-.mb-fill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-.sem{position:absolute;top:9px;right:9px;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;letter-spacing:.03em}
-.sem-bom{background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.2)}
-.sem-med{background:rgba(255,184,48,0.12);color:var(--amber);border:1px solid rgba(255,184,48,0.2)}
-.sem-fra{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.2)}
-
-/* ── CENTER — TABS CONTENT ── */
-.col-center-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.col-center{flex:1;overflow-y:auto;background:transparent}
-.col-center::-webkit-scrollbar{width:3px}
-.col-center::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-/* ── RIGHT — EDITOR (always visible) ── */
-.col-right{
-  width:310px;min-width:260px;
-  background:rgba(14,17,23,0.8);
-  border-left:1px solid var(--border);
-  display:flex;flex-direction:column;
-  backdrop-filter:blur(8px);
-}
-.ed-header{
-  height:36px;display:flex;align-items:center;
-  padding:0 10px;gap:5px;border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.ed-dot{width:9px;height:9px;border-radius:50%}
-.ed-fname{font-size:11px;font-family:var(--mono);color:var(--muted2);margin-left:4px}
-.ed-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#code-editor{
-  flex:1;background:var(--bg2);border:none;
-  color:#abb2bf;font-family:var(--mono);font-size:11.5px;line-height:1.75;
-  padding:12px;resize:none;outline:none;tab-size:4;
-}
-#code-editor::placeholder{color:var(--muted)}
-.ed-footer{border-top:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-#ia-desc{
-  width:100%;height:34px;background:var(--bg3);
-  border:1px solid var(--border);border-radius:5px;
-  color:var(--text);font-size:12px;font-family:var(--sans);
-  padding:0 8px;outline:none;
-}
-#ia-desc::placeholder{color:var(--muted)}
-#ia-desc:focus{border-color:rgba(157,111,255,0.4)}
-.ia-gen-btn{
-  width:100%;height:38px;
-  background:linear-gradient(135deg,rgba(157,111,255,0.15) 0%,rgba(157,111,255,0.07) 100%);
-  border:1px solid rgba(157,111,255,0.3);
-  border-radius:7px;color:var(--purple);font-size:13px;font-family:var(--sans);
-  cursor:pointer;font-weight:700;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  box-shadow:0 4px 14px rgba(157,111,255,0.08);
-}
-.ia-gen-btn:hover{background:linear-gradient(135deg,rgba(157,111,255,0.22) 0%,rgba(157,111,255,0.12) 100%);border-color:rgba(157,111,255,0.5);box-shadow:0 6px 18px rgba(157,111,255,0.15);transform:translateY(-1px)}
-.ia-gen-btn:active{transform:translateY(0)}
-.paste-code-btn{
-  width:100%;height:38px;
-  background:#00d084;
-  border:none;
-  border-radius:7px;color:#000;font-size:13px;font-family:var(--sans);
-  cursor:pointer;font-weight:700;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  box-shadow:0 4px 14px rgba(0,208,132,0.08);
-}
-.paste-code-btn:hover{background:#00b872;transform:translateY(-1px)}
-.paste-code-btn:active{transform:translateY(0)}
-.ed-actions{display:flex;gap:5px}
-.ea-btn{flex:1;height:26px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-.ea-btn:hover{background:var(--bg3);color:var(--text)}
-
-/* ════════════════════════════
-   TAB: EDITOR
-════════════════════════════ */
-.tab-editor{padding:0}
-.editor-center{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;min-height:400px;gap:20px;padding:40px 20px;
-}
-.editor-drop-zone{
-  width:100%;max-width:560px;
-  border:2px dashed var(--border2);border-radius:12px;
-  padding:40px 30px;text-align:center;
-  background:rgba(20,25,32,0.5);
-  transition:all .2s;cursor:text;
-}
-.editor-drop-zone:hover{border-color:rgba(0,208,132,0.35);background:rgba(0,208,132,0.03)}
-.edz-icon{font-size:36px;margin-bottom:12px;opacity:.6}
-.edz-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
-.edz-sub{font-size:12px;color:var(--muted2);line-height:1.7;max-width:380px;margin:0 auto}
-.edz-or{font-size:11px;color:var(--muted);margin:16px 0;display:flex;align-items:center;gap:10px}
-.edz-or::before,.edz-or::after{content:'';flex:1;height:1px;background:var(--border)}
-.edz-hint{
-  display:flex;align-items:center;gap:8px;
-  background:var(--purple-bg);border:1px solid rgba(157,111,255,0.2);
-  border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted2);
-  max-width:560px;width:100%;
-}
-.edz-hint strong{color:var(--purple)}
-
-/* ════════════════════════════
-   TAB: OVERVIEW (result)
-════════════════════════════ */
-.overview-empty{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;height:100%;min-height:300px;
-  gap:10px;color:var(--muted);
-}
-.ov-header{padding:14px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.ov-badge-lucro{background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.2);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:var(--mono)}
-.ov-badge-prej{background:var(--red-bg);color:var(--red);border:1px solid rgba(255,77,106,0.2);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:var(--mono)}
-.ov-meta{font-size:11px;color:var(--muted)}
-.ov-retorno{font-size:44px;font-weight:700;font-family:var(--mono);line-height:1;padding:6px 16px 0;letter-spacing:-.02em}
-.ov-cap-row{display:flex;gap:24px;padding:6px 16px 12px;border-bottom:1px solid var(--border)}
-.ov-cap-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.ov-cap-val{font-size:13px;font-weight:500;color:var(--text);font-family:var(--mono)}
-
-.charts-2col{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
-.cp{padding:12px 14px;background:var(--bg2)}
-.cp:first-child{border-right:1px solid var(--border)}
-.cp-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
-.cp-tag{font-size:9px;font-family:var(--mono);color:var(--muted)}
-
-.bottom3col{display:grid;grid-template-columns:170px 1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
-.b3p{padding:14px 14px;background:var(--bg2)}
-.b3p:not(:last-child){border-right:1px solid var(--border)}
-.b3-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-
-.bench-row{display:flex;align-items:center;gap:6px;margin-bottom:7px}
-.bench-lbl{font-size:11px;color:var(--muted2);width:80px;flex-shrink:0}
-.bench-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
-.bench-fill{height:100%;border-radius:3px}
-.bench-v{font-size:11px;font-family:var(--mono);font-weight:600;width:52px;text-align:right}
-
-.donut-stats{margin-top:6px;display:flex;flex-direction:column;gap:3px}
-.ds-row{display:flex;align-items:center;gap:6px}
-.ds-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.ds-lbl{font-size:11px;color:var(--muted2)}
-.ds-val{font-size:11px;font-family:var(--mono);font-weight:600;margin-left:auto}
-
-.ia-sug{margin:10px 14px;background:rgba(157,111,255,0.05);border:1px solid rgba(157,111,255,0.15);border-radius:8px;padding:10px 12px}
-.ia-sug-title{font-size:10px;color:var(--purple);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
-.ia-sug-text{font-size:12px;color:var(--muted2);line-height:1.65}
-
-.trades-panel{padding:10px 14px 14px}
-.tp-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
-.trades-tbl{width:100%;border-collapse:collapse;font-size:11px}
-.trades-tbl th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border)}
-.trades-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.025);font-family:var(--mono)}
-.trades-tbl tr:hover td{background:var(--bg3)}
-.tg{color:var(--green)}.tr{color:var(--red)}
-
-/* ════════════════════════════
-   TAB: TEMPLATES
-════════════════════════════ */
-.tab-templates{display:flex;height:100%;position:relative}
-.tpl-list{flex:1;padding:20px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
-.tpl-list::-webkit-scrollbar{width:3px}
-.tpl-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-.tpl-header{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;letter-spacing:-.02em}
-.tpl-sub{font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.5}
-.tpl-card{
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:8px;padding:12px 14px;cursor:pointer;
-  transition:all .15s;display:flex;align-items:center;gap:12px;
-}
-.tpl-card:hover{background:var(--bg4);border-color:var(--border2);transform:translateX(2px)}
-.tpl-card.selected{border-color:rgba(0,208,132,0.4);background:var(--green-bg)}
-.tpl-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--bg4)}
-.tpl-info{flex:1}
-.tpl-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
-.tpl-desc{font-size:11px;color:var(--muted2);line-height:1.4}
-.tpl-meta{display:flex;gap:6px;margin-top:4px}
-.tpl-tag{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;font-family:var(--mono)}
-.tpl-perf{font-size:12px;font-family:var(--mono);font-weight:600;flex-shrink:0}
-
-.tpl-robot{
-  width:260px;flex-shrink:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  padding:0 20px 20px;
-  background:linear-gradient(180deg, transparent 0%, rgba(0,208,132,0.04) 100%);
-  border-left:1px solid var(--border);position:relative;overflow:hidden;
-}
-.tpl-robot::before{
-  content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-  background:radial-gradient(ellipse 80% 60% at 50% 80%, rgba(0,208,132,0.08) 0%, transparent 70%);
-}
-.robot-placeholder{
-  width:180px;height:260px;
-  background:linear-gradient(160deg, rgba(0,208,132,0.15) 0%, rgba(77,159,255,0.08) 100%);
-  border-radius:50% 50% 40% 40%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:80px;opacity:.8;position:relative;z-index:1;
-  border:1px solid rgba(0,208,132,0.15);
-  box-shadow:0 20px 60px rgba(0,208,132,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
-}
-.tpl-use-btn{
-  position:relative;z-index:1;margin-top:14px;
-  width:100%;height:36px;
-  background:#00d084;border:none;border-radius:7px;
-  color:#000;font-size:12px;font-weight:700;font-family:var(--sans);
-  cursor:pointer;transition:all .15s;
-}
-.tpl-use-btn:hover{background:#00b872;transform:translateY(-1px)}
-
-/* ════════════════════════════
-   TAB: RANK BEST BOTS
-════════════════════════════ */
-.tab-rank{padding:20px 16px;overflow-y:auto}
-.rank-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
-.rank-title{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em}
-.rank-sub{font-size:12px;color:var(--muted2);margin-top:3px}
-
-.podium-wrap{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:24px;padding:20px 0}
-.podium-item{display:flex;flex-direction:column;align-items:center;gap:6px}
-.podium-medal{font-size:28px;animation:float 3s ease-in-out infinite}
-.podium-medal:nth-child(1){animation-delay:0s}
-.podium-medal:nth-child(2){animation-delay:.5s}
-.podium-medal:nth-child(3){animation-delay:1s}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-.podium-block{
-  border-radius:8px 8px 0 0;width:90px;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  padding:8px;border:1px solid var(--border);
-}
-.podium-1{height:90px;background:linear-gradient(180deg,rgba(255,184,48,0.12) 0%,rgba(255,184,48,0.04) 100%);border-color:rgba(255,184,48,0.25)}
-.podium-2{height:70px;background:linear-gradient(180deg,rgba(174,174,174,0.1) 0%,rgba(174,174,174,0.03) 100%);border-color:rgba(174,174,174,0.2)}
-.podium-3{height:55px;background:linear-gradient(180deg,rgba(205,127,50,0.1) 0%,rgba(205,127,50,0.03) 100%);border-color:rgba(205,127,50,0.2)}
-.podium-name{font-size:10px;font-weight:600;color:var(--text);text-align:center;line-height:1.3}
-.podium-ret{font-size:12px;font-family:var(--mono);font-weight:700}
-.p1-ret{color:var(--amber)}
-.p2-ret{color:#aaa}
-.p3-ret{color:#cd7f32}
-.podium-stars{font-size:9px;letter-spacing:1px}
-
-.rank-list{display:flex;flex-direction:column;gap:6px}
-.rank-card{
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:8px;padding:12px 14px;
-  display:flex;align-items:center;gap:12px;
-  transition:all .12s;cursor:pointer;
-}
-.rank-card:hover{background:var(--bg4);border-color:var(--border2)}
-.rank-num{font-size:13px;font-family:var(--mono);font-weight:700;color:var(--muted);width:20px;text-align:center;flex-shrink:0}
-.rank-icon{width:32px;height:32px;border-radius:7px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.rank-info{flex:1}
-.rank-name{font-size:13px;font-weight:600;color:var(--text)}
-.rank-detail{font-size:11px;color:var(--muted2);margin-top:1px}
-.rank-stars{font-size:11px;letter-spacing:1px;margin-top:2px}
-.rank-right{text-align:right;flex-shrink:0}
-.rank-ret{font-size:14px;font-family:var(--mono);font-weight:700}
-.rank-wr{font-size:10px;color:var(--muted2);font-family:var(--mono)}
-.rank-badge{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;font-family:var(--mono);margin-top:3px;display:inline-block}
-
-/* ── SPINNER ── */
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner{width:13px;height:13px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
-
-.zoom-btn{height:20px;padding:0 7px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:10px;font-family:var(--mono);cursor:pointer;transition:all .12s;font-weight:500}
-.zoom-btn:hover{background:var(--bg3);color:var(--text)}
-.zoom-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
-
-/* ── INDICADORES MULTI-SELECT ── */
-.ind-row{border-radius:5px;padding:5px 6px;background:var(--bg3);border:1px solid var(--border)}
-.ind-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
-.ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
-.ind-label{font-size:12px;color:var(--text);font-weight:500}
-.ind-controls{padding-top:2px}
-.color-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
-.color-btn.active{border-color:var(--text);transform:scale(1.2)}
-.color-btn:hover{transform:scale(1.15)}
-
-/* ── MODAL AUTH ── */
-.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(6px)}
-.auth-box{background:#0e1117;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:400px;max-width:95vw;padding:32px;position:relative;z-index:9001}
-.auth-logo{display:flex;align-items:center;gap:8px;margin-bottom:20px;justify-content:center}
-.auth-logo-icon{width:28px;height:28px;background:#00d084;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
-.auth-logo-name{font-size:17px;font-weight:700;color:var(--text)}
-.auth-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:7px;overflow:hidden;border:1px solid var(--border)}
-.auth-tab{flex:1;height:34px;background:transparent;border:none;color:var(--muted2);font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;transition:all .15s}
-.auth-tab.active{background:var(--bg3);color:var(--text)}
-.auth-field{margin-bottom:14px}
-.auth-field label{font-size:11px;color:var(--muted2);font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
-.auth-input{width:100%;height:38px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--sans);padding:0 12px;outline:none;transition:border .15s}
-.auth-input:focus{border-color:rgba(0,208,132,0.5)}
-.auth-submit{width:100%;height:40px;background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;margin-top:6px;transition:all .15s;box-shadow:0 4px 14px rgba(0,208,132,0.25)}
-.auth-submit:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,208,132,0.35)}
-.auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
-.auth-error{font-size:12px;color:var(--red);margin-top:8px;text-align:center;min-height:16px}
-.auth-success{font-size:12px;color:var(--green);margin-top:8px;text-align:center}
-.auth-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
-.auth-close:hover{color:var(--text)}
-.auth-forgot{font-size:11px;color:var(--muted2);text-align:center;margin-top:10px;cursor:pointer}
-.auth-forgot:hover{color:var(--text)}
-
-/* ── USER MENU ── */
-.user-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s}
-.user-btn:hover{background:var(--bg3);border-color:var(--border2)}
-.user-avatar{width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
-.user-plano{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;font-family:var(--mono)}
-.plano-free{background:var(--bg3);color:var(--muted2)}
-.plano-pro{background:var(--green-bg);color:var(--green)}
-.plano-trader{background:var(--purple-bg);color:var(--purple)}
-
-.user-dropdown{position:absolute;top:46px;right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:220px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.user-dropdown-item{padding:10px 14px;font-size:12px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .12s;border-bottom:1px solid var(--border)}
-.user-dropdown-item:last-child{border-bottom:none}
-.user-dropdown-item:hover{background:var(--bg3);color:var(--text)}
-.user-dropdown-header{padding:12px 14px;border-bottom:1px solid var(--border)}
-.user-dropdown-email{font-size:12px;color:var(--text);font-weight:500}
-.user-dropdown-plan{font-size:10px;color:var(--muted2);margin-top:2px}
-.user-dropdown-uso{font-size:10px;color:var(--muted);margin-top:2px}
-
-/* ── LIMIT BANNER ── */
-.limit-banner{background:var(--amber-bg);border:1px solid rgba(255,184,48,0.3);border-radius:6px;padding:8px 12px;margin:8px 12px 0;font-size:11px;color:var(--amber);display:none;align-items:center;gap:8px}
-.limit-banner.show{display:flex}
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;display:none}
-.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:500px;max-width:94vw;padding:20px}
-.modal-title{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--amber)}
-.modal-code{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:var(--muted2);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
-.modal-close{margin-top:10px;width:100%;height:30px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted2);font-size:12px;cursor:pointer;font-family:var(--sans)}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="logo">
-    <div style="width:26px;height:26px;background:#00d084;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-        <polyline points="2,18 7,11 13,14 20,5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="20" cy="5" r="3" fill="#ffb830"/>
-      </svg>
+<nav>
+  <div class="nav-inner">
+    <div class="logo"><em>Bot</em>Backtest</div>
+    <div class="nav-menu">
+      <a href="#como">Como funciona</a>
+      <a href="#diferenciais">Diferenciais</a>
+      <a href="#ranking">Ranking</a>
+      <a href="#precos">Preços</a>
+      <a href="#faq">FAQ</a>
     </div>
-    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v1.4</span>
-  </div>
-  <div class="tsep"></div>
-  <button class="tbtn active" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
-  <button class="tbtn" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
-  <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
-  <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
-  <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
-  <div class="tsep"></div>
-  <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
-  <button class="tbtn tbtn-amber" onclick="abrirNTSL()">📥 NTSL</button>
-  <div class="spacer"></div>
-  <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
-  <div class="tsep"></div>
-  <button class="lang-btn active">PT</button>
-  <button class="lang-btn">EN</button>
-  <button class="lang-btn">ES</button>
-  <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-    <div class="api-dot" id="api-dot"></div>
-    <span class="api-label" id="api-label">API Online</span>
-  </div>
-  <div style="margin-left:8px;position:relative">
-    <!-- Não logado -->
-    <button class="tbtn tbtn-orange" id="btn-login" onclick="abrirAuth('login')" style="display:flex">🔐 Entrar</button>
-    <!-- Logado -->
-    <button class="user-btn" id="btn-user" style="display:none" onclick="toggleUserMenu()">
-      <div class="user-avatar" id="user-avatar">?</div>
-      <span id="user-nome-curto">Usuário</span>
-      <span class="user-plano plano-free" id="user-plano-badge">FREE</span>
-    </button>
-    <!-- Dropdown -->
-    <div class="user-dropdown" id="user-dropdown" style="display:none">
-      <div class="user-dropdown-header">
-        <div class="user-dropdown-email" id="dd-email">email@exemplo.com</div>
-        <div class="user-dropdown-plan" id="dd-plano">Plano Free</div>
-        <div class="user-dropdown-uso" id="dd-uso">0 / 5 backtests este mês</div>
-      </div>
-      <div class="user-dropdown-item" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
-      <div class="user-dropdown-item" onclick="fazerLogout()" style="color:var(--red)">🚪 Sair</div>
+    <div class="nav-actions">
+      <a class="btn btn-outline" href="/app">Entrar</a>
+      <a class="btn btn-green" href="#precos">Começar grátis</a>
     </div>
   </div>
-</div><!-- /topbar -->
+</nav>
 
-<!-- MAIN -->
-<div class="main">
-
-  <!-- LEFT: PARAMS -->
-  <div class="col-left">
-    <div class="ps">
-      <div class="pl">Ativo</div>
-      <select id="ativo">
-        <optgroup label="Forex">
-          <option value="EUR/USD">EUR/USD — Euro</option>
-          <option value="GBP/USD">GBP/USD — Libra</option>
-          <option value="USD/JPY">USD/JPY — Iene</option>
-          <option value="AUD/USD">AUD/USD — Dólar AU</option>
-        </optgroup>
-        <optgroup label="Commodities">
-          <option value="XAU/USD" selected>XAU/USD — Ouro</option>
-        </optgroup>
-        <optgroup label="Crypto">
-          <option value="BTC/USD">BTC/USD — Bitcoin</option>
-        </optgroup>
-        <optgroup label="B3 Brasil">
-          <option value="IBOVESPA">IBOVESPA</option>
-          <option value="USD/BRL">USD/BRL</option>
-        </optgroup>
-      </select>
-    </div>
-    <div class="ps">
-      <div class="pl">Período</div>
-      <select id="periodo">
-        <option value="6 meses">6 meses</option>
-        <option value="1 ano">1 ano</option>
-        <option value="2 anos" selected>2 anos</option>
-        <option value="3 anos">3 anos</option>
-        <option value="5 anos">5 anos</option>
-      </select>
-    </div>
-    <div class="ps">
-      <div class="pl">Timeframe</div>
-      <div class="tf-group">
-        <button class="tf-btn" onclick="setTF(this,'5m')">5m</button>
-        <button class="tf-btn" onclick="setTF(this,'15m')">15m</button>
-        <button class="tf-btn" onclick="setTF(this,'30m')">30m</button>
-        <button class="tf-btn" onclick="setTF(this,'1h')">1H</button>
-        <button class="tf-btn" onclick="setTF(this,'4h')">4H</button>
-        <button class="tf-btn active" onclick="setTF(this,'1d')">1D</button>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div>
+      <div class="hero-tag">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        Backtesting profissional para traders
       </div>
-      <input type="hidden" id="timeframe" value="1d">
-    </div>
-    <div class="ps">
-      <div class="pl" style="margin-bottom:8px">Indicadores <span style="color:var(--muted);font-size:9px;font-weight:400">(até 3)</span></div>
-
-      <!-- Indicador principal (estratégia) -->
-      <div class="pli" style="margin-bottom:4px">Estratégia principal</div>
-      <select id="indicador">
-        <option value="EMA Channel High/Low">EMA Channel High/Low</option>
-        <option value="EMA">EMA Simples</option>
-        <option value="SMA">SMA</option>
-        <option value="RSI">RSI</option>
-        <option value="MACD">MACD</option>
-        <option value="Bollinger Bands">Bollinger Bands</option>
-      </select>
-      <div style="margin-top:5px">
-        <div class="pli">Período</div>
-        <input type="number" id="ema_period" value="20" min="2" max="200">
+      <h1>Teste sua estratégia.<br><em>Antes de arriscar.</em></h1>
+      <p class="hero-sub">Plataforma de backtesting em Python com suporte a B3, Forex e Cripto. Geração de bots por IA. Exportação para Profit/Nelogica.</p>
+      <div class="asset-pills">
+        <div class="asset-pill"><div class="dot dot-gold"></div>XAU/USD</div>
+        <div class="asset-pill"><div class="dot dot-btc"></div>BITCOIN</div>
+        <div class="asset-pill"><div class="dot dot-nq"></div>NASDAQ</div>
+        <div class="asset-pill"><div class="dot dot-sp"></div>US500</div>
+        <div class="asset-pill"><div class="dot dot-br"></div>IBOVESPA</div>
       </div>
-
-      <!-- Overlay indicators -->
-      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
-        <div class="pli" style="margin-bottom:6px">Overlay no gráfico</div>
-
-        <!-- EMA 1 -->
-        <div class="ind-row" id="ind-row-1">
-          <label class="ind-check">
-            <input type="checkbox" id="ind1-active" onchange="toggleIndicador(1)">
-            <span class="ind-label">EMA</span>
-          </label>
-          <div class="ind-controls" id="ind1-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind1-period" value="9" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind1-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                  <option value="open">Open</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn active" data-color="#3b82f6" onclick="setIndColor(1,this)" style="background:#3b82f6"></button>
-                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(1,this)" style="background:#f59e0b"></button>
-                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(1,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(1,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(1,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- EMA 2 -->
-        <div class="ind-row" id="ind-row-2" style="margin-top:6px">
-          <label class="ind-check">
-            <input type="checkbox" id="ind2-active" onchange="toggleIndicador(2)">
-            <span class="ind-label">EMA</span>
-          </label>
-          <div class="ind-controls" id="ind2-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind2-period" value="21" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind2-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                  <option value="open">Open</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(2,this)" style="background:#3b82f6"></button>
-                <button class="color-btn active" data-color="#f59e0b" onclick="setIndColor(2,this)" style="background:#f59e0b"></button>
-                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(2,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(2,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(2,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SMA -->
-        <div class="ind-row" id="ind-row-3" style="margin-top:6px">
-          <label class="ind-check">
-            <input type="checkbox" id="ind3-active" onchange="toggleIndicador(3)">
-            <span class="ind-label">SMA</span>
-          </label>
-          <div class="ind-controls" id="ind3-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind3-period" value="50" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind3-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(3,this)" style="background:#3b82f6"></button>
-                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(3,this)" style="background:#f59e0b"></button>
-                <button class="color-btn active" data-color="#8b5cf6" onclick="setIndColor(3,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(3,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(3,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="hero-btns">
+        <a class="btn btn-green btn-xl" href="#precos">Começar grátis →</a>
+        <a class="btn btn-outline btn-lg" href="#como">Como funciona</a>
+      </div>
+      <div class="hero-trust">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Sem cartão de crédito &nbsp;·&nbsp; Cancele a qualquer momento &nbsp;·&nbsp; Dados reais
       </div>
     </div>
-    <div class="ps">
-      <div class="pl">Gestão de Risco</div>
-      <div class="pr">
-        <div><div class="pli">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
-        <div><div class="pli">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
+    <div class="hero-card">
+      <div class="card-header">
+        <div class="card-title">Resultado do backtest</div>
+        <div class="card-status"><div class="card-dot"></div>Concluído</div>
       </div>
-      <div class="pr" style="margin-top:6px">
-        <div><div class="pli">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
-        <div><div class="pli">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-val green">+38.4%</div><div class="metric-label">Retorno total</div></div>
+        <div class="metric"><div class="metric-val white">64.2%</div><div class="metric-label">Win rate</div></div>
+        <div class="metric"><div class="metric-val white">1.87</div><div class="metric-label">Profit factor</div></div>
+        <div class="metric"><div class="metric-val red">-8.3%</div><div class="metric-label">Max drawdown</div></div>
       </div>
-      <div style="margin-top:6px"><div class="pli">Comissão</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
-    </div>
-    <div class="ps">
-      <button class="run-btn" id="run-btn" onclick="rodarBacktest()">
-        <span id="run-icon">▶</span>
-        <span id="run-txt">Rodar Backtest</span>
-      </button>
-      <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
-    </div>
-  </div>
-
-  <!-- CENTER + RIGHT WRAPPER -->
-  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-
-    <!-- FIXED METRICS BAR -->
-    <div class="metrics-bar" id="metrics-bar">
-      <div class="mb-card">
-        <div class="mb-name">Win Rate</div>
-        <div class="mb-val" id="m-wr">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-wr-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-wr-sem"></div>
+      <div class="equity-box">
+        <div class="equity-label">Equity curve</div>
+        <svg viewBox="0 0 360 54" style="width:100%;height:54px" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00d084" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#00d084" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,50 L40,46 L75,42 L95,44 L125,36 L150,30 L175,26 L200,20 L225,16 L255,11 L290,7 L325,4 L360,2 L360,54 L0,54 Z" fill="url(#eq)"/>
+          <polyline points="0,50 40,46 75,42 95,44 125,36 150,30 175,26 200,20 225,16 255,11 290,7 325,4 360,2" fill="none" stroke="#00d084" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
       </div>
-      <div class="mb-card">
-        <div class="mb-name">Sharpe Ratio</div>
-        <div class="mb-val" id="m-sh">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-sh-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-sh-sem"></div>
+      <div class="card-footer">
+        <span class="card-tag">✓ 127 trades · EMA Channel</span>
+        <span class="card-info">XAU/USD · 2 anos · 1D</span>
       </div>
-      <div class="mb-card">
-        <div class="mb-name">Max Drawdown</div>
-        <div class="mb-val" id="m-dd">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-dd-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-dd-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Profit Factor</div>
-        <div class="mb-val" id="m-pf">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-pf-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-pf-sem"></div>
-      </div>
-    </div>
-
-    <!-- CENTER + RIGHT split -->
-    <div style="flex:1;display:flex;overflow:hidden">
-
-      <!-- CENTER -->
-      <div class="col-center-wrap">
-        <div class="col-center" id="col-center">
-
-          <!-- TAB: EDITOR -->
-          <div id="tab-editor" class="tab-editor">
-            <div class="editor-center">
-              <div class="editor-drop-zone" onclick="document.getElementById('code-editor').focus()">
-                <div class="edz-icon">🐍</div>
-                <div class="edz-title">Cole seu código Python aqui</div>
-                <div class="edz-sub">Sua estratégia será testada com os parâmetros configurados à esquerda. Use a classe <strong style="color:var(--green);font-family:var(--mono)">Strategy</strong> do backtesting.py.</div>
-                <div class="edz-or">ou</div>
-                <div style="font-size:12px;color:var(--muted2)">Descreva sua estratégia abaixo e deixa a IA gerar o código →</div>
-              </div>
-              <div class="edz-hint">
-                <span>💡</span>
-                <span>Caso não tenha um código, descreva sua estratégia no campo <strong>DESCREVE A ESTRATÉGIA</strong> e clique em <strong>✨ Gerar Bot com IA</strong> — a IA cria o código completo para você testar.</span>
-              </div>
-              <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2)">
-                <span>⚡</span>
-                <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong> automaticamente.</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB: OVERVIEW -->
-          <div id="tab-overview" style="display:none">
-            <div class="overview-empty" id="ov-empty">
-              <div style="font-size:38px;opacity:.25">📊</div>
-              <div style="font-size:14px;font-weight:600;color:var(--muted2)">Nenhum backtest rodado</div>
-              <div style="font-size:12px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">Configure os parâmetros, cole seu código e clique em Rodar Backtest</div>
-            </div>
-            <div id="ov-result" style="display:none"></div>
-          </div>
-
-          <!-- TAB: TEMPLATES -->
-          <div id="tab-templates" style="display:none" class="tab-templates">
-            <div class="tpl-list">
-              <div class="tpl-header">Selecione uma Estratégia</div>
-              <div class="tpl-sub">Estratégias prontas e testadas. Selecione, ajuste os parâmetros e rode.</div>
-              <div class="tpl-card selected" onclick="usarTemplate(this,'ema_channel')">
-                <div class="tpl-icon">📊</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">EMA Channel High/Low</div>
-                  <div class="tpl-desc">Canal de médias móveis exponenciais com rompimento</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">TENDÊNCIA</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">EMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+12.4%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'rsi')">
-                <div class="tpl-icon">📈</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">RSI Oversold/Overbought</div>
-                  <div class="tpl-desc">Compra em sobrevenda RSI &lt;30, venda em sobrecompra &gt;70</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--purple-bg);color:var(--purple)">REVERSÃO</span>
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">RSI</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+8.7%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'macd')">
-                <div class="tpl-icon">⚡</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">MACD Crossover</div>
-                  <div class="tpl-desc">Cruzamento das linhas MACD com confirmação de histograma</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">TENDÊNCIA</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">MACD</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--amber)">+3.2%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'bb')">
-                <div class="tpl-icon">🎯</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Bollinger Bands Squeeze</div>
-                  <div class="tpl-desc">Entrada em compressão com rompimento das bandas</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--amber-bg);color:var(--amber)">VOLATILIDADE</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">BB</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+19.1%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'sma_cross')">
-                <div class="tpl-icon">🔀</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">SMA 50/200 Golden Cross</div>
-                  <div class="tpl-desc">Clássico cruzamento de médias longas para swing trade</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">SWING</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">SMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+15.8%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'vwap')">
-                <div class="tpl-icon">💹</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">VWAP Intraday</div>
-                  <div class="tpl-desc">Operações intraday baseadas no volume price average</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--red-bg);color:var(--red)">INTRADAY</span>
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">VWAP</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--amber)">+5.3%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'doji')">
-                <div class="tpl-icon">🕯️</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Doji + EMA Filter</div>
-                  <div class="tpl-desc">Padrão de candle Doji com filtro de tendência EMA</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--purple-bg);color:var(--purple)">CANDLES</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">EMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+22.6%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'breakout')">
-                <div class="tpl-icon">🚀</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Breakout de Consolidação</div>
-                  <div class="tpl-desc">Rompimento de máximas/mínimas com confirmação de volume</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">ROMPIMENTO</span>
-                    <span class="tpl-tag" style="background:var(--amber-bg);color:var(--amber)">VOLUME</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+28.3%</div>
-              </div>
-            </div>
-            <div class="tpl-robot">
-              <div class="robot-placeholder">🤖</div>
-              <button class="tpl-use-btn" id="tpl-use-btn" onclick="confirmarTemplate()">
-                ▶ Usar este Template
-              </button>
-            </div>
-          </div>
-
-          <!-- TAB: RANK -->
-          <div id="tab-rank" style="display:none" class="tab-rank">
-            <div class="rank-header">
-              <div>
-                <div class="rank-title">🏆 Rank Best Bots</div>
-                <div class="rank-sub">Melhores estratégias da comunidade no momento</div>
-              </div>
-              <button class="tbtn tbtn-orange" onclick="switchTab('editor')">+ Publicar meu Bot</button>
-            </div>
-
-            <!-- PODIUM -->
-            <div class="podium-wrap">
-              <div class="podium-item">
-                <div class="podium-medal">🥈</div>
-                <div class="podium-block podium-2">
-                  <div class="podium-name">Bollinger<br>Squeeze Pro</div>
-                  <div class="podium-ret p2-ret">+47.2%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐</div>
-                </div>
-              </div>
-              <div class="podium-item" style="order:-1">
-                <div class="podium-medal">🥇</div>
-                <div class="podium-block podium-1">
-                  <div class="podium-name">EMA Channel<br>XAU Master</div>
-                  <div class="podium-ret p1-ret">+68.4%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐⭐</div>
-                </div>
-              </div>
-              <div class="podium-item">
-                <div class="podium-medal">🥉</div>
-                <div class="podium-block podium-3">
-                  <div class="podium-name">MACD BTC<br>Scalper</div>
-                  <div class="podium-ret p3-ret">+38.9%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- RANK LIST -->
-            <div class="rank-list">
-              <div class="rank-card">
-                <div class="rank-num">4</div>
-                <div class="rank-icon">📊</div>
-                <div class="rank-info">
-                  <div class="rank-name">RSI Reversal Gold</div>
-                  <div class="rank-detail">XAU/USD · 1D · 2 anos</div>
-                  <div class="rank-stars">⭐⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+34.1%</div>
-                  <div class="rank-wr">WR 61.2%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">5</div>
-                <div class="rank-icon">⚡</div>
-                <div class="rank-info">
-                  <div class="rank-name">Golden Cross S&P</div>
-                  <div class="rank-detail">IBOVESPA · 1D · 5 anos</div>
-                  <div class="rank-stars">⭐⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+29.7%</div>
-                  <div class="rank-wr">WR 57.8%</div>
-                  <div class="rank-badge" style="background:var(--amber-bg);color:var(--amber)">FREE</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">6</div>
-                <div class="rank-icon">🎯</div>
-                <div class="rank-info">
-                  <div class="rank-name">Doji Filter EUR/USD</div>
-                  <div class="rank-detail">EUR/USD · 4H · 1 ano</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+24.3%</div>
-                  <div class="rank-wr">WR 54.1%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">7</div>
-                <div class="rank-icon">🚀</div>
-                <div class="rank-info">
-                  <div class="rank-name">Breakout BTC 4H</div>
-                  <div class="rank-detail">BTC/USD · 4H · 1 ano</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--amber)">+18.5%</div>
-                  <div class="rank-wr">WR 49.3%</div>
-                  <div class="rank-badge" style="background:var(--blue-bg);color:var(--blue)">TRADER</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">8</div>
-                <div class="rank-icon">💹</div>
-                <div class="rank-info">
-                  <div class="rank-name">VWAP Intraday B3</div>
-                  <div class="rank-detail">IBOVESPA · 1H · 6 meses</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--amber)">+14.2%</div>
-                  <div class="rank-wr">WR 51.7%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        <!-- TAB: PLANOS -->
-        <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
-          <div style="max-width:860px;margin:0 auto;">
-            <h2 style="font-size:22px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px;">Escolha seu plano</h2>
-            <p style="text-align:center;color:var(--muted2);font-size:13px;margin-bottom:24px;">Cancele quando quiser. Sem fidelidade.</p>
-            <div style="display:flex;justify-content:center;gap:6px;margin-bottom:24px;">
-              <button onclick="setMoeda('BRL')" id="btn-brl" style="padding:5px 16px;border-radius:6px;border:1px solid #00d084;background:#00d084;color:#000;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">BRL</button>
-              <button onclick="setMoeda('USD')" id="btn-usd" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">USD</button>
-              <button onclick="setMoeda('EUR')" id="btn-eur" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">EUR</button>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-              <!-- FREE -->
-              <div style="background:var(--bg2);border:1px solid #555;border-radius:12px;padding:24px 20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--muted2);margin-bottom:8px;">FREE</div>
-                <div style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$0</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">para sempre</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ 5 backtests/mês</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:#555;">❌ IA ilimitada</li>
-                  <li style="font-size:12px;color:#555;">❌ Exportar NTSL</li>
-                </ul>
-                <button style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:default;font-family:var(--sans);">Plano atual</button>
-              </div>
-              <!-- PRO -->
-              <div style="background:var(--bg2);border:2px solid #00d084;border-radius:12px;padding:24px 20px;position:relative;">
-                <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#00d084;color:#000;font-size:10px;font-weight:700;padding:2px 12px;border-radius:20px;white-space:nowrap;">MAIS POPULAR</div>
-                <div style="font-size:12px;font-weight:600;color:#00d084;margin-bottom:8px;">PRO</div>
-                <div id="preco-pro" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$67</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ 200 backtests/mês</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
-                </ul>
-                <button onclick="assinar('pro')" style="width:100%;padding:9px;border-radius:7px;border:none;background:#00d084;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Pro</button>
-              </div>
-              <!-- TRADER PRO -->
-              <div style="background:var(--bg2);border:1px solid #ffb830;border-radius:12px;padding:24px 20px;">
-                <div style="font-size:12px;font-weight:600;color:#ffb830;margin-bottom:8px;">TRADER PRO</div>
-                <div id="preco-trader" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$97</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ Backtests ilimitados</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Suporte prioritário</li>
-                </ul>
-                <button onclick="assinar('trader')" style="width:100%;padding:9px;border-radius:7px;border:1px solid #ffb830;background:transparent;color:#ffb830;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Trader Pro</button>
-              </div>
-            </div>
-          </div>
-        </div><!-- /tab-planos -->
-
-        </div><!-- /col-center -->
-      </div><!-- /col-center-wrap -->
-
-      <!-- RIGHT: EDITOR -->
-      <div class="col-right">
-        <div class="ed-header">
-          <div class="ed-dot" style="background:#ff5f57"></div>
-          <div class="ed-dot" style="background:#febc2e"></div>
-          <div class="ed-dot" style="background:#28c840"></div>
-          <span class="ed-fname">strategy.py</span>
-          <div class="spacer"></div>
-          <div class="ed-actions" style="gap:4px">
-            <button class="ea-btn" onclick="document.getElementById('code-editor').value=''">Limpar</button>
-            <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
-          </div>
-        </div>
-        <div class="ed-body">
-          <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
-# Ou descreva abaixo e clica Gerar com IA
-
-# EXEMPLO — EMA Channel XAU/USD:
-# class EMAChannelStrategy(Strategy):
-#     ema_period = 20
-#
-#     def init(self):
-#         self.ema_high = self.I(
-#             lambda h: pd.Series(h).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.High)
-#         self.ema_low = self.I(
-#             lambda l: pd.Series(l).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.Low)
-#
-#     def next(self):
-#         preco = self.data.Close[-1]
-#         if not self.position:
-#             if preco > self.ema_high[-1]:
-#                 self.buy()
-#         else:
-#             if preco < self.ema_low[-1]:
-#                 self.position.close()"></textarea>
-        </div>
-        <div class="ed-footer">
-          <button class="paste-code-btn" id="paste-ia-btn" onclick="colarCodigoIA()">
-            📋 Colar código gerado pela IA
-          </button>
-          <div class="pl" style="margin-top:2px">Descreve a Estratégia</div>
-          <input type="text" id="ia-desc" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts...">
-          <button class="ia-gen-btn" id="ia-btn" onclick="gerarBotIA()">✨ Gerar Bot com IA</button>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
 
-<!-- MODAL AUTH -->
-<div class="auth-overlay" id="auth-overlay" style="display:none">
-  <div class="auth-box">
-    <button class="auth-close" onclick="fecharAuth()">×</button>
-    <div class="auth-logo">
-      <svg width="240" height="36" viewBox="0 0 240 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="34" height="34" x="0" y="1" rx="9" fill="#00d084"/>
-        <polyline points="7,27 13,18 19,22 27,11" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="27" cy="11" r="3.2" fill="#ffb830"/>
-        <text x="44" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="var(--text)">Backtest</tspan></text>
-      </svg>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Entrar</button>
-      <button class="auth-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')">Criar conta</button>
-    </div>
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-val">+1.200</div><div class="stat-label">Backtests rodados</div></div>
+    <div class="stat"><div class="stat-val">100%</div><div class="stat-label">Dados reais verificados</div></div>
+    <div class="stat"><div class="stat-val">&lt; 5s</div><div class="stat-label">Tempo médio por backtest</div></div>
+    <div class="stat"><div class="stat-val">PT · EN · ES</div><div class="stat-label">Idiomas disponíveis</div></div>
+  </div>
+</div>
 
-    <!-- LOGIN -->
-    <div id="auth-login">
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="login-email" class="auth-input" placeholder="seu@email.com">
+<!-- COMO FUNCIONA -->
+<div class="section section-dark" id="como">
+  <div class="wrap">
+    <div class="section-tag">Como funciona</div>
+    <div class="section-title">Do sinal ao resultado em 3 passos</div>
+    <div class="section-sub">Sem instalar nada. Roda no navegador em segundos.</div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <h3>Escolha o ativo e período</h3>
+        <p>Selecione entre 14 ativos: B3, IBOVESPA, XAU/USD, BTC, Forex e mais. Defina o período e o timeframe desejado.</p>
+        <span class="step-pill">Dados reais via yfinance</span>
       </div>
-      <div class="auth-field">
-        <label>Senha</label>
-        <input type="password" id="login-senha" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()">
+      <div class="step-card">
+        <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="15" x2="8" y2="15" stroke-width="3"/><line x1="12" y1="15" x2="12" y2="15" stroke-width="3"/><line x1="16" y1="15" x2="16" y2="15" stroke-width="3"/></svg></div>
+        <h3>Configure ou gere sua estratégia</h3>
+        <p>Use indicadores prontos (EMA, RSI, MACD, Bollinger) ou descreva sua ideia em português e a IA gera o código Python.</p>
+        <span class="step-pill">IA integrada</span>
       </div>
-      <button class="auth-submit" id="login-btn" onclick="fazerLogin()">Entrar</button>
-      <div class="auth-error" id="login-error"></div>
-      <div class="auth-forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
-    </div>
-
-    <!-- CADASTRO -->
-    <div id="auth-signup" style="display:none">
-      <div class="auth-field">
-        <label>Nome</label>
-        <input type="text" id="signup-nome" class="auth-input" placeholder="Seu nome">
+      <div class="step-card">
+        <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div>
+        <h3>Analise o relatório completo</h3>
+        <p>Win rate, Sharpe, Drawdown, Profit Factor, equity curve e gráfico de candles com marcadores de entrada e saída.</p>
+        <span class="step-pill">Estilo TradingView</span>
       </div>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="signup-email" class="auth-input" placeholder="seu@email.com">
-      </div>
-      <div class="auth-field">
-        <label>Senha</label>
-        <input type="password" id="signup-senha" class="auth-input" placeholder="mínimo 6 caracteres" onkeydown="if(event.key==='Enter')fazerCadastro()">
-      </div>
-      <button class="auth-submit" id="signup-btn" onclick="fazerCadastro()">Criar conta grátis</button>
-      <div class="auth-error" id="signup-error"></div>
-      <div class="auth-success" id="signup-success" style="display:none">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
     </div>
   </div>
 </div>
 
-<!-- LIMIT BANNER -->
-<div class="limit-banner" id="limit-banner">
-  ⚠️ <span id="limit-msg">Você atingiu o limite do plano Free (5 backtests/mês).</span>
-  <button onclick="abrirAuth('upgrade')" style="margin-left:auto;background:var(--amber);border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;color:#000">Fazer upgrade</button>
+<!-- DIFERENCIAIS -->
+<div class="section section-mid" id="diferenciais">
+  <div class="wrap">
+    <div class="section-tag">Diferenciais</div>
+    <div class="section-title">Feito para o trader sério</div>
+    <div class="section-sub">Uma combinação única que nenhum concorrente oferece.</div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <h4>Python real — não Pine Script</h4>
+        <p>Estratégias em Python puro. Mais flexível, portável para MT5, TradingView ou qualquer plataforma.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <h4>Suporte nativo à B3 e IBOVESPA</h4>
+        <p>Único backtester com dados brasileiros reais. Teste WIN, WDO, PETR4, VALE3 e IBOV sem configuração extra.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="15" x2="8" y2="15" stroke-width="3"/><line x1="12" y1="15" x2="12" y2="15" stroke-width="3"/><line x1="16" y1="15" x2="16" y2="15" stroke-width="3"/></svg></div>
+        <h4>Geração de bot por IA</h4>
+        <p>Descreva sua ideia em português e a inteligência artificial gera o código da estratégia automaticamente.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <h4>Exportação NTSL para Profit</h4>
+        <p>Exclusivo no mercado: exporte sua estratégia pronta para rodar na Nelogica Profit, sem reescrever nada.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <h4>Relatório estilo TradingView</h4>
+        <p>Equity curve, distribuição de ROI, run-ups, drawdowns por trade e marcadores no gráfico de candles.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+        <h4>Ranking público de bots</h4>
+        <p>Ranking onde traders submetem suas estratégias e têm a performance documentada a partir do backtest.</p>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- RANKING -->
+<div class="section section-dark" id="ranking">
+  <div class="wrap">
+    <div class="section-tag">Ranking de performance</div>
+    <div class="section-title">Ranking público de estratégias</div>
+    <div class="section-sub">Submeta seu backtest e dispute o topo do ranking. Os exemplos abaixo são ilustrativos.</div>
+    <div class="rank-grid">
+      <div class="rank-card">
+        <div class="rank-header"><div class="rank-pos gold">1°</div><span class="rank-verified">Exemplo</span></div>
+        <div class="rank-name">EMA Channel XAU Master</div>
+        <div class="rank-asset">XAU/USD · Timeframe 1D · 2 anos</div>
+        <div class="rank-stats">
+          <div class="rank-stat"><div class="rank-stat-val green">+68.4%</div><div class="rank-stat-label">Retorno</div></div>
+          <div class="rank-stat"><div class="rank-stat-val white">67.2%</div><div class="rank-stat-label">Win rate</div></div>
+          <div class="rank-stat"><div class="rank-stat-val red">-9.1%</div><div class="rank-stat-label">Drawdown</div></div>
+        </div>
+        <div class="rank-footer"><span class="stars">★★★★★</span><span class="rank-trades">214 trades</span></div>
+      </div>
+      <div class="rank-card">
+        <div class="rank-header"><div class="rank-pos silver">2°</div><span class="rank-verified">Exemplo</span></div>
+        <div class="rank-name">Bollinger Squeeze BTC</div>
+        <div class="rank-asset">BTC/USD · Timeframe 4H · 1 ano</div>
+        <div class="rank-stats">
+          <div class="rank-stat"><div class="rank-stat-val green">+47.2%</div><div class="rank-stat-label">Retorno</div></div>
+          <div class="rank-stat"><div class="rank-stat-val white">61.5%</div><div class="rank-stat-label">Win rate</div></div>
+          <div class="rank-stat"><div class="rank-stat-val red">-12.4%</div><div class="rank-stat-label">Drawdown</div></div>
+        </div>
+        <div class="rank-footer"><span class="stars">★★★★★</span><span class="rank-trades">189 trades</span></div>
+      </div>
+      <div class="rank-card">
+        <div class="rank-header"><div class="rank-pos bronze">3°</div><span class="rank-verified">Exemplo</span></div>
+        <div class="rank-name">MACD NASDAQ Scalper</div>
+        <div class="rank-asset">NASDAQ · Timeframe 1H · 1 ano</div>
+        <div class="rank-stats">
+          <div class="rank-stat"><div class="rank-stat-val green">+38.9%</div><div class="rank-stat-label">Retorno</div></div>
+          <div class="rank-stat"><div class="rank-stat-val white">58.3%</div><div class="rank-stat-label">Win rate</div></div>
+          <div class="rank-stat"><div class="rank-stat-val red">-11.2%</div><div class="rank-stat-label">Drawdown</div></div>
+        </div>
+        <div class="rank-footer"><span class="stars">★★★★☆</span><span class="rank-trades">312 trades</span></div>
+      </div>
+      <div class="rank-card">
+        <div class="rank-header"><div class="rank-pos default">4°</div><span class="rank-verified">Exemplo</span></div>
+        <div class="rank-name">RSI Reversal IBOVESPA</div>
+        <div class="rank-asset">IBOVESPA · Timeframe 1D · 2 anos</div>
+        <div class="rank-stats">
+          <div class="rank-stat"><div class="rank-stat-val green">+34.1%</div><div class="rank-stat-label">Retorno</div></div>
+          <div class="rank-stat"><div class="rank-stat-val white">61.2%</div><div class="rank-stat-label">Win rate</div></div>
+          <div class="rank-stat"><div class="rank-stat-val red">-10.8%</div><div class="rank-stat-label">Drawdown</div></div>
+        </div>
+        <div class="rank-footer"><span class="stars">★★★★☆</span><span class="rank-trades">156 trades</span></div>
+      </div>
+      <div class="rank-card">
+        <div class="rank-header"><div class="rank-pos default">5°</div><span class="rank-verified">Exemplo</span></div>
+        <div class="rank-name">Golden Cross US500</div>
+        <div class="rank-asset">US500 · Timeframe 1D · 3 anos</div>
+        <div class="rank-stats">
+          <div class="rank-stat"><div class="rank-stat-val green">+29.7%</div><div class="rank-stat-label">Retorno</div></div>
+          <div class="rank-stat"><div class="rank-stat-val white">57.8%</div><div class="rank-stat-label">Win rate</div></div>
+          <div class="rank-stat"><div class="rank-stat-val red">-14.3%</div><div class="rank-stat-label">Drawdown</div></div>
+        </div>
+        <div class="rank-footer"><span class="stars">★★★★☆</span><span class="rank-trades">98 trades</span></div>
+      </div>
+      <div class="rank-card" style="border:1.5px dashed rgba(255,255,255,0.12);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:200px">
+        <div style="font-size:32px;margin-bottom:12px">🏆</div>
+        <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:6px">Sua estratégia aqui</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:16px">Rode um backtest e apareça no ranking</div>
+        <a class="btn btn-green" style="font-size:13px;padding:8px 18px" href="#precos">Começar grátis →</a>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:30px;font-size:12px;color:rgba(255,255,255,0.42);line-height:1.6">⚠ Dados ilustrativos para demonstração. Rentabilidade passada não garante resultados futuros.</p>
+  </div>
+</div>
+
+<!-- PREÇOS -->
+<div class="section section-mid" id="precos">
+  <div class="wrap">
+    <div class="section-tag">Planos</div>
+    <div class="section-title">Simples e transparente</div>
+    <div class="section-sub">Comece grátis. Faça upgrade quando precisar de mais.</div>
+    <div class="plans-grid">
+      <div class="plan">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">R$0<sub> /mês</sub></div>
+        <div class="plan-desc">Para experimentar a plataforma</div>
+        <ul class="plan-feats">
+          <li><span class="chk">✓</span>50 backtests por mês</li>
+          <li><span class="chk">✓</span>Indicadores básicos</li>
+          <li><span class="chk">✓</span>Relatório padrão</li>
+          <li class="off"><span class="chk">–</span>Geração por IA</li>
+          <li class="off"><span class="chk">–</span>Exportação NTSL</li>
+        </ul>
+        <a class="btn btn-outline" style="width:100%" href="/app">Criar conta grátis</a>
+      </div>
+      <div class="plan popular">
+        <div class="pop-badge">MAIS POPULAR</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">R$67<sub> /mês</sub></div>
+        <div class="plan-desc">Para traders ativos</div>
+        <ul class="plan-feats">
+          <li><span class="chk">✓</span>200 backtests por mês</li>
+          <li><span class="chk">✓</span>Todos os indicadores</li>
+          <li><span class="chk">✓</span>Relatório completo TradingView</li>
+          <li><span class="chk">✓</span>Geração de bot por IA</li>
+          <li><span class="chk">✓</span>Exportação NTSL</li>
+        </ul>
+        <a class="btn btn-green" style="width:100%" href="/app">Assinar Pro →</a>
+      </div>
+      <div class="plan">
+        <div class="plan-name">Trader</div>
+        <div class="plan-price">R$97<sub> /mês</sub></div>
+        <div class="plan-desc">Para profissionais</div>
+        <ul class="plan-feats">
+          <li><span class="chk">✓</span>Backtests ilimitados</li>
+          <li><span class="chk">✓</span>Todos os indicadores</li>
+          <li><span class="chk">✓</span>Relatório completo TradingView</li>
+          <li><span class="chk">✓</span>Geração de bot por IA</li>
+          <li><span class="chk">✓</span>Exportação NTSL</li>
+        </ul>
+        <a class="btn btn-white" style="width:100%" href="/app">Assinar Trader →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARATIVO -->
+<div class="section section-dark">
+  <div class="wrap">
+    <div class="section-tag">Comparativo</div>
+    <div class="section-title">Por que o BotBacktest?</div>
+    <div class="section-sub">A única plataforma que combina Python + B3 + IA + exportação NTSL + bots documentados.</div>
+    <div class="compare-outer">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th style="width:220px">Recurso</th>
+            <th class="hl">BotBacktest</th>
+            <th>Outros backtests</th>
+            <th>Plataformas cloud</th>
+            <th>Gráficos/replay</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Python real</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="yes">✓</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Dados B3 / IBOVESPA</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="partial">Parcial</span></td></tr>
+          <tr><td>Geração por IA</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Exportação NTSL</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Ranking público de bots</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Interface PT / ES</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="partial">Parcial</span></td></tr>
+          <tr><td>Preço inicial</td><td class="hl">Grátis</td><td>Pago</td><td>Freemium</td><td>Freemium</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="section section-mid" id="faq">
+  <div class="wrap">
+    <div style="text-align:center">
+      <div class="section-tag" style="display:inline-block">FAQ</div>
+      <div class="section-title">Perguntas frequentes</div>
+    </div>
+    <div class="faq-wrap">
+      <div class="faq-item">
+        <div class="faq-q">Preciso saber programar? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Não. Você pode usar os indicadores prontos com interface visual. A geração por IA escreve o código Python para você a partir de uma descrição em português.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Os dados são reais? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Sim. Usamos dados reais via yfinance — os mesmos dados que plataformas profissionais utilizam, com histórico de anos para todos os ativos disponíveis.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Funciona para a Bolsa brasileira? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Sim. Temos suporte nativo para B3, IBOVESPA, WIN, WDO e principais ações brasileiras — algo raro em plataformas internacionais de backtesting.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">O que é a exportação NTSL? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">É a conversão automática da sua estratégia para o formato NTSL da Nelogica/Profit — a principal plataforma de trading do Brasil. Exclusivo do BotBacktest.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">O que é o ranking de bots? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Um ranking público com as estratégias testadas na plataforma. Qualquer usuário pode submeter sua estratégia e ter a performance documentada a partir do backtest. Os exemplos exibidos nesta página são ilustrativos.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Posso cancelar a qualquer momento? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Sim. Sem contratos, sem fidelidade mínima. Cancele quando quiser diretamente pelo painel de controle, sem burocracia.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA FINAL -->
+<div class="cta-band">
+  <div class="wrap">
+    <h2>Pronto para parar de operar no escuro?</h2>
+    <p>Junte-se a traders que testam antes de arriscar. Comece grátis agora.</p>
+    <a class="btn btn-green btn-xl" href="/app">Criar conta gratuita →</a>
+    <p class="cta-sub">Sem cartão de crédito · Cancele a qualquer momento</p>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo"><em>Bot</em>Backtest</div>
+  <div class="footer-links">
+    <a href="#como">Como funciona</a>
+    <a href="#diferenciais">Diferenciais</a>
+    <a href="#ranking">Ranking</a>
+    <a href="#precos">Preços</a>
+    <a href="#faq">FAQ</a>
+    <a href="/app">Entrar</a>
+  </div>
+  <p>© 2026 BotBacktest. Todos os direitos reservados. &nbsp;·&nbsp; botbacktest.com</p>
+</footer>
 
 <script>
-// ── SUPABASE CONFIG ──
-const SUPABASE_URL = 'https://hdnhyceyzljommcvkejq.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_Hhyyks__0ZIQwKWJEqbN9Q_EjyTQAVG';
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-let usuarioAtual = null;
-let perfilAtual = null;
-
-// ── AUTH: INICIALIZAR ──
-async function initAuth() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    await onLogin(session.user);
-  }
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      await onLogin(session.user);
-      fecharAuth();
-    } else if (event === 'SIGNED_OUT') {
-      onLogout();
-    }
+document.querySelectorAll('.faq-q').forEach(q=>{
+  q.addEventListener('click',()=>{
+    const item=q.parentElement;
+    const wasOpen=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if(!wasOpen) item.classList.add('open');
   });
-}
-
-async function onLogin(user) {
-  usuarioAtual = user;
-  // Busca perfil
-  const { data: perfil } = await sb.from('perfis').select('*').eq('id', user.id).single();
-  perfilAtual = perfil;
-  atualizarUI();
-}
-
-function onLogout() {
-  usuarioAtual = null;
-  perfilAtual = null;
-  document.getElementById('btn-login').style.display = 'flex';
-  document.getElementById('btn-user').style.display = 'none';
-  document.getElementById('limit-banner').classList.remove('show');
-}
-
-function atualizarUI() {
-  if (!usuarioAtual) return;
-  const email = usuarioAtual.email || '';
-  const nome = perfilAtual?.nome || email.split('@')[0] || 'Usuário';
-  const plano = perfilAtual?.plano || 'free';
-  const usados = perfilAtual?.backtests_mes || 0;
-  const limite = perfilAtual?.backtests_limite || 50;
-
-  // Topbar
-  document.getElementById('btn-login').style.display = 'none';
-  document.getElementById('btn-user').style.display = 'flex';
-  document.getElementById('user-avatar').textContent = nome.charAt(0).toUpperCase();
-  document.getElementById('user-nome-curto').textContent = nome.split(' ')[0];
-
-  // Badge plano
-  const badge = document.getElementById('user-plano-badge');
-  badge.textContent = plano.toUpperCase().replace('_', ' ');
-  badge.className = `user-plano ${plano === 'free' ? 'plano-free' : plano === 'pro' ? 'plano-pro' : 'plano-trader'}`;
-
-  // Dropdown
-  document.getElementById('dd-email').textContent = email;
-  document.getElementById('dd-plano').textContent = plano === 'free' ? 'Plano Free' : plano === 'pro' ? 'Plano Pro' : 'Plano Trader Pro';
-  document.getElementById('dd-uso').textContent = plano === 'free' ? `${usados} / ${limite} backtests este mês` : 'Backtests ilimitados';
-
-  // Limite banner
-  if (plano === 'free' && usados >= limite) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido: ${usados}/${limite} backtests este mês.`;
-  }
-}
-
-// ── AUTH: MODAL ──
-function abrirAuth(tab = 'login') {
-  document.getElementById('auth-overlay').style.display = 'flex';
-  switchAuthTab(tab === 'upgrade' ? 'signup' : tab);
-}
-
-function fecharAuth() {
-  document.getElementById('auth-overlay').style.display = 'none';
-  document.getElementById('login-error').textContent = '';
-  document.getElementById('signup-error').textContent = '';
-}
-
-function switchAuthTab(tab) {
-  document.getElementById('auth-login').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
-  document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
-  document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
-}
-
-function toggleUserMenu() {
-  const dd = document.getElementById('user-dropdown');
-  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#btn-user') && !e.target.closest('#user-dropdown')) {
-    const dd = document.getElementById('user-dropdown');
-    if (dd) dd.style.display = 'none';
-  }
 });
-
-// ── AUTH: LOGIN ──
-async function fazerLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  const btn = document.getElementById('login-btn');
-  const erro = document.getElementById('login-error');
-  if (!email || !senha) { erro.textContent = 'Preencha email e senha.'; return; }
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = error.message.includes('Invalid') ? 'Email ou senha incorretos.' : error.message;
-    btn.disabled = false; btn.textContent = 'Entrar';
-  }
-}
-
-// ── AUTH: CADASTRO ──
-async function fazerCadastro() {
-  const nome = document.getElementById('signup-nome').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const senha = document.getElementById('signup-senha').value;
-  const btn = document.getElementById('signup-btn');
-  const erro = document.getElementById('signup-error');
-  if (!nome || !email || !senha) { erro.textContent = 'Preencha todos os campos.'; return; }
-  if (senha.length < 6) { erro.textContent = 'Senha deve ter mínimo 6 caracteres.'; return; }
-  btn.disabled = true; btn.textContent = 'Criando conta...';
-  const { error } = await sb.auth.signUp({
-    email, password: senha,
-    options: { data: { nome } }
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
   });
-  if (error) {
-    erro.textContent = error.message.includes('already') ? 'Este email já está cadastrado.' : error.message;
-    btn.disabled = false; btn.textContent = 'Criar conta grátis';
-  } else {
-    document.getElementById('signup-success').style.display = 'block';
-    btn.textContent = '✅ Conta criada!';
-  }
-}
-
-// ── AUTH: RECUPERAR SENHA ──
-async function recuperarSenha() {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email) { document.getElementById('login-error').textContent = 'Digite seu email primeiro.'; return; }
-  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-  document.getElementById('login-error').style.color = 'var(--green)';
-  document.getElementById('login-error').textContent = '✅ Link de recuperação enviado para ' + email;
-}
-
-// ── AUTH: LOGOUT ──
-async function fazerLogout() {
-  await sb.auth.signOut();
-  document.getElementById('user-dropdown').style.display = 'none';
-}
-
-// ── VERIFICAR LIMITE ANTES DO BACKTEST ──
-function setMoeda(moeda) {
-  const precos = {
-    BRL: { pro: 'R$67', trader: 'R$97' },
-    USD: { pro: '$19', trader: '$29' },
-    EUR: { pro: '€17', trader: '€27' }
-  };
-  document.getElementById('preco-pro').textContent = precos[moeda].pro;
-  document.getElementById('preco-trader').textContent = precos[moeda].trader;
-  ['BRL','USD','EUR'].forEach(m => {
-    const btn = document.getElementById('btn-'+m.toLowerCase());
-    if(btn) { btn.style.background = m===moeda?'#00d084':'transparent'; btn.style.color = m===moeda?'#000':'var(--muted2)'; btn.style.borderColor = m===moeda?'#00d084':'var(--border)'; }
-  });
-  window._moedaAtual = moeda;
-}
-
-async function assinar(plano) {
-  if (!usuarioAtual) { abrirAuth('login'); return; }
-  try {
-    const moeda = window._moedaAtual || 'BRL';
-    const resp = await fetch(API+'/criar-checkout', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plano, moeda, user_id: usuarioAtual.id, email: usuarioAtual.email })
-    });
-    const data = await resp.json();
-    if (data.url) window.open(data.url, '_blank');
-    else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
-  } catch(e) { alert('Erro: ' + e.message); }
-}
-
-async function verificarLimite() {
-  console.log('verificarLimite → usuarioAtual:', usuarioAtual?.email, '| perfilAtual:', perfilAtual);
-  if (!usuarioAtual) {
-    abrirAuth('login');
-    return false;
-  }
-  if (!perfilAtual) return true;
-  if (perfilAtual.plano === 'free' && perfilAtual.backtests_mes >= (perfilAtual.backtests_limite || 50)) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido (${perfilAtual.backtests_mes}/${perfilAtual.backtests_limite}). Faça upgrade para continuar.`;
-    return false;
-  }
-  return true;
-}
-
-// ── INCREMENTAR CONTADOR APÓS BACKTEST ──
-async function incrementarBacktest() {
-  if (!usuarioAtual || !perfilAtual || perfilAtual.plano !== 'free') return;
-  const novoValor = (perfilAtual.backtests_mes || 0) + 1;
-  await sb.from('perfis').update({ backtests_mes: novoValor }).eq('id', usuarioAtual.id);
-  perfilAtual.backtests_mes = novoValor;
-  atualizarUI();
-}
-
-// Inicializar auth ao carregar
-initAuth();
-</script>
-<div class="modal-ov" id="modal-ntsl">
-  <div class="modal-box">
-    <div class="modal-title">📥 Exportar para NTSL (Profit/B3)</div>
-    <div class="modal-code" id="ntsl-code">Rode um backtest primeiro.</div>
-    <button class="modal-close" onclick="document.getElementById('modal-ntsl').style.display='none'">Fechar</button>
-  </div>
-</div>
-
-<script>
-const API = 'https://backtestpro-production-eb9a.up.railway.app';
-let lastResult = null;
-let lastIACode = null;
-let chartEq = null, chartPr = null, chartDo = null;
-let activeTab = 'editor';
-let selectedTemplate = 'ema_channel';
-
-const TEMPLATES = {
-  ema_channel: `class EMAChannelStrategy(Strategy):
-    ema_period = 20
-    def init(self):
-        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period,adjust=False).mean().values, self.data.High)
-        self.ema_low = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period,adjust=False).mean().values, self.data.Low)
-    def next(self):
-        preco = self.data.Close[-1]
-        if not self.position:
-            if preco > self.ema_high[-1]: self.buy()
-        else:
-            if preco < self.ema_low[-1]: self.position.close()`,
-  rsi: `class RSIStrategy(Strategy):
-    rsi_period = 14
-    def init(self):
-        close = pd.Series(self.data.Close)
-        delta = close.diff()
-        gain = delta.clip(lower=0).rolling(self.rsi_period).mean()
-        loss = (-delta.clip(upper=0)).rolling(self.rsi_period).mean()
-        rs = gain / loss
-        self.rsi = self.I(lambda: (100 - 100/(1+rs)).values)
-    def next(self):
-        if not self.position:
-            if self.rsi[-1] < 30: self.buy()
-        else:
-            if self.rsi[-1] > 70: self.position.close()`,
-  macd: `class MACDStrategy(Strategy):
-    def init(self):
-        close = pd.Series(self.data.Close)
-        ema12 = close.ewm(span=12,adjust=False).mean()
-        ema26 = close.ewm(span=26,adjust=False).mean()
-        macd = ema12 - ema26
-        signal = macd.ewm(span=9,adjust=False).mean()
-        self.macd = self.I(lambda: macd.values)
-        self.signal = self.I(lambda: signal.values)
-    def next(self):
-        if not self.position:
-            if self.macd[-1] > self.signal[-1] and self.macd[-2] <= self.signal[-2]: self.buy()
-        else:
-            if self.macd[-1] < self.signal[-1]: self.position.close()`,
-  bb: `class BollingerStrategy(Strategy):
-    period = 20
-    def init(self):
-        close = pd.Series(self.data.Close)
-        sma = close.rolling(self.period).mean()
-        std = close.rolling(self.period).std()
-        self.upper = self.I(lambda: (sma + 2*std).values)
-        self.lower = self.I(lambda: (sma - 2*std).values)
-    def next(self):
-        if not self.position:
-            if self.data.Close[-1] < self.lower[-1]: self.buy()
-        else:
-            if self.data.Close[-1] > self.upper[-1]: self.position.close()`,
-  sma_cross: `class GoldenCrossStrategy(Strategy):
-    def init(self):
-        close = pd.Series(self.data.Close)
-        self.sma50 = self.I(lambda: close.rolling(50).mean().values)
-        self.sma200 = self.I(lambda: close.rolling(200).mean().values)
-    def next(self):
-        if not self.position:
-            if self.sma50[-1] > self.sma200[-1] and self.sma50[-2] <= self.sma200[-2]: self.buy()
-        else:
-            if self.sma50[-1] < self.sma200[-1]: self.position.close()`,
-  breakout: `class BreakoutStrategy(Strategy):
-    lookback = 20
-    def init(self):
-        high = pd.Series(self.data.High)
-        low = pd.Series(self.data.Low)
-        self.resist = self.I(lambda: high.rolling(self.lookback).max().values)
-        self.support = self.I(lambda: low.rolling(self.lookback).min().values)
-    def next(self):
-        if not self.position:
-            if self.data.Close[-1] > self.resist[-2]: self.buy()
-        else:
-            if self.data.Close[-1] < self.support[-2]: self.position.close()`
-};
-
-function switchTab(tab) {
-  activeTab = tab;
-  ['editor','overview','templates','rank','planos'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
-    const btn = document.getElementById('tab-'+t+'-btn');
-    if (btn) btn.classList.toggle('active', t === tab);
-  });
-  if (tab === 'overview') {
-    document.getElementById('tab-overview').style.display = 'block';
-  }
-}
-
-function setTF(el, val) {
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('timeframe').value = val;
-}
-
-function focusIA() {
-  document.getElementById('ia-desc').focus();
-  document.getElementById('ia-desc').scrollIntoView();
-}
-
-function semCls(m, v) {
-  if (m==='wr') return v>=55?'sem-bom':v>=45?'sem-med':'sem-fra';
-  if (m==='sh') return v>=1.5?'sem-bom':v>=0.5?'sem-med':'sem-fra';
-  if (m==='dd') return Math.abs(v)<=10?'sem-bom':Math.abs(v)<=20?'sem-med':'sem-fra';
-  if (m==='pf') return v>=1.5?'sem-bom':v>=1?'sem-med':'sem-fra';
-  return 'sem-med';
-}
-function semLbl(c) { return c==='sem-bom'?'Bom':c==='sem-med'?'Médio':'Fraco' }
-
-function atualizarMetricsBar(d) {
-  const wr = parseFloat(d.win_rate||0);
-  const sh = parseFloat(d.sharpe||0);
-  const dd = parseFloat(d.max_drawdown||0);
-  const pf = parseFloat(d.profit_factor||0);
-
-  // Valores
-  document.getElementById('m-wr').textContent = wr.toFixed(1)+'%';
-  document.getElementById('m-sh').textContent = sh.toFixed(2);
-  document.getElementById('m-dd').textContent = dd.toFixed(2)+'%';
-  document.getElementById('m-pf').textContent = pf.toFixed(2);
-
-  // Cores dos valores: verde se bom, vermelho se fraco, âmbar se médio
-  const wrC = semCls('wr',wr), shC = semCls('sh',sh), ddC = semCls('dd',dd), pfC = semCls('pf',pf);
-  const colorMap = {'sem-bom':'','sem-med':'is-neutral','sem-fra':'is-neg'};
-
-  ['wr','sh','dd','pf'].forEach((k,i)=>{
-    const el = document.getElementById('m-'+k);
-    const cls = [wrC,shC,ddC,pfC][i];
-    el.className = 'mb-val ' + (cls==='sem-bom'?'':cls==='sem-fra'?'is-neg':'is-neutral');
-  });
-
-  // Drawdown sempre vermelho se negativo
-  if(dd < 0) document.getElementById('m-dd').className = 'mb-val is-neg';
-
-  const colors = {'sem-bom':'var(--green)','sem-med':'var(--amber)','sem-fra':'var(--red)'};
-
-  document.getElementById('m-wr-bar').style.width = Math.min(wr,100)+'%';
-  document.getElementById('m-wr-bar').style.background = colors[wrC];
-  document.getElementById('m-sh-bar').style.width = Math.min(Math.max(sh/3*100,0),100)+'%';
-  document.getElementById('m-sh-bar').style.background = colors[shC];
-  document.getElementById('m-dd-bar').style.width = Math.min(Math.abs(dd),100)+'%';
-  document.getElementById('m-dd-bar').style.background = colors[ddC];
-  document.getElementById('m-pf-bar').style.width = Math.min(pf/3*100,100)+'%';
-  document.getElementById('m-pf-bar').style.background = colors[pfC];
-
-  ['wr','sh','dd','pf'].forEach((k,i) => {
-    const el = document.getElementById('m-'+k+'-sem');
-    const cls = [wrC,shC,ddC,pfC][i];
-    el.className = 'sem '+cls;
-    el.textContent = semLbl(cls);
-  });
-}
-
-async function rodarBacktest() {
-  console.log('rodarBacktest() chamado');
-  // Verificar login e limite
-  const liberado = await verificarLimite();
-  console.log('liberado:', liberado);
-  if (!liberado) return;
-
-  const btn = document.getElementById('run-btn');
-  const icon = document.getElementById('run-icon');
-  const txt = document.getElementById('run-txt');
-  btn.disabled = true;
-  icon.innerHTML = '<div class="spinner"></div>';
-  txt.textContent = 'Baixando dados...';
-
-  const codigo = document.getElementById('code-editor').value.trim();
-  const params = {
-    ativo: document.getElementById('ativo').value,
-    periodo: document.getElementById('periodo').value,
-    timeframe: document.getElementById('timeframe').value,
-    indicador: document.getElementById('indicador').value,
-    ema_period: parseInt(document.getElementById('ema_period').value),
-    stop_loss: parseFloat(document.getElementById('stop_loss').value),
-    take_profit: parseFloat(document.getElementById('take_profit').value),
-    capital: parseFloat(document.getElementById('capital').value),
-    max_ops: parseInt(document.getElementById('max_ops').value),
-    comissao: parseFloat(document.getElementById('comissao').value),
-  };
-
-  // Feedback progressivo
-  const msgs = ['Baixando dados...','Calculando indicadores...','Rodando estratégia...','Calculando métricas...'];
-  let mi = 0;
-  const msgInterval = setInterval(()=>{ mi=(mi+1)%msgs.length; txt.textContent=msgs[mi]; }, 3000);
-
-  try {
-    const endpoint = (codigo && codigo.length > 10 && !codigo.startsWith('#')) ? '/backtest/custom' : '/backtest/visual';
-    const body = endpoint === '/backtest/custom' ? {...params, codigo} : params;
-
-    // Controller para timeout de 120 segundos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(()=>controller.abort(), 120000);
-
-    const r = await fetch(API+endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if(!r.ok) {
-      const err = await r.json().catch(()=>({detail:'Erro desconhecido'}));
-      throw new Error(err.detail||'Erro na API');
-    }
-
-    const d = await r.json();
-    lastResult = d;
-    atualizarMetricsBar(d);
-    renderOverview(d, params);
-    switchTab('overview');
-    await incrementarBacktest();
-  } catch(e) {
-    if(e.name==='AbortError') {
-      alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
-    } else {
-      alert('Erro: ' + e.message);
-    }
-  } finally {
-    clearInterval(msgInterval);
-    btn.disabled = false;
-    icon.textContent = '▶';
-    txt.textContent = 'Rodar Backtest';
-  }
-}
-
-let candleChart = null;
-let perfChartObj = null;
-let perfData = {equity:[], trades:[]};
-
-function switchPerfChart(tipo) {
-  document.getElementById('perf-btn-cumul').style.background = tipo==='cumul'?'var(--green-bg)':'var(--bg3)';
-  document.getElementById('perf-btn-cumul').style.color = tipo==='cumul'?'var(--green)':'var(--muted2)';
-  document.getElementById('perf-btn-runup').style.background = tipo==='runup'?'rgba(255,77,106,0.1)':'var(--bg3)';
-  document.getElementById('perf-btn-runup').style.color = tipo==='runup'?'var(--red)':'var(--muted2)';
-  renderPerfChart(tipo);
-}
-
-function renderPerfChart(tipo) {
-  if(perfChartObj) perfChartObj.destroy();
-  const canvas = document.getElementById('ch-perf');
-  if(!canvas) return;
-  const equity = perfData.equity;
-  const trades = perfData.trades;
-  const cap = equity.length > 0 ? equity[0] : 10000;
-
-  if(tipo === 'cumul') {
-    // Cumulative PnL = equity - capital inicial
-    const pnlData = equity.map(v => parseFloat((v - cap).toFixed(2)));
-    const color = pnlData[pnlData.length-1] >= 0 ? '#00d084' : '#ff4d6a';
-    const bgColor = pnlData[pnlData.length-1] >= 0 ? 'rgba(0,208,132,0.08)' : 'rgba(255,77,106,0.08)';
-    perfChartObj = new Chart(canvas, {
-      type:'line',
-      data:{labels:pnlData.map((_,i)=>i), datasets:[{
-        data:pnlData, borderColor:color, backgroundColor:bgColor,
-        borderWidth:1.5, fill:true, tension:.3, pointRadius:0
-      }]},
-      options:{responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},
-        scales:{
-          x:{display:false},
-          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toFixed(0)}, grid:{color:'rgba(255,255,255,0.04)'},
-             position:'right'}
-        }
-      }
-    });
-  } else {
-    // Run-ups (verde) e Drawdowns (vermelho) por trade
-    const runups = trades.map(t => t.retorno_pct > 0 ? t.retorno_pct : 0);
-    const ddowns = trades.map(t => t.retorno_pct < 0 ? t.retorno_pct : 0);
-    perfChartObj = new Chart(canvas, {
-      type:'bar',
-      data:{
-        labels: trades.map((_,i) => i+1),
-        datasets:[
-          {label:'Run-up', data:runups, backgroundColor:'rgba(0,208,132,0.6)', borderWidth:0, borderRadius:1},
-          {label:'Drawdown', data:ddowns, backgroundColor:'rgba(255,77,106,0.6)', borderWidth:0, borderRadius:1},
-        ]
-      },
-      options:{responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(3)}%`}}},
-        scales:{
-          x:{display:false},
-          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>v.toFixed(2)+'%'}, grid:{color:'rgba(255,255,255,0.04)'},
-             position:'right'}
-        }
-      }
-    });
-  }
-}
-
-function zoomChart(periodo) {
-  // Atualizar botão ativo
-  document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-
-  if(!candleChart) return;
-  const ts = candleChart.timeScale();
-
-  const now = new Date();
-  const toTime = Math.floor(now.getTime()/1000);
-  let fromTime;
-
-  if(periodo === 'all') {
-    ts.fitContent();
-    return;
-  } else if(periodo === '1m') {
-    fromTime = toTime - 30*24*3600;
-  } else if(periodo === '3m') {
-    fromTime = toTime - 90*24*3600;
-  } else if(periodo === '6m') {
-    fromTime = toTime - 180*24*3600;
-  } else if(periodo === '1y') {
-    fromTime = toTime - 365*24*3600;
-  }
-
-  ts.setVisibleRange({from: fromTime, to: toTime});
-}
-
-// ── INDICADORES MULTI-SELECT ──
-const indColors = {1:'#3b82f6', 2:'#f59e0b', 3:'#8b5cf6'};
-
-function toggleIndicador(n) {
-  const active = document.getElementById(`ind${n}-active`).checked;
-  document.getElementById(`ind${n}-controls`).style.display = active ? 'block' : 'none';
-}
-
-function setIndColor(n, btn) {
-  document.querySelectorAll(`#ind${n}-controls .color-btn`).forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  indColors[n] = btn.dataset.color;
-}
-
-function getOverlays() {
-  const overlays = [];
-  for(let n=1; n<=3; n++) {
-    const active = document.getElementById(`ind${n}-active`)?.checked;
-    if(!active) continue;
-    const period = parseInt(document.getElementById(`ind${n}-period`)?.value || 20);
-    const source = document.getElementById(`ind${n}-source`)?.value || 'close';
-    const tipo = n <= 2 ? 'EMA' : 'SMA';
-    overlays.push({tipo, period, source, color: indColors[n]});
-  }
-  return overlays;
-}
-
-function calcEMA(data, period) {
-  const k = 2/(period+1);
-  const result = [];
-  let ema = null;
-  for(let i=0; i<data.length; i++) {
-    if(data[i] === null || data[i] === undefined) { result.push(null); continue; }
-    if(ema === null) { ema = data[i]; }
-    else { ema = data[i]*k + ema*(1-k); }
-    result.push(ema);
-  }
-  return result;
-}
-
-function calcSMA(data, period) {
-  return data.map((_, i) => {
-    if(i < period-1) return null;
-    const slice = data.slice(i-period+1, i+1).filter(v => v !== null);
-    return slice.length > 0 ? slice.reduce((a,b)=>a+b,0)/slice.length : null;
-  });
-}
-
-function addOverlaysToChart(chart, candlesData, overlays) {
-  if(!chart || !candlesData || !overlays.length) return;
-  overlays.forEach(ov => {
-    const sourceMap = {close:'c', high:'h', low:'l', open:'o'};
-    const key = sourceMap[ov.source] || 'c';
-    const values = candlesData.map(c => parseFloat(c[key]));
-    const times = candlesData.map(c => c.t);
-    const calc = ov.tipo === 'EMA' ? calcEMA(values, ov.period) : calcSMA(values, ov.period);
-    const lineData = calc.map((v,i) => v !== null ? {time: times[i], value: v} : null).filter(Boolean);
-    if(lineData.length > 0) {
-      const line = chart.addLineSeries({
-        color: ov.color,
-        lineWidth: 1.5,
-        priceLineVisible: false,
-        lastValueVisible: true,
-        title: `${ov.tipo}(${ov.period})`,
-      });
-      line.setData(lineData);
-    }
-  });
-}
-
-let lastCandlesData = [];
-let lastMarkers = [];
-
-function renderCandleChart(candlesData, markers, isLight, overlays) {
-  lastCandlesData = candlesData || [];
-  lastMarkers = markers || [];
-
-  const container = document.getElementById('candle-chart');
-  if(!container || !candlesData || candlesData.length === 0) return;
-
-  container.innerHTML = '';
-
-  if(typeof LightweightCharts === 'undefined') {
-    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px">Carregando gráfico...</div>';
-    return;
-  }
-
-  const bgColor = isLight ? '#ffffff' : '#0e1117';
-  const textColor = isLight ? '#6b7280' : '#5a6478';
-  const gridColor = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
-
-  const chart = LightweightCharts.createChart(container, {
-    width: container.clientWidth,
-    height: 380,
-    layout: { background:{type:'solid',color:bgColor}, textColor },
-    grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: {
-      borderColor,
-      minimumWidth: 80,
-      scaleMargins: { top: 0.08, bottom: 0.08 },
-    },
-    leftPriceScale: { visible: false },
-    timeScale: {
-      borderColor,
-      timeVisible: true,
-      secondsVisible: false,
-      rightOffset: 12,
-      barSpacing: 6,
-      fixLeftEdge: false,
-      fixRightEdge: false,
-    },
-    handleScroll: true,
-    handleScale: true,
-  });
-
-  if(candleChart) { try { candleChart.remove(); } catch(e) {} }
-  candleChart = chart;
-
-  const candleSeries = chart.addCandlestickSeries({
-    upColor: '#00d084', downColor: '#ff4d6a',
-    borderUpColor: '#00d084', borderDownColor: '#ff4d6a',
-    wickUpColor: '#00d084', wickDownColor: '#ff4d6a',
-  });
-
-  const candleFormatted = candlesData
-    .filter(c => c.o && c.h && c.l && c.c)
-    .map(c => ({ time: c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c) }))
-    .filter((c,i,arr) => i===0 || c.time !== arr[i-1].time)
-    .sort((a,b) => a.time > b.time ? 1 : -1);
-
-  if(candleFormatted.length > 0) {
-    candleSeries.setData(candleFormatted);
-
-    if(markers && markers.length > 0) {
-      const validTimes = new Set(candleFormatted.map(c=>c.time));
-      const mks = markers
-        .filter(m => validTimes.has(m.data?.substring(0,10)))
-        .map(m => ({
-          time: m.data?.substring(0,10),
-          position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
-          color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
-          shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
-          text: m.tipo === 'BUY' ? `B ${parseFloat(m.preco||0).toFixed(2)}` : `S ${parseFloat(m.preco||0).toFixed(2)}`,
-          size: 1,
-        }))
-        .sort((a,b) => a.time > b.time ? 1 : -1);
-      if(mks.length > 0) candleSeries.setMarkers(mks);
-    }
-
-    // Aplicar overlays (EMA/SMA) em cima dos candles
-    if(overlays && overlays.length > 0) {
-      addOverlaysToChart(chart, candlesData, overlays);
-    }
-
-    chart.timeScale().fitContent();
-  }
-
-  const resizeObs = new ResizeObserver(() => {
-    if(container.clientWidth > 0) chart.resize(container.clientWidth, 380);
-  });
-  resizeObs.observe(container);
-}
-
-function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) {
-  if(chartEq) chartEq.destroy();
-  if(chartPr) chartPr.destroy();
-  if(chartDo) chartDo.destroy();
-
-  const equity = d.equity_curve||[];
-  const trades = d.trades||[];
-  const color = pos?'#00d084':'#ff4d6a';
-  const colorBg = pos?'rgba(0,208,132,0.1)':'rgba(255,77,106,0.1)';
-  const lucro = parseFloat(d.lucro_perda||0);
-  const isLight = document.body.classList.contains('light');
-
-  // Salvar dados para o toggle do perf chart
-  perfData = {equity, trades};
-
-  // Candle chart com overlays
-  const overlays = getOverlays();
-  setTimeout(() => {
-    renderCandleChart(d.candles_data||[], d.markers||[], isLight, overlays);
-    renderPerfChart('cumul');
-  }, 80);
-
-  // Equity Curve
-  if(equity.length>0 && document.getElementById('ch-eq')) {
-    chartEq = new Chart(document.getElementById('ch-eq'),{
-      type:'line',
-      data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{display:false},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
-
-  // Profit Structure
-  if(document.getElementById('ch-pr')) {
-    chartPr = new Chart(document.getElementById('ch-pr'),{
-      type:'bar',
-      data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',lucro>=0?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',lucro>=0?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+Math.abs(c.parsed.y).toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+Math.abs(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
-
-  // Donut
-  if(document.getElementById('ch-do')) {
-    chartDo = new Chart(document.getElementById('ch-do'),{
-      type:'doughnut',
-      data:{labels:['Winners','Losers','Breakevens'],datasets:[{data:[winners||1,losers||1,0],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)','rgba(90,100,120,.5)'],borderColor:['#00d084','#ff4d6a','#5a6478'],borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}`}}}}
-    });
-  }
-
-  // ROI Distribution
-  if(document.getElementById('ch-roi') && roiDist && roiDist.length > 0) {
-    const labels = roiDist.map(r=>r.bin.toFixed(2)+'%');
-    const data   = roiDist.map(r=>r.count);
-    const colors = roiDist.map(r=>r.positivo?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)');
-    new Chart(document.getElementById('ch-roi'),{
-      type:'bar',
-      data:{labels, datasets:[{data, backgroundColor:colors, borderWidth:0, borderRadius:2}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:8},maxRotation:0},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
-}
-
-function renderOverview(d, params) {
-  document.getElementById('ov-empty').style.display = 'none';
-  const area = document.getElementById('ov-result');
-  area.style.display = 'block';
-
-  const ret = parseFloat(d.retorno||0);
-  const pos = ret >= 0;
-  const cap = parseFloat(d.capital_inicial||params.capital||10000);
-  const capFinal = parseFloat(d.capital_final||cap);
-  const lucro = parseFloat(d.lucro_perda||capFinal-cap);
-  const wr = parseFloat(d.win_rate||0);
-  const sh = parseFloat(d.sharpe||0);
-  const dd = parseFloat(d.max_drawdown||0);
-  const pf = parseFloat(d.profit_factor||0);
-  const total = parseInt(d.total_trades||0);
-  const winners = parseInt(d.winners||Math.round(total*wr/100));
-  const losers = parseInt(d.losers||total-winners);
-  const breakevens = parseInt(d.breakevens||0);
-  const bh = parseFloat(d.buy_hold||0);
-  const alpha = parseFloat(d.alpha||ret-bh);
-  const cagr = parseFloat(d.cagr||0);
-  const equity = d.equity_curve||[];
-  const trades = d.trades||[];
-  const roiDist = d.roi_distribution||[];
-  const iaSug = d.sugestao||'';
-  const avgPnl = parseFloat(d.avg_pnl||0);
-  const avgBars = parseInt(d.avg_bars_in_trades||0);
-  const maiorGanho = parseFloat(d.maior_ganho||0);
-  const maiorPerda = parseFloat(d.maior_perda||0);
-  const avgRunup = parseFloat(d.avg_runup||0);
-  const avgDdTrade = parseFloat(d.avg_drawdown_trade||0);
-  const accountReq = parseFloat(d.account_size_required||cap);
-  const grossProfit = parseFloat(d.gross_profit||0);
-  const grossLoss = parseFloat(d.gross_loss||0);
-
-  area.innerHTML = `
-  <div class="ov-header">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span class="${pos?'ov-badge-lucro':'ov-badge-prej'}">${pos?'LUCRO':'PREJUÍZO'}</span>
-      <span class="ov-meta">${d.ativo||params.ativo} · ${params.periodo} · ${params.timeframe.toUpperCase()} · ${d.candles||'-'} candles · ${total} trades</span>
-    </div>
-    <span class="ov-meta">${d.data_backtest||new Date().toLocaleDateString('pt-BR')}</span>
-  </div>
-  <div class="${pos?'retorno-pos':'retorno-neg'} ov-retorno" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div>
-  <div class="ov-cap-row">
-    <div><div class="ov-cap-label">Capital Inicial</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Capital Final</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Lucro / Perda</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Retorno Anual (CAGR)</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
-  </div>
-
-  <!-- CANDLE CHART -->
-  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${d.ativo||params.ativo} · ${params.timeframe.toUpperCase()} · Candles + Operações</div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <div style="display:flex;gap:2px">
-          <button class="zoom-btn" onclick="zoomChart('1m')">1M</button>
-          <button class="zoom-btn" onclick="zoomChart('3m')">3M</button>
-          <button class="zoom-btn" onclick="zoomChart('6m')">6M</button>
-          <button class="zoom-btn" onclick="zoomChart('1y')">1Y</button>
-          <button class="zoom-btn active" onclick="zoomChart('all')">All</button>
-        </div>
-        <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
-        <span style="font-size:9px;color:var(--muted)"><span style="color:var(--green)">▲ BUY</span> &nbsp; <span style="color:var(--red)">▼ SELL</span></span>
-      </div>
-    </div>
-    <div id="candle-chart" style="height:380px;width:100%"></div>
-  </div>
-
-  <!-- KEY STATS BAR -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total P&L</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${lucro>=0?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Max Drawdown</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">$${(cap*Math.abs(dd)/100).toFixed(2)}</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profitable Trades</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${wr>=50?'var(--green)':'var(--red)'}">${wr.toFixed(2)}% ${winners}/${total}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">Winners: ${winners} · Losers: ${losers}</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profit Factor</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${pf>=1.5?'var(--green)':pf>=1?'var(--amber)':'var(--red)'}">${pf.toFixed(3)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">Sharpe: ${sh.toFixed(2)}</div>
-    </div>
-  </div>
-
-  <!-- CUMULATIVE PNL + RUN-UPS DRAWDOWNS -->
-  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:8px 14px 4px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Performance</div>
-      <div style="display:flex;gap:6px">
-        <span id="perf-btn-cumul" onclick="switchPerfChart('cumul')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25)">Cumulative PnL</span>
-        <span id="perf-btn-runup" onclick="switchPerfChart('runup')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--muted2);border:1px solid var(--border)">Run-ups & Drawdowns</span>
-      </div>
-    </div>
-    <div id="perf-chart-area" style="height:140px;padding:0 14px 10px"><canvas id="ch-perf"></canvas></div>
-  </div>
-
-  <!-- PERFORMANCE: EQUITY + PROFIT STRUCTURE -->
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Curve & Profit Structure</div>
-  <div class="charts-2col">
-    <div class="cp"><div class="cp-title">Equity Curve <span class="cp-tag">${params.timeframe.toUpperCase()}</span></div><div style="position:relative;height:160px"><canvas id="ch-eq"></canvas></div></div>
-    <div class="cp"><div class="cp-title">Profit Structure <span class="cp-tag">por operação</span></div><div style="position:relative;height:160px"><canvas id="ch-pr"></canvas></div></div>
-  </div>
-
-  <!-- TRADES ANALYSIS -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Trades Analysis</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Average P&L</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${avgPnl.toFixed(2)}</div>
-      <div style="font-size:10px;color:var(--muted)">${d.avg_pnl_pct>0?'+':''}${(d.avg_pnl_pct||0).toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Bars in Trades</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text)">${avgBars}</div>
-      <div style="font-size:10px;color:var(--muted)">candles por trade</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Profit</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">$${maiorGanho.toFixed(2)}</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Loss</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">$${maiorPerda.toFixed(2)}</div>
-    </div>
-  </div>
-
-  <!-- ROI DIST + TRADES DIST -->
-  <div class="charts-2col" style="border-bottom:1px solid var(--border)">
-    <div class="cp">
-      <div class="cp-title">ROI Distribution <span class="cp-tag">por trade</span></div>
-      <div style="position:relative;height:140px"><canvas id="ch-roi"></canvas></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
-        <span>── Average loss: ${(d.avg_drawdown_trade||0).toFixed(3)}%</span>
-        <span>── Average profit: ${(d.avg_runup||0).toFixed(3)}%</span>
-      </div>
-    </div>
-    <div class="cp">
-      <div class="cp-title">Trades Distribution</div>
-      <div style="display:flex;align-items:center;gap:20px;height:140px">
-        <div style="position:relative;height:120px;width:120px;flex-shrink:0"><canvas id="ch-do"></canvas></div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:11px">
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--green)"></div><span style="color:var(--muted2)">Winners</span><span style="font-family:var(--mono);font-weight:600;color:var(--green);margin-left:auto">${winners} trades</span><span style="color:var(--muted);font-family:var(--mono)">${wr.toFixed(2)}%</span></div>
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div><span style="color:var(--muted2)">Losers</span><span style="font-family:var(--mono);font-weight:600;color:var(--red);margin-left:auto">${losers} trades</span><span style="color:var(--muted);font-family:var(--mono)">${(100-wr).toFixed(2)}%</span></div>
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div><span style="color:var(--muted2)">Breakevens</span><span style="font-family:var(--mono);font-weight:600;margin-left:auto">${breakevens} trades</span><span style="color:var(--muted);font-family:var(--mono)">0.00%</span></div>
-          <div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);font-weight:700;color:var(--text);font-family:var(--mono)">${total} Total trades</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- EQUITY RUN-UPS AND DRAWDOWNS -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Run-ups and Drawdowns</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Run-up</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">${avgRunup.toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Drawdown</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${avgDdTrade.toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Max DD as % of capital</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return at max DD</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-  </div>
-
-  <!-- CAPITAL EFFICIENCY -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Capital Efficiency</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">CAGR</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Account Size Required</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);">$${accountReq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return on Initial Capital</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Benchmark vs Buy & Hold</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${alpha>=0?'var(--green)':'var(--red)'}">Alpha: ${alpha>=0?'+':''}${alpha.toFixed(2)}%</div>
-      <div style="font-size:10px;color:var(--muted)">B&H: ${bh>=0?'+':''}${bh.toFixed(2)}%</div>
-    </div>
-  </div>
-
-  <!-- IA SUGGESTION -->
-  ${iaSug ? `<div class="ia-sug"><div class="ia-sug-title">💡 Sugestão da IA</div><div class="ia-sug-text">${iaSug}</div></div>` : ''}
-
-  <!-- TRADES TABLE -->
-  <div class="trades-panel">
-    <div class="tp-title">Histórico de Trades <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">${trades.length} registros</span></div>
-    <table class="trades-tbl">
-      <thead><tr><th>Entrada</th><th>Saída</th><th>Preço Entrada</th><th>Preço Saída</th><th>Retorno</th><th>P&L</th><th>Resultado</th></tr></thead>
-      <tbody>
-        ${trades.slice(0,30).map(t=>{
-          const r=parseFloat(t.retorno_pct||0);
-          const pl=parseFloat(t.pl||0);
-          return `<tr><td>${t.entrada||'-'}</td><td>${t.saida||'-'}</td><td style="font-family:var(--mono)">${(t.preco_entrada||0).toFixed(4)}</td><td style="font-family:var(--mono)">${(t.preco_saida||0).toFixed(4)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'+':''}${r.toFixed(3)}%</td><td class="${r>=0?'tg':'tr'}">$${pl.toFixed(2)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'Ganho':'Perda'}</td></tr>`;
-        }).join('')}
-        ${trades.length===0?'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">Nenhum trade registrado</td></tr>':''}
-      </tbody>
-    </table>
-  </div>`;
-
-  // Renderiza gráficos
-  setTimeout(()=>{ renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist); }, 60);
-}
-
-function usarTemplate(el, key) {
-  document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedTemplate = key;
-}
-
-function confirmarTemplate() {
-  if(TEMPLATES[selectedTemplate]) {
-    document.getElementById('code-editor').value = TEMPLATES[selectedTemplate];
-    switchTab('editor');
-  }
-}
-
-function colarCodigoIA() {
-  if(lastIACode) {
-    document.getElementById('code-editor').value = lastIACode;
-  } else {
-    document.getElementById('ia-desc').focus();
-  }
-}
-
-async function gerarBotIA() {
-  const desc = document.getElementById('ia-desc').value.trim();
-  if(!desc){document.getElementById('ia-desc').focus();return;}
-  const btn = document.getElementById('ia-btn');
-  btn.textContent = '⏳ Gerando...';btn.disabled=true;
-  try {
-    const r = await fetch(API+'/gerar-bot-ia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao:desc})});
-    const d = await r.json();
-    if(d.codigo){
-      lastIACode = d.codigo;
-      document.getElementById('code-editor').value = d.codigo;
-      document.getElementById('paste-ia-btn').style.background='rgba(0,208,132,0.15)';
-      document.getElementById('paste-ia-btn').style.borderColor='rgba(0,208,132,0.4)';
-    }
-  } catch(e){alert('Erro ao gerar bot.');}
-  btn.textContent='✨ Gerar Bot com IA';btn.disabled=false;
-}
-
-async function abrirNTSL() {
-  document.getElementById('modal-ntsl').style.display='flex';
-  if(!lastResult){document.getElementById('ntsl-code').textContent='Rode um backtest primeiro.';return;}
-  try {
-    const r = await fetch(API+'/exportar/ntsl');
-    const d = await r.json();
-    document.getElementById('ntsl-code').textContent = d.codigo||'Erro ao gerar NTSL.';
-  } catch(e){document.getElementById('ntsl-code').textContent='// Erro ao conectar.';}
-}
-
-// Init check API
-fetch(API+'/').then(r=>{
-  if(!r.ok)throw new Error();
-}).catch(()=>{
-  document.getElementById('api-label').textContent='API Offline';
-  document.getElementById('api-label').style.color='var(--red)';
-  document.getElementById('api-dot').style.background='var(--red)';
-  document.getElementById('api-dot').style.animation='none';
 });
-
-// Theme toggle
-function toggleTheme(){
-  const isLight = document.body.classList.toggle('light');
-  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
-  localStorage.setItem('btp-theme', isLight ? 'light' : 'dark');
-}
-// Restore saved theme
-if(localStorage.getItem('btp-theme')==='light'){
-  document.body.classList.add('light');
-  document.getElementById('theme-btn').textContent = '☀️';
-}
 </script>
 </body>
 </html>
