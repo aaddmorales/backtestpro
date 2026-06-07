@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v3.9
+  BotBacktest Frontend — v4.1
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v4.1: OffMind — aba Padroes + botao Detectar padroes; chama /offmind/analisar e mostra ranking dos padroes do mais assertivo ao menos (melhor horizonte de cada, mini-tabela dos 4 horizontes, disclaimer honesto)
   v3.9: removido botao NTSL duplicado da barra superior (mantido Exportar para NTSL na coluna esquerda)
   v3.8: botoes timeframe com mesmo fundo destacado dos campos (cinza nos 2 temas), ativo (rodando) mantem verde
   v3.7: tema escuro tambem com campos destacados (fundo #1c2230 + borda mais marcada) — mesma faixa cinza profissional dos 2 temas
@@ -634,6 +635,7 @@ select option{background:#141920}
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
   <button class="tbtn" id="tab-robustez-btn" onclick="switchTab('robustez')">🔬 Robustez</button>
+  <button class="tbtn" id="tab-padroes-btn" onclick="switchTab('padroes')">🔍 Padrões</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
@@ -865,6 +867,7 @@ select option{background:#141920}
       </button>
       <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
       <button class="otim-btn" id="robustez-btn" onclick="validarRobustez()" style="border-color:rgba(0,208,132,0.35)">🔬 Validar robustez (out-of-sample)</button>
+      <button class="otim-btn" id="padroes-btn" onclick="analisarPadroes()" style="border-color:rgba(157,111,255,0.4)">🔍 Detectar padrões (OffMind)</button>
       <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
     </div>
   </div>
@@ -1214,6 +1217,13 @@ select option{background:#141920}
             <div style="font-size:14px;color:var(--muted2);max-width:380px;line-height:1.6">Clique em <strong style="color:var(--green)">🔬 Validar robustez</strong> à esquerda. A plataforma divide o histórico em <strong>treino</strong> (passado conhecido) e <strong>teste</strong> (dados que a estratégia nunca viu) e compara o desempenho — revelando se a estratégia é robusta ou se apenas <strong>decorou o passado</strong> (overfitting).</div>
           </div>
           <div id="rob-resultado" style="display:none"></div>
+        </div>
+        <div id="tab-padroes" style="display:none;padding:20px 16px;overflow-y:auto;">
+          <div id="pad-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
+            <div style="font-size:34px">🔍</div>
+            <div style="font-size:14px;color:var(--muted2);max-width:400px;line-height:1.6">Clique em <strong style="color:var(--purple)">🔍 Detectar padrões</strong> à esquerda. O <strong>OffMind</strong> varre o histórico do ativo procurando padrões recorrentes e mede honestamente <strong>quantas vezes cada um acertou e quantas falhou</strong> — em vários horizontes. Padrões ordenados do mais assertivo ao menos.</div>
+          </div>
+          <div id="pad-resultado" style="display:none"></div>
         </div>
         <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
           <div style="max-width:860px;margin:0 auto;">
@@ -1837,7 +1847,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar','robustez'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar','robustez','padroes'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -2190,6 +2200,100 @@ function desenharDonutRob(id, win, loss){
     options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.label+': '+c.parsed } } } }
   });
+}
+
+// ── OFFMIND — Detecção de padrões ────────────────────────────
+async function analisarPadroes(){
+  const btn = document.getElementById('padroes-btn');
+  const txt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='🔍 Analisando...'; }
+  switchTab('padroes');
+  const vazio = document.getElementById('pad-vazio');
+  const res = document.getElementById('pad-resultado');
+  if(vazio) vazio.style.display='none';
+  if(res){
+    res.style.display='block';
+    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Varrendo o histórico em busca de padrões e medindo acerto/falha...</div></div>';
+  }
+  try{
+    const params = {
+      ativo: document.getElementById('ativo').value,
+      periodo: document.getElementById('periodo').value,
+      timeframe: document.getElementById('timeframe').value,
+      padrao: 'todos',
+      horizontes: [3,5,10,20],
+      atr_mult_alvo: 2.0,
+      atr_mult_stop: 1.0,
+      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
+      sessao_id: BB_SESSAO_ID,
+    };
+    const r = await fetch(API+'/offmind/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
+    const d = await r.json();
+    renderPadroes(d);
+  }catch(err){
+    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao analisar padrões: '+(err.message||err)+'</div>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=txt; }
+  }
+}
+
+function renderPadroes(d){
+  const res = document.getElementById('pad-resultado');
+  if(!res) return;
+  const MIN_OCORR = 8;  // amostra mínima p/ considerar confiável
+
+  // pra cada padrão, escolhe o melhor horizonte (maior taxa de acerto) entre os com amostra suficiente
+  const linhas = (d.resultados||[]).map(p => {
+    const candidatos = (p.por_horizonte||[]).filter(h => h.ocorrencias_medidas >= MIN_OCORR);
+    const pool = candidatos.length ? candidatos : (p.por_horizonte||[]);
+    let melhor = pool[0] || {taxa_acerto:0,taxa_falha:0,horizonte:0,mov_medio_pct:0,ocorrencias_medidas:0};
+    for(const h of pool){ if(h.taxa_acerto > melhor.taxa_acerto) melhor = h; }
+    return { ...p, melhor, confiavel: p.total_ocorrencias >= MIN_OCORR };
+  }).sort((a,b) => b.melhor.taxa_acerto - a.melhor.taxa_acerto);
+
+  const corTaxa = t => t>=55 ? '#00d084' : (t>=45 ? '#ffb830' : '#ff4d6a');
+
+  let html =
+    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔍 OffMind · Padrões detectados</div>'+
+    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:8px">'+d.ativo+' · '+d.periodo+' · '+d.timeframe+' · '+d.candles_analisados+' candles · alvo/stop por ATR ('+d.atr_mult_alvo+'×/'+d.atr_mult_stop+'×)</div>'+
+    '<div style="background:rgba(255,184,48,0.1);border:1px solid rgba(255,184,48,0.35);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--text);margin-bottom:18px;line-height:1.6">⚠️ Estas são <strong>estatísticas do passado</strong> sobre o histórico deste ativo. NÃO são promessa de desempenho futuro. "Acerto" = bateu o alvo (2× ATR) antes do stop (1× ATR). Padrões com menos de '+MIN_OCORR+' ocorrências são pouco confiáveis (amostra pequena).</div>';
+
+  linhas.forEach((p, idx) => {
+    const m = p.melhor;
+    const medalha = idx===0 ? '🏆 ' : (idx===1 ? '🥈 ' : (idx===2 ? '🥉 ' : ''));
+    const cor = corTaxa(m.taxa_acerto);
+    const destaque = idx===0 ? 'border:1px solid #00d084;background:rgba(0,208,132,0.06)' : 'border:1px solid var(--border2);background:var(--bg2)';
+    // mini-tabela dos horizontes
+    const hRows = (p.por_horizonte||[]).map(h =>
+      '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;color:var(--muted2)'+(h.horizonte===m.horizonte?';color:var(--text);font-weight:600':'')+'">'+
+        '<span>'+h.horizonte+' velas</span>'+
+        '<span style="font-family:var(--mono);color:'+corTaxa(h.taxa_acerto)+'">'+h.taxa_acerto.toFixed(0)+'% acerto</span>'+
+        '<span style="font-family:var(--mono)">'+h.acertos+'/'+h.ocorrencias_medidas+'</span>'+
+        '<span style="font-family:var(--mono);color:'+(h.mov_medio_pct>=0?'#00d084':'#ff4d6a')+'">'+(h.mov_medio_pct>=0?'+':'')+h.mov_medio_pct.toFixed(2)+'%</span>'+
+      '</div>'
+    ).join('');
+    html +=
+      '<div style="'+destaque+';border-radius:10px;padding:14px 16px;margin-bottom:12px">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+medalha+p.nome+
+            (p.confiavel?'':' <span style="font-size:10px;color:#ffb830;font-weight:600">(amostra pequena)</span>')+
+          '</div>'+
+          '<div style="text-align:right">'+
+            '<div style="font-size:22px;font-weight:800;font-family:var(--mono);color:'+cor+'">'+m.taxa_acerto.toFixed(0)+'%</div>'+
+            '<div style="font-size:10.5px;color:var(--muted)">melhor em '+m.horizonte+' velas · '+p.total_ocorrencias+' ocorrências</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px"><span>Horizonte</span><span>Acerto</span><span>Acertos/Total</span><span>Mov. médio</span></div>'+
+          hRows+
+        '</div>'+
+      '</div>';
+  });
+
+  html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">O ranking usa o melhor horizonte de cada padrão (maior taxa de acerto com amostra suficiente). Próximo passo recomendado: validar o padrão vencedor fora da amostra na aba <strong style="color:var(--green)">🔬 Robustez</strong> antes de confiar.</div>';
+
+  res.innerHTML = html;
 }
 
 function setTF(el, val) {
