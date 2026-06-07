@@ -1,6 +1,13 @@
 # ============================================================
-#  BotBacktest API — v1.5
+#  BotBacktest API — v1.6
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.6:
+#  - Deteccao de overfitting (out-of-sample): endpoint /validar-overfitting
+#    fatia o historico em treino (split%) e teste (resto, dados nunca vistos),
+#    roda a MESMA estrategia nas duas partes, compara metricas e da um
+#    veredito honesto (robusta / atencao / overfitting). Split cronologico
+#    (nunca embaralha serie temporal). Nunca promete retorno futuro.
+#  Historico anterior:
 #  Novidades v1.5:
 #  - Otimizacao de parametros: endpoint /otimizar varre combinacoes de
 #    stop_loss, take_profit e ema_period; baixa dados UMA vez e varia em
@@ -690,6 +697,140 @@ def salvar_historico_backtest(params, metricas, user_id=None, sessao_id=None, co
     except Exception as e:
         import sys
         print(f"[BabyMachine] historico nao gravado: {e}", file=sys.stderr)
+
+
+class ValidarOverfittingParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    indicador: str = "EMA Channel High/Low"
+    capital: float = 10000
+    max_ops: int = 5
+    comissao: float = 0.0002
+    ema_period: int = 20
+    stop_loss: float = 50
+    take_profit: float = 100
+    split: float = 0.70   # fração de treino (resto = teste)
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+
+def _metricas_simples(df_slice, base_params):
+    """Roda a estratégia num pedaço do df e devolve só as métricas-chave."""
+    resultado = rodar_estrategia(df_slice, base_params)
+    m = calcular_metricas_completas(resultado, base_params, df_slice)
+    return {
+        "retorno": float(m.get("retorno") or 0),
+        "win_rate": float(m.get("win_rate") or 0),
+        "sharpe": float(m.get("sharpe") or 0),
+        "profit_factor": float(m.get("profit_factor") or 0),
+        "max_drawdown": float(m.get("max_drawdown") or 0),
+        "total_trades": int(m.get("total_trades") or 0),
+    }
+
+
+@app.post("/validar-overfitting")
+def validar_overfitting(params: ValidarOverfittingParams):
+    """
+    Out-of-sample (treino/teste). Roda a MESMA estratégia em duas partes do
+    histórico: treino (primeiros split%) e teste (resto, dados 'nunca vistos').
+    Compara e dá um veredito honesto sobre robustez x overfitting.
+    """
+    import sys
+    try:
+        # 1) baixa os dados uma vez
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        if df is None or len(df) < 60:
+            raise HTTPException(status_code=400, detail="Dados insuficientes para dividir em treino/teste (mínimo ~60 candles).")
+
+        # 2) fatia cronológica: treino primeiro, teste depois (NUNCA embaralhar série temporal)
+        split = params.split if 0.5 <= params.split <= 0.9 else 0.70
+        corte = int(len(df) * split)
+        df_treino = df.iloc[:corte].copy()
+        df_teste = df.iloc[corte:].copy()
+        if len(df_treino) < 30 or len(df_teste) < 20:
+            raise HTTPException(status_code=400, detail="Período curto demais para um teste out-of-sample confiável. Use um período maior.")
+
+        # 3) parâmetros idênticos nas duas fatias
+        bp = BacktestParams(
+            ativo=params.ativo, periodo=params.periodo, timeframe=params.timeframe,
+            indicador=params.indicador, capital=params.capital, max_ops=params.max_ops,
+            comissao=params.comissao, ema_period=params.ema_period,
+            stop_loss=params.stop_loss, take_profit=params.take_profit,
+        )
+
+        treino = _metricas_simples(df_treino, bp)
+        teste = _metricas_simples(df_teste, bp)
+
+        # 4) veredito honesto
+        veredito = _avaliar_overfitting(treino, teste)
+
+        return converter_para_python({
+            "ativo": params.ativo,
+            "split": split,
+            "candles_treino": len(df_treino),
+            "candles_teste": len(df_teste),
+            "treino": treino,
+            "teste": teste,
+            "veredito": veredito,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO VALIDAR-OVERFITTING: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
+
+
+def _avaliar_overfitting(treino: dict, teste: dict) -> dict:
+    """
+    Decide se a estratégia parece robusta ou superajustada, comparando o
+    desempenho de treino com o de teste (out-of-sample). Sempre honesto:
+    nunca promete retorno futuro, só sinaliza fragilidade.
+    """
+    ret_tr = treino["retorno"]
+    ret_te = teste["retorno"]
+    sh_tr = treino["sharpe"]
+    sh_te = teste["sharpe"]
+    pf_te = teste["profit_factor"]
+    trades_te = teste["total_trades"]
+
+    motivos = []
+    # sinais de overfitting
+    if ret_tr > 0 and ret_te <= 0:
+        motivos.append("Lucro no treino virou prejuízo (ou zero) no teste.")
+    if sh_tr > 0 and sh_te < 0:
+        motivos.append("Sharpe positivo no treino ficou negativo no teste.")
+    # queda relativa grande de retorno (quando o treino foi positivo)
+    if ret_tr > 0:
+        queda = (ret_tr - ret_te) / abs(ret_tr) if ret_tr != 0 else 0
+        if queda >= 0.6 and ret_te < ret_tr:
+            motivos.append("Desempenho caiu mais de 60% do treino para o teste.")
+    # poucos trades no teste = amostra pequena, pouco confiável
+    if trades_te < 10:
+        motivos.append(f"Apenas {trades_te} operações no teste — amostra pequena, resultado pouco confiável.")
+
+    # sinais de robustez
+    robusto = (ret_te > 0 and sh_te > 0 and pf_te >= 1.0)
+
+    if len(motivos) >= 2 or (ret_tr > 0 and ret_te <= 0):
+        nivel = "alto"
+        titulo = "Sinais de overfitting"
+        resumo = "A estratégia foi bem no passado conhecido, mas tropeçou nos dados que nunca viu. Cuidado: pode estar ajustada demais ao histórico."
+    elif motivos:
+        nivel = "medio"
+        titulo = "Atenção"
+        resumo = "Há sinais de fragilidade entre treino e teste. Vale investigar antes de confiar."
+    elif robusto:
+        nivel = "baixo"
+        titulo = "Mais robusta"
+        resumo = "A estratégia manteve desempenho positivo nos dados que nunca viu. É um bom sinal — mas backtest nunca garante o futuro."
+    else:
+        nivel = "medio"
+        titulo = "Resultado misto"
+        resumo = "O comportamento entre treino e teste não é claramente bom nem ruim. Teste em mais períodos e ativos."
+
+    return {"nivel": nivel, "titulo": titulo, "resumo": resumo, "motivos": motivos}
 
 
 @app.post("/backtest/visual")
