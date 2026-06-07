@@ -1,11 +1,15 @@
 # ============================================================
-#  BotBacktest API — v1.7
+#  BotBacktest API — v1.8
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.8:
+#  - Renomeacao interna da feature de padroes para OffMind.
+#    Rotas /offmind/analisar e /offmind/padroes. Tecnicas-chave protegidas no backend.
+#  Historico anterior:
 #  Novidades v1.7:
-#  - OpenClaw (Association Rules): engine generica de deteccao de padroes.
-#    /openclaw/analisar detecta padrao no historico e mede acerto/falha
+#  - OffMind (Association Rules): engine generica de deteccao de padroes.
+#    /offmind/analisar detecta padrao no historico e mede acerto/falha
 #    em varios horizontes (3/5/10/20 velas), com alvo/stop por ATR.
-#    /openclaw/padroes lista os padroes disponiveis. Detectores plugaveis
+#    /offmind/padroes lista os padroes disponiveis. Detectores plugaveis
 #    (Categoria 1: engolfo, martelo, estrela, 3 velas). Sempre honesto:
 #    mostra acerto E falha, nunca promete retorno futuro.
 #  Historico anterior:
@@ -842,7 +846,7 @@ def _avaliar_overfitting(treino: dict, teste: dict) -> dict:
 
 
 # ════════════════════════════════════════════════════════════
-#  OPENCLAW — Engine de detecção de padrões (Association Rules)
+#  OFFMIND — Engine de detecção de padrões (Association Rules)
 #  Filosofia: detectar padrões no histórico e medir HONESTAMENTE
 #  (acerto E falha). Nunca promete retorno futuro.
 # ════════════════════════════════════════════════════════════
@@ -863,7 +867,7 @@ def calcular_atr(df, period=14):
 # ── DETECTORES DE PADRÃO ──────────────────────────────────────
 # Cada detector recebe o df e retorna lista de (índice, direção_esperada).
 # direção: "alta" (espera subir) ou "baixa" (espera cair).
-# Plugar um padrão novo = escrever uma função aqui e registrar em PADROES_OPENCLAW.
+# Plugar um padrão novo = escrever uma função aqui e registrar em PADROES_OFFMIND.
 
 def _corpo(o, c):       # tamanho do corpo da vela
     return abs(c - o)
@@ -938,7 +942,7 @@ def det_tres_vermelhas(df):
             out.append((i, "baixa"))
     return out
 
-PADROES_OPENCLAW = {
+PADROES_OFFMIND = {
     "engolfo_alta":    {"fn": det_engolfo_alta,    "nome": "Engolfo de alta",        "categoria": "candle"},
     "engolfo_baixa":   {"fn": det_engolfo_baixa,   "nome": "Engolfo de baixa",       "categoria": "candle"},
     "martelo":         {"fn": det_martelo,         "nome": "Martelo (pin bar alta)", "categoria": "candle"},
@@ -1024,11 +1028,11 @@ def analisar_padrao(df, detector, horizontes, atr_mult_alvo=2.0, atr_mult_stop=1
     return {"total_ocorrencias": total, "por_horizonte": por_horizonte}
 
 
-class OpenClawParams(BaseModel):
+class OffMindParams(BaseModel):
     ativo: str = "XAU/USD"
     periodo: str = "2 anos"
     timeframe: str = "1d"
-    padrao: str = "engolfo_alta"        # chave em PADROES_OPENCLAW, ou "todos"
+    padrao: str = "engolfo_alta"        # chave em PADROES_OFFMIND, ou "todos"
     horizontes: list = [3, 5, 10, 20]
     atr_mult_alvo: float = 2.0
     atr_mult_stop: float = 1.0
@@ -1036,17 +1040,17 @@ class OpenClawParams(BaseModel):
     sessao_id: Optional[str] = None
 
 
-@app.get("/openclaw/padroes")
-def openclaw_listar_padroes():
+@app.get("/offmind/padroes")
+def offmind_listar_padroes():
     """Lista os padrões disponíveis na engine."""
     return {"padroes": [
         {"chave": k, "nome": v["nome"], "categoria": v["categoria"]}
-        for k, v in PADROES_OPENCLAW.items()
+        for k, v in PADROES_OFFMIND.items()
     ]}
 
 
-@app.post("/openclaw/analisar")
-def openclaw_analisar(params: OpenClawParams):
+@app.post("/offmind/analisar")
+def offmind_analisar(params: OffMindParams):
     """Detecta padrão(ões) no histórico e mede acerto/falha em vários horizontes."""
     import sys
     try:
@@ -1059,15 +1063,15 @@ def openclaw_analisar(params: OpenClawParams):
         stop = params.atr_mult_stop if params.atr_mult_stop > 0 else 1.0
 
         if params.padrao == "todos":
-            chaves = list(PADROES_OPENCLAW.keys())
-        elif params.padrao in PADROES_OPENCLAW:
+            chaves = list(PADROES_OFFMIND.keys())
+        elif params.padrao in PADROES_OFFMIND:
             chaves = [params.padrao]
         else:
             raise HTTPException(status_code=400, detail=f"Padrão desconhecido: {params.padrao}")
 
         resultados = []
         for k in chaves:
-            meta = PADROES_OPENCLAW[k]
+            meta = PADROES_OFFMIND[k]
             r = analisar_padrao(df, meta["fn"], horizontes, alvo, stop)
             resultados.append({
                 "chave": k, "nome": meta["nome"], "categoria": meta["categoria"],
@@ -1088,7 +1092,7 @@ def openclaw_analisar(params: OpenClawParams):
         raise
     except Exception as e:
         tb = traceback.format_exc()
-        print(f"ERRO OPENCLAW: {str(e)}\n{tb}", file=sys.stderr)
+        print(f"ERRO OFFMIND: {str(e)}\n{tb}", file=sys.stderr)
         raise HTTPException(status_code=500, detail=f"{str(e)}")
 
 
