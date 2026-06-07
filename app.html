@@ -1,7 +1,9 @@
 <!--
-  BotBacktest Frontend — v1.7
+  BotBacktest Frontend — v1.9
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  v1.7: modal otimizacao clareado + contorno; puxa valores da esquerda; "passo"->"intervalo"
+  v1.9: loading animado (candles) na otimizacao + tempo minimo visivel
+  v1.8: fix cor do select Ordenar por + texto descricao
+  v1.7: modal otimizacao clareado + contorno; puxa valores da esquerda; passo->intervalo
   v1.6: interface de Otimizacao de parametros (modal + aba ranking + alerta overfitting)
   v1.5: envia user_id + sessao_id no Rodar Backtest (alimenta BabyMachine)
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
@@ -213,6 +215,7 @@ select option{background:#141920}
 .otim-inputs input{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--mono);box-sizing:border-box}
 .otim-inputs input:focus{outline:none;border-color:#00d084}
 .otim-modal select{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--sans)}
+.otim-modal select option{background:#1c2530;color:#fff}
 .otim-modal select:focus{outline:none;border-color:#00d084}
 .otim-combos{font-size:12px;color:#9fb0c0;margin:6px 0 16px;font-family:var(--mono)}
 .otim-combos.over{color:#ff6b6b}
@@ -505,6 +508,21 @@ select option{background:#141920}
 /* ── SPINNER ── */
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:13px;height:13px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
+.otim-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:22px}
+.otim-candles{display:flex;align-items:flex-end;gap:7px;height:70px}
+.otim-candle{width:11px;border-radius:2px;animation:candlePulse 1s ease-in-out infinite}
+.otim-candle.up{background:#00d084}
+.otim-candle.down{background:#ff5a5a}
+.otim-candle:nth-child(1){animation-delay:0s}
+.otim-candle:nth-child(2){animation-delay:.12s}
+.otim-candle:nth-child(3){animation-delay:.24s}
+.otim-candle:nth-child(4){animation-delay:.36s}
+.otim-candle:nth-child(5){animation-delay:.48s}
+.otim-candle:nth-child(6){animation-delay:.60s}
+.otim-candle:nth-child(7){animation-delay:.72s}
+@keyframes candlePulse{0%,100%{height:18px;opacity:.45}50%{height:60px;opacity:1}}
+.otim-loading .ltxt{font-size:14px;color:var(--text);font-weight:600}
+.otim-loading .lsub{font-size:12px;color:var(--muted);margin-top:-12px}
 
 .zoom-btn{height:20px;padding:0 7px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:10px;font-family:var(--mono);cursor:pointer;transition:all .12s;font-weight:500}
 .zoom-btn:hover{background:var(--bg3);color:var(--text)}
@@ -1874,11 +1892,21 @@ async function rodarOtimizar(){
   document.getElementById('otim-vazio').style.display='none';
   const res=document.getElementById('otim-resultado');
   res.style.display='block';
-  res.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px"><div class="spinner" style="margin:0 auto 12px"></div>Rodando '+n+' combinações... isso pode levar até 1-2 minutos.</div>';
+  res.innerHTML='<div class="otim-loading">'+
+    '<div class="otim-candles">'+
+    '<div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div>'+
+    '<div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div>'+
+    '<div class="otim-candle up"></div>'+
+    '</div>'+
+    '<div class="ltxt">Otimizando '+n+' combinações...</div>'+
+    '<div class="lsub">Rodando os backtests. Isso pode levar de alguns segundos a 1-2 minutos.</div>'+
+    '</div>';
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),180000);
-    const r=await fetch(API+'/otimizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctrl.signal});
+    const minDelay=new Promise(r=>setTimeout(r,900)); // loading visível por pelo menos 0.9s
+    const fetchP=fetch(API+'/otimizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctrl.signal});
+    const [r]=await Promise.all([fetchP,minDelay]);
     clearTimeout(tid);
     if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro na otimização'); }
     const d=await r.json();
@@ -2698,7 +2726,7 @@ if(localStorage.getItem('btp-theme')==='light'){
 <div class="otim-modal-bg" id="otim-modal-bg">
   <div class="otim-modal">
     <h3>⚙ Otimizar parâmetros</h3>
-    <div class="sub">Testa várias combinações de uma vez e mostra um ranking. Os campos abaixo definem o intervalo: de / até / passo.</div>
+    <div class="sub">Testa várias combinações de uma vez e mostra um ranking. Os campos abaixo definem: de / até / intervalo.</div>
 
     <div class="otim-row">
       <div class="lbl">Stop Loss (pts)</div>
