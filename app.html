@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.6
+  BotBacktest Frontend — v2.7
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.7: Overview vira aba inicial (botao 1o, antes do Editor); grafico de amostra com selo EXEMPLO na tela inicial; some ao rodar backtest real
   v2.6: fix bug ao TROCAR de combinação no gráfico (devolve ov-result p/ Overview antes de limpar slot)
   v2.5: Passo B COMPLETO — grafico aparece EMBAIXO da tabela de ranking (move #ov-result p/ slot na aba Otimizacao); campea abre automatico; ver no grafico troca; rodarBacktest restaura ov-result p/ Overview
   v2.4: Passo B (jeito seguro) — campea abre na Overview
@@ -614,8 +615,8 @@ select option{background:#141920}
     <span class="vtag">v1.4</span>
   </div>
   <div class="tsep"></div>
-  <button class="tbtn active" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
-  <button class="tbtn" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
+  <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
+  <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
@@ -891,7 +892,7 @@ select option{background:#141920}
         <div class="col-center" id="col-center">
 
           <!-- TAB: EDITOR -->
-          <div id="tab-editor" class="tab-editor">
+          <div id="tab-editor" class="tab-editor" style="display:none">
             <div class="editor-code-wrap">
               <div class="ed-header">
                 <div class="ed-dot" style="background:#ff5f57"></div>
@@ -947,8 +948,34 @@ select option{background:#141920}
           </div>
 
           <!-- TAB: OVERVIEW -->
-          <div id="tab-overview" style="display:none">
-            <div class="overview-empty" id="ov-empty">
+          <div id="tab-overview" style="display:block">
+            <div id="ov-sample" style="padding:18px 16px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
+                <span style="font-size:13px;color:var(--muted2)">Assim ficará seu resultado · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong></span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:14px">XAU/USD · 2 anos · 1D · candles + operações (demonstração)</div>
+              <div style="border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--bg2);position:relative">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,22,32,0.85);border:1px solid #3a4756;border-radius:8px;padding:10px 18px;font-size:12px;color:#cdd9e3;z-index:2;text-align:center;pointer-events:none">📊 Gráfico de demonstração<br><span style="font-size:11px;color:var(--muted)">seus resultados reais aparecem aqui</span></div>
+                <svg viewBox="0 0 700 260" style="width:100%;display:block" preserveAspectRatio="none">
+                  <polyline points="0,210 60,200 120,180 180,190 240,150 300,160 360,120 420,130 480,90 540,100 600,60 660,70 700,55" fill="none" stroke="#00d084" stroke-width="1.5" opacity="0.5"/>
+                  <g stroke-width="6">
+                    <line x1="40" y1="195" x2="40" y2="220" stroke="#ff5a5a"/><line x1="40" y1="200" x2="40" y2="215" stroke="#ff5a5a" stroke-width="14"/>
+                    <line x1="100" y1="170" x2="100" y2="200" stroke="#00d084"/><line x1="100" y1="178" x2="100" y2="192" stroke="#00d084" stroke-width="14"/>
+                    <line x1="160" y1="175" x2="160" y2="205" stroke="#00d084"/><line x1="160" y1="183" x2="160" y2="197" stroke="#00d084" stroke-width="14"/>
+                    <line x1="220" y1="140" x2="220" y2="175" stroke="#00d084"/><line x1="220" y1="148" x2="220" y2="167" stroke="#00d084" stroke-width="14"/>
+                    <line x1="280" y1="150" x2="280" y2="180" stroke="#ff5a5a"/><line x1="280" y1="158" x2="280" y2="172" stroke="#ff5a5a" stroke-width="14"/>
+                    <line x1="340" y1="110" x2="340" y2="145" stroke="#00d084"/><line x1="340" y1="118" x2="340" y2="137" stroke="#00d084" stroke-width="14"/>
+                    <line x1="400" y1="115" x2="400" y2="148" stroke="#ff5a5a"/><line x1="400" y1="123" x2="400" y2="140" stroke="#ff5a5a" stroke-width="14"/>
+                    <line x1="460" y1="80" x2="460" y2="115" stroke="#00d084"/><line x1="460" y1="88" x2="460" y2="107" stroke="#00d084" stroke-width="14"/>
+                    <line x1="520" y1="88" x2="520" y2="120" stroke="#00d084"/><line x1="520" y1="96" x2="520" y2="112" stroke="#00d084" stroke-width="14"/>
+                    <line x1="580" y1="52" x2="580" y2="88" stroke="#00d084"/><line x1="580" y1="60" x2="580" y2="80" stroke="#00d084" stroke-width="14"/>
+                    <line x1="640" y1="58" x2="640" y2="92" stroke="#ff5a5a"/><line x1="640" y1="66" x2="640" y2="84" stroke="#ff5a5a" stroke-width="14"/>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <div class="overview-empty" id="ov-empty" style="display:none">
               <div style="font-size:38px;opacity:.25">📊</div>
               <div style="font-size:14px;font-weight:600;color:var(--muted2)">Nenhum backtest rodado</div>
               <div style="font-size:12px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">Configure os parâmetros, cole seu código e clique em Rodar Backtest</div>
@@ -1727,7 +1754,7 @@ const API = 'https://backtestpro-production-eb9a.up.railway.app';
 let lastResult = null;
 let lastIACode = null;
 let chartEq = null, chartPr = null, chartDo = null;
-let activeTab = 'editor';
+let activeTab = 'overview';
 let selectedTemplate = 'ema_channel';
 
 const TEMPLATES = {
@@ -2490,6 +2517,8 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
 
 function renderOverview(d, params) {
   document.getElementById('ov-empty').style.display = 'none';
+  const sampleEl = document.getElementById('ov-sample');
+  if(sampleEl) sampleEl.style.display = 'none';
   const area = document.getElementById('ov-result');
   area.style.display = 'block';
 
