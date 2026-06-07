@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v1.4
+  BotBacktest Frontend — v1.5
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v1.5: envia user_id + sessao_id no Rodar Backtest (alimenta BabyMachine)
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
   Novidades v4.6:
@@ -1338,6 +1339,8 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let usuarioAtual = null;
+// BabyMachine: id de sessao agrupa os testes da mesma rodada de ajustes (a "jornada" do trader)
+const BB_SESSAO_ID = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
 let perfilAtual = null;
 
 // ── AUTH: INICIALIZAR ──
@@ -1858,6 +1861,9 @@ async function rodarBacktest() {
     capital: parseFloat(document.getElementById('capital').value),
     max_ops: parseInt(document.getElementById('max_ops').value),
     comissao: parseFloat(document.getElementById('comissao').value),
+    // BabyMachine: identifica o trader e a jornada (so grava se logado)
+    user_id: (usuarioAtual && usuarioAtual.id) ? usuarioAtual.id : null,
+    sessao_id: BB_SESSAO_ID,
   };
 
   // Feedback progressivo
