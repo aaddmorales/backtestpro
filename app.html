@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.1
+  BotBacktest Frontend — v2.2
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.2: correcoes visuais — Comissao->Spread/custo; select Ordenar por (altura/line-height); alerta overfitting e aviso win-rate com fundo escuro solido (legivel tema claro+escuro); botao ver no grafico fundo escuro+contorno verde
   v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
   v2.0: loading de candles centralizado verticalmente (min-height 60vh)
   v1.9: loading animado (candles) na otimizacao + tempo minimo visivel
@@ -216,7 +217,7 @@ select option{background:#141920}
 .otim-inputs .mini{font-size:10px;color:#8a9aa8;margin-bottom:3px}
 .otim-inputs input{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--mono);box-sizing:border-box}
 .otim-inputs input:focus{outline:none;border-color:#00d084}
-.otim-modal select{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--sans)}
+.otim-modal select{width:100%;height:40px;padding:0 10px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--sans);line-height:38px;box-sizing:border-box}
 .otim-modal select option{background:#1c2530;color:#fff}
 .otim-modal select:focus{outline:none;border-color:#00d084}
 .otim-combos{font-size:12px;color:#9fb0c0;margin:6px 0 16px;font-family:var(--mono)}
@@ -832,7 +833,7 @@ select option{background:#141920}
         <div><div class="pli">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
         <div><div class="pli">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
       </div>
-      <div style="margin-top:6px"><div class="pli">Comissão</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
+      <div style="margin-top:6px"><div class="pli">Spread/custo (por op.)</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
     </div>
     <div class="ps">
       <button class="run-btn" id="run-btn" onclick="rodarBacktest()">
@@ -1929,7 +1930,7 @@ function renderOtimizacao(d){
   // aviso quando win rate alto mas retorno negativo
   let avisoWR='';
   if(m.win_rate>=50 && m.retorno<0){
-    avisoWR='<div style="background:rgba(255,90,90,.1);border:1px solid rgba(255,90,90,.4);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#ff8a8a;line-height:1.5">⚠ Atenção: a combinação com mais acertos perde dinheiro (win rate alto, retorno negativo). Taxa de acerto não é lucro.</div>';
+    avisoWR='<div style="background:#2a1414;border:1px solid #7a2020;border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:12px;color:#ff9a9a;line-height:1.5">⚠ Atenção: a combinação com mais acertos perde dinheiro (win rate alto, retorno negativo). Taxa de acerto não é lucro.</div>';
   }
   let linhas='';
   (d.ranking||[]).forEach((row,i)=>{
@@ -1945,14 +1946,14 @@ function renderOtimizacao(d){
       '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.profit_factor)+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted2)">'+_fmt(row.win_rate,'%')+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:#ff8a8a">'+_fmt(row.max_drawdown,'%')+'</td>'+
-      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:4px 10px;border-radius:5px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
+      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:5px 12px;border-radius:6px;border:1px solid #00d084;background:#0f1620;color:#00d084;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
       '</tr>';
   });
   res.innerHTML=
     '<div style="margin-bottom:6px;font-size:15px;color:var(--text);font-weight:600">Resultado da otimização</div>'+
     '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+d.combinacoes_testadas+' combinações testadas · ordenado por <strong style="color:var(--green)">'+ordLabel+'</strong></div>'+
     avisoWR+
-    '<div style="background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.35);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#ffcc66;line-height:1.5">⚠ '+(d.alerta_overfitting||'')+'</div>'+
+    '<div style="background:#2a2410;border:1px solid #7a5c10;border-radius:8px;padding:11px 13px;margin-bottom:16px;font-size:11px;color:#f0c050;line-height:1.5">⚠ '+(d.alerta_overfitting||'')+'</div>'+
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left">'+
     '<th style="padding:8px 6px">#</th><th style="padding:8px 6px">Stop</th><th style="padding:8px 6px">Take</th><th style="padding:8px 6px">EMA</th><th style="padding:8px 6px">Retorno</th><th style="padding:8px 6px">Sharpe</th><th style="padding:8px 6px">P.Factor</th><th style="padding:8px 6px">Win%</th><th style="padding:8px 6px">Drawdown</th><th style="padding:8px 6px"></th>'+
