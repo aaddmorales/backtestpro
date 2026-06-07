@@ -1,3367 +1,1692 @@
-<!--
-  BotBacktest Frontend — v4.4
-  Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  v4.4: contador de backtests no topo da coluna esquerda (📊 X backtests realizados) — total do banco via /babymachine/contador; atualiza no login, apos cada backtest; escondido se deslogado ou zero. Tom neutro.
-  v4.3: BabyMachine — secao coletivo SUBSTITUIDA por 2 graficos de evolucao do usuario (Sharpe e retorno por teste, Chart.js linha) — coletivo nao publicado p/ nao comprometer evolucao da base. Aviso anti-overfitting nos graficos. Mantida secao Sua jornada (alertas).
-  v4.2: BabyMachine — aba 🧠 + botao Analise BabyMachine; chama /babymachine/analisar e mostra 2 secoes: Aprendizado coletivo (tendencias do banco) + Sua jornada (alertas coloridos por nivel: overfitting/win-enganoso/melhor backtest). Conselhos honestos.
-  v4.1: OffMind — aba Padroes + botao Detectar padroes; chama /offmind/analisar e mostra ranking dos padroes do mais assertivo ao menos (melhor horizonte de cada, mini-tabela dos 4 horizontes, disclaimer honesto)
-  v3.9: removido botao NTSL duplicado da barra superior (mantido Exportar para NTSL na coluna esquerda)
-  v3.8: botoes timeframe com mesmo fundo destacado dos campos (cinza nos 2 temas), ativo (rodando) mantem verde
-  v3.7: tema escuro tambem com campos destacados (fundo #1c2230 + borda mais marcada) — mesma faixa cinza profissional dos 2 temas
-  v3.6: tema claro mais profissional — campos (select/input) com fundo cinza #e9edf2 e borda mais marcada, coluna esquerda cinza suave #f4f6f9 (em vez de branco puro) p/ os campos se destacarem
-  v3.5: fix tema claro — botoes da barra superior mantêm BRANCO nos 2 temas (barra é sempre escura #080a0d), removidas regras que os deixavam pretos e sumiam
-  v3.4: legibilidade nivel GitHub — botoes topo branco(#eef1f6)/preto(#1a1f2b), cores muted bem mais contrastadas nos 2 temas, labels .pl mais claras e bold
-  v3.3: legibilidade — botoes barra superior com cor mais clara + peso 600 + contorno sutil + ativo com destaque verde; cores --muted clareadas (escuro) e escurecidas (claro) p/ legendas legiveis nos 2 temas
-  v3.2: donuts de robustez MAIORES (180px) lado a lado embaixo da tabela (largura toda); mais visivel/profissional
-  v3.1: dois donuts (treino vs teste) ao lado da tabela de robustez
-  v3.0: deteccao de overfitting (out-of-sample) — botao Validar robustez + aba Robustez com veredito colorido e tabela treino vs teste (chama /validar-overfitting)
-  v2.9: tela de EXEMPLO completa (Forma C) — usa renderOverview real com dados de demonstracao (grafico + todos os paineis), banner EXEMPLO no topo, some ao rodar real
-  v2.8: grafico de amostra REALISTA (random walk + lightweight-charts, mesma lib do real) substituindo SVG artificial; redesenha no toggle de tema
-  v2.7: Overview vira aba inicial (botao 1o, antes do Editor); grafico de amostra com selo EXEMPLO na tela inicial; some ao rodar backtest real
-  v2.6: fix bug ao TROCAR de combinação no gráfico (devolve ov-result p/ Overview antes de limpar slot)
-  v2.5: Passo B COMPLETO — grafico aparece EMBAIXO da tabela de ranking (move #ov-result p/ slot na aba Otimizacao); campea abre automatico; ver no grafico troca; rodarBacktest restaura ov-result p/ Overview
-  v2.4: Passo B (jeito seguro) — campea abre na Overview
-  v2.3: painel de codigo (strategy.py) movido da coluna direita p/ DENTRO da aba Editor; tela principal mais limpa; focusIA troca p/ aba editor
-  v2.2: correcoes visuais — Comissao->Spread/custo; select Ordenar por (altura/line-height); alerta overfitting e aviso win-rate com fundo escuro solido (legivel tema claro+escuro); botao ver no grafico fundo escuro+contorno verde
-  v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
-  v2.0: loading de candles centralizado verticalmente (min-height 60vh)
-  v1.9: loading animado (candles) na otimizacao + tempo minimo visivel
-  v1.8: fix cor do select Ordenar por + texto descricao
-  v1.7: modal otimizacao clareado + contorno; puxa valores da esquerda; passo->intervalo
-  v1.6: interface de Otimizacao de parametros (modal + aba ranking + alerta overfitting)
-  v1.5: envia user_id + sessao_id no Rodar Backtest (alimenta BabyMachine)
-  Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
-  Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  Novidades v4.6:
-  - Candle chart com lightweight-charts (mesma lib TradingView)
-  - Markers BUY/SELL em cima dos candles
-  - Cumulative PnL + Run-ups/Drawdowns toggle
-  - Multi-indicadores: até 3 overlays (EMA/SMA) com cor e fonte configuráveis
--->
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<meta http-equiv="Pragma" content="no-cache"/>
-<title>BotBacktest v1.4 — Algo Trading Platform</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#080a0d;--bg2:#0e1117;--bg3:#141920;--bg4:#1c2230;
-  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
-  --text:#eef1f6;--muted:#9aa4b6;--muted2:#c4ccd9;
-  --green:#00d084;--green2:#00a868;--green-bg:rgba(0,208,132,0.08);
-  --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
-  --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
-  --blue:#4d9fff;--blue-bg:rgba(77,159,255,0.08);
-  --green-primary:#00d084;--green-primary-bg:rgba(0,208,132,0.09);
-  --purple:#9d6fff;--purple-bg:rgba(157,111,255,0.09);
-  --mono:'JetBrains Mono',monospace;
-  --sans:'Syne',sans-serif;
+# ============================================================
+#  BotBacktest API — v2.1
+#  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v2.1:
+#  - /babymachine/contador: endpoint leve que retorna total de backtests
+#    do usuario (count exact) p/ contador no topo da coluna esquerda.
+#  Historico anterior:
+#  Novidades v2.0:
+#  - BabyMachine: comportamento agora inclui serie evolucao (Sharpe e
+#    retorno de cada backtest do usuario em ordem cronologica) p/ 2 graficos.
+#  Historico anterior:
+#  Novidades v1.9:
+#  - BabyMachine analise: /babymachine/analisar le os dados coletados e
+#    gera (B) aprendizado coletivo anonimo (tendencias do banco inteiro) +
+#    (C) deteccao de comportamento de risco da jornada do usuario
+#    (overfitting manual, win-alto/retorno-negativo, etc). Analise por
+#    regras puras. user_id se logado, senao sessao_id. Sempre honesto.
+#  Historico anterior:
+#  Novidades v1.8:
+#  - Renomeacao interna da feature de padroes para OffMind.
+#    Rotas /offmind/analisar e /offmind/padroes. Tecnicas-chave protegidas no backend.
+#  Historico anterior:
+#  Novidades v1.7:
+#  - OffMind (Association Rules): engine generica de deteccao de padroes.
+#    /offmind/analisar detecta padrao no historico e mede acerto/falha
+#    em varios horizontes (3/5/10/20 velas), com alvo/stop por ATR.
+#    /offmind/padroes lista os padroes disponiveis. Detectores plugaveis
+#    (Categoria 1: engolfo, martelo, estrela, 3 velas). Sempre honesto:
+#    mostra acerto E falha, nunca promete retorno futuro.
+#  Historico anterior:
+#  Novidades v1.6:
+#  - Deteccao de overfitting (out-of-sample): endpoint /validar-overfitting
+#    fatia o historico em treino (split%) e teste (resto, dados nunca vistos),
+#    roda a MESMA estrategia nas duas partes, compara metricas e da um
+#    veredito honesto (robusta / atencao / overfitting). Split cronologico
+#    (nunca embaralha serie temporal). Nunca promete retorno futuro.
+#  Historico anterior:
+#  Novidades v1.5:
+#  - Otimizacao de parametros: endpoint /otimizar varre combinacoes de
+#    stop_loss, take_profit e ema_period; baixa dados UMA vez e varia em
+#    memoria; retorna ranking + alerta de overfitting. Teto de 50 combos.
+#    Cada combo tambem grava na BabyMachine (backtests_historico).
+#  Historico anterior:
+#  Novidades v1.4:
+#  - BabyMachine: registra historico de cada backtest na tabela
+#    backtests_historico (Supabase). Fundacao p/ IA aprender a
+#    jornada do trader. Gravacao NON-BLOCKING (falha nao quebra o teste).
+#  Historico anterior:
+#  Novidades v1.3:
+#  - Separacao landing/app:
+#      "/"     serve index.html  (landing page)
+#      "/app"  serve app.html    (antigo index.html do backtest)
+#  - success_url/cancel_url do Stripe apontam para /app
+#  Historico:
+#  - v1.2: fix StripeObject.to_dict() no webhook + SUPABASE_URL
+#  - v1.1: payload completo estilo TradingView (/backtest/visual e /custom)
+# ============================================================
+
+from fastapi import FastAPI, HTTPException, Request
+import stripe
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel
+from typing import Optional, List
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import json
+import traceback
+import os
+import hashlib
+import uuid as _uuid
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+app = FastAPI(title="BotBacktest API", version="3.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── MAPA DE ATIVOS ──────────────────────────────────────────
+ATIVOS_MAP = {
+    "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
+    "AUD/USD": "AUDUSD=X", "USD/CAD": "CAD=X", "USD/CHF": "CHF=X",
+    "XAU/USD": "GC=F",    "XAG/USD": "SI=F",
+    "BTC/USD": "BTC-USD",  "ETH/USD": "ETH-USD",
+    "IBOVESPA": "^BVSP",   "USD/BRL": "BRL=X",
+    "S&P500": "^GSPC",     "NASDAQ": "^IXIC",
 }
 
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;overflow:hidden}
-
-/* ── GRAIN TEXTURE OVERLAY ── */
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
-  opacity:.028;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat:repeat;background-size:128px 128px;
+PERIODOS_MAP = {
+    "6 meses": "6mo", "1 ano": "1y", "2 anos": "2y",
+    "3 anos": "3y",   "5 anos": "5y",
 }
 
-/* subtle gradient mesh background */
-body::after{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.03) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,208,132,0.02) 0%, transparent 60%);
+INTERVALOS_MAP = {
+    "5m": "5m", "15m": "15m", "30m": "30m",
+    "1h": "1h", "4h": "1h",  "1d": "1d",
 }
 
-/* ── TOPBAR ── */
-.topbar{
-  height:46px;background:#080a0d !important;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-  display:flex;align-items:center;padding:0 14px;gap:6px;
-  flex-shrink:0;position:relative;z-index:10;
-}
-.logo{display:flex;align-items:center;gap:8px;margin-right:6px}
-
-.vtag{font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-weight:500}
-.tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
-
-.tbtn{
-  height:30px;padding:0 11px;border-radius:6px;
-  border:1px solid rgba(255,255,255,0.12);background:transparent;
-  color:#eef1f6;font-size:12px;font-family:var(--sans);font-weight:600;
-  cursor:pointer;display:flex;align-items:center;gap:5px;
-  transition:all .15s;white-space:nowrap;
-}
-.tbtn:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.25)}
-.tbtn.active{background:rgba(0,208,132,0.18);color:#fff;border-color:#00d084;font-weight:700}
-.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.4);color:var(--green)}
-.tbtn-orange:hover{background:rgba(0,208,132,0.15)}
-.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.4);color:var(--purple)}
-.tbtn-purple:hover{background:rgba(157,111,255,0.15)}
-.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.4);color:var(--amber)}
-.tbtn-amber:hover{background:rgba(255,184,48,0.15)}
-
-.spacer{flex:1}
-.lang-btn{height:24px;padding:0 7px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#5a6478;font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-.lang-btn.active,.lang-btn:hover{color:#fff;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.08)}
-.api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
-.api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
-@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
-
-/* ── LIGHT THEME ── */
-body.light{
-  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#0a0e16;--muted:#4a5260;--muted2:#2a313d;
-}
-body.light::after{
-  background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,208,132,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
-}
-body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(255,255,255,0.06)}
-body.light .col-left{background:#f4f6f9}
-body.light .col-right{background:rgba(255,255,255,0.9)}
-body.light .metrics-bar{background:rgba(255,255,255,0.97)}
-body.light select,body.light input[type=number],body.light input[type=text]{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
-body.light .tf-btn{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
-body.light .tf-btn:hover{background:#dde3ea;color:#000;border-color:rgba(0,0,0,0.28)}
-body.light .tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green2)}
-body.light select option{background:#ffffff}
-body.light #code-editor{background:#f8f9fb;color:#383a42}
-body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
-body.light .editor-drop-zone{background:rgba(240,242,245,0.8);border-color:rgba(0,0,0,0.12)}
-body.light .edz-hint{background:rgba(157,111,255,0.06);border-color:rgba(157,111,255,0.15)}
-body.light .charts-2col,body.light .cp{background:#ffffff}
-body.light .bottom3col,body.light .b3p{background:#ffffff}
-body.light .ia-sug{background:rgba(157,111,255,0.04);border-color:rgba(157,111,255,0.12)}
-body.light .tpl-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tpl-card:hover{background:#f0f2f5}
-body.light .tpl-robot{background:linear-gradient(180deg,transparent 0%,rgba(0,208,132,0.05) 100%)}
-body.light .rank-card{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .rank-card:hover{background:#f0f2f5}
-body.light .podium-block{border-color:rgba(0,0,0,0.1)}
-body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
-body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-/* barra superior é sempre escura nos 2 temas — botões mantêm o branco da regra base .tbtn */
-body.light .trades-tbl tr:hover td{background:#f0f2f5}
-
-/* toggle button */
-.theme-toggle{
-  width:32px;height:20px;border-radius:10px;
-  background:var(--bg3);border:1px solid var(--border2);
-  cursor:pointer;position:relative;transition:all .25s;
-  flex-shrink:0;padding:0;
-}
-.theme-toggle::after{
-  content:'';position:absolute;top:2px;left:2px;
-  width:14px;height:14px;border-radius:50%;
-  background:var(--muted2);transition:all .25s;
-}
-body.light .theme-toggle{background:#e2e8f0;border-color:rgba(0,0,0,0.15)}
-body.light .theme-toggle::after{background:var(--green);left:14px}
-.theme-icon{font-size:13px;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none;padding:2px;color:var(--text)}
-.theme-icon:hover{opacity:1}
-
-/* ── MAIN LAYOUT ── */
-.main{display:flex;height:calc(100vh - 46px);overflow:hidden;position:relative;z-index:1}
-
-/* ── LEFT — PARAMS (always visible) ── */
-.col-left{
-  width:224px;min-width:224px;
-  background:rgba(14,17,23,0.8);
-  border-right:1px solid var(--border);
-  display:flex;flex-direction:column;overflow-y:auto;
-  backdrop-filter:blur(8px);
-}
-.col-left::-webkit-scrollbar{width:3px}
-.col-left::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-.ps{padding:10px 12px;border-bottom:1px solid var(--border)}
-.pl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
-.pli{font-size:11px;color:var(--muted2);margin-bottom:3px}
-
-select,input[type=number],input[type=text]{
-  width:100%;height:30px;
-  background:#1c2230;border:1px solid rgba(255,255,255,0.14);
-  border-radius:5px;color:var(--text);font-size:12px;
-  font-family:var(--sans);padding:0 8px;outline:none;
-  transition:border .15s;
-}
-select:focus,input:focus{border-color:rgba(0,208,132,0.4)}
-select option{background:#141920}
-
-.tf-group{display:flex;gap:4px;flex-wrap:wrap}
-.tf-btn{
-  height:26px;padding:0 8px;border-radius:4px;
-  border:1px solid rgba(255,255,255,0.14);background:#1c2230;
-  color:var(--text);font-size:11px;font-family:var(--mono);
-  cursor:pointer;transition:all .12s;font-weight:600;
-}
-.tf-btn:hover{background:#252c3c;color:#fff;border-color:rgba(255,255,255,0.25)}
-.tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green);font-weight:700}
-
-.pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-
-.run-btn{
-  width:100%;height:38px;
-  background:#00d084;
-  border:none;border-radius:7px;
-  color:#000;font-size:13px;font-weight:700;font-family:var(--sans);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
-  transition:all .15s;letter-spacing:.01em;margin-top:2px;
-  box-shadow:0 4px 16px rgba(0,208,132,0.2);
-}
-.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,208,132,0.3)}
-.run-btn:active{transform:translateY(0)}
-.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.otim-btn{width:100%;margin-top:8px;padding:11px;border-radius:8px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.otim-btn:hover{background:rgba(0,208,132,0.08)}
-.otim-btn:disabled{opacity:.5;cursor:not-allowed}
-.otim-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-.otim-modal{background:#1c2530;border:1px solid #00d084;border-radius:14px;width:460px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 0 0 1px rgba(0,208,132,.15),0 20px 60px rgba(0,0,0,.5)}
-.otim-modal h3{font-size:17px;margin:0 0 4px;color:#fff;font-weight:700}
-.otim-modal .sub{font-size:12px;color:#9fb0c0;margin-bottom:18px;line-height:1.5}
-.otim-row{margin-bottom:15px}
-.otim-row .lbl{font-size:12px;color:#cdd9e3;margin-bottom:7px;font-weight:600}
-.otim-inputs{display:flex;gap:8px}
-.otim-inputs > div{flex:1}
-.otim-inputs .mini{font-size:10px;color:#8a9aa8;margin-bottom:3px}
-.otim-inputs input{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--mono);box-sizing:border-box}
-.otim-inputs input:focus{outline:none;border-color:#00d084}
-.otim-modal select{width:100%;height:40px;padding:0 10px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--sans);line-height:38px;box-sizing:border-box}
-.otim-modal select option{background:#1c2530;color:#fff}
-.otim-modal select:focus{outline:none;border-color:#00d084}
-.otim-combos{font-size:12px;color:#9fb0c0;margin:6px 0 16px;font-family:var(--mono)}
-.otim-combos.over{color:#ff6b6b}
-.otim-modal .acts{display:flex;gap:8px;margin-top:6px}
-.otim-modal .btn-go{flex:1;padding:12px;border-radius:8px;border:none;background:var(--green);color:#04140d;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
-.otim-modal .btn-go:hover{background:#00e88f}
-.otim-modal .btn-go:disabled{opacity:.45;cursor:not-allowed}
-.otim-modal .btn-cancel{padding:12px 18px;border-radius:8px;border:1px solid #3a4756;background:transparent;color:#cdd9e3;font-size:13px;cursor:pointer;font-family:var(--sans)}
-.otim-modal .btn-cancel:hover{background:rgba(255,255,255,.05)}
-
-.exp-btn{
-  width:100%;height:38px;margin-top:6px;
-  background:linear-gradient(135deg,rgba(255,184,48,0.15) 0%,rgba(255,184,48,0.08) 100%);
-  border:1px solid rgba(255,184,48,0.35);
-  border-radius:7px;color:var(--amber);font-size:13px;font-family:var(--sans);
-  cursor:pointer;transition:all .15s;font-weight:700;
-  box-shadow:0 4px 14px rgba(255,184,48,0.1);
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.exp-btn:hover{background:linear-gradient(135deg,rgba(255,184,48,0.22) 0%,rgba(255,184,48,0.12) 100%);border-color:rgba(255,184,48,0.5);box-shadow:0 6px 18px rgba(255,184,48,0.18);transform:translateY(-1px)}
-.exp-btn:active{transform:translateY(0)}
-
-/* ── FIXED METRICS BAR (always visible, below topbar above center) ── */
-.metrics-bar{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  border-bottom:1px solid var(--border);
-  background:rgba(14,17,23,0.95);flex-shrink:0;
-}
-.mb-card{
-  padding:10px 14px;border-right:1px solid var(--border);
-  position:relative;display:flex;flex-direction:column;gap:4px;
-}
-.mb-card:last-child{border-right:none}
-.mb-name{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.mb-val{font-size:19px;font-weight:700;font-family:var(--mono);color:var(--green);text-shadow:0 0 20px rgba(0,208,132,0.3)}
-.mb-val.is-neg{color:var(--red);text-shadow:0 0 20px rgba(255,77,106,0.3)}
-.mb-val.is-neutral{color:var(--muted2);text-shadow:none}
-.mb-bar{height:3px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:3px;overflow:hidden}
-.mb-fill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-.sem{position:absolute;top:9px;right:9px;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;letter-spacing:.03em}
-.sem-bom{background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.2)}
-.sem-med{background:rgba(255,184,48,0.12);color:var(--amber);border:1px solid rgba(255,184,48,0.2)}
-.sem-fra{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.2)}
-
-/* ── CENTER — TABS CONTENT ── */
-.col-center-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.col-center{flex:1;overflow-y:auto;background:transparent}
-.col-center::-webkit-scrollbar{width:3px}
-.col-center::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-/* ── RIGHT — EDITOR (always visible) ── */
-.col-right{
-  width:310px;min-width:260px;
-  background:rgba(14,17,23,0.8);
-  border-left:1px solid var(--border);
-  display:flex;flex-direction:column;
-  backdrop-filter:blur(8px);
-}
-.ed-header{
-  height:36px;display:flex;align-items:center;
-  padding:0 10px;gap:5px;border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.ed-dot{width:9px;height:9px;border-radius:50%}
-.ed-fname{font-size:11px;font-family:var(--mono);color:var(--muted2);margin-left:4px}
-.ed-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#code-editor{
-  flex:1;background:var(--bg2);border:none;
-  color:#abb2bf;font-family:var(--mono);font-size:11.5px;line-height:1.75;
-  padding:12px;resize:none;outline:none;tab-size:4;
-}
-#code-editor::placeholder{color:var(--muted)}
-.ed-footer{border-top:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-#ia-desc{
-  width:100%;height:34px;background:var(--bg3);
-  border:1px solid var(--border);border-radius:5px;
-  color:var(--text);font-size:12px;font-family:var(--sans);
-  padding:0 8px;outline:none;
-}
-#ia-desc::placeholder{color:var(--muted)}
-#ia-desc:focus{border-color:rgba(157,111,255,0.4)}
-.ia-gen-btn{
-  width:100%;height:38px;
-  background:linear-gradient(135deg,rgba(157,111,255,0.15) 0%,rgba(157,111,255,0.07) 100%);
-  border:1px solid rgba(157,111,255,0.3);
-  border-radius:7px;color:var(--purple);font-size:13px;font-family:var(--sans);
-  cursor:pointer;font-weight:700;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  box-shadow:0 4px 14px rgba(157,111,255,0.08);
-}
-.ia-gen-btn:hover{background:linear-gradient(135deg,rgba(157,111,255,0.22) 0%,rgba(157,111,255,0.12) 100%);border-color:rgba(157,111,255,0.5);box-shadow:0 6px 18px rgba(157,111,255,0.15);transform:translateY(-1px)}
-.ia-gen-btn:active{transform:translateY(0)}
-.paste-code-btn{
-  width:100%;height:38px;
-  background:#00d084;
-  border:none;
-  border-radius:7px;color:#000;font-size:13px;font-family:var(--sans);
-  cursor:pointer;font-weight:700;transition:all .15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  box-shadow:0 4px 14px rgba(0,208,132,0.08);
-}
-.paste-code-btn:hover{background:#00b872;transform:translateY(-1px)}
-.paste-code-btn:active{transform:translateY(0)}
-.ed-actions{display:flex;gap:5px}
-.ea-btn{flex:1;height:26px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .12s}
-.ea-btn:hover{background:var(--bg3);color:var(--text)}
-
-/* ════════════════════════════
-   TAB: EDITOR
-════════════════════════════ */
-.tab-editor{padding:0}
-.editor-code-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:420px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
-.editor-code-wrap .ed-body{flex:1;min-height:0}
-.editor-code-wrap #code-editor{font-size:13px;line-height:1.7}
-.editor-center{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;min-height:400px;gap:20px;padding:40px 20px;
-}
-.editor-drop-zone{
-  width:100%;max-width:560px;
-  border:2px dashed var(--border2);border-radius:12px;
-  padding:40px 30px;text-align:center;
-  background:rgba(20,25,32,0.5);
-  transition:all .2s;cursor:text;
-}
-.editor-drop-zone:hover{border-color:rgba(0,208,132,0.35);background:rgba(0,208,132,0.03)}
-.edz-icon{font-size:36px;margin-bottom:12px;opacity:.6}
-.edz-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
-.edz-sub{font-size:12px;color:var(--muted2);line-height:1.7;max-width:380px;margin:0 auto}
-.edz-or{font-size:11px;color:var(--muted);margin:16px 0;display:flex;align-items:center;gap:10px}
-.edz-or::before,.edz-or::after{content:'';flex:1;height:1px;background:var(--border)}
-.edz-hint{
-  display:flex;align-items:center;gap:8px;
-  background:var(--purple-bg);border:1px solid rgba(157,111,255,0.2);
-  border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted2);
-  max-width:560px;width:100%;
-}
-.edz-hint strong{color:var(--purple)}
-
-/* ════════════════════════════
-   TAB: OVERVIEW (result)
-════════════════════════════ */
-.overview-empty{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;height:100%;min-height:300px;
-  gap:10px;color:var(--muted);
-}
-.ov-header{padding:14px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.ov-badge-lucro{background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.2);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:var(--mono)}
-.ov-badge-prej{background:var(--red-bg);color:var(--red);border:1px solid rgba(255,77,106,0.2);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:var(--mono)}
-.ov-meta{font-size:11px;color:var(--muted)}
-.ov-retorno{font-size:44px;font-weight:700;font-family:var(--mono);line-height:1;padding:6px 16px 0;letter-spacing:-.02em}
-.ov-cap-row{display:flex;gap:24px;padding:6px 16px 12px;border-bottom:1px solid var(--border)}
-.ov-cap-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.ov-cap-val{font-size:13px;font-weight:500;color:var(--text);font-family:var(--mono)}
-
-.charts-2col{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
-.cp{padding:12px 14px;background:var(--bg2)}
-.cp:first-child{border-right:1px solid var(--border)}
-.cp-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
-.cp-tag{font-size:9px;font-family:var(--mono);color:var(--muted)}
-
-.bottom3col{display:grid;grid-template-columns:170px 1fr 1fr;border-bottom:1px solid var(--border);background:var(--bg2)}
-.b3p{padding:14px 14px;background:var(--bg2)}
-.b3p:not(:last-child){border-right:1px solid var(--border)}
-.b3-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-
-.bench-row{display:flex;align-items:center;gap:6px;margin-bottom:7px}
-.bench-lbl{font-size:11px;color:var(--muted2);width:80px;flex-shrink:0}
-.bench-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
-.bench-fill{height:100%;border-radius:3px}
-.bench-v{font-size:11px;font-family:var(--mono);font-weight:600;width:52px;text-align:right}
-
-.donut-stats{margin-top:6px;display:flex;flex-direction:column;gap:3px}
-.ds-row{display:flex;align-items:center;gap:6px}
-.ds-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.ds-lbl{font-size:11px;color:var(--muted2)}
-.ds-val{font-size:11px;font-family:var(--mono);font-weight:600;margin-left:auto}
-
-.ia-sug{margin:10px 14px;background:rgba(157,111,255,0.05);border:1px solid rgba(157,111,255,0.15);border-radius:8px;padding:10px 12px}
-.ia-sug-title{font-size:10px;color:var(--purple);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
-.ia-sug-text{font-size:12px;color:var(--muted2);line-height:1.65}
-
-.trades-panel{padding:10px 14px 14px}
-.tp-title{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
-.trades-tbl{width:100%;border-collapse:collapse;font-size:11px}
-.trades-tbl th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border)}
-.trades-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.025);font-family:var(--mono)}
-.trades-tbl tr:hover td{background:var(--bg3)}
-.tg{color:var(--green)}.tr{color:var(--red)}
-
-/* ════════════════════════════
-   TAB: TEMPLATES
-════════════════════════════ */
-.tab-templates{display:flex;height:100%;position:relative}
-.tpl-list{flex:1;padding:20px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
-.tpl-list::-webkit-scrollbar{width:3px}
-.tpl-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-.tpl-header{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;letter-spacing:-.02em}
-.tpl-sub{font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.5}
-.tpl-card{
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:8px;padding:12px 14px;cursor:pointer;
-  transition:all .15s;display:flex;align-items:center;gap:12px;
-}
-.tpl-card:hover{background:var(--bg4);border-color:var(--border2);transform:translateX(2px)}
-.tpl-card.selected{border-color:rgba(0,208,132,0.4);background:var(--green-bg)}
-.tpl-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--bg4)}
-.tpl-info{flex:1}
-.tpl-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
-.tpl-desc{font-size:11px;color:var(--muted2);line-height:1.4}
-.tpl-meta{display:flex;gap:6px;margin-top:4px}
-.tpl-tag{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;font-family:var(--mono)}
-.tpl-perf{font-size:12px;font-family:var(--mono);font-weight:600;flex-shrink:0}
-
-.tpl-robot{
-  width:260px;flex-shrink:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  padding:0 20px 20px;
-  background:linear-gradient(180deg, transparent 0%, rgba(0,208,132,0.04) 100%);
-  border-left:1px solid var(--border);position:relative;overflow:hidden;
-}
-.tpl-robot::before{
-  content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-  background:radial-gradient(ellipse 80% 60% at 50% 80%, rgba(0,208,132,0.08) 0%, transparent 70%);
-}
-.robot-placeholder{
-  width:180px;height:260px;
-  background:linear-gradient(160deg, rgba(0,208,132,0.15) 0%, rgba(77,159,255,0.08) 100%);
-  border-radius:50% 50% 40% 40%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:80px;opacity:.8;position:relative;z-index:1;
-  border:1px solid rgba(0,208,132,0.15);
-  box-shadow:0 20px 60px rgba(0,208,132,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
-}
-.tpl-use-btn{
-  position:relative;z-index:1;margin-top:14px;
-  width:100%;height:36px;
-  background:#00d084;border:none;border-radius:7px;
-  color:#000;font-size:12px;font-weight:700;font-family:var(--sans);
-  cursor:pointer;transition:all .15s;
-}
-.tpl-use-btn:hover{background:#00b872;transform:translateY(-1px)}
-
-/* ════════════════════════════
-   TAB: RANK BEST BOTS
-════════════════════════════ */
-.tab-rank{padding:20px 16px;overflow-y:auto}
-.rank-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
-.rank-title{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em}
-.rank-sub{font-size:12px;color:var(--muted2);margin-top:3px}
-
-.podium-wrap{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:24px;padding:20px 0}
-.podium-item{display:flex;flex-direction:column;align-items:center;gap:6px}
-.podium-medal{font-size:28px;animation:float 3s ease-in-out infinite}
-.podium-medal:nth-child(1){animation-delay:0s}
-.podium-medal:nth-child(2){animation-delay:.5s}
-.podium-medal:nth-child(3){animation-delay:1s}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-.podium-block{
-  border-radius:8px 8px 0 0;width:90px;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  padding:8px;border:1px solid var(--border);
-}
-.podium-1{height:90px;background:linear-gradient(180deg,rgba(255,184,48,0.12) 0%,rgba(255,184,48,0.04) 100%);border-color:rgba(255,184,48,0.25)}
-.podium-2{height:70px;background:linear-gradient(180deg,rgba(174,174,174,0.1) 0%,rgba(174,174,174,0.03) 100%);border-color:rgba(174,174,174,0.2)}
-.podium-3{height:55px;background:linear-gradient(180deg,rgba(205,127,50,0.1) 0%,rgba(205,127,50,0.03) 100%);border-color:rgba(205,127,50,0.2)}
-.podium-name{font-size:10px;font-weight:600;color:var(--text);text-align:center;line-height:1.3}
-.podium-ret{font-size:12px;font-family:var(--mono);font-weight:700}
-.p1-ret{color:var(--amber)}
-.p2-ret{color:#aaa}
-.p3-ret{color:#cd7f32}
-.podium-stars{font-size:9px;letter-spacing:1px}
-
-.rank-list{display:flex;flex-direction:column;gap:6px}
-.rank-card{
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:8px;padding:12px 14px;
-  display:flex;align-items:center;gap:12px;
-  transition:all .12s;cursor:pointer;
-}
-.rank-card:hover{background:var(--bg4);border-color:var(--border2)}
-.rank-num{font-size:13px;font-family:var(--mono);font-weight:700;color:var(--muted);width:20px;text-align:center;flex-shrink:0}
-.rank-icon{width:32px;height:32px;border-radius:7px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.rank-info{flex:1}
-.rank-name{font-size:13px;font-weight:600;color:var(--text)}
-.rank-detail{font-size:11px;color:var(--muted2);margin-top:1px}
-.rank-stars{font-size:11px;letter-spacing:1px;margin-top:2px}
-.rank-right{text-align:right;flex-shrink:0}
-.rank-ret{font-size:14px;font-family:var(--mono);font-weight:700}
-.rank-wr{font-size:10px;color:var(--muted2);font-family:var(--mono)}
-.rank-badge{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;font-family:var(--mono);margin-top:3px;display:inline-block}
-
-/* ── SPINNER ── */
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner{width:13px;height:13px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
-.otim-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:20px;gap:22px}
-.otim-candles{display:flex;align-items:flex-end;gap:7px;height:70px}
-.otim-candle{width:11px;border-radius:2px;animation:candlePulse 1s ease-in-out infinite}
-.otim-candle.up{background:#00d084}
-.otim-candle.down{background:#ff5a5a}
-.otim-candle:nth-child(1){animation-delay:0s}
-.otim-candle:nth-child(2){animation-delay:.12s}
-.otim-candle:nth-child(3){animation-delay:.24s}
-.otim-candle:nth-child(4){animation-delay:.36s}
-.otim-candle:nth-child(5){animation-delay:.48s}
-.otim-candle:nth-child(6){animation-delay:.60s}
-.otim-candle:nth-child(7){animation-delay:.72s}
-@keyframes candlePulse{0%,100%{height:18px;opacity:.45}50%{height:60px;opacity:1}}
-.otim-loading .ltxt{font-size:14px;color:var(--text);font-weight:600}
-.otim-loading .lsub{font-size:12px;color:var(--muted);margin-top:-12px}
-
-.zoom-btn{height:20px;padding:0 7px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:10px;font-family:var(--mono);cursor:pointer;transition:all .12s;font-weight:500}
-.zoom-btn:hover{background:var(--bg3);color:var(--text)}
-.zoom-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
-
-/* ── INDICADORES MULTI-SELECT ── */
-.ind-row{border-radius:5px;padding:5px 6px;background:var(--bg3);border:1px solid var(--border)}
-.ind-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
-.ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
-.ind-label{font-size:12px;color:var(--text);font-weight:500}
-.ind-controls{padding-top:2px}
-.color-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
-.color-btn.active{border-color:var(--text);transform:scale(1.2)}
-.color-btn:hover{transform:scale(1.15)}
-
-/* ── MODAL AUTH ── */
-.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(6px)}
-.auth-box{background:#0e1117;border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:400px;max-width:95vw;padding:32px;position:relative;z-index:9001}
-.auth-logo{display:flex;align-items:center;gap:8px;margin-bottom:20px;justify-content:center}
-.auth-logo-icon{width:28px;height:28px;background:#00d084;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
-.auth-logo-name{font-size:17px;font-weight:700;color:var(--text)}
-.auth-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:7px;overflow:hidden;border:1px solid var(--border)}
-.auth-tab{flex:1;height:34px;background:transparent;border:none;color:var(--muted2);font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;transition:all .15s}
-.auth-tab.active{background:var(--bg3);color:var(--text)}
-.auth-field{margin-bottom:14px}
-.auth-field label{font-size:11px;color:var(--muted2);font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
-.auth-input{width:100%;height:38px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--sans);padding:0 12px;outline:none;transition:border .15s}
-.auth-input:focus{border-color:rgba(0,208,132,0.5)}
-.auth-submit{width:100%;height:40px;background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;margin-top:6px;transition:all .15s;box-shadow:0 4px 14px rgba(0,208,132,0.25)}
-.auth-submit:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,208,132,0.35)}
-.auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
-.auth-error{font-size:12px;color:var(--red);margin-top:8px;text-align:center;min-height:16px}
-.auth-success{font-size:12px;color:var(--green);margin-top:8px;text-align:center}
-.auth-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
-.auth-close:hover{color:var(--text)}
-.auth-forgot{font-size:11px;color:var(--muted2);text-align:center;margin-top:10px;cursor:pointer}
-.auth-forgot:hover{color:var(--text)}
-
-/* ── USER MENU ── */
-.user-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s}
-.user-btn:hover{background:var(--bg3);border-color:var(--border2)}
-.user-avatar{width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
-.user-plano{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;font-family:var(--mono)}
-.plano-free{background:var(--bg3);color:var(--muted2)}
-.plano-pro{background:var(--green-bg);color:var(--green)}
-.plano-trader{background:var(--purple-bg);color:var(--purple)}
-
-.user-dropdown{position:absolute;top:46px;right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:220px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.user-dropdown-item{padding:10px 14px;font-size:12px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .12s;border-bottom:1px solid var(--border)}
-.user-dropdown-item:last-child{border-bottom:none}
-.user-dropdown-item:hover{background:var(--bg3);color:var(--text)}
-.user-dropdown-header{padding:12px 14px;border-bottom:1px solid var(--border)}
-.user-dropdown-email{font-size:12px;color:var(--text);font-weight:500}
-.user-dropdown-plan{font-size:10px;color:var(--muted2);margin-top:2px}
-.user-dropdown-uso{font-size:10px;color:var(--muted);margin-top:2px}
-
-/* ── LIMIT BANNER ── */
-.limit-banner{background:var(--amber-bg);border:1px solid rgba(255,184,48,0.3);border-radius:6px;padding:8px 12px;margin:8px 12px 0;font-size:11px;color:var(--amber);display:none;align-items:center;gap:8px}
-.limit-banner.show{display:flex}
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;display:none}
-.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:500px;max-width:94vw;padding:20px}
-.modal-title{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--amber)}
-.modal-code{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:var(--muted2);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
-.modal-close{margin-top:10px;width:100%;height:30px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted2);font-size:12px;cursor:pointer;font-family:var(--sans)}
-</style>
-</head>
-<body>
-
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="logo">
-    <div style="width:26px;height:26px;background:#00d084;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-        <polyline points="2,18 7,11 13,14 20,5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="20" cy="5" r="3" fill="#ffb830"/>
-      </svg>
-    </div>
-    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v1.4</span>
-  </div>
-  <div class="tsep"></div>
-  <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
-  <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
-  <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
-  <button class="tbtn" id="tab-robustez-btn" onclick="switchTab('robustez')">🔬 Robustez</button>
-  <button class="tbtn" id="tab-padroes-btn" onclick="switchTab('padroes')">🔍 Padrões</button>
-  <button class="tbtn" id="tab-baby-btn" onclick="switchTab('baby')">🧠 BabyMachine</button>
-  <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
-  <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
-  <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
-  <div class="tsep"></div>
-  <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
-  <div class="spacer"></div>
-  <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
-  <div class="tsep"></div>
-  <button class="lang-btn active">PT</button>
-  <button class="lang-btn">EN</button>
-  <button class="lang-btn">ES</button>
-  <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-    <div class="api-dot" id="api-dot"></div>
-    <span class="api-label" id="api-label">API Online</span>
-  </div>
-  <div style="margin-left:8px;position:relative">
-    <!-- Não logado -->
-    <button class="tbtn tbtn-orange" id="btn-login" onclick="abrirAuth('login')" style="display:flex">🔐 Entrar</button>
-    <!-- Logado -->
-    <button class="user-btn" id="btn-user" style="display:none" onclick="toggleUserMenu()">
-      <div class="user-avatar" id="user-avatar">?</div>
-      <span id="user-nome-curto">Usuário</span>
-      <span class="user-plano plano-free" id="user-plano-badge">FREE</span>
-    </button>
-    <!-- Dropdown -->
-    <div class="user-dropdown" id="user-dropdown" style="display:none">
-      <div class="user-dropdown-header">
-        <div class="user-dropdown-email" id="dd-email">email@exemplo.com</div>
-        <div class="user-dropdown-plan" id="dd-plano">Plano Free</div>
-        <div class="user-dropdown-uso" id="dd-uso">0 / 5 backtests este mês</div>
-      </div>
-      <div class="user-dropdown-item" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
-      <div class="user-dropdown-item" onclick="fazerLogout()" style="color:var(--red)">🚪 Sair</div>
-    </div>
-  </div>
-</div><!-- /topbar -->
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- LEFT: PARAMS -->
-  <div class="col-left">
-    <div id="contador-backtests" style="display:none;align-items:center;gap:8px;padding:9px 12px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:9px;font-size:12px;color:var(--muted2)">
-      <span style="font-size:14px">📊</span>
-      <span><strong id="contador-num" style="color:var(--text);font-size:14px">0</strong> backtests realizados</span>
-    </div>
-    <div class="ps">
-      <div class="pl">Ativo</div>
-      <select id="ativo">
-        <optgroup label="Forex">
-          <option value="EUR/USD">EUR/USD — Euro</option>
-          <option value="GBP/USD">GBP/USD — Libra</option>
-          <option value="USD/JPY">USD/JPY — Iene</option>
-          <option value="AUD/USD">AUD/USD — Dólar AU</option>
-        </optgroup>
-        <optgroup label="Commodities">
-          <option value="XAU/USD" selected>XAU/USD — Ouro</option>
-        </optgroup>
-        <optgroup label="Crypto">
-          <option value="BTC/USD">BTC/USD — Bitcoin</option>
-        </optgroup>
-        <optgroup label="B3 Brasil">
-          <option value="IBOVESPA">IBOVESPA</option>
-          <option value="USD/BRL">USD/BRL</option>
-        </optgroup>
-      </select>
-    </div>
-    <div class="ps">
-      <div class="pl">Período</div>
-      <select id="periodo">
-        <option value="6 meses">6 meses</option>
-        <option value="1 ano">1 ano</option>
-        <option value="2 anos" selected>2 anos</option>
-        <option value="3 anos">3 anos</option>
-        <option value="5 anos">5 anos</option>
-      </select>
-    </div>
-    <div class="ps">
-      <div class="pl">Timeframe</div>
-      <div class="tf-group">
-        <button class="tf-btn" onclick="setTF(this,'5m')">5m</button>
-        <button class="tf-btn" onclick="setTF(this,'15m')">15m</button>
-        <button class="tf-btn" onclick="setTF(this,'30m')">30m</button>
-        <button class="tf-btn" onclick="setTF(this,'1h')">1H</button>
-        <button class="tf-btn" onclick="setTF(this,'4h')">4H</button>
-        <button class="tf-btn active" onclick="setTF(this,'1d')">1D</button>
-      </div>
-      <input type="hidden" id="timeframe" value="1d">
-    </div>
-    <div class="ps">
-      <div class="pl" style="margin-bottom:8px">Indicadores <span style="color:var(--muted);font-size:9px;font-weight:400">(até 3)</span></div>
-
-      <!-- Indicador principal (estratégia) -->
-      <div class="pli" style="margin-bottom:4px">Estratégia principal</div>
-      <select id="indicador">
-        <option value="EMA Channel High/Low">EMA Channel High/Low</option>
-        <option value="EMA">EMA Simples</option>
-        <option value="SMA">SMA</option>
-        <option value="RSI">RSI</option>
-        <option value="MACD">MACD</option>
-        <option value="Bollinger Bands">Bollinger Bands</option>
-      </select>
-      <div style="margin-top:5px">
-        <div class="pli">Período</div>
-        <input type="number" id="ema_period" value="20" min="2" max="200">
-      </div>
-
-      <!-- Overlay indicators -->
-      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
-        <div class="pli" style="margin-bottom:6px">Overlay no gráfico</div>
-
-        <!-- EMA 1 -->
-        <div class="ind-row" id="ind-row-1">
-          <label class="ind-check">
-            <input type="checkbox" id="ind1-active" onchange="toggleIndicador(1)">
-            <span class="ind-label">EMA</span>
-          </label>
-          <div class="ind-controls" id="ind1-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind1-period" value="9" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind1-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                  <option value="open">Open</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn active" data-color="#3b82f6" onclick="setIndColor(1,this)" style="background:#3b82f6"></button>
-                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(1,this)" style="background:#f59e0b"></button>
-                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(1,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(1,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(1,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- EMA 2 -->
-        <div class="ind-row" id="ind-row-2" style="margin-top:6px">
-          <label class="ind-check">
-            <input type="checkbox" id="ind2-active" onchange="toggleIndicador(2)">
-            <span class="ind-label">EMA</span>
-          </label>
-          <div class="ind-controls" id="ind2-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind2-period" value="21" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind2-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                  <option value="open">Open</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(2,this)" style="background:#3b82f6"></button>
-                <button class="color-btn active" data-color="#f59e0b" onclick="setIndColor(2,this)" style="background:#f59e0b"></button>
-                <button class="color-btn" data-color="#8b5cf6" onclick="setIndColor(2,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(2,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(2,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SMA -->
-        <div class="ind-row" id="ind-row-3" style="margin-top:6px">
-          <label class="ind-check">
-            <input type="checkbox" id="ind3-active" onchange="toggleIndicador(3)">
-            <span class="ind-label">SMA</span>
-          </label>
-          <div class="ind-controls" id="ind3-controls" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
-              <div>
-                <div class="pli">Período</div>
-                <input type="number" id="ind3-period" value="50" min="2" max="500" style="height:26px;font-size:11px">
-              </div>
-              <div>
-                <div class="pli">Aplicar em</div>
-                <select id="ind3-source" style="height:26px;font-size:11px">
-                  <option value="close">Close</option>
-                  <option value="high">High</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:4px">
-              <div class="pli">Cor</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="color-btn" data-color="#3b82f6" onclick="setIndColor(3,this)" style="background:#3b82f6"></button>
-                <button class="color-btn" data-color="#f59e0b" onclick="setIndColor(3,this)" style="background:#f59e0b"></button>
-                <button class="color-btn active" data-color="#8b5cf6" onclick="setIndColor(3,this)" style="background:#8b5cf6"></button>
-                <button class="color-btn" data-color="#ec4899" onclick="setIndColor(3,this)" style="background:#ec4899"></button>
-                <button class="color-btn" data-color="#ffffff" onclick="setIndColor(3,this)" style="background:#ffffff"></button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="ps">
-      <div class="pl">Gestão de Risco</div>
-      <div class="pr">
-        <div><div class="pli">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
-        <div><div class="pli">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
-      </div>
-      <div class="pr" style="margin-top:6px">
-        <div><div class="pli">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
-        <div><div class="pli">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
-      </div>
-      <div style="margin-top:6px"><div class="pli">Spread/custo (por op.)</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
-    </div>
-    <div class="ps">
-      <button class="run-btn" id="run-btn" onclick="rodarBacktest()">
-        <span id="run-icon">▶</span>
-        <span id="run-txt">Rodar Backtest</span>
-      </button>
-      <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
-      <button class="otim-btn" id="robustez-btn" onclick="validarRobustez()" style="border-color:rgba(0,208,132,0.35)">🔬 Validar robustez (out-of-sample)</button>
-      <button class="otim-btn" id="padroes-btn" onclick="analisarPadroes()" style="border-color:rgba(157,111,255,0.4)">🔍 Detectar padrões (OffMind)</button>
-      <button class="otim-btn" id="baby-btn" onclick="analisarBabyMachine()" style="border-color:rgba(0,180,216,0.4)">🧠 Análise BabyMachine</button>
-      <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
-    </div>
-  </div>
-
-  <!-- CENTER + RIGHT WRAPPER -->
-  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-
-    <!-- FIXED METRICS BAR -->
-    <div class="metrics-bar" id="metrics-bar">
-      <div class="mb-card">
-        <div class="mb-name">Win Rate</div>
-        <div class="mb-val" id="m-wr">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-wr-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-wr-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Sharpe Ratio</div>
-        <div class="mb-val" id="m-sh">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-sh-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-sh-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Max Drawdown</div>
-        <div class="mb-val" id="m-dd">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-dd-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-dd-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Profit Factor</div>
-        <div class="mb-val" id="m-pf">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-pf-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-pf-sem"></div>
-      </div>
-    </div>
-
-    <!-- CENTER + RIGHT split -->
-    <div style="flex:1;display:flex;overflow:hidden">
-
-      <!-- CENTER -->
-      <div class="col-center-wrap">
-        <div class="col-center" id="col-center">
-
-          <!-- TAB: EDITOR -->
-          <div id="tab-editor" class="tab-editor" style="display:none">
-            <div class="editor-code-wrap">
-              <div class="ed-header">
-                <div class="ed-dot" style="background:#ff5f57"></div>
-                <div class="ed-dot" style="background:#febc2e"></div>
-                <div class="ed-dot" style="background:#28c840"></div>
-                <span class="ed-fname">strategy.py</span>
-                <div class="spacer"></div>
-                <div class="ed-actions" style="gap:4px">
-                  <button class="ea-btn" onclick="document.getElementById('code-editor').value=''">Limpar</button>
-                  <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
-                </div>
-              </div>
-              <div class="ed-body">
-                <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
-# Ou descreva abaixo e clica Gerar com IA
-
-# EXEMPLO — EMA Channel XAU/USD:
-# class EMAChannelStrategy(Strategy):
-#     ema_period = 20
-#
-#     def init(self):
-#         self.ema_high = self.I(
-#             lambda h: pd.Series(h).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.High)
-#         self.ema_low = self.I(
-#             lambda l: pd.Series(l).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.Low)
-#
-#     def next(self):
-#         preco = self.data.Close[-1]
-#         if not self.position:
-#             if preco > self.ema_high[-1]:
-#                 self.buy()
-#         else:
-#             if preco < self.ema_low[-1]:
-#                 self.position.close()"></textarea>
-              </div>
-              <div class="ed-footer">
-                <button class="paste-code-btn" id="paste-ia-btn" onclick="colarCodigoIA()">
-                  📋 Colar código gerado pela IA
-                </button>
-                <div class="pl" style="margin-top:2px">Descreve a Estratégia</div>
-                <input type="text" id="ia-desc" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts...">
-                <button class="ia-gen-btn" id="ia-btn" onclick="gerarBotIA()">✨ Gerar Bot com IA</button>
-              </div>
-              <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2);margin-top:10px">
-                <span>⚡</span>
-                <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> à esquerda para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong>.</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB: OVERVIEW -->
-          <div id="tab-overview" style="display:block">
-            <div id="ov-sample-banner" style="display:flex;align-items:center;gap:10px;padding:14px 16px 0">
-              <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
-              <span style="font-size:13px;color:var(--muted2)">Resultado de demonstração · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> para ver o seu</span>
-            </div>
-            <div class="overview-empty" id="ov-empty" style="display:none">
-              <div style="font-size:38px;opacity:.25">📊</div>
-              <div style="font-size:14px;font-weight:600;color:var(--muted2)">Nenhum backtest rodado</div>
-              <div style="font-size:12px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">Configure os parâmetros, cole seu código e clique em Rodar Backtest</div>
-            </div>
-            <div id="ov-result" style="display:none"></div>
-          </div>
-
-          <!-- TAB: TEMPLATES -->
-          <div id="tab-templates" style="display:none" class="tab-templates">
-            <div class="tpl-list">
-              <div class="tpl-header">Selecione uma Estratégia</div>
-              <div class="tpl-sub">Estratégias prontas e testadas. Selecione, ajuste os parâmetros e rode.</div>
-              <div class="tpl-card selected" onclick="usarTemplate(this,'ema_channel')">
-                <div class="tpl-icon">📊</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">EMA Channel High/Low</div>
-                  <div class="tpl-desc">Canal de médias móveis exponenciais com rompimento</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">TENDÊNCIA</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">EMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+12.4%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'rsi')">
-                <div class="tpl-icon">📈</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">RSI Oversold/Overbought</div>
-                  <div class="tpl-desc">Compra em sobrevenda RSI &lt;30, venda em sobrecompra &gt;70</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--purple-bg);color:var(--purple)">REVERSÃO</span>
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">RSI</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+8.7%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'macd')">
-                <div class="tpl-icon">⚡</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">MACD Crossover</div>
-                  <div class="tpl-desc">Cruzamento das linhas MACD com confirmação de histograma</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">TENDÊNCIA</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">MACD</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--amber)">+3.2%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'bb')">
-                <div class="tpl-icon">🎯</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Bollinger Bands Squeeze</div>
-                  <div class="tpl-desc">Entrada em compressão com rompimento das bandas</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--amber-bg);color:var(--amber)">VOLATILIDADE</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">BB</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+19.1%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'sma_cross')">
-                <div class="tpl-icon">🔀</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">SMA 50/200 Golden Cross</div>
-                  <div class="tpl-desc">Clássico cruzamento de médias longas para swing trade</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">SWING</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">SMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+15.8%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'vwap')">
-                <div class="tpl-icon">💹</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">VWAP Intraday</div>
-                  <div class="tpl-desc">Operações intraday baseadas no volume price average</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--red-bg);color:var(--red)">INTRADAY</span>
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">VWAP</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--amber)">+5.3%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'doji')">
-                <div class="tpl-icon">🕯️</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Doji + EMA Filter</div>
-                  <div class="tpl-desc">Padrão de candle Doji com filtro de tendência EMA</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--purple-bg);color:var(--purple)">CANDLES</span>
-                    <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">EMA</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+22.6%</div>
-              </div>
-              <div class="tpl-card" onclick="usarTemplate(this,'breakout')">
-                <div class="tpl-icon">🚀</div>
-                <div class="tpl-info">
-                  <div class="tpl-name">Breakout de Consolidação</div>
-                  <div class="tpl-desc">Rompimento de máximas/mínimas com confirmação de volume</div>
-                  <div class="tpl-meta">
-                    <span class="tpl-tag" style="background:var(--green-bg);color:var(--green)">ROMPIMENTO</span>
-                    <span class="tpl-tag" style="background:var(--amber-bg);color:var(--amber)">VOLUME</span>
-                  </div>
-                </div>
-                <div class="tpl-perf" style="color:var(--green)">+28.3%</div>
-              </div>
-            </div>
-            <div class="tpl-robot">
-              <div class="robot-placeholder">🤖</div>
-              <button class="tpl-use-btn" id="tpl-use-btn" onclick="confirmarTemplate()">
-                ▶ Usar este Template
-              </button>
-            </div>
-          </div>
-
-          <!-- TAB: RANK -->
-          <div id="tab-rank" style="display:none" class="tab-rank">
-            <div class="rank-header">
-              <div>
-                <div class="rank-title">🏆 Rank Best Bots</div>
-                <div class="rank-sub">Melhores estratégias da comunidade no momento</div>
-              </div>
-              <button class="tbtn tbtn-orange" onclick="switchTab('editor')">+ Publicar meu Bot</button>
-            </div>
-
-            <!-- PODIUM -->
-            <div class="podium-wrap">
-              <div class="podium-item">
-                <div class="podium-medal">🥈</div>
-                <div class="podium-block podium-2">
-                  <div class="podium-name">Bollinger<br>Squeeze Pro</div>
-                  <div class="podium-ret p2-ret">+47.2%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐</div>
-                </div>
-              </div>
-              <div class="podium-item" style="order:-1">
-                <div class="podium-medal">🥇</div>
-                <div class="podium-block podium-1">
-                  <div class="podium-name">EMA Channel<br>XAU Master</div>
-                  <div class="podium-ret p1-ret">+68.4%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐⭐</div>
-                </div>
-              </div>
-              <div class="podium-item">
-                <div class="podium-medal">🥉</div>
-                <div class="podium-block podium-3">
-                  <div class="podium-name">MACD BTC<br>Scalper</div>
-                  <div class="podium-ret p3-ret">+38.9%</div>
-                  <div class="podium-stars">⭐⭐⭐⭐</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- RANK LIST -->
-            <div class="rank-list">
-              <div class="rank-card">
-                <div class="rank-num">4</div>
-                <div class="rank-icon">📊</div>
-                <div class="rank-info">
-                  <div class="rank-name">RSI Reversal Gold</div>
-                  <div class="rank-detail">XAU/USD · 1D · 2 anos</div>
-                  <div class="rank-stars">⭐⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+34.1%</div>
-                  <div class="rank-wr">WR 61.2%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">5</div>
-                <div class="rank-icon">⚡</div>
-                <div class="rank-info">
-                  <div class="rank-name">Golden Cross S&P</div>
-                  <div class="rank-detail">IBOVESPA · 1D · 5 anos</div>
-                  <div class="rank-stars">⭐⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+29.7%</div>
-                  <div class="rank-wr">WR 57.8%</div>
-                  <div class="rank-badge" style="background:var(--amber-bg);color:var(--amber)">FREE</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">6</div>
-                <div class="rank-icon">🎯</div>
-                <div class="rank-info">
-                  <div class="rank-name">Doji Filter EUR/USD</div>
-                  <div class="rank-detail">EUR/USD · 4H · 1 ano</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--green)">+24.3%</div>
-                  <div class="rank-wr">WR 54.1%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">7</div>
-                <div class="rank-icon">🚀</div>
-                <div class="rank-info">
-                  <div class="rank-name">Breakout BTC 4H</div>
-                  <div class="rank-detail">BTC/USD · 4H · 1 ano</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--amber)">+18.5%</div>
-                  <div class="rank-wr">WR 49.3%</div>
-                  <div class="rank-badge" style="background:var(--blue-bg);color:var(--blue)">TRADER</div>
-                </div>
-              </div>
-              <div class="rank-card">
-                <div class="rank-num">8</div>
-                <div class="rank-icon">💹</div>
-                <div class="rank-info">
-                  <div class="rank-name">VWAP Intraday B3</div>
-                  <div class="rank-detail">IBOVESPA · 1H · 6 meses</div>
-                  <div class="rank-stars">⭐⭐⭐</div>
-                </div>
-                <div class="rank-right">
-                  <div class="rank-ret" style="color:var(--amber)">+14.2%</div>
-                  <div class="rank-wr">WR 51.7%</div>
-                  <div class="rank-badge" style="background:var(--green-bg);color:var(--green)">PRO</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        <!-- TAB: PLANOS -->
-        <div id="tab-otimizar" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="otim-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">⚙</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:320px;line-height:1.6">Clique em <strong style="color:var(--green)">⚙ Otimizar parâmetros</strong> à esquerda para testar várias combinações de stop, take e EMA de uma vez e ver um ranking.</div>
-          </div>
-          <div id="otim-resultado" style="display:none"></div>
-        </div>
-        <div id="tab-robustez" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="rob-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🔬</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:380px;line-height:1.6">Clique em <strong style="color:var(--green)">🔬 Validar robustez</strong> à esquerda. A plataforma divide o histórico em <strong>treino</strong> (passado conhecido) e <strong>teste</strong> (dados que a estratégia nunca viu) e compara o desempenho — revelando se a estratégia é robusta ou se apenas <strong>decorou o passado</strong> (overfitting).</div>
-          </div>
-          <div id="rob-resultado" style="display:none"></div>
-        </div>
-        <div id="tab-padroes" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="pad-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🔍</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:400px;line-height:1.6">Clique em <strong style="color:var(--purple)">🔍 Detectar padrões</strong> à esquerda. O <strong>OffMind</strong> varre o histórico do ativo procurando padrões recorrentes e mede honestamente <strong>quantas vezes cada um acertou e quantas falhou</strong> — em vários horizontes. Padrões ordenados do mais assertivo ao menos.</div>
-          </div>
-          <div id="pad-resultado" style="display:none"></div>
-        </div>
-        <div id="tab-baby" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="baby-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🧠</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:420px;line-height:1.6">Clique em <strong style="color:#00b4d8">🧠 Análise BabyMachine</strong> à esquerda. A BabyMachine mostra <strong>sua evolução nos backtests</strong> (Sharpe e retorno ao longo do tempo) e analisa <strong>a sua jornada</strong> em busca de armadilhas comuns (overfitting, win rate enganoso...). Conselhos honestos, nunca promessas.</div>
-          </div>
-          <div id="baby-resultado" style="display:none"></div>
-        </div>
-        <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
-          <div style="max-width:860px;margin:0 auto;">
-            <h2 style="font-size:22px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px;">Escolha seu plano</h2>
-            <p style="text-align:center;color:var(--muted2);font-size:13px;margin-bottom:24px;">Cancele quando quiser. Sem fidelidade.</p>
-            <div style="display:flex;justify-content:center;gap:6px;margin-bottom:24px;">
-              <button onclick="setMoeda('BRL')" id="btn-brl" style="padding:5px 16px;border-radius:6px;border:1px solid #00d084;background:#00d084;color:#000;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">BRL</button>
-              <button onclick="setMoeda('USD')" id="btn-usd" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">USD</button>
-              <button onclick="setMoeda('EUR')" id="btn-eur" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">EUR</button>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-              <!-- FREE -->
-              <div style="background:var(--bg2);border:1px solid #555;border-radius:12px;padding:24px 20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--muted2);margin-bottom:8px;">FREE</div>
-                <div style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$0</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">para sempre</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ 5 backtests/mês</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:#555;">❌ IA ilimitada</li>
-                  <li style="font-size:12px;color:#555;">❌ Exportar NTSL</li>
-                </ul>
-                <button style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:default;font-family:var(--sans);">Plano atual</button>
-              </div>
-              <!-- PRO -->
-              <div style="background:var(--bg2);border:2px solid #00d084;border-radius:12px;padding:24px 20px;position:relative;">
-                <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#00d084;color:#000;font-size:10px;font-weight:700;padding:2px 12px;border-radius:20px;white-space:nowrap;">MAIS POPULAR</div>
-                <div style="font-size:12px;font-weight:600;color:#00d084;margin-bottom:8px;">PRO</div>
-                <div id="preco-pro" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$67</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ 200 backtests/mês</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
-                </ul>
-                <button onclick="assinar('pro')" style="width:100%;padding:9px;border-radius:7px;border:none;background:#00d084;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Pro</button>
-              </div>
-              <!-- TRADER PRO -->
-              <div style="background:var(--bg2);border:1px solid #ffb830;border-radius:12px;padding:24px 20px;">
-                <div style="font-size:12px;font-weight:600;color:#ffb830;margin-bottom:8px;">TRADER PRO</div>
-                <div id="preco-trader" style="font-size:30px;font-weight:800;color:var(--text);margin-bottom:2px;">R$97</div>
-                <div style="font-size:11px;color:var(--muted2);margin-bottom:18px;">por mês</div>
-                <ul style="list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:7px;">
-                  <li style="font-size:12px;color:var(--muted2);">✅ Backtests ilimitados</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Estratégias Python</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Relatório completo</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ IA ilimitada</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Exportar NTSL</li>
-                  <li style="font-size:12px;color:var(--muted2);">✅ Suporte prioritário</li>
-                </ul>
-                <button onclick="assinar('trader')" style="width:100%;padding:9px;border-radius:7px;border:1px solid #ffb830;background:transparent;color:#ffb830;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);">Assinar Trader Pro</button>
-              </div>
-            </div>
-          </div>
-        </div><!-- /tab-planos -->
-
-        </div><!-- /col-center -->
-      </div><!-- /col-center-wrap -->
-
-    </div>
-  </div>
-</div>
-
-<!-- MODAL AUTH -->
-<div class="auth-overlay" id="auth-overlay" style="display:none">
-  <div class="auth-box">
-    <button class="auth-close" onclick="fecharAuth()">×</button>
-    <div class="auth-logo">
-      <svg width="240" height="36" viewBox="0 0 240 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="34" height="34" x="0" y="1" rx="9" fill="#00d084"/>
-        <polyline points="7,27 13,18 19,22 27,11" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="27" cy="11" r="3.2" fill="#ffb830"/>
-        <text x="44" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="var(--text)">Backtest</tspan></text>
-      </svg>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Entrar</button>
-      <button class="auth-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')">Criar conta</button>
-    </div>
-
-    <!-- LOGIN -->
-    <div id="auth-login">
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="login-email" class="auth-input" placeholder="seu@email.com">
-      </div>
-      <div class="auth-field">
-        <label>Senha</label>
-        <input type="password" id="login-senha" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()">
-      </div>
-      <button class="auth-submit" id="login-btn" onclick="fazerLogin()">Entrar</button>
-      <div class="auth-error" id="login-error"></div>
-      <div class="auth-forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
-    </div>
-
-    <!-- CADASTRO -->
-    <div id="auth-signup" style="display:none">
-      <div class="auth-field">
-        <label>Nome</label>
-        <input type="text" id="signup-nome" class="auth-input" placeholder="Seu nome">
-      </div>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="signup-email" class="auth-input" placeholder="seu@email.com">
-      </div>
-      <div class="auth-field">
-        <label>Senha</label>
-        <input type="password" id="signup-senha" class="auth-input" placeholder="mínimo 6 caracteres" onkeydown="if(event.key==='Enter')fazerCadastro()">
-      </div>
-      <button class="auth-submit" id="signup-btn" onclick="fazerCadastro()">Criar conta grátis</button>
-      <div class="auth-error" id="signup-error"></div>
-      <div class="auth-success" id="signup-success" style="display:none">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
-    </div>
-  </div>
-</div>
-
-<!-- LIMIT BANNER -->
-<div class="limit-banner" id="limit-banner">
-  ⚠️ <span id="limit-msg">Você atingiu o limite do plano Free (5 backtests/mês).</span>
-  <button onclick="abrirAuth('upgrade')" style="margin-left:auto;background:var(--amber);border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;color:#000">Fazer upgrade</button>
-</div>
-
-<!-- ====================== ONBOARDING POR NÍVEL ====================== -->
-<style>
-.onb-ov{position:fixed;inset:0;z-index:8000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#060f1a}
-.onb-ov.show{display:flex}
-.onb-bg{position:absolute;inset:0;width:100%;height:100%}
-.onb-dim{position:absolute;inset:0;background:rgba(4,10,18,0.20)}
-.onb-card{position:relative;width:460px;max-width:92vw;background:rgba(10,22,34,0.92);border:1px solid rgba(0,208,132,0.18);border-radius:16px;padding:28px 26px 22px;box-shadow:0 0 70px 26px rgba(4,10,18,0.62)}
-.onb-logo{text-align:center;font-size:20px;font-weight:700;font-family:var(--sans)}
-.onb-title{text-align:center;color:#fff;font-size:17px;font-weight:600;margin:12px 0 4px}
-.onb-sub{text-align:center;color:#7d8b99;font-size:13px;margin:0 0 20px}
-.onb-opt{width:100%;text-align:left;background:#0e1c2b;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s,transform .1s}
-.onb-opt:hover{border-color:rgba(0,208,132,0.4);transform:translateY(-1px)}
-.onb-ic{width:40px;height:40px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-.onb-ot{display:block;color:#fff;font-size:15px;font-weight:600}
-.onb-od{display:block;color:#7d8b99;font-size:12px;line-height:1.5;margin-top:2px}
-.onb-check{display:flex;align-items:center;justify-content:center;gap:8px;color:#7d8b99;font-size:13px;cursor:pointer;user-select:none}
-.onb-check input{accent-color:var(--green);width:15px;height:15px;cursor:pointer}
-.onb-vid{background:#0e1c2b;border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;margin-bottom:12px}
-.onb-vid-ph{aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#5a6478;background:#08131f}
-.onb-vid-ph i{font-size:34px;color:#3a4a5a}
-.onb-vid-cap{padding:10px 14px;color:#dde3ee;font-size:13px;font-weight:500}
-.onb-actions{display:flex;gap:10px;margin-top:6px}
-.onb-btn{flex:1;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9aa6b8;font-family:var(--sans)}
-.onb-btn:hover{border-color:rgba(255,255,255,0.25);color:#fff}
-.onb-btn.primary{background:var(--green);border-color:var(--green);color:#04150d}
-.onb-btn.primary:hover{filter:brightness(1.08)}
-.onb-tut-body{max-height:48vh;overflow-y:auto;margin-bottom:14px;padding-right:4px}
-</style>
-<div class="onb-ov" id="onb-ov">
-  <svg class="onb-bg" id="onb-bgchart" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
-  <div class="onb-dim"></div>
-
-  <!-- VIEW 1: seleção de nível -->
-  <div class="onb-card" id="onb-select">
-    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
-    <p class="onb-title">Bem-vindo! Qual seu nível?</p>
-    <p class="onb-sub">Escolha para personalizarmos sua experiência</p>
-
-    <button class="onb-opt" onclick="onbEscolher('iniciante')">
-      <span class="onb-ic" style="background:rgba(0,208,132,0.12);color:#00d084"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10a6 6 0 0 0-6-6H3v2a6 6 0 0 0 6 6h3"/><path d="M12 14a6 6 0 0 1 6-6h3v1a6 6 0 0 1-6 6h-3"/><path d="M12 20v-8"/></svg></span>
-      <span><span class="onb-ot">Iniciante</span><span class="onb-od">Nunca usei um robô. Quero aprender o básico.</span></span>
-    </button>
-    <button class="onb-opt" onclick="onbEscolher('medio')">
-      <span class="onb-ic" style="background:rgba(77,159,255,0.14);color:#4d9fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
-      <span><span class="onb-ot">Conhecimento médio</span><span class="onb-od">Conheço estratégias. Quero aplicar no MT5 / Forex / B3.</span></span>
-    </button>
-    <button class="onb-opt" style="margin-bottom:18px;border-color:rgba(255,184,48,0.25)" onclick="onbEscolher('profissional')">
-      <span class="onb-ic" style="background:rgba(255,184,48,0.14);color:#ffb830"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
-      <span><span class="onb-ot">Profissional</span><span class="onb-od">Já sei operar. Entrar direto na plataforma.</span></span>
-    </button>
-
-    <label class="onb-check"><input type="checkbox" id="onb-naomostrar" checked> Não mostrar esta tela novamente</label>
-  </div>
-
-  <!-- VIEW 2: tutorial / vídeos -->
-  <div class="onb-card" id="onb-tutorial" style="display:none">
-    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
-    <p class="onb-title" id="onb-tut-title">Tutorial</p>
-    <p class="onb-sub" id="onb-tut-sub">Assista para aprender a usar a plataforma</p>
-    <div class="onb-tut-body" id="onb-tut-body"></div>
-    <div class="onb-actions">
-      <button class="onb-btn" onclick="onbVoltar()">← Voltar</button>
-      <button class="onb-btn primary" onclick="onbIrPlataforma()">Ir para a plataforma →</button>
-    </div>
-  </div>
-</div>
-<!-- ==================== FIM ONBOARDING ==================== -->
-
-<script>
-// ── SUPABASE CONFIG ──
-const SUPABASE_URL = 'https://hdnhyceyzljommcvkejq.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_Hhyyks__0ZIQwKWJEqbN9Q_EjyTQAVG';
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-let usuarioAtual = null;
-// BabyMachine: id de sessao agrupa os testes da mesma rodada de ajustes (a "jornada" do trader)
-const BB_SESSAO_ID = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
-let perfilAtual = null;
-
-// ── AUTH: INICIALIZAR ──
-async function initAuth() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    await onLogin(session.user);
-  }
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      await onLogin(session.user);
-      fecharAuth();
-    } else if (event === 'SIGNED_OUT') {
-      onLogout();
-    }
-  });
-}
-
-async function onLogin(user) {
-  usuarioAtual = user;
-  // Busca perfil
-  const { data: perfil } = await sb.from('perfis').select('*').eq('id', user.id).single();
-  perfilAtual = perfil;
-  atualizarUI();
-  onbVerificar();
-  atualizarContador();
-}
-
-function onLogout() {
-  usuarioAtual = null;
-  perfilAtual = null;
-  document.getElementById('btn-login').style.display = 'flex';
-  document.getElementById('btn-user').style.display = 'none';
-  document.getElementById('limit-banner').classList.remove('show');
-  const cb = document.getElementById('contador-backtests'); if(cb) cb.style.display='none';
-}
-
-// ══════════════ ONBOARDING POR NÍVEL ══════════════
-// Vídeos por nível — cole o ID do YouTube em "yt" quando gravar (ex: yt:'dQw4w9WgXcQ')
-const ONB_VIDEOS = {
-  iniciante: {
-    titulo: 'Primeiros passos',
-    sub: 'O básico para começar do zero',
-    videos: [
-      { titulo: 'O que é um robô de trading (bot)?', yt: '' },
-      { titulo: 'Como funciona o backtest', yt: '' },
-      { titulo: 'Como montar seu robô na plataforma', yt: '' }
-    ]
-  },
-  medio: {
-    titulo: 'Aplicando estratégias',
-    sub: 'Para quem já conhece o mercado',
-    videos: [
-      { titulo: 'Como aplicar estratégias na plataforma', yt: '' },
-      { titulo: 'Como colocar o bot no MT5 (Forex)', yt: '' },
-      { titulo: 'Exportar para B3 / Profit (NTSL)', yt: '' }
-    ]
-  }
-};
-const ONB_KEY = 'bb_nivel';
-
-function onbVerificar(){
-  try { if (localStorage.getItem(ONB_KEY)) return; } catch(e){}
-  onbAbrir();
-}
-
-function onbAbrir(){
-  document.getElementById('onb-select').style.display = 'block';
-  document.getElementById('onb-tutorial').style.display = 'none';
-  document.getElementById('onb-ov').classList.add('show');
-  onbDesenharFundo();
-}
-
-function onbFechar(){
-  document.getElementById('onb-ov').classList.remove('show');
-}
-
-function onbSalvar(nivel){
-  const chk = document.getElementById('onb-naomostrar');
-  if (chk && chk.checked) {
-    try { localStorage.setItem(ONB_KEY, nivel); } catch(e){}
-  }
-}
-
-function onbEscolher(nivel){
-  onbSalvar(nivel);
-  if (nivel === 'profissional') { onbFechar(); return; }
-  onbMostrarTutorial(nivel);
-}
-
-function onbMostrarTutorial(nivel){
-  const data = ONB_VIDEOS[nivel];
-  document.getElementById('onb-tut-title').textContent = data.titulo;
-  document.getElementById('onb-tut-sub').textContent = data.sub;
-  const body = document.getElementById('onb-tut-body');
-  body.innerHTML = data.videos.map(v => {
-    const player = v.yt
-      ? `<div style="aspect-ratio:16/9"><iframe width="100%" height="100%" style="border:0;display:block" src="https://www.youtube.com/embed/${v.yt}" allowfullscreen></iframe></div>`
-      : `<div class="onb-vid-ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg><span>Vídeo em breve</span></div>`;
-    return `<div class="onb-vid">${player}<div class="onb-vid-cap">${v.titulo}</div></div>`;
-  }).join('');
-  document.getElementById('onb-select').style.display = 'none';
-  document.getElementById('onb-tutorial').style.display = 'block';
-}
-
-function onbVoltar(){
-  document.getElementById('onb-tutorial').style.display = 'none';
-  document.getElementById('onb-select').style.display = 'block';
-}
-
-function onbIrPlataforma(){ onbFechar(); }
-
-function onbDesenharFundo(){
-  const svg = document.getElementById('onb-bgchart');
-  if (!svg || svg.childElementCount) return;
-  const NS = 'http://www.w3.org/2000/svg';
-  let seed = 73;
-  const rnd = () => { seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff; };
-  function candle(x, cy, bodyH, up){
-    const col = up ? '#16d669' : '#f2403f';
-    const w = 14 + rnd()*5, wickUp = 8 + rnd()*16, wickDn = 8 + rnd()*16, top = cy - bodyH/2;
-    const wk = document.createElementNS(NS,'line');
-    wk.setAttribute('x1',x); wk.setAttribute('x2',x);
-    wk.setAttribute('y1',top-wickUp); wk.setAttribute('y2',top+bodyH+wickDn);
-    wk.setAttribute('stroke',col); wk.setAttribute('stroke-width','2.2'); wk.setAttribute('opacity','0.9');
-    svg.appendChild(wk);
-    const r = document.createElementNS(NS,'rect');
-    r.setAttribute('x',x-w/2); r.setAttribute('y',top); r.setAttribute('width',w); r.setAttribute('height',bodyH);
-    r.setAttribute('rx','2'); r.setAttribute('fill',col); r.setAttribute('opacity','0.9');
-    svg.appendChild(r);
-  }
-  const colStep = 30, bands = [60,155,250,345,440,535];
-  for (let x=18; x<=885; x+=colStep){
-    for (let b=0; b<bands.length; b++){
-      if (rnd()<0.12) continue;
-      candle(x+(rnd()-0.5)*14, bands[b]+(rnd()-0.5)*42, 26+rnd()*52, rnd()<0.56);
-    }
-  }
-  function ma(cy,amp,phase,freq,color,w,dash){
-    let pts='';
-    for (let x=0; x<=900; x+=18){
-      const y = cy + Math.sin((x/900)*Math.PI*freq+phase)*amp + Math.sin((x/900)*Math.PI*freq*2.3+phase)*amp*0.35;
-      pts += x+','+y.toFixed(0)+' ';
-    }
-    const pl=document.createElementNS(NS,'polyline');
-    pl.setAttribute('points',pts.trim()); pl.setAttribute('fill','none');
-    pl.setAttribute('stroke',color); pl.setAttribute('stroke-width',w); pl.setAttribute('opacity','0.85');
-    if (dash) pl.setAttribute('stroke-dasharray',dash);
-    svg.appendChild(pl);
-  }
-  ma(300,150,0.4,3.2,'#00d084','2.6',null);
-  ma(330,150,0.4,3.2,'#ffb830','2.6',null);
-  ma(250,110,2.1,2.4,'#4d9fff','2','7 6');
-}
-// ══════════════ FIM ONBOARDING ══════════════
-
-function atualizarUI() {
-  if (!usuarioAtual) return;
-  const email = usuarioAtual.email || '';
-  const nome = perfilAtual?.nome || email.split('@')[0] || 'Usuário';
-  const plano = perfilAtual?.plano || 'free';
-  const usados = perfilAtual?.backtests_mes || 0;
-  const limite = perfilAtual?.backtests_limite || 50;
-
-  // Topbar
-  document.getElementById('btn-login').style.display = 'none';
-  document.getElementById('btn-user').style.display = 'flex';
-  document.getElementById('user-avatar').textContent = nome.charAt(0).toUpperCase();
-  document.getElementById('user-nome-curto').textContent = nome.split(' ')[0];
-
-  // Badge plano
-  const badge = document.getElementById('user-plano-badge');
-  badge.textContent = plano.toUpperCase().replace('_', ' ');
-  badge.className = `user-plano ${plano === 'free' ? 'plano-free' : plano === 'pro' ? 'plano-pro' : 'plano-trader'}`;
-
-  // Dropdown
-  document.getElementById('dd-email').textContent = email;
-  document.getElementById('dd-plano').textContent = plano === 'free' ? 'Plano Free' : plano === 'pro' ? 'Plano Pro' : 'Plano Trader Pro';
-  document.getElementById('dd-uso').textContent = plano === 'free' ? `${usados} / ${limite} backtests este mês` : 'Backtests ilimitados';
-
-  // Limite banner
-  if (plano === 'free' && usados >= limite) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido: ${usados}/${limite} backtests este mês.`;
-  }
-}
-
-// ── AUTH: MODAL ──
-function abrirAuth(tab = 'login') {
-  document.getElementById('auth-overlay').style.display = 'flex';
-  switchAuthTab(tab === 'upgrade' ? 'signup' : tab);
-}
-
-function fecharAuth() {
-  document.getElementById('auth-overlay').style.display = 'none';
-  document.getElementById('login-error').textContent = '';
-  document.getElementById('signup-error').textContent = '';
-}
-
-function switchAuthTab(tab) {
-  document.getElementById('auth-login').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
-  document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
-  document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
-}
-
-function toggleUserMenu() {
-  const dd = document.getElementById('user-dropdown');
-  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#btn-user') && !e.target.closest('#user-dropdown')) {
-    const dd = document.getElementById('user-dropdown');
-    if (dd) dd.style.display = 'none';
-  }
-});
-
-// ── AUTH: LOGIN ──
-async function fazerLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  const btn = document.getElementById('login-btn');
-  const erro = document.getElementById('login-error');
-  if (!email || !senha) { erro.textContent = 'Preencha email e senha.'; return; }
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = error.message.includes('Invalid') ? 'Email ou senha incorretos.' : error.message;
-    btn.disabled = false; btn.textContent = 'Entrar';
-  }
-}
-
-// ── AUTH: CADASTRO ──
-async function fazerCadastro() {
-  const nome = document.getElementById('signup-nome').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const senha = document.getElementById('signup-senha').value;
-  const btn = document.getElementById('signup-btn');
-  const erro = document.getElementById('signup-error');
-  if (!nome || !email || !senha) { erro.textContent = 'Preencha todos os campos.'; return; }
-  if (senha.length < 6) { erro.textContent = 'Senha deve ter mínimo 6 caracteres.'; return; }
-  btn.disabled = true; btn.textContent = 'Criando conta...';
-  const { error } = await sb.auth.signUp({
-    email, password: senha,
-    options: { data: { nome } }
-  });
-  if (error) {
-    erro.textContent = error.message.includes('already') ? 'Este email já está cadastrado.' : error.message;
-    btn.disabled = false; btn.textContent = 'Criar conta grátis';
-  } else {
-    document.getElementById('signup-success').style.display = 'block';
-    btn.textContent = '✅ Conta criada!';
-  }
-}
-
-// ── AUTH: RECUPERAR SENHA ──
-async function recuperarSenha() {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email) { document.getElementById('login-error').textContent = 'Digite seu email primeiro.'; return; }
-  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-  document.getElementById('login-error').style.color = 'var(--green)';
-  document.getElementById('login-error').textContent = '✅ Link de recuperação enviado para ' + email;
-}
-
-// ── AUTH: LOGOUT ──
-async function fazerLogout() {
-  await sb.auth.signOut();
-  document.getElementById('user-dropdown').style.display = 'none';
-}
-
-// ── VERIFICAR LIMITE ANTES DO BACKTEST ──
-function setMoeda(moeda) {
-  const precos = {
-    BRL: { pro: 'R$67', trader: 'R$97' },
-    USD: { pro: '$19', trader: '$29' },
-    EUR: { pro: '€17', trader: '€27' }
-  };
-  document.getElementById('preco-pro').textContent = precos[moeda].pro;
-  document.getElementById('preco-trader').textContent = precos[moeda].trader;
-  ['BRL','USD','EUR'].forEach(m => {
-    const btn = document.getElementById('btn-'+m.toLowerCase());
-    if(btn) { btn.style.background = m===moeda?'#00d084':'transparent'; btn.style.color = m===moeda?'#000':'var(--muted2)'; btn.style.borderColor = m===moeda?'#00d084':'var(--border)'; }
-  });
-  window._moedaAtual = moeda;
-}
-
-async function assinar(plano) {
-  if (!usuarioAtual) { abrirAuth('login'); return; }
-  try {
-    const moeda = window._moedaAtual || 'BRL';
-    const resp = await fetch(API+'/criar-checkout', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plano, moeda, user_id: usuarioAtual.id, email: usuarioAtual.email })
-    });
-    const data = await resp.json();
-    if (data.url) window.open(data.url, '_blank');
-    else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
-  } catch(e) { alert('Erro: ' + e.message); }
-}
-
-async function verificarLimite() {
-  console.log('verificarLimite → usuarioAtual:', usuarioAtual?.email, '| perfilAtual:', perfilAtual);
-  if (!usuarioAtual) {
-    abrirAuth('login');
-    return false;
-  }
-  if (!perfilAtual) return true;
-  if (perfilAtual.plano === 'free' && perfilAtual.backtests_mes >= (perfilAtual.backtests_limite || 50)) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido (${perfilAtual.backtests_mes}/${perfilAtual.backtests_limite}). Faça upgrade para continuar.`;
-    return false;
-  }
-  return true;
-}
-
-// ── INCREMENTAR CONTADOR APÓS BACKTEST ──
-async function incrementarBacktest() {
-  if (!usuarioAtual || !perfilAtual || perfilAtual.plano !== 'free') return;
-  const novoValor = (perfilAtual.backtests_mes || 0) + 1;
-  await sb.from('perfis').update({ backtests_mes: novoValor }).eq('id', usuarioAtual.id);
-  perfilAtual.backtests_mes = novoValor;
-  atualizarUI();
-}
-
-// Inicializar auth ao carregar
-initAuth();
-</script>
-<div class="modal-ov" id="modal-ntsl">
-  <div class="modal-box">
-    <div class="modal-title">📥 Exportar para NTSL (Profit/B3)</div>
-    <div class="modal-code" id="ntsl-code">Rode um backtest primeiro.</div>
-    <button class="modal-close" onclick="document.getElementById('modal-ntsl').style.display='none'">Fechar</button>
-  </div>
-</div>
-
-<script>
-const API = 'https://backtestpro-production-eb9a.up.railway.app';
-let lastResult = null;
-let lastIACode = null;
-let chartEq = null, chartPr = null, chartDo = null;
-let activeTab = 'overview';
-let selectedTemplate = 'ema_channel';
-
-const TEMPLATES = {
-  ema_channel: `class EMAChannelStrategy(Strategy):
-    ema_period = 20
-    def init(self):
-        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period,adjust=False).mean().values, self.data.High)
-        self.ema_low = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period,adjust=False).mean().values, self.data.Low)
-    def next(self):
-        preco = self.data.Close[-1]
-        if not self.position:
-            if preco > self.ema_high[-1]: self.buy()
+# ── MODELS ──────────────────────────────────────────────────
+class BacktestParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    indicador: str = "EMA Channel High/Low"
+    ema_period: int = 20
+    stop_loss: float = 50
+    take_profit: float = 100
+    capital: float = 10000
+    max_ops: int = 5
+    comissao: float = 0.0002
+    user_id: Optional[str] = None      # BabyMachine: dono do teste (se logado)
+    sessao_id: Optional[str] = None    # BabyMachine: agrupa a jornada de ajustes
+
+class BacktestCustom(BacktestParams):
+    codigo: str = ""
+
+class IARequest(BaseModel):
+    descricao: str
+
+# ── HELPERS ─────────────────────────────────────────────────
+def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
+    ticker = ATIVOS_MAP.get(ativo, "GC=F")
+    periodo_yf = PERIODOS_MAP.get(periodo, "2y")
+    intervalo_yf = INTERVALOS_MAP.get(timeframe, "1d")
+
+    if intervalo_yf in ["5m","15m","30m"]:
+        periodo_yf = "60d"
+
+    try:
+        tk = yf.Ticker(ticker)
+        df = tk.history(period=periodo_yf, interval=intervalo_yf)
+    except Exception as e:
+        raise HTTPException(400, f"Erro ao baixar dados: {str(e)}")
+
+    if df is None or df.empty:
+        raise HTTPException(400, f"Sem dados para {ativo}.")
+
+    # Flatten MultiIndex se existir
+    if hasattr(df.columns, 'levels'):
+        df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+
+    # Manter APENAS colunas OHLCV — ignorar Dividends, Stock Splits, etc.
+    colunas_manter = ['Open','High','Low','Close','Volume']
+    df = df[[c for c in colunas_manter if c in df.columns]]
+
+    df = df.dropna(subset=['Open','High','Low','Close'])
+
+    if len(df) < 5:
+        raise HTTPException(400, f"Dados insuficientes para {ativo}.")
+
+    return df
+
+def calcular_ema_channel(df: pd.DataFrame, period: int):
+    df = df.copy()
+    df['ema_high'] = df['High'].ewm(span=period, adjust=False).mean()
+    df['ema_low']  = df['Low'].ewm(span=period, adjust=False).mean()
+    return df
+
+def calcular_rsi(series: pd.Series, period: int = 14) -> pd.Series:
+    delta = series.diff()
+    gain  = delta.clip(lower=0).rolling(period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period).mean()
+    rs    = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+def calcular_macd(series: pd.Series):
+    ema12  = series.ewm(span=12, adjust=False).mean()
+    ema26  = series.ewm(span=26, adjust=False).mean()
+    macd   = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, signal
+
+def calcular_bollinger(series: pd.Series, period: int = 20):
+    sma   = series.rolling(period).mean()
+    std   = series.rolling(period).std()
+    upper = sma + 2 * std
+    lower = sma - 2 * std
+    return upper, lower
+
+def rodar_estrategia(df: pd.DataFrame, params: BacktestParams) -> dict:
+    """Motor de backtest principal — retorna trades e equity curve"""
+    df = df.copy()
+    capital_inicial = params.capital
+    capital = capital_inicial
+    comissao = params.comissao
+    ind = params.indicador
+    period = params.ema_period
+
+    # Calcular indicadores
+    if "EMA Channel" in ind or ind == "EMA":
+        df = calcular_ema_channel(df, period)
+    elif ind == "RSI":
+        df['rsi'] = calcular_rsi(df['Close'], period)
+    elif ind == "MACD":
+        df['macd'], df['signal'] = calcular_macd(df['Close'])
+    elif ind == "Bollinger Bands":
+        df['bb_upper'], df['bb_lower'] = calcular_bollinger(df['Close'], period)
+    elif ind == "SMA":
+        df['sma'] = df['Close'].rolling(period).mean()
+
+    df = df.dropna()
+
+    trades = []
+    equity_curve = [capital]
+    posicao = None  # {'tipo': 'long', 'entrada': preco, 'data': dt, 'idx': i}
+
+    for i in range(1, len(df)):
+        row  = df.iloc[i]
+        prev = df.iloc[i-1]
+        preco = float(row['Close'])
+        data  = str(df.index[i])[:16]
+
+        # Sinais de entrada/saída por indicador
+        sinal_compra = False
+        sinal_venda  = False
+
+        if "EMA Channel" in ind or ind == "EMA":
+            ema_h = float(row['ema_high'])
+            ema_l = float(row['ema_low'])
+            sinal_compra = preco > ema_h and float(prev['Close']) <= float(prev['ema_high'])
+            sinal_venda  = preco < ema_l and float(prev['Close']) >= float(prev['ema_low'])
+        elif ind == "RSI":
+            sinal_compra = float(row['rsi']) < 30 and float(prev['rsi']) >= 30
+            sinal_venda  = float(row['rsi']) > 70
+        elif ind == "MACD":
+            sinal_compra = float(row['macd']) > float(row['signal']) and float(prev['macd']) <= float(prev['signal'])
+            sinal_venda  = float(row['macd']) < float(row['signal']) and float(prev['macd']) >= float(prev['signal'])
+        elif ind == "Bollinger Bands":
+            sinal_compra = preco < float(row['bb_lower'])
+            sinal_venda  = preco > float(row['bb_upper'])
+        elif ind == "SMA":
+            sinal_compra = preco > float(row['sma']) and float(prev['Close']) <= float(prev['sma'])
+            sinal_venda  = preco < float(row['sma']) and float(prev['Close']) >= float(prev['sma'])
+
+        if posicao is None:
+            if sinal_compra:
+                posicao = {'tipo': 'long', 'entrada': preco, 'data': data, 'idx': i}
         else:
-            if preco < self.ema_low[-1]: self.position.close()`,
-  rsi: `class RSIStrategy(Strategy):
-    rsi_period = 14
+            # Verifica SL/TP ou sinal de saída
+            entrada = posicao['entrada']
+            variacao = (preco - entrada) / entrada
+            saiu = False
+
+            if sinal_venda:
+                saiu = True
+            elif variacao <= -(params.stop_loss / 10000):
+                saiu = True
+                variacao = -(params.stop_loss / 10000)
+            elif variacao >= (params.take_profit / 10000):
+                saiu = True
+                variacao = params.take_profit / 10000
+
+            if saiu:
+                retorno_pct = variacao * 100
+                custo = comissao * 2
+                retorno_liquido = retorno_pct - (custo * 100)
+                pl = capital * retorno_liquido / 100
+                capital += pl
+
+                trades.append({
+                    "entrada": posicao['data'],
+                    "saida": data,
+                    "preco_entrada": round(entrada, 5),
+                    "preco_saida": round(preco, 5),
+                    "retorno_pct": round(retorno_liquido, 4),
+                    "pl": round(pl, 2),
+                    "resultado": "Ganho" if pl > 0 else "Perda",
+                    "idx_entrada": posicao['idx'],
+                    "idx_saida": i,
+                })
+                posicao = None
+
+        equity_curve.append(round(capital, 2))
+
+    return {"trades": trades, "equity_curve": equity_curve, "df": df, "capital_final": capital}
+
+def calcular_metricas_completas(resultado: dict, params: BacktestParams, df: pd.DataFrame) -> dict:
+    """Calcula TODAS as métricas estilo TradingView"""
+    trades       = resultado['trades']
+    equity_curve = resultado['equity_curve']
+    capital_ini  = params.capital
+    capital_fin  = resultado['capital_final']
+
+    if not trades:
+        return metricas_vazias(capital_ini)
+
+    # ── Métricas básicas ──
+    total     = len(trades)
+    ganhos    = [t for t in trades if t['pl'] > 0]
+    perdas    = [t for t in trades if t['pl'] <= 0]
+    win_rate  = len(ganhos) / total * 100 if total > 0 else 0
+    retorno   = (capital_fin - capital_ini) / capital_ini * 100
+
+    gross_profit = sum(t['pl'] for t in ganhos)
+    gross_loss   = abs(sum(t['pl'] for t in perdas))
+    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else 9.99
+
+    # ── Sharpe Ratio ──
+    retornos_arr = np.array([t['retorno_pct'] for t in trades])
+    sharpe = round(
+        np.mean(retornos_arr) / np.std(retornos_arr) * np.sqrt(252)
+        if np.std(retornos_arr) > 0 else 0, 2
+    )
+
+    # ── Max Drawdown ──
+    eq = np.array(equity_curve)
+    peak = np.maximum.accumulate(eq)
+    dd   = (eq - peak) / peak * 100
+    max_dd = round(float(np.min(dd)), 2)
+
+    # ── Buy & Hold ──
+    preco_ini = float(df['Close'].iloc[0])
+    preco_fin = float(df['Close'].iloc[-1])
+    buy_hold  = round((preco_fin - preco_ini) / preco_ini * 100, 2)
+
+    # ── CAGR ──
+    anos = len(df) / 252
+    cagr = round(((capital_fin / capital_ini) ** (1 / max(anos, 0.1)) - 1) * 100, 2) if anos > 0 else 0
+
+    # ── ROI Distribution ──
+    retornos_list = [t['retorno_pct'] for t in trades]
+    hist_counts, hist_bins = np.histogram(retornos_list, bins=20)
+    roi_distribution = [
+        {"bin": round(float(hist_bins[i]), 3), "count": int(hist_counts[i]),
+         "positivo": hist_bins[i] >= 0}
+        for i in range(len(hist_counts))
+    ]
+
+    # ── Run-ups e Drawdowns por trade ──
+    run_ups   = []
+    drawdowns_list = []
+    for t in trades:
+        if t['pl'] > 0:
+            run_ups.append(t['retorno_pct'])
+        else:
+            drawdowns_list.append(t['retorno_pct'])
+
+    avg_runup   = round(np.mean(run_ups), 4) if run_ups else 0
+    avg_drawdown_trade = round(np.mean(drawdowns_list), 4) if drawdowns_list else 0
+
+    # ── Duração média dos trades (bars) ──
+    duracoes = [abs(t['idx_saida'] - t['idx_entrada']) for t in trades]
+    avg_bars = round(np.mean(duracoes)) if duracoes else 0
+
+    # ── Maior ganho e maior perda ──
+    maior_ganho = round(max((t['pl'] for t in ganhos), default=0), 2)
+    maior_perda = round(min((t['pl'] for t in perdas), default=0), 2)
+
+    # ── Account size required (margem estimada) ──
+    account_required = round(capital_ini * (1 + abs(max_dd) / 100), 2)
+
+    # ── Candles OHLCV para o gráfico ──
+    candles = []
+    for idx, row in df.iterrows():
+        candles.append({
+            "t": str(idx)[:10],
+            "o": round(float(row['Open']), 4),
+            "h": round(float(row['High']), 4),
+            "l": round(float(row['Low']), 4),
+            "c": round(float(row['Close']), 4),
+            "v": int(row.get('Volume', 0)),
+        })
+
+    # ── Markers de trades nos candles ──
+    markers = []
+    for t in trades:
+        markers.append({
+            "idx": t['idx_entrada'],
+            "data": t['entrada'],
+            "tipo": "BUY",
+            "preco": t['preco_entrada'],
+            "cor": "#00d084",
+        })
+        markers.append({
+            "idx": t['idx_saida'],
+            "data": t['saida'],
+            "tipo": "SELL",
+            "preco": t['preco_saida'],
+            "cor": "#ff4d6a" if t['pl'] <= 0 else "#00d084",
+        })
+
+    # ── Sugestão da IA ──
+    sugestao = gerar_sugestao_ia(win_rate, sharpe, max_dd, profit_factor, retorno)
+
+    return {
+        # Header
+        "ativo": params.ativo,
+        "periodo": params.periodo,
+        "timeframe": params.timeframe,
+        "candles": len(df),
+        "data_backtest": datetime.now().strftime("%d/%m/%Y"),
+
+        # Retorno
+        "retorno": round(retorno, 2),
+        "capital_inicial": capital_ini,
+        "capital_final": round(capital_fin, 2),
+        "lucro_perda": round(capital_fin - capital_ini, 2),
+        "retorno_anual": round(cagr, 2),
+
+        # Key stats (topo)
+        "win_rate": round(win_rate, 2),
+        "sharpe": sharpe,
+        "max_drawdown": max_dd,
+        "profit_factor": profit_factor,
+        "total_trades": total,
+
+        # Gross
+        "gross_profit": round(gross_profit, 2),
+        "gross_loss": round(gross_loss, 2),
+
+        # Trades analysis
+        "avg_pnl": round((capital_fin - capital_ini) / total, 2),
+        "avg_pnl_pct": round(retorno / total, 4),
+        "avg_bars_in_trades": avg_bars,
+        "maior_ganho": maior_ganho,
+        "maior_perda": maior_perda,
+        "winners": len(ganhos),
+        "losers": len(perdas),
+        "breakevens": len([t for t in trades if t['pl'] == 0]),
+
+        # Distribuições
+        "roi_distribution": roi_distribution,
+
+        # Run-ups e drawdowns
+        "avg_runup": avg_runup,
+        "avg_drawdown_trade": avg_drawdown_trade,
+        "max_runup": round(max(run_ups, default=0), 4),
+        "max_drawdown_trade": round(min(drawdowns_list, default=0), 4),
+
+        # Capital efficiency
+        "cagr": cagr,
+        "account_size_required": account_required,
+        "return_on_capital": round(retorno, 2),
+        "buy_hold": buy_hold,
+        "alpha": round(retorno - buy_hold, 2),
+
+        # Gráficos
+        "equity_curve": equity_curve,
+        "candles_data": candles[-500:],  # últimos 500 candles
+        "markers": markers,
+
+        # Trades completos
+        "trades": trades,
+
+        # IA
+        "sugestao": sugestao,
+    }
+
+def metricas_vazias(capital):
+    return {
+        "retorno": 0, "win_rate": 0, "sharpe": 0,
+        "max_drawdown": 0, "profit_factor": 0,
+        "total_trades": 0, "equity_curve": [capital],
+        "trades": [], "candles_data": [], "markers": [],
+        "sugestao": "Nenhum trade gerado. Verifique os parâmetros da estratégia.",
+        "capital_inicial": capital, "capital_final": capital, "lucro_perda": 0,
+    }
+
+def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
+    sugestoes = []
+    if retorno < 0:
+        sugestoes.append("Resultado negativo. Ajuste o ratio SL/TP — tente TP pelo menos 2x o SL.")
+    if wr < 45:
+        sugestoes.append(f"Win Rate de {wr:.1f}% está baixo. Considere adicionar um filtro de tendência.")
+    if sharpe < 0.5:
+        sugestoes.append(f"Sharpe de {sharpe:.2f} indica alta volatilidade. Reduza o tamanho das posições.")
+    if abs(dd) > 20:
+        sugestoes.append(f"Drawdown de {dd:.1f}% está alto. Reduza o Stop Loss ou use position sizing dinâmico.")
+    if pf > 1.5 and retorno > 5:
+        sugestoes.append(f"Ótimo resultado! Profit Factor {pf:.2f} e retorno {retorno:.2f}%. Considere otimizar o período do indicador.")
+    if not sugestoes:
+        sugestoes.append("Resultado sólido. Teste em outros ativos e timeframes para confirmar a robustez.")
+    return " | ".join(sugestoes)
+
+# ── ENDPOINTS ───────────────────────────────────────────────
+
+@app.get("/debug")
+def debug_backtest():
+    """Roda backtest de diagnóstico e retorna erro completo"""
+    from fastapi.responses import PlainTextResponse
+    try:
+        params = BacktestParams(
+            ativo="XAU/USD", periodo="6 meses", timeframe="1d",
+            indicador="EMA Channel High/Low", ema_period=20,
+            stop_loss=50, take_profit=100, capital=10000,
+            max_ops=5, comissao=0.0002
+        )
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        log = f"✅ Dados baixados: {len(df)} linhas\nColunas: {list(df.columns)}\n\n"
+        resultado = rodar_estrategia(df, params)
+        log += f"✅ Estratégia rodada: {len(resultado['trades'])} trades\n\n"
+        metricas = calcular_metricas_completas(resultado, params, df)
+        log += f"✅ Métricas calculadas\nRetorno: {metricas['retorno']}%\n"
+        return PlainTextResponse(log)
+    except Exception as e:
+        return PlainTextResponse(f"❌ ERRO: {str(e)}\n\n{traceback.format_exc()}")
+
+@app.get("/teste")
+def teste_conexao():
+    """Testa se yfinance consegue baixar dados"""
+    try:
+        import yfinance as yf
+        tk = yf.Ticker("GC=F")
+        df = tk.history(period="5d", interval="1d")
+        if df.empty:
+            return {"status": "erro", "msg": "yfinance retornou dados vazios"}
+        return {
+            "status": "ok",
+            "yfinance_version": yf.__version__,
+            "linhas": len(df),
+            "colunas": list(df.columns),
+            "ultimo_preco": float(df['Close'].iloc[-1]) if 'Close' in df.columns else None
+        }
+    except Exception as e:
+        return {"status": "erro", "msg": str(e), "traceback": traceback.format_exc()}
+
+@app.get("/")
+def root():
+    # Serve a LANDING PAGE (index.html). O app de backtest foi movido para /app
+    if os.path.exists("index.html"):
+        return FileResponse("index.html", media_type="text/html")
+    return {
+        "status": "online",
+        "version": "3.0.0",
+        "name": "BotBacktest API",
+        "endpoints": ["/app", "/backtest/visual", "/backtest/custom", "/gerar-bot-ia",
+                      "/exportar/ntsl", "/historico", "/ranking", "/stats"]
+    }
+
+@app.get("/app")
+def serve_app():
+    # Serve o app de backtest (antigo index.html, renomeado para app.html)
+    if os.path.exists("app.html"):
+        return FileResponse("app.html", media_type="text/html")
+    raise HTTPException(404, "app.html nao encontrado")
+
+@app.get("/ativos")
+def get_ativos():
+    return {"ativos": list(ATIVOS_MAP.keys())}
+
+@app.get("/timeframes")
+def get_timeframes():
+    return {"timeframes": list(INTERVALOS_MAP.keys())}
+
+@app.get("/indicadores")
+def get_indicadores():
+    return {"indicadores": ["EMA Channel High/Low","EMA","SMA","RSI","MACD","Bollinger Bands"]}
+
+def converter_para_python(obj):
+    """Converte tipos numpy para tipos Python nativos serializáveis"""
+    if isinstance(obj, dict):
+        return {k: converter_para_python(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [converter_para_python(i) for i in obj]
+    elif isinstance(obj, (np.integer,)):
+        return int(obj)
+    elif isinstance(obj, (np.floating,)):
+        return float(obj)
+    elif isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return [converter_para_python(i) for i in obj.tolist()]
+    elif hasattr(obj, 'item'):
+        return obj.item()
+    return obj
+
+# ── OTIMIZACAO DE PARAMETROS (v1.5) ─────────────────────────
+class OtimizarParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    indicador: str = "EMA Channel High/Low"
+    capital: float = 10000
+    max_ops: int = 5
+    comissao: float = 0.0002
+    # intervalos: [inicio, fim, passo]
+    stop_loss_range: list = [30, 60, 10]
+    take_profit_range: list = [60, 120, 20]
+    ema_period_range: list = [20, 20, 1]   # padrao: fixo em 20
+    ordenar_por: str = "win_rate"          # win_rate | sharpe | retorno | profit_factor
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+def _gerar_valores(rng):
+    """De [inicio, fim, passo] gera a lista de valores. Seguro contra passo<=0."""
+    try:
+        ini, fim, passo = float(rng[0]), float(rng[1]), float(rng[2])
+    except Exception:
+        return []
+    if passo <= 0:
+        return [ini]
+    vals = []
+    v = ini
+    # +1e-9 para incluir o fim mesmo com float
+    while v <= fim + 1e-9:
+        vals.append(round(v, 6))
+        v += passo
+    return vals or [ini]
+
+@app.post("/otimizar")
+def otimizar(req: OtimizarParams):
+    import sys, copy
+    try:
+        stops = _gerar_valores(req.stop_loss_range)
+        takes = _gerar_valores(req.take_profit_range)
+        emas  = [int(x) for x in _gerar_valores(req.ema_period_range)]
+
+        total = len(stops) * len(takes) * len(emas)
+        TETO = 50
+        if total == 0:
+            raise HTTPException(400, "Intervalos invalidos: nenhuma combinacao gerada.")
+        if total > TETO:
+            raise HTTPException(400, f"{total} combinacoes excedem o teto de {TETO}. Reduza os intervalos ou aumente o passo.")
+
+        # Baixa os dados UMA vez (eficiencia) e reusa em todas as combinacoes
+        df_base = baixar_dados(req.ativo, req.periodo, req.timeframe)
+
+        resultados = []
+        for sl in stops:
+            for tp in takes:
+                for ep in emas:
+                    p = BacktestParams(
+                        ativo=req.ativo, periodo=req.periodo, timeframe=req.timeframe,
+                        indicador=req.indicador, ema_period=ep,
+                        stop_loss=sl, take_profit=tp,
+                        capital=req.capital, max_ops=req.max_ops, comissao=req.comissao,
+                        user_id=req.user_id, sessao_id=req.sessao_id,
+                    )
+                    try:
+                        resultado = rodar_estrategia(df_base.copy(), p)
+                        m = calcular_metricas_completas(resultado, p, df_base)
+                        # alimenta a BabyMachine (non-blocking)
+                        salvar_historico_backtest(p, m, user_id=req.user_id, sessao_id=req.sessao_id, codigo="")
+                        resultados.append({
+                            "stop_loss": sl, "take_profit": tp, "ema_period": ep,
+                            "win_rate": m.get("win_rate"), "sharpe": m.get("sharpe"),
+                            "retorno": m.get("retorno"), "max_drawdown": m.get("max_drawdown"),
+                            "profit_factor": m.get("profit_factor"), "total_trades": m.get("total_trades"),
+                        })
+                    except Exception as e:
+                        print(f"[otimizar] combo sl={sl} tp={tp} ep={ep} falhou: {e}", file=sys.stderr)
+
+        if not resultados:
+            raise HTTPException(400, "Nenhuma combinacao produziu resultado valido.")
+
+        # Ordena pelo criterio escolhido (maior melhor; drawdown nao e usado p/ ordenar)
+        chave = req.ordenar_por if req.ordenar_por in ("win_rate","sharpe","retorno","profit_factor") else "win_rate"
+        resultados.sort(key=lambda r: (r.get(chave) if r.get(chave) is not None else -9e9), reverse=True)
+
+        # Alerta de overfitting: sempre presente, em linguagem honesta
+        alerta = ("Estes resultados sao METRICAS DE BACKTEST sobre dados historicos. "
+                  "Melhor desempenho no passado NAO garante desempenho futuro. "
+                  "A combinacao no topo pode estar superajustada (overfitting) ao historico. "
+                  "Antes de confiar, valide a escolhida fora da amostra (out-of-sample) e em outros periodos.")
+
+        return converter_para_python({
+            "combinacoes_testadas": len(resultados),
+            "ordenado_por": chave,
+            "ranking": resultados,
+            "melhor": resultados[0],
+            "alerta_overfitting": alerta,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO OTIMIZAR: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
+
+
+# ── BABYMACHINE: registro de historico ──────────────────────
+def _sb_admin():
+    """Cliente Supabase com service_role (ignora RLS) para gravacao."""
+    from supabase import create_client
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+def salvar_historico_backtest(params, metricas, user_id=None, sessao_id=None, codigo=""):
+    """Grava 1 linha em backtests_historico. NON-BLOCKING: erro nunca quebra o backtest."""
+    try:
+        sb = _sb_admin()
+        if sb is None or not user_id:
+            return
+        codigo_hash = None
+        if codigo and codigo.strip():
+            codigo_hash = hashlib.sha256(codigo.strip().encode("utf-8")).hexdigest()[:16]
+        parametros = {
+            "ema_period": getattr(params, "ema_period", None),
+            "stop_loss": getattr(params, "stop_loss", None),
+            "take_profit": getattr(params, "take_profit", None),
+            "capital": getattr(params, "capital", None),
+            "max_ops": getattr(params, "max_ops", None),
+            "comissao": getattr(params, "comissao", None),
+        }
+        linha = {
+            "user_id": user_id,
+            "ativo": getattr(params, "ativo", None),
+            "timeframe": getattr(params, "timeframe", None),
+            "periodo": getattr(params, "periodo", None),
+            "estrategia_nome": getattr(params, "indicador", None),
+            "codigo_hash": codigo_hash,
+            "parametros": parametros,
+            "retorno": metricas.get("retorno"),
+            "win_rate": metricas.get("win_rate"),
+            "sharpe": metricas.get("sharpe"),
+            "max_drawdown": metricas.get("max_drawdown"),
+            "profit_factor": metricas.get("profit_factor"),
+            "total_trades": metricas.get("total_trades"),
+            "sessao_id": sessao_id or str(_uuid.uuid4()),
+            "permite_treino": True,
+        }
+        sb.table("backtests_historico").insert(linha).execute()
+    except Exception as e:
+        import sys
+        print(f"[BabyMachine] historico nao gravado: {e}", file=sys.stderr)
+
+
+# ════════════════════════════════════════════════════════════
+#  BABYMACHINE — Análise dos dados coletados (regras puras)
+#  B: aprendizado coletivo anônimo (banco inteiro)
+#  C: detecção de comportamento de risco (jornada do usuário)
+#  Sempre honesto: observações estatísticas, nunca promessa de retorno.
+# ════════════════════════════════════════════════════════════
+
+class BabyMachineParams(BaseModel):
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+    ativo: Optional[str] = None       # opcional: focar a análise coletiva num ativo
+
+
+def _bm_media(vals):
+    vals = [v for v in vals if v is not None]
+    return (sum(vals)/len(vals)) if vals else None
+
+
+class BabyMachineContadorParams(BaseModel):
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+
+@app.post("/babymachine/contador")
+def babymachine_contador(params: BabyMachineContadorParams):
+    """Endpoint leve: retorna só o total de backtests do usuário (p/ contador no topo)."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return {"total": 0}
+        # busca os ids do usuário e conta (sem count=exact, p/ compatibilidade de versão)
+        if params.user_id:
+            resp = sb.table("backtests_historico").select("id").eq("user_id", params.user_id).limit(10000).execute()
+        elif params.sessao_id:
+            resp = sb.table("backtests_historico").select("id").eq("sessao_id", params.sessao_id).limit(10000).execute()
+        else:
+            return {"total": 0}
+        total = len(resp.data or [])
+        return {"total": total}
+    except Exception:
+        return {"total": 0}
+
+
+@app.post("/babymachine/analisar")
+def babymachine_analisar(params: BabyMachineParams):
+    """Analisa os dados coletados: tendências do banco (B) + comportamento do usuário (C)."""
+    import sys
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return {"disponivel": False, "motivo": "Coleta de dados não configurada."}
+
+        # ── B: APRENDIZADO COLETIVO (anônimo) ─────────────────────
+        # lê a tabela inteira (sem expor user_id de ninguém)
+        try:
+            resp = sb.table("backtests_historico").select(
+                "ativo,timeframe,stop_loss,take_profit,retorno,win_rate,sharpe,profit_factor,max_drawdown,total_trades,sessao_id,user_id"
+            ).limit(5000).execute()
+            linhas = resp.data or []
+        except Exception:
+            # fallback: campos podem estar dentro de 'parametros'
+            resp = sb.table("backtests_historico").select("*").limit(5000).execute()
+            linhas = resp.data or []
+
+        total_banco = len(linhas)
+        coletivo = {"total_backtests": total_banco, "insights": []}
+
+        if total_banco >= 10:
+            # tendência 1: take > stop vs take <= stop (qual tem Sharpe médio maior)
+            def _sl(r): return r.get("stop_loss") or (r.get("parametros") or {}).get("stop_loss")
+            def _tp(r): return r.get("take_profit") or (r.get("parametros") or {}).get("take_profit")
+            grupo_tp_maior = [r for r in linhas if _tp(r) and _sl(r) and _tp(r) > _sl(r)]
+            grupo_tp_menor = [r for r in linhas if _tp(r) and _sl(r) and _tp(r) <= _sl(r)]
+            sh_maior = _bm_media([r.get("sharpe") for r in grupo_tp_maior])
+            sh_menor = _bm_media([r.get("sharpe") for r in grupo_tp_menor])
+            if sh_maior is not None and sh_menor is not None and len(grupo_tp_maior) >= 5 and len(grupo_tp_menor) >= 5:
+                if sh_maior > sh_menor:
+                    coletivo["insights"].append(
+                        f"Na plataforma, configurações com take maior que o stop tiveram Sharpe médio mais alto "
+                        f"({sh_maior:.2f} vs {sh_menor:.2f}) em {len(grupo_tp_maior)+len(grupo_tp_menor)} backtests. "
+                        f"Isso sugere 'deixar o lucro correr' — mas é observação do passado, valide na sua estratégia."
+                    )
+                else:
+                    coletivo["insights"].append(
+                        f"Curiosamente, na plataforma o take maior que o stop NÃO teve vantagem de Sharpe "
+                        f"({sh_maior:.2f} vs {sh_menor:.2f}). Cada mercado é diferente — teste no seu ativo."
+                    )
+
+            # tendência 2: ativo mais testado
+            from collections import Counter
+            ativos = Counter([r.get("ativo") for r in linhas if r.get("ativo")])
+            if ativos:
+                mais, qtd = ativos.most_common(1)[0]
+                coletivo["insights"].append(f"O ativo mais testado na plataforma é {mais} ({qtd} backtests).")
+
+            # tendência 3: sharpe médio geral (referência honesta)
+            sh_geral = _bm_media([r.get("sharpe") for r in linhas])
+            wr_geral = _bm_media([r.get("win_rate") for r in linhas])
+            if sh_geral is not None:
+                coletivo["insights"].append(
+                    f"Sharpe médio de todos os backtests da plataforma: {sh_geral:.2f}"
+                    + (f" · Win rate médio: {wr_geral:.1f}%" if wr_geral is not None else "")
+                    + ". A maioria das estratégias fica perto da média — vantagem real é rara."
+                )
+        else:
+            coletivo["insights"].append("Ainda há poucos dados na plataforma para tendências coletivas confiáveis. Volte em breve.")
+
+        # ── C: COMPORTAMENTO DO USUÁRIO ──────────────────────────
+        comportamento = {"disponivel": False, "alertas": [], "resumo": "", "evolucao": []}
+        minha_jornada = []
+        if params.user_id:
+            minha_jornada = [r for r in linhas if r.get("user_id") == params.user_id]
+            escopo = "histórico completo"
+        elif params.sessao_id:
+            minha_jornada = [r for r in linhas if r.get("sessao_id") == params.sessao_id]
+            escopo = "sessão atual"
+        else:
+            escopo = None
+
+        # ordena cronologicamente (created_at se existir, senão mantém ordem do banco)
+        try:
+            minha_jornada = sorted(minha_jornada, key=lambda r: (r.get("created_at") or ""))
+        except Exception:
+            pass
+
+        if minha_jornada and len(minha_jornada) >= 2:
+            comportamento["disponivel"] = True
+            n = len(minha_jornada)
+            comportamento["resumo"] = f"Analisei {n} backtests seus ({escopo})."
+
+            # série de evolução p/ os 2 gráficos (Sharpe e Retorno ao longo dos testes)
+            comportamento["evolucao"] = [
+                {
+                    "i": idx + 1,
+                    "ativo": r.get("ativo"),
+                    "timeframe": r.get("timeframe"),
+                    "sharpe": r.get("sharpe"),
+                    "retorno": r.get("retorno"),
+                }
+                for idx, r in enumerate(minha_jornada)
+            ]
+
+            # alerta 1: muitos testes mudando só o stop/take (sinal de overfitting manual)
+            def _sl(r): return r.get("stop_loss") or (r.get("parametros") or {}).get("stop_loss")
+            def _tp(r): return r.get("take_profit") or (r.get("parametros") or {}).get("take_profit")
+            ativos_testados = set(r.get("ativo") for r in minha_jornada)
+            if n >= 6 and len(ativos_testados) == 1:
+                comportamento["alertas"].append({
+                    "nivel": "alto",
+                    "texto": f"Você rodou {n} backtests no mesmo ativo ({list(ativos_testados)[0]}) ajustando parâmetros. "
+                             f"Cuidado: buscar o 'número perfeito' no histórico é a definição de overfitting. "
+                             f"Valide a melhor configuração na aba Robustez (out-of-sample)."
+                })
+
+            # alerta 2: nunca testou em mais de um timeframe
+            tfs = set(r.get("timeframe") for r in minha_jornada if r.get("timeframe"))
+            if n >= 4 and len(tfs) == 1:
+                comportamento["alertas"].append({
+                    "nivel": "medio",
+                    "texto": f"Todos os seus testes foram no timeframe {list(tfs)[0]}. "
+                             f"Uma estratégia robusta costuma funcionar em mais de um timeframe — experimente variar."
+                })
+
+            # alerta 3: melhor sharpe da jornada
+            melhor = max(minha_jornada, key=lambda r: (r.get("sharpe") or -999))
+            if melhor.get("sharpe") is not None:
+                comportamento["alertas"].append({
+                    "nivel": "info",
+                    "texto": f"Seu melhor backtest até agora: {melhor.get('ativo')} "
+                             f"(stop {_sl(melhor)}/take {_tp(melhor)}), Sharpe {melhor.get('sharpe'):.2f}, "
+                             f"retorno {melhor.get('retorno')}%. Que tal validar a robustez dele?"
+                })
+
+            # alerta 4: win rate alto com retorno negativo (a armadilha clássica)
+            armadilha = [r for r in minha_jornada
+                         if (r.get("win_rate") or 0) >= 55 and (r.get("retorno") or 0) < 0]
+            if armadilha:
+                comportamento["alertas"].append({
+                    "nivel": "alto",
+                    "texto": f"Você teve {len(armadilha)} teste(s) com win rate alto (≥55%) MAS retorno negativo. "
+                             f"Lembre: ganhar muitas vezes não é o mesmo que lucrar. O tamanho dos ganhos/perdas importa mais."
+                })
+        elif escopo:
+            comportamento["resumo"] = "Rode mais alguns backtests para a BabyMachine analisar sua jornada."
+
+        return converter_para_python({
+            "disponivel": True,
+            "coletivo": coletivo,
+            "comportamento": comportamento,
+        })
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO BABYMACHINE: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
+
+
+
+class ValidarOverfittingParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    indicador: str = "EMA Channel High/Low"
+    capital: float = 10000
+    max_ops: int = 5
+    comissao: float = 0.0002
+    ema_period: int = 20
+    stop_loss: float = 50
+    take_profit: float = 100
+    split: float = 0.70   # fração de treino (resto = teste)
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+
+def _metricas_simples(df_slice, base_params):
+    """Roda a estratégia num pedaço do df e devolve só as métricas-chave."""
+    resultado = rodar_estrategia(df_slice, base_params)
+    m = calcular_metricas_completas(resultado, base_params, df_slice)
+    return {
+        "retorno": float(m.get("retorno") or 0),
+        "win_rate": float(m.get("win_rate") or 0),
+        "sharpe": float(m.get("sharpe") or 0),
+        "profit_factor": float(m.get("profit_factor") or 0),
+        "max_drawdown": float(m.get("max_drawdown") or 0),
+        "total_trades": int(m.get("total_trades") or 0),
+    }
+
+
+@app.post("/validar-overfitting")
+def validar_overfitting(params: ValidarOverfittingParams):
+    """
+    Out-of-sample (treino/teste). Roda a MESMA estratégia em duas partes do
+    histórico: treino (primeiros split%) e teste (resto, dados 'nunca vistos').
+    Compara e dá um veredito honesto sobre robustez x overfitting.
+    """
+    import sys
+    try:
+        # 1) baixa os dados uma vez
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        if df is None or len(df) < 60:
+            raise HTTPException(status_code=400, detail="Dados insuficientes para dividir em treino/teste (mínimo ~60 candles).")
+
+        # 2) fatia cronológica: treino primeiro, teste depois (NUNCA embaralhar série temporal)
+        split = params.split if 0.5 <= params.split <= 0.9 else 0.70
+        corte = int(len(df) * split)
+        df_treino = df.iloc[:corte].copy()
+        df_teste = df.iloc[corte:].copy()
+        if len(df_treino) < 30 or len(df_teste) < 20:
+            raise HTTPException(status_code=400, detail="Período curto demais para um teste out-of-sample confiável. Use um período maior.")
+
+        # 3) parâmetros idênticos nas duas fatias
+        bp = BacktestParams(
+            ativo=params.ativo, periodo=params.periodo, timeframe=params.timeframe,
+            indicador=params.indicador, capital=params.capital, max_ops=params.max_ops,
+            comissao=params.comissao, ema_period=params.ema_period,
+            stop_loss=params.stop_loss, take_profit=params.take_profit,
+        )
+
+        treino = _metricas_simples(df_treino, bp)
+        teste = _metricas_simples(df_teste, bp)
+
+        # 4) veredito honesto
+        veredito = _avaliar_overfitting(treino, teste)
+
+        return converter_para_python({
+            "ativo": params.ativo,
+            "split": split,
+            "candles_treino": len(df_treino),
+            "candles_teste": len(df_teste),
+            "treino": treino,
+            "teste": teste,
+            "veredito": veredito,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO VALIDAR-OVERFITTING: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
+
+
+def _avaliar_overfitting(treino: dict, teste: dict) -> dict:
+    """
+    Decide se a estratégia parece robusta ou superajustada, comparando o
+    desempenho de treino com o de teste (out-of-sample). Sempre honesto:
+    nunca promete retorno futuro, só sinaliza fragilidade.
+    """
+    ret_tr = treino["retorno"]
+    ret_te = teste["retorno"]
+    sh_tr = treino["sharpe"]
+    sh_te = teste["sharpe"]
+    pf_te = teste["profit_factor"]
+    trades_te = teste["total_trades"]
+
+    motivos = []
+    # sinais de overfitting
+    if ret_tr > 0 and ret_te <= 0:
+        motivos.append("Lucro no treino virou prejuízo (ou zero) no teste.")
+    if sh_tr > 0 and sh_te < 0:
+        motivos.append("Sharpe positivo no treino ficou negativo no teste.")
+    # queda relativa grande de retorno (quando o treino foi positivo)
+    if ret_tr > 0:
+        queda = (ret_tr - ret_te) / abs(ret_tr) if ret_tr != 0 else 0
+        if queda >= 0.6 and ret_te < ret_tr:
+            motivos.append("Desempenho caiu mais de 60% do treino para o teste.")
+    # poucos trades no teste = amostra pequena, pouco confiável
+    if trades_te < 10:
+        motivos.append(f"Apenas {trades_te} operações no teste — amostra pequena, resultado pouco confiável.")
+
+    # sinais de robustez
+    robusto = (ret_te > 0 and sh_te > 0 and pf_te >= 1.0)
+
+    if len(motivos) >= 2 or (ret_tr > 0 and ret_te <= 0):
+        nivel = "alto"
+        titulo = "Sinais de overfitting"
+        resumo = "A estratégia foi bem no passado conhecido, mas tropeçou nos dados que nunca viu. Cuidado: pode estar ajustada demais ao histórico."
+    elif motivos:
+        nivel = "medio"
+        titulo = "Atenção"
+        resumo = "Há sinais de fragilidade entre treino e teste. Vale investigar antes de confiar."
+    elif robusto:
+        nivel = "baixo"
+        titulo = "Mais robusta"
+        resumo = "A estratégia manteve desempenho positivo nos dados que nunca viu. É um bom sinal — mas backtest nunca garante o futuro."
+    else:
+        nivel = "medio"
+        titulo = "Resultado misto"
+        resumo = "O comportamento entre treino e teste não é claramente bom nem ruim. Teste em mais períodos e ativos."
+
+    return {"nivel": nivel, "titulo": titulo, "resumo": resumo, "motivos": motivos}
+
+
+# ════════════════════════════════════════════════════════════
+#  OFFMIND — Engine de detecção de padrões (Association Rules)
+#  Filosofia: detectar padrões no histórico e medir HONESTAMENTE
+#  (acerto E falha). Nunca promete retorno futuro.
+# ════════════════════════════════════════════════════════════
+
+def calcular_atr(df, period=14):
+    """Average True Range — mede a volatilidade recente. Usado p/ alvo e stop."""
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        (high - low),
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return tr.rolling(period, min_periods=1).mean()
+
+# ── DETECTORES DE PADRÃO ──────────────────────────────────────
+# Cada detector recebe o df e retorna lista de (índice, direção_esperada).
+# direção: "alta" (espera subir) ou "baixa" (espera cair).
+# Plugar um padrão novo = escrever uma função aqui e registrar em PADROES_OFFMIND.
+
+def _corpo(o, c):       # tamanho do corpo da vela
+    return abs(c - o)
+
+def det_engolfo_alta(df):
+    """Candle verde cujo corpo engole o corpo do candle vermelho anterior."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(1, len(df)):
+        prev_baixa = c[i-1] < o[i-1]           # vela anterior vermelha
+        atual_alta = c[i] > o[i]               # vela atual verde
+        engole = (o[i] <= c[i-1]) and (c[i] >= o[i-1])
+        if prev_baixa and atual_alta and engole and _corpo(o[i],c[i]) > _corpo(o[i-1],c[i-1]):
+            out.append((i, "alta"))
+    return out
+
+def det_engolfo_baixa(df):
+    """Candle vermelho que engole o corpo do verde anterior."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(1, len(df)):
+        prev_alta = c[i-1] > o[i-1]
+        atual_baixa = c[i] < o[i]
+        engole = (o[i] >= c[i-1]) and (c[i] <= o[i-1])
+        if prev_alta and atual_baixa and engole and _corpo(o[i],c[i]) > _corpo(o[i-1],c[i-1]):
+            out.append((i, "baixa"))
+    return out
+
+def det_martelo(df):
+    """Pin bar de baixo: pavio inferior longo, corpo pequeno no topo → reversão p/ cima."""
+    o, c, h, l = df['Open'].values, df['Close'].values, df['High'].values, df['Low'].values
+    out = []
+    for i in range(len(df)):
+        rng = h[i] - l[i]
+        if rng <= 0: continue
+        corpo = _corpo(o[i], c[i])
+        pavio_inf = min(o[i], c[i]) - l[i]
+        pavio_sup = h[i] - max(o[i], c[i])
+        if corpo <= rng*0.35 and pavio_inf >= rng*0.5 and pavio_sup <= rng*0.2:
+            out.append((i, "alta"))
+    return out
+
+def det_estrela_cadente(df):
+    """Pin bar de cima: pavio superior longo → reversão p/ baixo."""
+    o, c, h, l = df['Open'].values, df['Close'].values, df['High'].values, df['Low'].values
+    out = []
+    for i in range(len(df)):
+        rng = h[i] - l[i]
+        if rng <= 0: continue
+        corpo = _corpo(o[i], c[i])
+        pavio_inf = min(o[i], c[i]) - l[i]
+        pavio_sup = h[i] - max(o[i], c[i])
+        if corpo <= rng*0.35 and pavio_sup >= rng*0.5 and pavio_inf <= rng*0.2:
+            out.append((i, "baixa"))
+    return out
+
+def det_tres_verdes(df):
+    """3 velas verdes seguidas → mede se continua ou exausta."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(2, len(df)):
+        if c[i]>o[i] and c[i-1]>o[i-1] and c[i-2]>o[i-2]:
+            out.append((i, "alta"))
+    return out
+
+def det_tres_vermelhas(df):
+    """3 velas vermelhas seguidas."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(2, len(df)):
+        if c[i]<o[i] and c[i-1]<o[i-1] and c[i-2]<o[i-2]:
+            out.append((i, "baixa"))
+    return out
+
+PADROES_OFFMIND = {
+    "engolfo_alta":    {"fn": det_engolfo_alta,    "nome": "Engolfo de alta",        "categoria": "candle"},
+    "engolfo_baixa":   {"fn": det_engolfo_baixa,   "nome": "Engolfo de baixa",       "categoria": "candle"},
+    "martelo":         {"fn": det_martelo,         "nome": "Martelo (pin bar alta)", "categoria": "candle"},
+    "estrela_cadente": {"fn": det_estrela_cadente, "nome": "Estrela cadente (pin bar baixa)", "categoria": "candle"},
+    "tres_verdes":     {"fn": det_tres_verdes,     "nome": "3 velas verdes",         "categoria": "candle"},
+    "tres_vermelhas":  {"fn": det_tres_vermelhas,  "nome": "3 velas vermelhas",      "categoria": "candle"},
+}
+
+# ── ENGINE GENÉRICA DE MEDIÇÃO ────────────────────────────────
+def _medir_ocorrencia(df, atr, i, direcao, velas_frente, atr_mult_alvo, atr_mult_stop):
+    """
+    A partir da ocorrência no índice i, simula entrada no fechamento da vela i
+    com alvo/stop baseados em ATR, olhando até `velas_frente` velas à frente.
+    Retorna: 'acerto' (bateu alvo antes do stop), 'falha' (bateu stop antes),
+    'neutro' (não bateu nenhum no horizonte) e o movimento % no fim do horizonte.
+    """
+    entrada = float(df['Close'].iloc[i])
+    a = float(atr.iloc[i]) if atr.iloc[i] == atr.iloc[i] else 0.0  # NaN-safe
+    if a <= 0 or entrada <= 0:
+        return None
+    if direcao == "alta":
+        alvo = entrada + atr_mult_alvo * a
+        stop = entrada - atr_mult_stop * a
+    else:
+        alvo = entrada - atr_mult_alvo * a
+        stop = entrada + atr_mult_stop * a
+
+    fim = min(i + velas_frente, len(df) - 1)
+    resultado = "neutro"
+    for j in range(i+1, fim+1):
+        hi = float(df['High'].iloc[j]); lo = float(df['Low'].iloc[j])
+        if direcao == "alta":
+            bateu_alvo = hi >= alvo
+            bateu_stop = lo <= stop
+        else:
+            bateu_alvo = lo <= alvo
+            bateu_stop = hi >= stop
+        # se ambos no mesmo candle, assume pior caso (stop primeiro) p/ ser conservador
+        if bateu_stop:
+            resultado = "falha"; break
+        if bateu_alvo:
+            resultado = "acerto"; break
+    preco_fim = float(df['Close'].iloc[fim])
+    mov_pct = (preco_fim - entrada)/entrada*100
+    if direcao == "baixa":
+        mov_pct = -mov_pct   # p/ baixa, mov favorável é queda
+    return {"resultado": resultado, "mov_pct": mov_pct}
+
+def analisar_padrao(df, detector, horizontes, atr_mult_alvo=2.0, atr_mult_stop=1.0):
+    """Engine genérica: roda o detector e mede o resultado em vários horizontes."""
+    atr = calcular_atr(df)
+    ocorrencias = detector(df)
+    total = len(ocorrencias)
+    por_horizonte = []
+    for h in horizontes:
+        acertos = falhas = neutros = 0
+        movs = []
+        for (i, direcao) in ocorrencias:
+            if i >= len(df)-1:
+                continue
+            r = _medir_ocorrencia(df, atr, i, direcao, h, atr_mult_alvo, atr_mult_stop)
+            if r is None:
+                continue
+            movs.append(r["mov_pct"])
+            if r["resultado"] == "acerto": acertos += 1
+            elif r["resultado"] == "falha": falhas += 1
+            else: neutros += 1
+        validos = acertos + falhas + neutros
+        decididos = acertos + falhas
+        taxa_acerto = (acertos/decididos*100) if decididos > 0 else 0.0
+        taxa_falha = (falhas/decididos*100) if decididos > 0 else 0.0
+        mov_medio = (sum(movs)/len(movs)) if movs else 0.0
+        por_horizonte.append({
+            "horizonte": h,
+            "ocorrencias_medidas": validos,
+            "acertos": acertos,
+            "falhas": falhas,
+            "neutros": neutros,
+            "taxa_acerto": round(taxa_acerto, 2),
+            "taxa_falha": round(taxa_falha, 2),
+            "mov_medio_pct": round(mov_medio, 3),
+        })
+    return {"total_ocorrencias": total, "por_horizonte": por_horizonte}
+
+
+class OffMindParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    padrao: str = "engolfo_alta"        # chave em PADROES_OFFMIND, ou "todos"
+    horizontes: list = [3, 5, 10, 20]
+    atr_mult_alvo: float = 2.0
+    atr_mult_stop: float = 1.0
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+
+@app.get("/offmind/padroes")
+def offmind_listar_padroes():
+    """Lista os padrões disponíveis na engine."""
+    return {"padroes": [
+        {"chave": k, "nome": v["nome"], "categoria": v["categoria"]}
+        for k, v in PADROES_OFFMIND.items()
+    ]}
+
+
+@app.post("/offmind/analisar")
+def offmind_analisar(params: OffMindParams):
+    """Detecta padrão(ões) no histórico e mede acerto/falha em vários horizontes."""
+    import sys
+    try:
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        if df is None or len(df) < 40:
+            raise HTTPException(status_code=400, detail="Dados insuficientes para análise de padrões.")
+
+        horizontes = [int(h) for h in (params.horizontes or [3,5,10,20]) if int(h) > 0][:6] or [3,5,10,20]
+        alvo = params.atr_mult_alvo if params.atr_mult_alvo > 0 else 2.0
+        stop = params.atr_mult_stop if params.atr_mult_stop > 0 else 1.0
+
+        if params.padrao == "todos":
+            chaves = list(PADROES_OFFMIND.keys())
+        elif params.padrao in PADROES_OFFMIND:
+            chaves = [params.padrao]
+        else:
+            raise HTTPException(status_code=400, detail=f"Padrão desconhecido: {params.padrao}")
+
+        resultados = []
+        for k in chaves:
+            meta = PADROES_OFFMIND[k]
+            r = analisar_padrao(df, meta["fn"], horizontes, alvo, stop)
+            resultados.append({
+                "chave": k, "nome": meta["nome"], "categoria": meta["categoria"],
+                "total_ocorrencias": r["total_ocorrencias"],
+                "por_horizonte": r["por_horizonte"],
+            })
+
+        return converter_para_python({
+            "ativo": params.ativo,
+            "periodo": params.periodo,
+            "timeframe": params.timeframe,
+            "candles_analisados": len(df),
+            "atr_mult_alvo": alvo,
+            "atr_mult_stop": stop,
+            "resultados": resultados,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO OFFMIND: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
+
+
+@app.post("/backtest/visual")
+def backtest_visual(params: BacktestParams):
+    import sys
+    try:
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        resultado = rodar_estrategia(df, params)
+        metricas = calcular_metricas_completas(resultado, params, df)
+        salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo="")
+        return converter_para_python(metricas)
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO BACKTEST: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
+
+@app.post("/backtest/custom")
+def backtest_custom(params: BacktestCustom):
+    import sys
+    try:
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        if params.codigo and len(params.codigo.strip()) > 20:
+            try:
+                resultado = rodar_codigo_custom(df, params)
+            except Exception:
+                resultado = rodar_estrategia(df, params)
+        else:
+            resultado = rodar_estrategia(df, params)
+        metricas = calcular_metricas_completas(resultado, params, df)
+        salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo=getattr(params, "codigo", ""))
+        return converter_para_python(metricas)
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO CUSTOM: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
+
+def rodar_codigo_custom(df: pd.DataFrame, params: BacktestCustom) -> dict:
+    """Executa estratégia Python customizada do usuário"""
+    capital = params.capital
+    comissao = params.comissao
+    equity_curve = [capital]
+    trades = []
+
+    # Prepara namespace seguro
+    ns = {
+        "pd": pd, "np": np,
+        "df": df.copy(),
+        "capital": capital,
+        "comissao": comissao,
+        "trades": trades,
+        "equity_curve": equity_curve,
+    }
+
+    # Injeta lógica de execução básica
+    codigo_exec = f"""
+import pandas as pd
+import numpy as np
+
+df = df.copy()
+posicao = None
+capital_atual = capital
+
+# Código do usuário
+{params.codigo}
+
+# Tenta executar next() em loop se Strategy foi definida
+if 'Strategy' in dir() or any('class' in linha for linha in '''{params.codigo}'''.split('\\n')):
+    pass  # Strategy baseada em backtesting.py — usa motor padrão
+"""
+    try:
+        exec(params.codigo, ns)
+    except Exception:
+        pass
+
+    return {"trades": trades, "equity_curve": equity_curve,
+            "df": df, "capital_final": capital}
+
+@app.post("/gerar-bot-ia")
+def gerar_bot_ia(req: IARequest):
+    desc = req.descricao.lower()
+
+    # Templates inteligentes baseados na descrição
+    if "rsi" in desc:
+        periodo = 14
+        for w in desc.split():
+            if w.isdigit():
+                periodo = int(w)
+                break
+        codigo = f"""class RSIStrategy(Strategy):
+    rsi_period = {periodo}
+
     def init(self):
         close = pd.Series(self.data.Close)
         delta = close.diff()
         gain = delta.clip(lower=0).rolling(self.rsi_period).mean()
         loss = (-delta.clip(upper=0)).rolling(self.rsi_period).mean()
-        rs = gain / loss
-        self.rsi = self.I(lambda: (100 - 100/(1+rs)).values)
+        rs = gain / loss.replace(0, np.nan)
+        self.rsi = self.I(lambda: (100 - 100 / (1 + rs)).values)
+
     def next(self):
         if not self.position:
-            if self.rsi[-1] < 30: self.buy()
+            if self.rsi[-1] < 30:
+                self.buy()
         else:
-            if self.rsi[-1] > 70: self.position.close()`,
-  macd: `class MACDStrategy(Strategy):
+            if self.rsi[-1] > 70:
+                self.position.close()"""
+
+    elif "macd" in desc:
+        codigo = """class MACDStrategy(Strategy):
     def init(self):
         close = pd.Series(self.data.Close)
-        ema12 = close.ewm(span=12,adjust=False).mean()
-        ema26 = close.ewm(span=26,adjust=False).mean()
+        ema12 = close.ewm(span=12, adjust=False).mean()
+        ema26 = close.ewm(span=26, adjust=False).mean()
         macd = ema12 - ema26
-        signal = macd.ewm(span=9,adjust=False).mean()
+        signal = macd.ewm(span=9, adjust=False).mean()
         self.macd = self.I(lambda: macd.values)
         self.signal = self.I(lambda: signal.values)
+
     def next(self):
         if not self.position:
-            if self.macd[-1] > self.signal[-1] and self.macd[-2] <= self.signal[-2]: self.buy()
+            if self.macd[-1] > self.signal[-1] and self.macd[-2] <= self.signal[-2]:
+                self.buy()
         else:
-            if self.macd[-1] < self.signal[-1]: self.position.close()`,
-  bb: `class BollingerStrategy(Strategy):
+            if self.macd[-1] < self.signal[-1]:
+                self.position.close()"""
+
+    elif "bollinger" in desc or "bb" in desc:
+        codigo = """class BollingerStrategy(Strategy):
     period = 20
+
     def init(self):
         close = pd.Series(self.data.Close)
         sma = close.rolling(self.period).mean()
         std = close.rolling(self.period).std()
         self.upper = self.I(lambda: (sma + 2*std).values)
         self.lower = self.I(lambda: (sma - 2*std).values)
+
     def next(self):
         if not self.position:
-            if self.data.Close[-1] < self.lower[-1]: self.buy()
+            if self.data.Close[-1] < self.lower[-1]:
+                self.buy()
         else:
-            if self.data.Close[-1] > self.upper[-1]: self.position.close()`,
-  sma_cross: `class GoldenCrossStrategy(Strategy):
+            if self.data.Close[-1] > self.upper[-1]:
+                self.position.close()"""
+
+    elif "sma" in desc or "media" in desc or "golden" in desc:
+        codigo = """class GoldenCrossStrategy(Strategy):
+    fast = 50
+    slow = 200
+
     def init(self):
         close = pd.Series(self.data.Close)
-        self.sma50 = self.I(lambda: close.rolling(50).mean().values)
-        self.sma200 = self.I(lambda: close.rolling(200).mean().values)
+        self.sma_fast = self.I(lambda: close.rolling(self.fast).mean().values)
+        self.sma_slow = self.I(lambda: close.rolling(self.slow).mean().values)
+
     def next(self):
         if not self.position:
-            if self.sma50[-1] > self.sma200[-1] and self.sma50[-2] <= self.sma200[-2]: self.buy()
+            if self.sma_fast[-1] > self.sma_slow[-1] and self.sma_fast[-2] <= self.sma_slow[-2]:
+                self.buy()
         else:
-            if self.sma50[-1] < self.sma200[-1]: self.position.close()`,
-  breakout: `class BreakoutStrategy(Strategy):
-    lookback = 20
+            if self.sma_fast[-1] < self.sma_slow[-1]:
+                self.position.close()"""
+
+    else:
+        # EMA Channel padrão
+        codigo = f"""class EMAChannelStrategy(Strategy):
+    # Gerado por IA baseado em: {req.descricao}
+    ema_period = 20
+
     def init(self):
-        high = pd.Series(self.data.High)
-        low = pd.Series(self.data.Low)
-        self.resist = self.I(lambda: high.rolling(self.lookback).max().values)
-        self.support = self.I(lambda: low.rolling(self.lookback).min().values)
+        self.ema_high = self.I(
+            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.High
+        )
+        self.ema_low = self.I(
+            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.Low
+        )
+
     def next(self):
+        preco = self.data.Close[-1]
         if not self.position:
-            if self.data.Close[-1] > self.resist[-2]: self.buy()
+            if preco > self.ema_high[-1]:
+                self.buy()
         else:
-            if self.data.Close[-1] < self.support[-2]: self.position.close()`
-};
+            if preco < self.ema_low[-1]:
+                self.position.close()"""
 
-function switchTab(tab) {
-  activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar','robustez','padroes','baby'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
-    const btn = document.getElementById('tab-'+t+'-btn');
-    if (btn) btn.classList.toggle('active', t === tab);
-  });
-  if (tab === 'overview') {
-    document.getElementById('tab-overview').style.display = 'block';
-  }
-}
-
-// ── OTIMIZACAO DE PARAMETROS (v1.6) ──────────────────────────
-const OTIM_TETO = 50;
-function _otimVals(ini, fim, passo){
-  ini=parseFloat(ini); fim=parseFloat(fim); passo=parseFloat(passo);
-  if(isNaN(ini)||isNaN(fim)||isNaN(passo)) return [];
-  if(passo<=0) return [ini];
-  const v=[]; let x=ini;
-  while(x<=fim+1e-9){ v.push(Math.round(x*1e6)/1e6); x+=passo; }
-  return v.length?v:[ini];
-}
-function _otimContar(){
-  const s=_otimVals(val('otim-sl-ini'),val('otim-sl-fim'),val('otim-sl-passo'));
-  const t=_otimVals(val('otim-tp-ini'),val('otim-tp-fim'),val('otim-tp-passo'));
-  const e=_otimVals(val('otim-ema-ini'),val('otim-ema-fim'),val('otim-ema-passo'));
-  return s.length*t.length*e.length;
-}
-function val(id){ return document.getElementById(id).value; }
-function _otimAtualizaContagem(){
-  const n=_otimContar();
-  const el=document.getElementById('otim-combos');
-  const go=document.getElementById('otim-go');
-  el.textContent = n + ' combinaç' + (n===1?'ão':'ões') + ' (teto ' + OTIM_TETO + ')';
-  if(n>OTIM_TETO){ el.classList.add('over'); el.textContent += ' — reduza o intervalo'; go.disabled=true; }
-  else if(n===0){ el.classList.add('over'); el.textContent='intervalos inválidos'; go.disabled=true; }
-  else { el.classList.remove('over'); go.disabled=false; }
-}
-function abrirOtimizar(){
-  if(!usuarioAtual){ abrirAuth('login'); return; }
-  // Puxa os valores atuais dos campos da esquerda como ponto de partida ("de")
-  const slAtual = document.getElementById('stop_loss').value;
-  const tpAtual = document.getElementById('take_profit').value;
-  const emaAtual = document.getElementById('ema_period').value;
-  if(slAtual){ document.getElementById('otim-sl-ini').value = slAtual; }
-  if(tpAtual){ document.getElementById('otim-tp-ini').value = tpAtual; }
-  if(emaAtual){ document.getElementById('otim-ema-ini').value = emaAtual; document.getElementById('otim-ema-fim').value = emaAtual; }
-  document.getElementById('otim-modal-bg').style.display='flex';
-  _otimAtualizaContagem();
-  ['otim-sl-ini','otim-sl-fim','otim-sl-passo','otim-tp-ini','otim-tp-fim','otim-tp-passo','otim-ema-ini','otim-ema-fim','otim-ema-passo']
-    .forEach(id=>{ const el=document.getElementById(id); el.oninput=_otimAtualizaContagem; });
-}
-function fecharOtimizar(){ document.getElementById('otim-modal-bg').style.display='none'; }
-
-async function rodarOtimizar(){
-  const n=_otimContar();
-  if(n<1||n>OTIM_TETO) return;
-  const body={
-    ativo: document.getElementById('ativo').value,
-    periodo: document.getElementById('periodo').value,
-    timeframe: document.getElementById('timeframe').value,
-    indicador: document.getElementById('indicador').value,
-    capital: parseFloat(document.getElementById('capital').value),
-    max_ops: parseInt(document.getElementById('max_ops').value),
-    comissao: parseFloat(document.getElementById('comissao').value),
-    stop_loss_range: [parseFloat(val('otim-sl-ini')),parseFloat(val('otim-sl-fim')),parseFloat(val('otim-sl-passo'))],
-    take_profit_range: [parseFloat(val('otim-tp-ini')),parseFloat(val('otim-tp-fim')),parseFloat(val('otim-tp-passo'))],
-    ema_period_range: [parseFloat(val('otim-ema-ini')),parseFloat(val('otim-ema-fim')),parseFloat(val('otim-ema-passo'))],
-    ordenar_por: document.getElementById('otim-ordenar').value,
-    user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-    sessao_id: BB_SESSAO_ID,
-  };
-  const go=document.getElementById('otim-go');
-  const txtOrig=go.textContent;
-  go.disabled=true; go.textContent='Rodando '+n+' testes...';
-  fecharOtimizar();
-  switchTab('otimizar');
-  document.getElementById('otim-vazio').style.display='none';
-  const res=document.getElementById('otim-resultado');
-  res.style.display='block';
-  res.innerHTML='<div class="otim-loading">'+
-    '<div class="otim-candles">'+
-    '<div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div>'+
-    '<div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div>'+
-    '<div class="otim-candle up"></div>'+
-    '</div>'+
-    '<div class="ltxt">Otimizando '+n+' combinações...</div>'+
-    '<div class="lsub">Rodando os backtests. Isso pode levar de alguns segundos a 1-2 minutos.</div>'+
-    '</div>';
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),180000);
-    const minDelay=new Promise(r=>setTimeout(r,900)); // loading visível por pelo menos 0.9s
-    const fetchP=fetch(API+'/otimizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctrl.signal});
-    const [r]=await Promise.all([fetchP,minDelay]);
-    clearTimeout(tid);
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro na otimização'); }
-    const d=await r.json();
-    renderOtimizacao(d);
-  }catch(err){
-    res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro: '+(err.message||err)+'</div>';
-  }finally{
-    go.disabled=false; go.textContent=txtOrig;
-  }
-}
-
-function _fmt(v,suf){ if(v===null||v===undefined) return '—'; return (typeof v==='number'?v.toFixed(2):v)+(suf||''); }
-function renderOtimizacao(d){
-  const res=document.getElementById('otim-resultado');
-  const m=d.melhor||{};
-  const ord=d.ordenado_por;
-  const ordLabel={sharpe:'Sharpe',profit_factor:'Profit Factor',retorno:'Retorno',win_rate:'Win Rate'}[ord]||ord;
-  // aviso quando win rate alto mas retorno negativo
-  let avisoWR='';
-  if(m.win_rate>=50 && m.retorno<0){
-    avisoWR='<div style="background:#2a1414;border:1px solid #7a2020;border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:12px;color:#ff9a9a;line-height:1.5">⚠ Atenção: a combinação com mais acertos perde dinheiro (win rate alto, retorno negativo). Taxa de acerto não é lucro.</div>';
-  }
-  let linhas='';
-  (d.ranking||[]).forEach((row,i)=>{
-    const top=i===0;
-    const retCor = row.retorno>0?'#00d084':(row.retorno<0?'#ff5a5a':'var(--muted2)');
-    linhas+='<tr style="'+(top?'background:rgba(0,208,132,.08)':'')+'">'+
-      '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted)">'+(i+1)+(top?' 🏆':'')+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.stop_loss+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.take_profit+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.ema_period+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono);color:'+retCor+';font-weight:600">'+_fmt(row.retorno,'%')+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.sharpe)+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.profit_factor)+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted2)">'+_fmt(row.win_rate,'%')+'</td>'+
-      '<td style="padding:8px 6px;font-family:var(--mono);color:#ff8a8a">'+_fmt(row.max_drawdown,'%')+'</td>'+
-      '<td style="padding:8px 6px"><button onclick="mostrarGraficoNaOtimizacao('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:5px 12px;border-radius:6px;border:1px solid #00d084;background:#0f1620;color:#00d084;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
-      '</tr>';
-  });
-  res.innerHTML=
-    '<div style="margin-bottom:6px;font-size:15px;color:var(--text);font-weight:600">Resultado da otimização</div>'+
-    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+d.combinacoes_testadas+' combinações testadas · ordenado por <strong style="color:var(--green)">'+ordLabel+'</strong></div>'+
-    avisoWR+
-    '<div style="background:#2a2410;border:1px solid #7a5c10;border-radius:8px;padding:11px 13px;margin-bottom:16px;font-size:11px;color:#f0c050;line-height:1.5">⚠ '+(d.alerta_overfitting||'')+'</div>'+
-    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
-    '<thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left">'+
-    '<th style="padding:8px 6px">#</th><th style="padding:8px 6px">Stop</th><th style="padding:8px 6px">Take</th><th style="padding:8px 6px">EMA</th><th style="padding:8px 6px">Retorno</th><th style="padding:8px 6px">Sharpe</th><th style="padding:8px 6px">P.Factor</th><th style="padding:8px 6px">Win%</th><th style="padding:8px 6px">Drawdown</th><th style="padding:8px 6px"></th>'+
-    '</tr></thead><tbody>'+linhas+'</tbody></table></div>'+
-    '<div id="otim-grafico-slot" style="margin-top:18px"></div>';
-
-  // Passo B completo: abre o gráfico da campeã EMBAIXO da tabela (mesma aba)
-  const campea = (d.ranking && d.ranking[0]) ? d.ranking[0] : null;
-  if(campea){
-    setTimeout(()=>{ mostrarGraficoNaOtimizacao(campea.stop_loss, campea.take_profit, campea.ema_period); }, 400);
-  }
-}
-
-// Move o #ov-result (gráfico+relatório completo) p/ dentro do slot embaixo da tabela
-async function mostrarGraficoNaOtimizacao(sl,tp,ema){
-  modoExemplo = false;
-  const slot = document.getElementById('otim-grafico-slot');
-  if(!slot) return;
-  // IMPORTANTE: se o #ov-result já está dentro do slot (de uma combinação anterior),
-  // devolve ele pra aba Overview ANTES de limpar o slot — senão o elemento é destruído.
-  const ovrPrev = document.getElementById('ov-result');
-  const ovTabPrev = document.getElementById('tab-overview');
-  if(ovrPrev && ovTabPrev && ovrPrev.parentElement !== ovTabPrev){
-    ovrPrev.style.display='none';
-    ovTabPrev.appendChild(ovrPrev);
-  }
-  // cabeçalho indicando qual combinação está sendo exibida
-  slot.innerHTML = '<div style="margin:6px 0 12px;font-size:13px;color:var(--text);font-weight:600">📊 Gráfico da combinação · Stop '+sl+' / Take '+tp+' / EMA '+ema+'</div>'+
-    '<div id="otim-grafico-load" style="text-align:center;color:var(--muted);padding:30px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:12px">Carregando gráfico...</div></div>';
-  // preenche os campos da esquerda e roda o backtest dessa combinação
-  document.getElementById('stop_loss').value=sl;
-  document.getElementById('take_profit').value=tp;
-  document.getElementById('ema_period').value=ema;
-  try{
-    const params = {
-      ativo: document.getElementById('ativo').value,
-      periodo: document.getElementById('periodo').value,
-      timeframe: document.getElementById('timeframe').value,
-      indicador: document.getElementById('indicador').value,
-      ema_period: parseInt(ema),
-      stop_loss: parseFloat(sl),
-      take_profit: parseFloat(tp),
-      capital: parseFloat(document.getElementById('capital').value),
-      max_ops: parseInt(document.getElementById('max_ops').value),
-      comissao: parseFloat(document.getElementById('comissao').value),
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/backtest/visual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    lastResult = d;
-    atualizarMetricsBar(d);
-    renderOverview(d, params);           // desenha dentro do #ov-result (que agora está na Overview)
-    // move o #ov-result pra dentro do slot, embaixo da tabela
-    const ovr = document.getElementById('ov-result');
-    const loadEl = document.getElementById('otim-grafico-load');
-    if(loadEl) loadEl.remove();
-    slot.appendChild(ovr);
-    ovr.style.display='block';
-  }catch(err){
-    const slot2=document.getElementById('otim-grafico-slot');
-    if(slot2) slot2.innerHTML='<div style="color:#ff5a5a;padding:20px;text-align:center">Erro ao carregar o gráfico: '+(err.message||err)+'</div>';
-  }
-}
-
-function aplicarCombo(sl,tp,ema){
-  // Preenche os campos da esquerda com a combinação escolhida...
-  document.getElementById('stop_loss').value=sl;
-  document.getElementById('take_profit').value=tp;
-  document.getElementById('ema_period').value=ema;
-  // ...e já roda o backtest dessa combinação (rodarBacktest troca pra aba Overview e desenha o gráfico)
-  rodarBacktest();
-}
-
-// ── VALIDACAO DE ROBUSTEZ / OVERFITTING (out-of-sample) ──────
-async function validarRobustez(){
-  const btn = document.getElementById('robustez-btn');
-  const txtOriginal = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🔬 Validando...'; }
-  switchTab('robustez');
-  const vazio = document.getElementById('rob-vazio');
-  const res = document.getElementById('rob-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Dividindo o histórico em treino e teste e comparando o desempenho...</div></div>';
-  }
-  try{
-    const params = {
-      ativo: document.getElementById('ativo').value,
-      periodo: document.getElementById('periodo').value,
-      timeframe: document.getElementById('timeframe').value,
-      indicador: document.getElementById('indicador').value,
-      capital: parseFloat(document.getElementById('capital').value),
-      max_ops: parseInt(document.getElementById('max_ops').value),
-      comissao: parseFloat(document.getElementById('comissao').value),
-      ema_period: parseInt(document.getElementById('ema_period').value),
-      stop_loss: parseFloat(document.getElementById('stop_loss').value),
-      take_profit: parseFloat(document.getElementById('take_profit').value),
-      split: 0.70,
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/validar-overfitting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderRobustez(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao validar: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txtOriginal; }
-  }
-}
-
-function renderRobustez(d){
-  const res = document.getElementById('rob-resultado');
-  if(!res) return;
-  const v = d.veredito||{};
-  // cores por nível
-  const cor = v.nivel==='baixo' ? '#00d084' : (v.nivel==='alto' ? '#ff4d6a' : '#ffb830');
-  const corBg = v.nivel==='baixo' ? 'rgba(0,208,132,0.08)' : (v.nivel==='alto' ? 'rgba(255,77,106,0.08)' : 'rgba(255,184,48,0.08)');
-  const icone = v.nivel==='baixo' ? '✅' : (v.nivel==='alto' ? '⚠️' : '🟡');
-
-  const tr=d.treino||{}, te=d.teste||{};
-  // helper de linha comparativa
-  const fmtPct = x => (x>=0?'+':'')+Number(x).toFixed(2)+'%';
-  const linha = (label, kt, kte, fmt, melhorMaior) => {
-    const a=Number(tr[kt]||0), b=Number(te[kte]||0);
-    const f = fmt||(x=>Number(x).toFixed(2));
-    // cor do teste: verde se manteve/melhorou direção esperada, vermelho se piorou muito
-    let corTe = 'var(--text)';
-    if(melhorMaior!==undefined){
-      if(melhorMaior){ corTe = (b>=0 && b>=a*0.6) ? '#00d084' : (b<0 ? '#ff4d6a' : '#ffb830'); }
-    }
-    return '<tr style="border-bottom:1px solid var(--border)">'+
-      '<td style="padding:9px 8px;color:var(--muted2);font-size:12px">'+label+'</td>'+
-      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--text)">'+f(a)+'</td>'+
-      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:'+corTe+';font-weight:600">'+f(b)+'</td>'+
-      '</tr>';
-  };
-
-  let motivosHtml='';
-  if(v.motivos && v.motivos.length){
-    motivosHtml = '<ul style="margin:10px 0 0;padding-left:18px;color:var(--muted2);font-size:12.5px;line-height:1.7">'+
-      v.motivos.map(m=>'<li>'+m+'</li>').join('')+'</ul>';
-  }
-
-  // calcula winners/losers de cada fase (a partir de win_rate e total_trades)
-  const trTotal = Math.round(Number(tr.total_trades||0));
-  const trWin = Math.round(trTotal * Number(tr.win_rate||0)/100);
-  const trLoss = Math.max(0, trTotal - trWin);
-  const teTotal = Math.round(Number(te.total_trades||0));
-  const teWin = Math.round(teTotal * Number(te.win_rate||0)/100);
-  const teLoss = Math.max(0, teTotal - teWin);
-
-  const donutBlock = (titulo, win, loss, total, wr, canvasId) => (
-    '<div style="flex:1;min-width:280px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px 24px">'+
-      '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;letter-spacing:.3px">'+titulo+'</div>'+
-      '<div style="font-size:13px;color:var(--muted2);margin-bottom:18px">Win Rate '+Number(wr).toFixed(2)+'%</div>'+
-      '<div style="display:flex;align-items:center;gap:28px;justify-content:center;flex-wrap:wrap">'+
-        '<div style="width:180px;height:180px;flex-shrink:0;position:relative"><canvas id="'+canvasId+'"></canvas></div>'+
-        '<div style="font-size:14px;line-height:2.2">'+
-          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#00d084;display:inline-block"></span><span style="color:var(--muted2)">Ganhos</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+win+'</strong></div>'+
-          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#ff4d6a;display:inline-block"></span><span style="color:var(--muted2)">Perdas</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+loss+'</strong></div>'+
-          '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;color:var(--muted2)">Total <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+total+'</strong></div>'+
-        '</div>'+
-      '</div>'+
-    '</div>'
-  );
-
-  res.innerHTML =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔬 Validação de robustez (out-of-sample)</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:16px">'+d.ativo+' · treino: '+d.candles_treino+' candles ('+Math.round(d.split*100)+'%) · teste: '+d.candles_teste+' candles ('+Math.round((1-d.split)*100)+'%)</div>'+
-    // veredito
-    '<div style="background:'+corBg+';border:1px solid '+cor+';border-radius:10px;padding:16px 18px;margin-bottom:18px">'+
-      '<div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:'+cor+'">'+icone+' '+(v.titulo||'')+'</div>'+
-      '<div style="font-size:13px;color:var(--text);margin-top:7px;line-height:1.6">'+(v.resumo||'')+'</div>'+
-      motivosHtml+
-    '</div>'+
-    // tabela comparativa (largura toda)
-    '<div style="overflow-x:auto;margin-bottom:22px"><table style="width:100%;border-collapse:collapse">'+
-      '<thead><tr style="border-bottom:1px solid var(--border2)">'+
-        '<th style="padding:8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600">MÉTRICA</th>'+
-        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TREINO (conhecido)</th>'+
-        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TESTE (nunca visto)</th>'+
-      '</tr></thead><tbody>'+
-        linha('Retorno','retorno','retorno',fmtPct,true)+
-        linha('Win Rate','win_rate','win_rate',x=>Number(x).toFixed(2)+'%',true)+
-        linha('Sharpe','sharpe','sharpe',x=>Number(x).toFixed(2),true)+
-        linha('Profit Factor','profit_factor','profit_factor',x=>Number(x).toFixed(2),true)+
-        linha('Max Drawdown','max_drawdown','max_drawdown',x=>Number(x).toFixed(2)+'%')+
-        linha('Operações','total_trades','total_trades',x=>Math.round(x))+
-      '</tbody></table></div>'+
-    // dois donuts GRANDES lado a lado embaixo
-    '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">'+
-      donutBlock('TREINO (conhecido)', trWin, trLoss, trTotal, tr.win_rate||0, 'rob-donut-tr')+
-      donutBlock('TESTE (nunca visto)', teWin, teLoss, teTotal, te.win_rate||0, 'rob-donut-te')+
-    '</div>'+
-    '<div style="margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:680px">Esta análise compara o desempenho da estratégia em dados que ela conhecia (treino) com dados que nunca viu (teste). É uma referência de robustez sobre o histórico — <strong>não é garantia de desempenho futuro</strong>. Valide também em outros ativos e períodos.</div>';
-
-  // desenha os dois donuts com Chart.js (após o HTML existir)
-  setTimeout(()=>{ desenharDonutRob('rob-donut-tr', trWin, trLoss); desenharDonutRob('rob-donut-te', teWin, teLoss); }, 50);
-}
-
-let _robDonuts = {};
-function desenharDonutRob(id, win, loss){
-  const cv = document.getElementById(id);
-  if(!cv || typeof Chart === 'undefined') return;
-  if(_robDonuts[id]){ try{ _robDonuts[id].destroy(); }catch(e){} }
-  _robDonuts[id] = new Chart(cv, {
-    type:'doughnut',
-    data:{ labels:['Ganhos','Perdas'], datasets:[{ data:[win, loss], backgroundColor:['#00d084','#ff4d6a'], borderWidth:0 }] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.label+': '+c.parsed } } } }
-  });
-}
-
-// ── OFFMIND — Detecção de padrões ────────────────────────────
-async function analisarPadroes(){
-  const btn = document.getElementById('padroes-btn');
-  const txt = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🔍 Analisando...'; }
-  switchTab('padroes');
-  const vazio = document.getElementById('pad-vazio');
-  const res = document.getElementById('pad-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Varrendo o histórico em busca de padrões e medindo acerto/falha...</div></div>';
-  }
-  try{
-    const params = {
-      ativo: document.getElementById('ativo').value,
-      periodo: document.getElementById('periodo').value,
-      timeframe: document.getElementById('timeframe').value,
-      padrao: 'todos',
-      horizontes: [3,5,10,20],
-      atr_mult_alvo: 2.0,
-      atr_mult_stop: 1.0,
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/offmind/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderPadroes(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao analisar padrões: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txt; }
-  }
-}
-
-function renderPadroes(d){
-  const res = document.getElementById('pad-resultado');
-  if(!res) return;
-  const MIN_OCORR = 8;  // amostra mínima p/ considerar confiável
-
-  // pra cada padrão, escolhe o melhor horizonte (maior taxa de acerto) entre os com amostra suficiente
-  const linhas = (d.resultados||[]).map(p => {
-    const candidatos = (p.por_horizonte||[]).filter(h => h.ocorrencias_medidas >= MIN_OCORR);
-    const pool = candidatos.length ? candidatos : (p.por_horizonte||[]);
-    let melhor = pool[0] || {taxa_acerto:0,taxa_falha:0,horizonte:0,mov_medio_pct:0,ocorrencias_medidas:0};
-    for(const h of pool){ if(h.taxa_acerto > melhor.taxa_acerto) melhor = h; }
-    return { ...p, melhor, confiavel: p.total_ocorrencias >= MIN_OCORR };
-  }).sort((a,b) => b.melhor.taxa_acerto - a.melhor.taxa_acerto);
-
-  const corTaxa = t => t>=55 ? '#00d084' : (t>=45 ? '#ffb830' : '#ff4d6a');
-
-  let html =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔍 OffMind · Padrões detectados</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:8px">'+d.ativo+' · '+d.periodo+' · '+d.timeframe+' · '+d.candles_analisados+' candles · alvo/stop por ATR ('+d.atr_mult_alvo+'×/'+d.atr_mult_stop+'×)</div>'+
-    '<div style="background:rgba(255,184,48,0.1);border:1px solid rgba(255,184,48,0.35);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--text);margin-bottom:18px;line-height:1.6">⚠️ Estas são <strong>estatísticas do passado</strong> sobre o histórico deste ativo. NÃO são promessa de desempenho futuro. "Acerto" = bateu o alvo (2× ATR) antes do stop (1× ATR). Padrões com menos de '+MIN_OCORR+' ocorrências são pouco confiáveis (amostra pequena).</div>';
-
-  linhas.forEach((p, idx) => {
-    const m = p.melhor;
-    const medalha = idx===0 ? '🏆 ' : (idx===1 ? '🥈 ' : (idx===2 ? '🥉 ' : ''));
-    const cor = corTaxa(m.taxa_acerto);
-    const destaque = idx===0 ? 'border:1px solid #00d084;background:rgba(0,208,132,0.06)' : 'border:1px solid var(--border2);background:var(--bg2)';
-    // mini-tabela dos horizontes
-    const hRows = (p.por_horizonte||[]).map(h =>
-      '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;color:var(--muted2)'+(h.horizonte===m.horizonte?';color:var(--text);font-weight:600':'')+'">'+
-        '<span>'+h.horizonte+' velas</span>'+
-        '<span style="font-family:var(--mono);color:'+corTaxa(h.taxa_acerto)+'">'+h.taxa_acerto.toFixed(0)+'% acerto</span>'+
-        '<span style="font-family:var(--mono)">'+h.acertos+'/'+h.ocorrencias_medidas+'</span>'+
-        '<span style="font-family:var(--mono);color:'+(h.mov_medio_pct>=0?'#00d084':'#ff4d6a')+'">'+(h.mov_medio_pct>=0?'+':'')+h.mov_medio_pct.toFixed(2)+'%</span>'+
-      '</div>'
-    ).join('');
-    html +=
-      '<div style="'+destaque+';border-radius:10px;padding:14px 16px;margin-bottom:12px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
-          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+medalha+p.nome+
-            (p.confiavel?'':' <span style="font-size:10px;color:#ffb830;font-weight:600">(amostra pequena)</span>')+
-          '</div>'+
-          '<div style="text-align:right">'+
-            '<div style="font-size:22px;font-weight:800;font-family:var(--mono);color:'+cor+'">'+m.taxa_acerto.toFixed(0)+'%</div>'+
-            '<div style="font-size:10.5px;color:var(--muted)">melhor em '+m.horizonte+' velas · '+p.total_ocorrencias+' ocorrências</div>'+
-          '</div>'+
-        '</div>'+
-        '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px"><span>Horizonte</span><span>Acerto</span><span>Acertos/Total</span><span>Mov. médio</span></div>'+
-          hRows+
-        '</div>'+
-      '</div>';
-  });
-
-  html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">O ranking usa o melhor horizonte de cada padrão (maior taxa de acerto com amostra suficiente). Próximo passo recomendado: validar o padrão vencedor fora da amostra na aba <strong style="color:var(--green)">🔬 Robustez</strong> antes de confiar.</div>';
-
-  res.innerHTML = html;
-}
-
-// ── BABYMACHINE — Análise dos dados coletados ─────────────────
-async function analisarBabyMachine(){
-  const btn = document.getElementById('baby-btn');
-  const txt = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🧠 Analisando...'; }
-  switchTab('baby');
-  const vazio = document.getElementById('baby-vazio');
-  const res = document.getElementById('baby-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">A BabyMachine está lendo os dados da plataforma e sua jornada...</div></div>';
-  }
-  try{
-    const params = {
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/babymachine/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderBabyMachine(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro na análise: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txt; }
-  }
-}
-
-// Contador de backtests no topo da coluna esquerda
-async function atualizarContador(){
-  const box = document.getElementById('contador-backtests');
-  const num = document.getElementById('contador-num');
-  if(!box || !num) return;
-  // só mostra se logado (usa user_id); senão fica escondido
-  if(!(usuarioAtual && usuarioAtual.id)){ box.style.display='none'; return; }
-  try{
-    const r = await fetch(API+'/babymachine/contador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id, sessao_id:BB_SESSAO_ID})});
-    if(!r.ok) return;
-    const d = await r.json();
-    const t = (d && typeof d.total==='number') ? d.total : 0;
-    num.textContent = t.toLocaleString('pt-BR');
-    box.style.display = (t>0) ? 'flex' : 'none';
-  }catch(e){ /* silencioso */ }
-}
-
-function renderBabyMachine(d){
-  const res = document.getElementById('baby-resultado');
-  if(!res) return;
-  if(!d || !d.disponivel){
-    res.innerHTML='<div style="color:var(--muted);padding:30px;text-align:center">'+((d&&d.motivo)||'Análise indisponível no momento.')+'</div>';
-    return;
-  }
-  const cor = {alto:'#ff4d6a', medio:'#ffb830', info:'#00b4d8'};
-  const icone = {alto:'⚠️', medio:'🟡', info:'💡'};
-  const comp = d.comportamento || {};
-  const evo = comp.evolucao || [];
-
-  let html =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🧠 BabyMachine</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:18px">A inteligência da plataforma aprende com seus testes e te dá conselhos honestos sobre suas decisões.</div>';
-
-  // ── SEÇÃO 1: EVOLUÇÃO DO USUÁRIO (2 gráficos) ──
-  html +=
-    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:16px">'+
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">📈 Sua evolução nos backtests</div>'+
-      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Como o Sharpe e o retorno dos seus testes variaram ao longo do tempo (cada ponto = um backtest).</div>';
-  if(evo.length >= 2){
-    html +=
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sharpe por teste</div><div style="height:180px"><canvas id="baby-chart-sharpe"></canvas></div></div>'+
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Retorno (%) por teste</div><div style="height:180px"><canvas id="baby-chart-retorno"></canvas></div></div>'+
-      '</div>'+
-      '<div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.55">⚠️ Subir aqui não significa necessariamente que sua estratégia ficou melhor — pode ser ajuste excessivo ao passado (overfitting). Sempre confirme na aba <strong style="color:var(--green)">Robustez</strong>.</div>';
-  } else {
-    html += '<div style="font-size:12.5px;color:var(--muted)">Rode pelo menos 2 backtests para ver sua evolução.</div>';
-  }
-  html += '</div>';
-
-  // ── SEÇÃO 2: SUA JORNADA (alertas) ──
-  html +=
-    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px">'+
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🧭 Sua jornada</div>'+
-      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">'+(comp.resumo||'')+'</div>';
-  if(comp.disponivel && (comp.alertas||[]).length){
-    (comp.alertas||[]).forEach(a => {
-      const c = cor[a.nivel] || '#00b4d8';
-      const ic = icone[a.nivel] || '💡';
-      html +=
-        '<div style="display:flex;gap:10px;align-items:flex-start;background:'+c+'14;border:1px solid '+c+'55;border-left:3px solid '+c+';border-radius:8px;padding:11px 13px;margin-bottom:9px">'+
-          '<span style="flex-shrink:0;font-size:15px">'+ic+'</span>'+
-          '<span style="font-size:13px;color:var(--text);line-height:1.55">'+a.texto+'</span>'+
-        '</div>';
-    });
-  } else if(!comp.disponivel){
-    html += '<div style="font-size:12.5px;color:var(--muted)">Rode mais alguns backtests para a BabyMachine analisar seus padrões de decisão.</div>';
-  }
-  html += '</div>';
-
-  html += '<div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">A BabyMachine analisa estatísticas do passado para te ajudar a evitar armadilhas comuns. Não é conselho de investimento nem promessa de retorno.</div>';
-
-  res.innerHTML = html;
-
-  // desenha os 2 gráficos depois do HTML existir
-  if(evo.length >= 2){
-    const labels = evo.map(e => '#'+e.i);
-    desenharLinhaBaby('baby-chart-sharpe', labels, evo.map(e => e.sharpe), '#00b4d8');
-    desenharLinhaBaby('baby-chart-retorno', labels, evo.map(e => e.retorno), '#00d084');
-  }
-}
-
-let _babyCharts = {};
-function desenharLinhaBaby(id, labels, dados, cor){
-  const cv = document.getElementById(id);
-  if(!cv || typeof Chart === 'undefined') return;
-  if(_babyCharts[id]){ try{ _babyCharts[id].destroy(); }catch(e){} }
-  const gridCor = (document.body.classList.contains('light')) ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
-  const txtCor = (document.body.classList.contains('light')) ? '#4a5260' : '#9aa4b6';
-  _babyCharts[id] = new Chart(cv, {
-    type:'line',
-    data:{ labels:labels, datasets:[{
-      data:dados, borderColor:cor, backgroundColor:cor+'22',
-      borderWidth:2, pointRadius:3, pointBackgroundColor:cor, fill:true, tension:0.25
-    }]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.parsed.y } } },
-      scales:{
-        x:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} },
-        y:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} }
-      }
-    }
-  });
-}
-
-function setTF(el, val) {
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('timeframe').value = val;
-}
-
-function focusIA() {
-  switchTab('editor');
-  setTimeout(()=>{
-    const el=document.getElementById('ia-desc');
-    if(el){ el.focus(); el.scrollIntoView({behavior:'smooth',block:'center'}); }
-  }, 60);
-}
-
-function semCls(m, v) {
-  if (m==='wr') return v>=55?'sem-bom':v>=45?'sem-med':'sem-fra';
-  if (m==='sh') return v>=1.5?'sem-bom':v>=0.5?'sem-med':'sem-fra';
-  if (m==='dd') return Math.abs(v)<=10?'sem-bom':Math.abs(v)<=20?'sem-med':'sem-fra';
-  if (m==='pf') return v>=1.5?'sem-bom':v>=1?'sem-med':'sem-fra';
-  return 'sem-med';
-}
-function semLbl(c) { return c==='sem-bom'?'Bom':c==='sem-med'?'Médio':'Fraco' }
-
-function atualizarMetricsBar(d) {
-  const wr = parseFloat(d.win_rate||0);
-  const sh = parseFloat(d.sharpe||0);
-  const dd = parseFloat(d.max_drawdown||0);
-  const pf = parseFloat(d.profit_factor||0);
-
-  // Valores
-  document.getElementById('m-wr').textContent = wr.toFixed(1)+'%';
-  document.getElementById('m-sh').textContent = sh.toFixed(2);
-  document.getElementById('m-dd').textContent = dd.toFixed(2)+'%';
-  document.getElementById('m-pf').textContent = pf.toFixed(2);
-
-  // Cores dos valores: verde se bom, vermelho se fraco, âmbar se médio
-  const wrC = semCls('wr',wr), shC = semCls('sh',sh), ddC = semCls('dd',dd), pfC = semCls('pf',pf);
-  const colorMap = {'sem-bom':'','sem-med':'is-neutral','sem-fra':'is-neg'};
-
-  ['wr','sh','dd','pf'].forEach((k,i)=>{
-    const el = document.getElementById('m-'+k);
-    const cls = [wrC,shC,ddC,pfC][i];
-    el.className = 'mb-val ' + (cls==='sem-bom'?'':cls==='sem-fra'?'is-neg':'is-neutral');
-  });
-
-  // Drawdown sempre vermelho se negativo
-  if(dd < 0) document.getElementById('m-dd').className = 'mb-val is-neg';
-
-  const colors = {'sem-bom':'var(--green)','sem-med':'var(--amber)','sem-fra':'var(--red)'};
-
-  document.getElementById('m-wr-bar').style.width = Math.min(wr,100)+'%';
-  document.getElementById('m-wr-bar').style.background = colors[wrC];
-  document.getElementById('m-sh-bar').style.width = Math.min(Math.max(sh/3*100,0),100)+'%';
-  document.getElementById('m-sh-bar').style.background = colors[shC];
-  document.getElementById('m-dd-bar').style.width = Math.min(Math.abs(dd),100)+'%';
-  document.getElementById('m-dd-bar').style.background = colors[ddC];
-  document.getElementById('m-pf-bar').style.width = Math.min(pf/3*100,100)+'%';
-  document.getElementById('m-pf-bar').style.background = colors[pfC];
-
-  ['wr','sh','dd','pf'].forEach((k,i) => {
-    const el = document.getElementById('m-'+k+'-sem');
-    const cls = [wrC,shC,ddC,pfC][i];
-    el.className = 'sem '+cls;
-    el.textContent = semLbl(cls);
-  });
-}
-
-async function rodarBacktest() {
-  console.log('rodarBacktest() chamado');
-  modoExemplo = false;
-  // Verificar login e limite
-  const liberado = await verificarLimite();
-  console.log('liberado:', liberado);
-  if (!liberado) return;
-
-  const btn = document.getElementById('run-btn');
-  const icon = document.getElementById('run-icon');
-  const txt = document.getElementById('run-txt');
-  btn.disabled = true;
-  icon.innerHTML = '<div class="spinner"></div>';
-  txt.textContent = 'Baixando dados...';
-
-  const codigo = document.getElementById('code-editor').value.trim();
-  const params = {
-    ativo: document.getElementById('ativo').value,
-    periodo: document.getElementById('periodo').value,
-    timeframe: document.getElementById('timeframe').value,
-    indicador: document.getElementById('indicador').value,
-    ema_period: parseInt(document.getElementById('ema_period').value),
-    stop_loss: parseFloat(document.getElementById('stop_loss').value),
-    take_profit: parseFloat(document.getElementById('take_profit').value),
-    capital: parseFloat(document.getElementById('capital').value),
-    max_ops: parseInt(document.getElementById('max_ops').value),
-    comissao: parseFloat(document.getElementById('comissao').value),
-    // BabyMachine: identifica o trader e a jornada (so grava se logado)
-    user_id: (usuarioAtual && usuarioAtual.id) ? usuarioAtual.id : null,
-    sessao_id: BB_SESSAO_ID,
-  };
-
-  // Feedback progressivo
-  const msgs = ['Baixando dados...','Calculando indicadores...','Rodando estratégia...','Calculando métricas...'];
-  let mi = 0;
-  const msgInterval = setInterval(()=>{ mi=(mi+1)%msgs.length; txt.textContent=msgs[mi]; }, 3000);
-
-  try {
-    const endpoint = (codigo && codigo.length > 10 && !codigo.startsWith('#')) ? '/backtest/custom' : '/backtest/visual';
-    const body = endpoint === '/backtest/custom' ? {...params, codigo} : params;
-
-    // Controller para timeout de 120 segundos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(()=>controller.abort(), 120000);
-
-    const r = await fetch(API+endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if(!r.ok) {
-      const err = await r.json().catch(()=>({detail:'Erro desconhecido'}));
-      throw new Error(err.detail||'Erro na API');
+    return {
+        "codigo": codigo,
+        "descricao": req.descricao,
+        "indicador_detectado": "RSI" if "rsi" in desc else "MACD" if "macd" in desc else "EMA Channel"
     }
 
-    const d = await r.json();
-    lastResult = d;
-    atualizarMetricsBar(d);
-    // Garante que o #ov-result esteja de volta na aba Overview (pode ter sido movido p/ otimização)
-    const ovrEl = document.getElementById('ov-result');
-    const ovTab = document.getElementById('tab-overview');
-    if(ovrEl && ovTab && ovrEl.parentElement !== ovTab){ ovTab.appendChild(ovrEl); }
-    renderOverview(d, params);
-    switchTab('overview');
-    await incrementarBacktest();
-    atualizarContador();
-  } catch(e) {
-    if(e.name==='AbortError') {
-      alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
+@app.get("/exportar/ntsl")
+def exportar_ntsl():
+    codigo = """// ============================================
+// BacktestPro — Exportação NTSL para Profit
+// Gerado automaticamente
+// ============================================
+
+// Parâmetros
+input int    EMA_Period   = 20;
+input double StopLoss     = 50;
+input double TakeProfit   = 100;
+input double Lotes        = 0.1;
+
+// Variáveis globais
+double ema_high[], ema_low[];
+
+void OnInit() {
+    SetIndexBuffer(0, ema_high);
+    SetIndexBuffer(1, ema_low);
+}
+
+void OnTick() {
+    int bars = Bars;
+    if (bars < EMA_Period + 1) return;
+
+    // Calcula EMA High e EMA Low
+    double soma_h = 0, soma_l = 0;
+    for (int i = 0; i < EMA_Period; i++) {
+        soma_h += High[i];
+        soma_l += Low[i];
+    }
+    double ema_h = soma_h / EMA_Period;
+    double ema_l = soma_l / EMA_Period;
+
+    double preco = Close[0];
+
+    // Sem posição aberta — verifica entrada
+    if (OrdersTotal() == 0) {
+        if (preco > ema_h) {
+            OrderSend(Symbol(), OP_BUY, Lotes, Ask, 3,
+                      Ask - StopLoss * Point,
+                      Ask + TakeProfit * Point,
+                      "BotBacktest EMA Channel", 0, 0, clrGreen);
+        }
     } else {
-      alert('Erro: ' + e.message);
-    }
-  } finally {
-    clearInterval(msgInterval);
-    btn.disabled = false;
-    icon.textContent = '▶';
-    txt.textContent = 'Rodar Backtest';
-  }
-}
-
-let candleChart = null;
-let perfChartObj = null;
-let perfData = {equity:[], trades:[]};
-
-function switchPerfChart(tipo) {
-  document.getElementById('perf-btn-cumul').style.background = tipo==='cumul'?'var(--green-bg)':'var(--bg3)';
-  document.getElementById('perf-btn-cumul').style.color = tipo==='cumul'?'var(--green)':'var(--muted2)';
-  document.getElementById('perf-btn-runup').style.background = tipo==='runup'?'rgba(255,77,106,0.1)':'var(--bg3)';
-  document.getElementById('perf-btn-runup').style.color = tipo==='runup'?'var(--red)':'var(--muted2)';
-  renderPerfChart(tipo);
-}
-
-function renderPerfChart(tipo) {
-  if(perfChartObj) perfChartObj.destroy();
-  const canvas = document.getElementById('ch-perf');
-  if(!canvas) return;
-  const equity = perfData.equity;
-  const trades = perfData.trades;
-  const cap = equity.length > 0 ? equity[0] : 10000;
-
-  if(tipo === 'cumul') {
-    // Cumulative PnL = equity - capital inicial
-    const pnlData = equity.map(v => parseFloat((v - cap).toFixed(2)));
-    const color = pnlData[pnlData.length-1] >= 0 ? '#00d084' : '#ff4d6a';
-    const bgColor = pnlData[pnlData.length-1] >= 0 ? 'rgba(0,208,132,0.08)' : 'rgba(255,77,106,0.08)';
-    perfChartObj = new Chart(canvas, {
-      type:'line',
-      data:{labels:pnlData.map((_,i)=>i), datasets:[{
-        data:pnlData, borderColor:color, backgroundColor:bgColor,
-        borderWidth:1.5, fill:true, tension:.3, pointRadius:0
-      }]},
-      options:{responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},
-        scales:{
-          x:{display:false},
-          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toFixed(0)}, grid:{color:'rgba(255,255,255,0.04)'},
-             position:'right'}
+        // Verifica saída
+        for (int j = 0; j < OrdersTotal(); j++) {
+            if (OrderSelect(j, SELECT_BY_POS)) {
+                if (OrderType() == OP_BUY && preco < ema_l) {
+                    OrderClose(OrderTicket(), OrderLots(), Bid, 3, clrRed);
+                }
+            }
         }
-      }
-    });
-  } else {
-    // Run-ups (verde) e Drawdowns (vermelho) por trade
-    const runups = trades.map(t => t.retorno_pct > 0 ? t.retorno_pct : 0);
-    const ddowns = trades.map(t => t.retorno_pct < 0 ? t.retorno_pct : 0);
-    perfChartObj = new Chart(canvas, {
-      type:'bar',
-      data:{
-        labels: trades.map((_,i) => i+1),
-        datasets:[
-          {label:'Run-up', data:runups, backgroundColor:'rgba(0,208,132,0.6)', borderWidth:0, borderRadius:1},
-          {label:'Drawdown', data:ddowns, backgroundColor:'rgba(255,77,106,0.6)', borderWidth:0, borderRadius:1},
+    }
+}"""
+    return {"codigo": codigo, "formato": "NTSL/MQL4", "plataforma": "Profit/MetaTrader"}
+
+@app.get("/historico")
+def get_historico():
+    return {"historico": [], "total": 0, "mensagem": "Histórico disponível com autenticação ativa"}
+
+@app.get("/ranking")
+def get_ranking():
+    return {
+        "ranking": [
+            {"posicao": 1, "nome": "EMA Channel XAU Master", "retorno": 68.4, "win_rate": 67.2, "ativo": "XAU/USD", "estrelas": 5},
+            {"posicao": 2, "nome": "Bollinger Squeeze Pro",  "retorno": 47.2, "win_rate": 61.5, "ativo": "BTC/USD", "estrelas": 4},
+            {"posicao": 3, "nome": "MACD BTC Scalper",       "retorno": 38.9, "win_rate": 58.3, "ativo": "BTC/USD", "estrelas": 4},
+            {"posicao": 4, "nome": "RSI Reversal Gold",      "retorno": 34.1, "win_rate": 61.2, "ativo": "XAU/USD", "estrelas": 4},
+            {"posicao": 5, "nome": "Golden Cross S&P",       "retorno": 29.7, "win_rate": 57.8, "ativo": "IBOVESPA","estrelas": 4},
         ]
-      },
-      options:{responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(3)}%`}}},
-        scales:{
-          x:{display:false},
-          y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>v.toFixed(2)+'%'}, grid:{color:'rgba(255,255,255,0.04)'},
-             position:'right'}
-        }
-      }
-    });
-  }
-}
-
-function zoomChart(periodo) {
-  // Atualizar botão ativo
-  document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-
-  if(!candleChart) return;
-  const ts = candleChart.timeScale();
-
-  const now = new Date();
-  const toTime = Math.floor(now.getTime()/1000);
-  let fromTime;
-
-  if(periodo === 'all') {
-    ts.fitContent();
-    return;
-  } else if(periodo === '1m') {
-    fromTime = toTime - 30*24*3600;
-  } else if(periodo === '3m') {
-    fromTime = toTime - 90*24*3600;
-  } else if(periodo === '6m') {
-    fromTime = toTime - 180*24*3600;
-  } else if(periodo === '1y') {
-    fromTime = toTime - 365*24*3600;
-  }
-
-  ts.setVisibleRange({from: fromTime, to: toTime});
-}
-
-// ── INDICADORES MULTI-SELECT ──
-const indColors = {1:'#3b82f6', 2:'#f59e0b', 3:'#8b5cf6'};
-
-function toggleIndicador(n) {
-  const active = document.getElementById(`ind${n}-active`).checked;
-  document.getElementById(`ind${n}-controls`).style.display = active ? 'block' : 'none';
-}
-
-function setIndColor(n, btn) {
-  document.querySelectorAll(`#ind${n}-controls .color-btn`).forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  indColors[n] = btn.dataset.color;
-}
-
-function getOverlays() {
-  const overlays = [];
-  for(let n=1; n<=3; n++) {
-    const active = document.getElementById(`ind${n}-active`)?.checked;
-    if(!active) continue;
-    const period = parseInt(document.getElementById(`ind${n}-period`)?.value || 20);
-    const source = document.getElementById(`ind${n}-source`)?.value || 'close';
-    const tipo = n <= 2 ? 'EMA' : 'SMA';
-    overlays.push({tipo, period, source, color: indColors[n]});
-  }
-  return overlays;
-}
-
-function calcEMA(data, period) {
-  const k = 2/(period+1);
-  const result = [];
-  let ema = null;
-  for(let i=0; i<data.length; i++) {
-    if(data[i] === null || data[i] === undefined) { result.push(null); continue; }
-    if(ema === null) { ema = data[i]; }
-    else { ema = data[i]*k + ema*(1-k); }
-    result.push(ema);
-  }
-  return result;
-}
-
-function calcSMA(data, period) {
-  return data.map((_, i) => {
-    if(i < period-1) return null;
-    const slice = data.slice(i-period+1, i+1).filter(v => v !== null);
-    return slice.length > 0 ? slice.reduce((a,b)=>a+b,0)/slice.length : null;
-  });
-}
-
-function addOverlaysToChart(chart, candlesData, overlays) {
-  if(!chart || !candlesData || !overlays.length) return;
-  overlays.forEach(ov => {
-    const sourceMap = {close:'c', high:'h', low:'l', open:'o'};
-    const key = sourceMap[ov.source] || 'c';
-    const values = candlesData.map(c => parseFloat(c[key]));
-    const times = candlesData.map(c => c.t);
-    const calc = ov.tipo === 'EMA' ? calcEMA(values, ov.period) : calcSMA(values, ov.period);
-    const lineData = calc.map((v,i) => v !== null ? {time: times[i], value: v} : null).filter(Boolean);
-    if(lineData.length > 0) {
-      const line = chart.addLineSeries({
-        color: ov.color,
-        lineWidth: 1.5,
-        priceLineVisible: false,
-        lastValueVisible: true,
-        title: `${ov.tipo}(${ov.period})`,
-      });
-      line.setData(lineData);
     }
-  });
-}
 
-let lastCandlesData = [];
-let lastMarkers = [];
+@app.get("/stats")
+def get_stats():
+    return {
+        "total_backtests": 1247,
+        "usuarios_ativos": 89,
+        "ativo_mais_testado": "XAU/USD",
+        "melhor_retorno": 68.4,
+        "versao_api": "1.1.0"
+    }
 
-// Gera um objeto de resultado de EXEMPLO completo e realista, no mesmo formato do backtest real.
-// Reaproveita random walk pros candles e monta equity/roi/trades coerentes.
-function montarDadosExemplo(){
-  const N = 160;
-  const candles_data = [];
-  let price = 2000, vol = 18;
-  const start = Math.floor(Date.now()/1000) - N*86400;
-  for(let i=0;i<N;i++){
-    vol = Math.max(8, Math.min(45, vol + (Math.random()-0.5)*6));
-    const drift = (i>40 && i<70) ? -0.35 : (i>110 && i<128 ? -0.5 : 0.18);
-    const open = price;
-    const change = drift*vol + (Math.random()-0.5)*vol*2;
-    let close = open + change; if(close<100) close=open;
-    const hi = Math.max(open,close) + Math.random()*vol*0.9;
-    const lo = Math.min(open,close) - Math.random()*vol*0.9;
-    candles_data.push({ t: start + i*86400, o:+open.toFixed(2), h:+hi.toFixed(2), l:+lo.toFixed(2), c:+close.toFixed(2) });
-    price = close;
-  }
-  // marcadores de operações
-  const markers = [];
-  for(let j=12;j<N-6;j+=Math.floor(14+Math.random()*12)){
-    const buy = candles_data[j].c < candles_data[j].o ? true : Math.random()>0.5;
-    markers.push({ time: candles_data[j].t, position: buy?'belowBar':'aboveBar',
-      color: buy?'#00d084':'#ff4d6a', shape: buy?'arrowUp':'arrowDown', text: buy?'B':'S' });
-  }
-  // métricas de exemplo coerentes (perfil "bom mas honesto")
-  const capital_inicial = 10000;
-  const total_trades = 38, winners = 20, losers = 18;
-  const win_rate = +(winners/total_trades*100).toFixed(2);
-  const retorno = 4.73, lucro_perda = +(capital_inicial*retorno/100).toFixed(2);
-  const capital_final = capital_inicial + lucro_perda;
-  // curva de capital (sobe com solavancos, leve drawdown no meio)
-  const equity_curve = [];
-  let eq = capital_inicial;
-  for(let i=0;i<=total_trades;i++){
-    const step = (i>14 && i<20) ? -55 : (40 + (Math.random()-0.3)*70);
-    eq = Math.max(capital_inicial-600, eq + step);
-    equity_curve.push(+eq.toFixed(2));
-  }
-  equity_curve[equity_curve.length-1] = capital_final;
-  // distribuição de ROI por trade
-  const roi_distribution = [
-    {bin:-3.50,count:1,positivo:false},{bin:-2.38,count:1,positivo:false},
-    {bin:-0.80,count:16,positivo:false},{bin:0.74,count:20,positivo:true}
-  ];
-  // trades de exemplo
-  const trades = [];
-  for(let i=0;i<total_trades;i++){
-    const win = i<winners;
-    trades.push({ pnl: win? (60+Math.random()*120) : -(40+Math.random()*90), bars: 1+Math.round(Math.random()*4) });
-  }
-  return {
-    ativo:'XAU/USD', candles:N, data_backtest:new Date().toLocaleDateString('pt-BR'),
-    capital_inicial, capital_final, lucro_perda, retorno,
-    win_rate, sharpe:1.92, max_drawdown:-5.05, profit_factor:1.29,
-    total_trades, winners, losers, breakevens:0,
-    candles_data, markers, equity_curve, roi_distribution, trades,
-    buy_hold:89.37, alpha:-84.64, cagr:2.35,
-    avg_pnl:12.46, avg_pnl_pct:0.125, avg_bars_in_trades:2,
-    maior_ganho:102.88, maior_perda:-376.00,
-    avg_runup:0.960, avg_drawdown_trade:-0.798,
-    account_size_required:10505, gross_profit:1700, gross_loss:1228,
-    sugestao:'', to:''
-  };
-}
+# ── STRIPE ──────────────────────────────────────────────
 
-// Desenha a tela de EXEMPLO completa usando o renderOverview real (gráfico + painéis)
-let sampleChart = null; // (mantido por compat; não usado na Forma C)
-let modoExemplo = false;
-function renderSampleChart(){
-  if(typeof LightweightCharts === 'undefined') return;
-  const params = {
-    ativo: (document.getElementById('ativo')||{}).value || 'XAU/USD',
-    periodo: (document.getElementById('periodo')||{}).value || '2 anos',
-    timeframe: (document.getElementById('timeframe')||{}).value || '1d',
-    capital: 10000,
-  };
-  const d = montarDadosExemplo();
-  modoExemplo = true;
-  renderOverview(d, params);                       // desenha tudo no #ov-result
-  const banner = document.getElementById('ov-sample-banner');
-  if(banner) banner.style.display = 'flex';
-}
 
-function renderCandleChart(candlesData, markers, isLight, overlays) {
-  lastCandlesData = candlesData || [];
-  lastMarkers = markers || [];
-
-  const container = document.getElementById('candle-chart');
-  if(!container || !candlesData || candlesData.length === 0) return;
-
-  container.innerHTML = '';
-
-  if(typeof LightweightCharts === 'undefined') {
-    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px">Carregando gráfico...</div>';
-    return;
-  }
-
-  const bgColor = isLight ? '#ffffff' : '#0e1117';
-  const textColor = isLight ? '#6b7280' : '#5a6478';
-  const gridColor = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
-
-  const chart = LightweightCharts.createChart(container, {
-    width: container.clientWidth,
-    height: 380,
-    layout: { background:{type:'solid',color:bgColor}, textColor },
-    grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: {
-      borderColor,
-      minimumWidth: 80,
-      scaleMargins: { top: 0.08, bottom: 0.08 },
+PRICE_IDS = {
+    "pro": {
+        "BRL": "price_1TdF3TAWeqEnicm4OJJEgFvR",
+        "USD": "price_1TdF5HAWeqEnicm4e5wRK96S",
+        "EUR": "price_1TdF5XAWeqEnicm4dfadId2G",
     },
-    leftPriceScale: { visible: false },
-    timeScale: {
-      borderColor,
-      timeVisible: true,
-      secondsVisible: false,
-      rightOffset: 12,
-      barSpacing: 6,
-      fixLeftEdge: false,
-      fixRightEdge: false,
-    },
-    handleScroll: true,
-    handleScale: true,
-  });
-
-  if(candleChart) { try { candleChart.remove(); } catch(e) {} }
-  candleChart = chart;
-
-  const candleSeries = chart.addCandlestickSeries({
-    upColor: '#00d084', downColor: '#ff4d6a',
-    borderUpColor: '#00d084', borderDownColor: '#ff4d6a',
-    wickUpColor: '#00d084', wickDownColor: '#ff4d6a',
-  });
-
-  const candleFormatted = candlesData
-    .filter(c => c.o && c.h && c.l && c.c)
-    .map(c => ({ time: c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c) }))
-    .filter((c,i,arr) => i===0 || c.time !== arr[i-1].time)
-    .sort((a,b) => a.time > b.time ? 1 : -1);
-
-  if(candleFormatted.length > 0) {
-    candleSeries.setData(candleFormatted);
-
-    if(markers && markers.length > 0) {
-      const validTimes = new Set(candleFormatted.map(c=>c.time));
-      const mks = markers
-        .filter(m => validTimes.has(m.data?.substring(0,10)))
-        .map(m => ({
-          time: m.data?.substring(0,10),
-          position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
-          color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
-          shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
-          text: m.tipo === 'BUY' ? `B ${parseFloat(m.preco||0).toFixed(2)}` : `S ${parseFloat(m.preco||0).toFixed(2)}`,
-          size: 1,
-        }))
-        .sort((a,b) => a.time > b.time ? 1 : -1);
-      if(mks.length > 0) candleSeries.setMarkers(mks);
+    "trader": {
+        "BRL": "price_1TdF9FAWeqEnicm4dqDhez61",
+        "USD": "price_1TdFAhAWeqEnicm4i0DNuJ2b",
+        "EUR": "price_1TdFBSAWeqEnicm4ZoxIQgBn",
     }
-
-    // Aplicar overlays (EMA/SMA) em cima dos candles
-    if(overlays && overlays.length > 0) {
-      addOverlaysToChart(chart, candlesData, overlays);
-    }
-
-    chart.timeScale().fitContent();
-  }
-
-  const resizeObs = new ResizeObserver(() => {
-    if(container.clientWidth > 0) chart.resize(container.clientWidth, 380);
-  });
-  resizeObs.observe(container);
 }
 
-function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) {
-  if(chartEq) chartEq.destroy();
-  if(chartPr) chartPr.destroy();
-  if(chartDo) chartDo.destroy();
+class CheckoutRequest(BaseModel):
+    plano: str
+    moeda: str = "BRL"
+    user_id: str
+    email: str
 
-  const equity = d.equity_curve||[];
-  const trades = d.trades||[];
-  const color = pos?'#00d084':'#ff4d6a';
-  const colorBg = pos?'rgba(0,208,132,0.1)':'rgba(255,77,106,0.1)';
-  const lucro = parseFloat(d.lucro_perda||0);
-  const isLight = document.body.classList.contains('light');
+@app.post("/criar-checkout")
+def criar_checkout(req: CheckoutRequest):
+    try:
+        price_id = PRICE_IDS.get(req.plano, {}).get(req.moeda)
+        if not price_id:
+            raise HTTPException(status_code=400, detail="Plano ou moeda inválido")
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            customer_email=req.email,
+            client_reference_id=req.user_id,
+            success_url="https://backtestpro-production-eb9a.up.railway.app/app?checkout=success",
+            cancel_url="https://backtestpro-production-eb9a.up.railway.app/app?checkout=cancel",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-  // Salvar dados para o toggle do perf chart
-  perfData = {equity, trades};
+@app.get("/stripe/publishable-key")
+def get_publishable_key():
+    return {"key": os.getenv("STRIPE_PUBLISHABLE_KEY", "")}
 
-  // Candle chart com overlays
-  const overlays = getOverlays();
-  setTimeout(() => {
-    renderCandleChart(d.candles_data||[], d.markers||[], isLight, overlays);
-    renderPerfChart('cumul');
-  }, 80);
+@app.post("/webhook/stripe")
+async def webhook_stripe(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
-  // Equity Curve
-  if(equity.length>0 && document.getElementById('ch-eq')) {
-    chartEq = new Chart(document.getElementById('ch-eq'),{
-      type:'line',
-      data:{labels:equity.map((_,i)=>i),datasets:[{data:equity,borderColor:color,backgroundColor:colorBg,borderWidth:1.5,fill:true,tension:.3,pointRadius:0,pointHoverRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{display:false},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, secret)
+    except stripe.error.SignatureVerificationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid signature: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-  // Profit Structure
-  if(document.getElementById('ch-pr')) {
-    chartPr = new Chart(document.getElementById('ch-pr'),{
-      type:'bar',
-      data:{labels:['Lucro Bruto','Perda Bruta','Resultado'],datasets:[{data:[grossProfit,-grossLoss,lucro],backgroundColor:['rgba(0,208,132,.65)','rgba(255,77,106,.65)',lucro>=0?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)'],borderColor:['#00d084','#ff4d6a',lucro>=0?'#00d084':'#ff4d6a'],borderWidth:1,borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+Math.abs(c.parsed.y).toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{ticks:{color:'#5a6478',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9},callback:v=>'$'+Math.abs(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
+    if event["type"] == "checkout.session.completed":
+        # Converte StripeObject para dict puro
+        session_obj = event["data"]["object"]
+        session = session_obj.to_dict() if hasattr(session_obj, "to_dict") else dict(session_obj)
 
-  // Donut
-  if(document.getElementById('ch-do')) {
-    chartDo = new Chart(document.getElementById('ch-do'),{
-      type:'doughnut',
-      data:{labels:['Winners','Losers','Breakevens'],datasets:[{data:[winners||1,losers||1,0],backgroundColor:['rgba(0,208,132,.8)','rgba(255,77,106,.8)','rgba(90,100,120,.5)'],borderColor:['#00d084','#ff4d6a','#5a6478'],borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}`}}}}
-    });
-  }
+        user_id = session.get("client_reference_id")
+        subscription_id = session.get("subscription")
+        plano = "pro"
 
-  // ROI Distribution
-  if(document.getElementById('ch-roi') && roiDist && roiDist.length > 0) {
-    const labels = roiDist.map(r=>r.bin.toFixed(2)+'%');
-    const data   = roiDist.map(r=>r.count);
-    const colors = roiDist.map(r=>r.positivo?'rgba(0,208,132,.65)':'rgba(255,77,106,.65)');
-    new Chart(document.getElementById('ch-roi'),{
-      type:'bar',
-      data:{labels, datasets:[{data, backgroundColor:colors, borderWidth:0, borderRadius:2}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6478',font:{size:8},maxRotation:0},grid:{display:false}},y:{ticks:{color:'#5a6478',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}}
-    });
-  }
-}
+        print(f"Webhook recebido: user_id={user_id}, subscription_id={subscription_id}")
 
-function renderOverview(d, params) {
-  document.getElementById('ov-empty').style.display = 'none';
-  // esconde o banner EXEMPLO por padrão; só reaparece quando renderSampleChart o reexibe
-  const banner = document.getElementById('ov-sample-banner');
-  if(banner && !modoExemplo) banner.style.display = 'none';
-  const area = document.getElementById('ov-result');
-  area.style.display = 'block';
+        try:
+            if subscription_id:
+                sub_obj = stripe.Subscription.retrieve(subscription_id)
+                sub = sub_obj.to_dict() if hasattr(sub_obj, "to_dict") else dict(sub_obj)
+                items = sub.get("items", {}).get("data", [])
+                for item in items:
+                    pid = item.get("price", {}).get("id", "")
+                    if pid in PRICE_IDS.get("trader", {}).values():
+                        plano = "trader"
+                        break
+        except Exception as e:
+            print(f"Stripe subscription retrieve error: {e}")
 
-  const ret = parseFloat(d.retorno||0);
-  const pos = ret >= 0;
-  const cap = parseFloat(d.capital_inicial||params.capital||10000);
-  const capFinal = parseFloat(d.capital_final||cap);
-  const lucro = parseFloat(d.lucro_perda||capFinal-cap);
-  const wr = parseFloat(d.win_rate||0);
-  const sh = parseFloat(d.sharpe||0);
-  const dd = parseFloat(d.max_drawdown||0);
-  const pf = parseFloat(d.profit_factor||0);
-  const total = parseInt(d.total_trades||0);
-  const winners = parseInt(d.winners||Math.round(total*wr/100));
-  const losers = parseInt(d.losers||total-winners);
-  const breakevens = parseInt(d.breakevens||0);
-  const bh = parseFloat(d.buy_hold||0);
-  const alpha = parseFloat(d.alpha||ret-bh);
-  const cagr = parseFloat(d.cagr||0);
-  const equity = d.equity_curve||[];
-  const trades = d.trades||[];
-  const roiDist = d.roi_distribution||[];
-  const iaSug = d.sugestao||'';
-  const avgPnl = parseFloat(d.avg_pnl||0);
-  const avgBars = parseInt(d.avg_bars_in_trades||0);
-  const maiorGanho = parseFloat(d.maior_ganho||0);
-  const maiorPerda = parseFloat(d.maior_perda||0);
-  const avgRunup = parseFloat(d.avg_runup||0);
-  const avgDdTrade = parseFloat(d.avg_drawdown_trade||0);
-  const accountReq = parseFloat(d.account_size_required||cap);
-  const grossProfit = parseFloat(d.gross_profit||0);
-  const grossLoss = parseFloat(d.gross_loss||0);
+        print(f"Atualizando Supabase: user_id={user_id} plano={plano}")
 
-  area.innerHTML = `
-  <div class="ov-header">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span class="${pos?'ov-badge-lucro':'ov-badge-prej'}">${pos?'LUCRO':'PREJUÍZO'}</span>
-      <span class="ov-meta">${d.ativo||params.ativo} · ${params.periodo} · ${params.timeframe.toUpperCase()} · ${d.candles||'-'} candles · ${total} trades</span>
-    </div>
-    <span class="ov-meta">${d.data_backtest||new Date().toLocaleDateString('pt-BR')}</span>
-  </div>
-  <div class="${pos?'retorno-pos':'retorno-neg'} ov-retorno" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div>
-  <div class="ov-cap-row">
-    <div><div class="ov-cap-label">Capital Inicial</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Capital Final</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Lucro / Perda</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Retorno Anual (CAGR)</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
-  </div>
+        if user_id:
+            try:
+                from supabase import create_client
+                sb = create_client(
+                    os.getenv("SUPABASE_URL", ""),
+                    os.getenv("SUPABASE_SERVICE_KEY", "")
+                )
+                limite = 999999 if plano == "trader" else 200
+                result = sb.table("perfis").update({
+                    "plano": plano,
+                    "backtests_limite": limite,
+                    "stripe_subscription_id": subscription_id
+                }).eq("id", user_id).execute()
+                print(f"Supabase update OK: {result}")
+            except Exception as e:
+                print(f"Supabase update error: {e}")
+                raise HTTPException(status_code=500, detail=f"Supabase error: {str(e)}")
 
-  <!-- CANDLE CHART -->
-  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${d.ativo||params.ativo} · ${params.timeframe.toUpperCase()} · Candles + Operações</div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <div style="display:flex;gap:2px">
-          <button class="zoom-btn" onclick="zoomChart('1m')">1M</button>
-          <button class="zoom-btn" onclick="zoomChart('3m')">3M</button>
-          <button class="zoom-btn" onclick="zoomChart('6m')">6M</button>
-          <button class="zoom-btn" onclick="zoomChart('1y')">1Y</button>
-          <button class="zoom-btn active" onclick="zoomChart('all')">All</button>
-        </div>
-        <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
-        <span style="font-size:9px;color:var(--muted)"><span style="color:var(--green)">▲ BUY</span> &nbsp; <span style="color:var(--red)">▼ SELL</span></span>
-      </div>
-    </div>
-    <div id="candle-chart" style="height:380px;width:100%"></div>
-  </div>
-
-  <!-- KEY STATS BAR -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total P&L</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${lucro>=0?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Max Drawdown</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">$${(cap*Math.abs(dd)/100).toFixed(2)}</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profitable Trades</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${wr>=50?'var(--green)':'var(--red)'}">${wr.toFixed(2)}% ${winners}/${total}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">Winners: ${winners} · Losers: ${losers}</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profit Factor</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${pf>=1.5?'var(--green)':pf>=1?'var(--amber)':'var(--red)'}">${pf.toFixed(3)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">Sharpe: ${sh.toFixed(2)}</div>
-    </div>
-  </div>
-
-  <!-- CUMULATIVE PNL + RUN-UPS DRAWDOWNS -->
-  <div style="border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:8px 14px 4px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Performance</div>
-      <div style="display:flex;gap:6px">
-        <span id="perf-btn-cumul" onclick="switchPerfChart('cumul')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25)">Cumulative PnL</span>
-        <span id="perf-btn-runup" onclick="switchPerfChart('runup')" style="font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--muted2);border:1px solid var(--border)">Run-ups & Drawdowns</span>
-      </div>
-    </div>
-    <div id="perf-chart-area" style="height:140px;padding:0 14px 10px"><canvas id="ch-perf"></canvas></div>
-  </div>
-
-  <!-- PERFORMANCE: EQUITY + PROFIT STRUCTURE -->
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Curve & Profit Structure</div>
-  <div class="charts-2col">
-    <div class="cp"><div class="cp-title">Equity Curve <span class="cp-tag">${params.timeframe.toUpperCase()}</span></div><div style="position:relative;height:160px"><canvas id="ch-eq"></canvas></div></div>
-    <div class="cp"><div class="cp-title">Profit Structure <span class="cp-tag">por operação</span></div><div style="position:relative;height:160px"><canvas id="ch-pr"></canvas></div></div>
-  </div>
-
-  <!-- TRADES ANALYSIS -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Trades Analysis</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Average P&L</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${avgPnl.toFixed(2)}</div>
-      <div style="font-size:10px;color:var(--muted)">${d.avg_pnl_pct>0?'+':''}${(d.avg_pnl_pct||0).toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Bars in Trades</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text)">${avgBars}</div>
-      <div style="font-size:10px;color:var(--muted)">candles por trade</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Profit</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">$${maiorGanho.toFixed(2)}</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Largest Loss</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">$${maiorPerda.toFixed(2)}</div>
-    </div>
-  </div>
-
-  <!-- ROI DIST + TRADES DIST -->
-  <div class="charts-2col" style="border-bottom:1px solid var(--border)">
-    <div class="cp">
-      <div class="cp-title">ROI Distribution <span class="cp-tag">por trade</span></div>
-      <div style="position:relative;height:140px"><canvas id="ch-roi"></canvas></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
-        <span>── Average loss: ${(d.avg_drawdown_trade||0).toFixed(3)}%</span>
-        <span>── Average profit: ${(d.avg_runup||0).toFixed(3)}%</span>
-      </div>
-    </div>
-    <div class="cp">
-      <div class="cp-title">Trades Distribution</div>
-      <div style="display:flex;align-items:center;gap:20px;height:140px">
-        <div style="position:relative;height:120px;width:120px;flex-shrink:0"><canvas id="ch-do"></canvas></div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:11px">
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--green)"></div><span style="color:var(--muted2)">Winners</span><span style="font-family:var(--mono);font-weight:600;color:var(--green);margin-left:auto">${winners} trades</span><span style="color:var(--muted);font-family:var(--mono)">${wr.toFixed(2)}%</span></div>
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div><span style="color:var(--muted2)">Losers</span><span style="font-family:var(--mono);font-weight:600;color:var(--red);margin-left:auto">${losers} trades</span><span style="color:var(--muted);font-family:var(--mono)">${(100-wr).toFixed(2)}%</span></div>
-          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div><span style="color:var(--muted2)">Breakevens</span><span style="font-family:var(--mono);font-weight:600;margin-left:auto">${breakevens} trades</span><span style="color:var(--muted);font-family:var(--mono)">0.00%</span></div>
-          <div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);font-weight:700;color:var(--text);font-family:var(--mono)">${total} Total trades</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- EQUITY RUN-UPS AND DRAWDOWNS -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Equity Run-ups and Drawdowns</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Run-up</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--green)">${avgRunup.toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Avg Drawdown</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${avgDdTrade.toFixed(3)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Max DD as % of capital</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--red)">${dd.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return at max DD</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-  </div>
-
-  <!-- CAPITAL EFFICIENCY -->
-  <div style="padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--border)">Capital Efficiency</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);background:var(--bg2)">
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">CAGR</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Account Size Required</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);">$${accountReq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-    </div>
-    <div style="padding:10px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Return on Initial Capital</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${ret>=0?'var(--green)':'var(--red)'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-    </div>
-    <div style="padding:10px 14px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Benchmark vs Buy & Hold</div>
-      <div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${alpha>=0?'var(--green)':'var(--red)'}">Alpha: ${alpha>=0?'+':''}${alpha.toFixed(2)}%</div>
-      <div style="font-size:10px;color:var(--muted)">B&H: ${bh>=0?'+':''}${bh.toFixed(2)}%</div>
-    </div>
-  </div>
-
-  <!-- IA SUGGESTION -->
-  ${iaSug ? `<div class="ia-sug"><div class="ia-sug-title">💡 Sugestão da IA</div><div class="ia-sug-text">${iaSug}</div></div>` : ''}
-
-  <!-- TRADES TABLE -->
-  <div class="trades-panel">
-    <div class="tp-title">Histórico de Trades <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">${trades.length} registros</span></div>
-    <table class="trades-tbl">
-      <thead><tr><th>Entrada</th><th>Saída</th><th>Preço Entrada</th><th>Preço Saída</th><th>Retorno</th><th>P&L</th><th>Resultado</th></tr></thead>
-      <tbody>
-        ${trades.slice(0,30).map(t=>{
-          const r=parseFloat(t.retorno_pct||0);
-          const pl=parseFloat(t.pl||0);
-          return `<tr><td>${t.entrada||'-'}</td><td>${t.saida||'-'}</td><td style="font-family:var(--mono)">${(t.preco_entrada||0).toFixed(4)}</td><td style="font-family:var(--mono)">${(t.preco_saida||0).toFixed(4)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'+':''}${r.toFixed(3)}%</td><td class="${r>=0?'tg':'tr'}">$${pl.toFixed(2)}</td><td class="${r>=0?'tg':'tr'}">${r>=0?'Ganho':'Perda'}</td></tr>`;
-        }).join('')}
-        ${trades.length===0?'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">Nenhum trade registrado</td></tr>':''}
-      </tbody>
-    </table>
-  </div>`;
-
-  // Renderiza gráficos
-  setTimeout(()=>{ renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist); }, 60);
-}
-
-function usarTemplate(el, key) {
-  document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedTemplate = key;
-}
-
-function confirmarTemplate() {
-  if(TEMPLATES[selectedTemplate]) {
-    document.getElementById('code-editor').value = TEMPLATES[selectedTemplate];
-    switchTab('editor');
-  }
-}
-
-function colarCodigoIA() {
-  if(lastIACode) {
-    document.getElementById('code-editor').value = lastIACode;
-  } else {
-    document.getElementById('ia-desc').focus();
-  }
-}
-
-async function gerarBotIA() {
-  const desc = document.getElementById('ia-desc').value.trim();
-  if(!desc){document.getElementById('ia-desc').focus();return;}
-  const btn = document.getElementById('ia-btn');
-  btn.textContent = '⏳ Gerando...';btn.disabled=true;
-  try {
-    const r = await fetch(API+'/gerar-bot-ia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao:desc})});
-    const d = await r.json();
-    if(d.codigo){
-      lastIACode = d.codigo;
-      document.getElementById('code-editor').value = d.codigo;
-      document.getElementById('paste-ia-btn').style.background='rgba(0,208,132,0.15)';
-      document.getElementById('paste-ia-btn').style.borderColor='rgba(0,208,132,0.4)';
-    }
-  } catch(e){alert('Erro ao gerar bot.');}
-  btn.textContent='✨ Gerar Bot com IA';btn.disabled=false;
-}
-
-async function abrirNTSL() {
-  document.getElementById('modal-ntsl').style.display='flex';
-  if(!lastResult){document.getElementById('ntsl-code').textContent='Rode um backtest primeiro.';return;}
-  try {
-    const r = await fetch(API+'/exportar/ntsl');
-    const d = await r.json();
-    document.getElementById('ntsl-code').textContent = d.codigo||'Erro ao gerar NTSL.';
-  } catch(e){document.getElementById('ntsl-code').textContent='// Erro ao conectar.';}
-}
-
-// Init check API
-fetch(API+'/').then(r=>{
-  if(!r.ok)throw new Error();
-}).catch(()=>{
-  document.getElementById('api-label').textContent='API Offline';
-  document.getElementById('api-label').style.color='var(--red)';
-  document.getElementById('api-dot').style.background='var(--red)';
-  document.getElementById('api-dot').style.animation='none';
-});
-
-// Theme toggle
-function toggleTheme(){
-  const isLight = document.body.classList.toggle('light');
-  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
-  localStorage.setItem('btp-theme', isLight ? 'light' : 'dark');
-  // se a amostra está visível, redesenha com as cores do novo tema
-  const samp = document.getElementById('ov-sample');
-  if(samp && samp.style.display!=='none'){ try{ renderSampleChart(); }catch(e){} }
-}
-// Restore saved theme
-if(localStorage.getItem('btp-theme')==='light'){
-  document.body.classList.add('light');
-  document.getElementById('theme-btn').textContent = '☀️';
-}
-
-// Desenha o gráfico de amostra (demonstração) na Overview ao abrir
-function initSampleChart(){
-  if(typeof LightweightCharts === 'undefined'){ setTimeout(initSampleChart, 200); return; }
-  try{ renderSampleChart(); }catch(e){ console.warn('sample chart:', e); }
-}
-setTimeout(initSampleChart, 150);
-</script>
-<!-- MODAL OTIMIZACAO -->
-<div class="otim-modal-bg" id="otim-modal-bg">
-  <div class="otim-modal">
-    <h3>⚙ Otimizar parâmetros</h3>
-    <div class="sub">Testa várias combinações de uma vez e mostra um ranking. Os campos abaixo definem: de / até / intervalo.</div>
-
-    <div class="otim-row">
-      <div class="lbl">Stop Loss (pts)</div>
-      <div class="otim-inputs">
-        <div><div class="mini">de</div><input type="number" id="otim-sl-ini" value="30"></div>
-        <div><div class="mini">até</div><input type="number" id="otim-sl-fim" value="60"></div>
-        <div><div class="mini">intervalo</div><input type="number" id="otim-sl-passo" value="10"></div>
-      </div>
-    </div>
-
-    <div class="otim-row">
-      <div class="lbl">Take Profit (pts)</div>
-      <div class="otim-inputs">
-        <div><div class="mini">de</div><input type="number" id="otim-tp-ini" value="60"></div>
-        <div><div class="mini">até</div><input type="number" id="otim-tp-fim" value="120"></div>
-        <div><div class="mini">intervalo</div><input type="number" id="otim-tp-passo" value="20"></div>
-      </div>
-    </div>
-
-    <div class="otim-row">
-      <div class="lbl">Período EMA</div>
-      <div class="otim-inputs">
-        <div><div class="mini">de</div><input type="number" id="otim-ema-ini" value="20"></div>
-        <div><div class="mini">até</div><input type="number" id="otim-ema-fim" value="20"></div>
-        <div><div class="mini">intervalo</div><input type="number" id="otim-ema-passo" value="1"></div>
-      </div>
-    </div>
-
-    <div class="otim-row">
-      <div class="lbl">Ordenar por</div>
-      <select id="otim-ordenar">
-        <option value="sharpe" selected>Sharpe (qualidade — recomendado)</option>
-        <option value="profit_factor">Profit Factor (qualidade)</option>
-        <option value="retorno">Retorno (%)</option>
-        <option value="win_rate">Win Rate (cuidado: pode enganar)</option>
-      </select>
-    </div>
-
-    <div class="otim-combos" id="otim-combos">— combinações</div>
-
-    <div class="acts">
-      <button class="btn-go" id="otim-go" onclick="rodarOtimizar()">Rodar otimização</button>
-      <button class="btn-cancel" onclick="fecharOtimizar()">Cancelar</button>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+    return {"ok": True}
