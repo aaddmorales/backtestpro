@@ -1,6 +1,8 @@
 <!--
-  BotBacktest Frontend — v3.6
+  BotBacktest Frontend — v3.8
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.8: botoes timeframe com mesmo fundo destacado dos campos (cinza nos 2 temas), ativo (rodando) mantem verde
+  v3.7: tema escuro tambem com campos destacados (fundo #1c2230 + borda mais marcada) — mesma faixa cinza profissional dos 2 temas
   v3.6: tema claro mais profissional — campos (select/input) com fundo cinza #e9edf2 e borda mais marcada, coluna esquerda cinza suave #f4f6f9 (em vez de branco puro) p/ os campos se destacarem
   v3.5: fix tema claro — botoes da barra superior mantêm BRANCO nos 2 temas (barra é sempre escura #080a0d), removidas regras que os deixavam pretos e sumiam
   v3.4: legibilidade nivel GitHub — botoes topo branco(#eef1f6)/preto(#1a1f2b), cores muted bem mais contrastadas nos 2 temas, labels .pl mais claras e bold
@@ -129,6 +131,9 @@ body.light .col-left{background:#f4f6f9}
 body.light .col-right{background:rgba(255,255,255,0.9)}
 body.light .metrics-bar{background:rgba(255,255,255,0.97)}
 body.light select,body.light input[type=number],body.light input[type=text]{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
+body.light .tf-btn{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
+body.light .tf-btn:hover{background:#dde3ea;color:#000;border-color:rgba(0,0,0,0.28)}
+body.light .tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green2)}
 body.light select option{background:#ffffff}
 body.light #code-editor{background:#f8f9fb;color:#383a42}
 body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
@@ -185,7 +190,7 @@ body.light .theme-toggle::after{background:var(--green);left:14px}
 
 select,input[type=number],input[type=text]{
   width:100%;height:30px;
-  background:var(--bg3);border:1px solid var(--border);
+  background:#1c2230;border:1px solid rgba(255,255,255,0.14);
   border-radius:5px;color:var(--text);font-size:12px;
   font-family:var(--sans);padding:0 8px;outline:none;
   transition:border .15s;
@@ -196,12 +201,12 @@ select option{background:#141920}
 .tf-group{display:flex;gap:4px;flex-wrap:wrap}
 .tf-btn{
   height:26px;padding:0 8px;border-radius:4px;
-  border:1px solid var(--border);background:transparent;
-  color:var(--muted2);font-size:11px;font-family:var(--mono);
-  cursor:pointer;transition:all .12s;font-weight:500;
+  border:1px solid rgba(255,255,255,0.14);background:#1c2230;
+  color:var(--text);font-size:11px;font-family:var(--mono);
+  cursor:pointer;transition:all .12s;font-weight:600;
 }
-.tf-btn:hover{background:var(--bg3);color:var(--text)}
-.tf-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
+.tf-btn:hover{background:#252c3c;color:#fff;border-color:rgba(255,255,255,0.25)}
+.tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green);font-weight:700}
 
 .pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 
