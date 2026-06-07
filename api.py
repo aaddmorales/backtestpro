@@ -1,6 +1,13 @@
 # ============================================================
-#  BotBacktest API — v1.8
+#  BotBacktest API — v1.9
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.9:
+#  - BabyMachine analise: /babymachine/analisar le os dados coletados e
+#    gera (B) aprendizado coletivo anonimo (tendencias do banco inteiro) +
+#    (C) deteccao de comportamento de risco da jornada do usuario
+#    (overfitting manual, win-alto/retorno-negativo, etc). Analise por
+#    regras puras. user_id se logado, senao sessao_id. Sempre honesto.
+#  Historico anterior:
 #  Novidades v1.8:
 #  - Renomeacao interna da feature de padroes para OffMind.
 #    Rotas /offmind/analisar e /offmind/padroes. Tecnicas-chave protegidas no backend.
@@ -709,6 +716,160 @@ def salvar_historico_backtest(params, metricas, user_id=None, sessao_id=None, co
     except Exception as e:
         import sys
         print(f"[BabyMachine] historico nao gravado: {e}", file=sys.stderr)
+
+
+# ════════════════════════════════════════════════════════════
+#  BABYMACHINE — Análise dos dados coletados (regras puras)
+#  B: aprendizado coletivo anônimo (banco inteiro)
+#  C: detecção de comportamento de risco (jornada do usuário)
+#  Sempre honesto: observações estatísticas, nunca promessa de retorno.
+# ════════════════════════════════════════════════════════════
+
+class BabyMachineParams(BaseModel):
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+    ativo: Optional[str] = None       # opcional: focar a análise coletiva num ativo
+
+
+def _bm_media(vals):
+    vals = [v for v in vals if v is not None]
+    return (sum(vals)/len(vals)) if vals else None
+
+
+@app.post("/babymachine/analisar")
+def babymachine_analisar(params: BabyMachineParams):
+    """Analisa os dados coletados: tendências do banco (B) + comportamento do usuário (C)."""
+    import sys
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return {"disponivel": False, "motivo": "Coleta de dados não configurada."}
+
+        # ── B: APRENDIZADO COLETIVO (anônimo) ─────────────────────
+        # lê a tabela inteira (sem expor user_id de ninguém)
+        try:
+            resp = sb.table("backtests_historico").select(
+                "ativo,timeframe,stop_loss,take_profit,retorno,win_rate,sharpe,profit_factor,max_drawdown,total_trades,sessao_id,user_id"
+            ).limit(5000).execute()
+            linhas = resp.data or []
+        except Exception:
+            # fallback: campos podem estar dentro de 'parametros'
+            resp = sb.table("backtests_historico").select("*").limit(5000).execute()
+            linhas = resp.data or []
+
+        total_banco = len(linhas)
+        coletivo = {"total_backtests": total_banco, "insights": []}
+
+        if total_banco >= 10:
+            # tendência 1: take > stop vs take <= stop (qual tem Sharpe médio maior)
+            def _sl(r): return r.get("stop_loss") or (r.get("parametros") or {}).get("stop_loss")
+            def _tp(r): return r.get("take_profit") or (r.get("parametros") or {}).get("take_profit")
+            grupo_tp_maior = [r for r in linhas if _tp(r) and _sl(r) and _tp(r) > _sl(r)]
+            grupo_tp_menor = [r for r in linhas if _tp(r) and _sl(r) and _tp(r) <= _sl(r)]
+            sh_maior = _bm_media([r.get("sharpe") for r in grupo_tp_maior])
+            sh_menor = _bm_media([r.get("sharpe") for r in grupo_tp_menor])
+            if sh_maior is not None and sh_menor is not None and len(grupo_tp_maior) >= 5 and len(grupo_tp_menor) >= 5:
+                if sh_maior > sh_menor:
+                    coletivo["insights"].append(
+                        f"Na plataforma, configurações com take maior que o stop tiveram Sharpe médio mais alto "
+                        f"({sh_maior:.2f} vs {sh_menor:.2f}) em {len(grupo_tp_maior)+len(grupo_tp_menor)} backtests. "
+                        f"Isso sugere 'deixar o lucro correr' — mas é observação do passado, valide na sua estratégia."
+                    )
+                else:
+                    coletivo["insights"].append(
+                        f"Curiosamente, na plataforma o take maior que o stop NÃO teve vantagem de Sharpe "
+                        f"({sh_maior:.2f} vs {sh_menor:.2f}). Cada mercado é diferente — teste no seu ativo."
+                    )
+
+            # tendência 2: ativo mais testado
+            from collections import Counter
+            ativos = Counter([r.get("ativo") for r in linhas if r.get("ativo")])
+            if ativos:
+                mais, qtd = ativos.most_common(1)[0]
+                coletivo["insights"].append(f"O ativo mais testado na plataforma é {mais} ({qtd} backtests).")
+
+            # tendência 3: sharpe médio geral (referência honesta)
+            sh_geral = _bm_media([r.get("sharpe") for r in linhas])
+            wr_geral = _bm_media([r.get("win_rate") for r in linhas])
+            if sh_geral is not None:
+                coletivo["insights"].append(
+                    f"Sharpe médio de todos os backtests da plataforma: {sh_geral:.2f}"
+                    + (f" · Win rate médio: {wr_geral:.1f}%" if wr_geral is not None else "")
+                    + ". A maioria das estratégias fica perto da média — vantagem real é rara."
+                )
+        else:
+            coletivo["insights"].append("Ainda há poucos dados na plataforma para tendências coletivas confiáveis. Volte em breve.")
+
+        # ── C: COMPORTAMENTO DO USUÁRIO ──────────────────────────
+        comportamento = {"disponivel": False, "alertas": [], "resumo": ""}
+        minha_jornada = []
+        if params.user_id:
+            minha_jornada = [r for r in linhas if r.get("user_id") == params.user_id]
+            escopo = "histórico completo"
+        elif params.sessao_id:
+            minha_jornada = [r for r in linhas if r.get("sessao_id") == params.sessao_id]
+            escopo = "sessão atual"
+        else:
+            escopo = None
+
+        if minha_jornada and len(minha_jornada) >= 2:
+            comportamento["disponivel"] = True
+            n = len(minha_jornada)
+            comportamento["resumo"] = f"Analisei {n} backtests seus ({escopo})."
+
+            # alerta 1: muitos testes mudando só o stop/take (sinal de overfitting manual)
+            def _sl(r): return r.get("stop_loss") or (r.get("parametros") or {}).get("stop_loss")
+            def _tp(r): return r.get("take_profit") or (r.get("parametros") or {}).get("take_profit")
+            ativos_testados = set(r.get("ativo") for r in minha_jornada)
+            if n >= 6 and len(ativos_testados) == 1:
+                comportamento["alertas"].append({
+                    "nivel": "alto",
+                    "texto": f"Você rodou {n} backtests no mesmo ativo ({list(ativos_testados)[0]}) ajustando parâmetros. "
+                             f"Cuidado: buscar o 'número perfeito' no histórico é a definição de overfitting. "
+                             f"Valide a melhor configuração na aba Robustez (out-of-sample)."
+                })
+
+            # alerta 2: nunca testou em mais de um timeframe
+            tfs = set(r.get("timeframe") for r in minha_jornada if r.get("timeframe"))
+            if n >= 4 and len(tfs) == 1:
+                comportamento["alertas"].append({
+                    "nivel": "medio",
+                    "texto": f"Todos os seus testes foram no timeframe {list(tfs)[0]}. "
+                             f"Uma estratégia robusta costuma funcionar em mais de um timeframe — experimente variar."
+                })
+
+            # alerta 3: melhor sharpe da jornada
+            melhor = max(minha_jornada, key=lambda r: (r.get("sharpe") or -999))
+            if melhor.get("sharpe") is not None:
+                comportamento["alertas"].append({
+                    "nivel": "info",
+                    "texto": f"Seu melhor backtest até agora: {melhor.get('ativo')} "
+                             f"(stop {_sl(melhor)}/take {_tp(melhor)}), Sharpe {melhor.get('sharpe'):.2f}, "
+                             f"retorno {melhor.get('retorno')}%. Que tal validar a robustez dele?"
+                })
+
+            # alerta 4: win rate alto com retorno negativo (a armadilha clássica)
+            armadilha = [r for r in minha_jornada
+                         if (r.get("win_rate") or 0) >= 55 and (r.get("retorno") or 0) < 0]
+            if armadilha:
+                comportamento["alertas"].append({
+                    "nivel": "alto",
+                    "texto": f"Você teve {len(armadilha)} teste(s) com win rate alto (≥55%) MAS retorno negativo. "
+                             f"Lembre: ganhar muitas vezes não é o mesmo que lucrar. O tamanho dos ganhos/perdas importa mais."
+                })
+        elif escopo:
+            comportamento["resumo"] = "Rode mais alguns backtests para a BabyMachine analisar sua jornada."
+
+        return converter_para_python({
+            "disponivel": True,
+            "coletivo": coletivo,
+            "comportamento": comportamento,
+        })
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO BABYMACHINE: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
+
 
 
 class ValidarOverfittingParams(BaseModel):
