@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.5
+  BotBacktest Frontend — v2.6
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.6: fix bug ao TROCAR de combinação no gráfico (devolve ov-result p/ Overview antes de limpar slot)
   v2.5: Passo B COMPLETO — grafico aparece EMBAIXO da tabela de ranking (move #ov-result p/ slot na aba Otimizacao); campea abre automatico; ver no grafico troca; rodarBacktest restaura ov-result p/ Overview
   v2.4: Passo B (jeito seguro) — campea abre na Overview
   v2.3: painel de codigo (strategy.py) movido da coluna direita p/ DENTRO da aba Editor; tela principal mais limpa; focusIA troca p/ aba editor
@@ -1962,6 +1963,14 @@ function renderOtimizacao(d){
 async function mostrarGraficoNaOtimizacao(sl,tp,ema){
   const slot = document.getElementById('otim-grafico-slot');
   if(!slot) return;
+  // IMPORTANTE: se o #ov-result já está dentro do slot (de uma combinação anterior),
+  // devolve ele pra aba Overview ANTES de limpar o slot — senão o elemento é destruído.
+  const ovrPrev = document.getElementById('ov-result');
+  const ovTabPrev = document.getElementById('tab-overview');
+  if(ovrPrev && ovTabPrev && ovrPrev.parentElement !== ovTabPrev){
+    ovrPrev.style.display='none';
+    ovTabPrev.appendChild(ovrPrev);
+  }
   // cabeçalho indicando qual combinação está sendo exibida
   slot.innerHTML = '<div style="margin:6px 0 12px;font-size:13px;color:var(--text);font-weight:600">📊 Gráfico da combinação · Stop '+sl+' / Take '+tp+' / EMA '+ema+'</div>'+
     '<div id="otim-grafico-load" style="text-align:center;color:var(--muted);padding:30px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:12px">Carregando gráfico...</div></div>';
@@ -1989,7 +1998,7 @@ async function mostrarGraficoNaOtimizacao(sl,tp,ema){
     const d = await r.json();
     lastResult = d;
     atualizarMetricsBar(d);
-    renderOverview(d, params);           // desenha dentro do #ov-result (na aba Overview)
+    renderOverview(d, params);           // desenha dentro do #ov-result (que agora está na Overview)
     // move o #ov-result pra dentro do slot, embaixo da tabela
     const ovr = document.getElementById('ov-result');
     const loadEl = document.getElementById('otim-grafico-load');
