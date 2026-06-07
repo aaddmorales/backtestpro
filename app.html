@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v4.1
+  BotBacktest Frontend — v4.2
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v4.2: BabyMachine — aba 🧠 + botao Analise BabyMachine; chama /babymachine/analisar e mostra 2 secoes: Aprendizado coletivo (tendencias do banco) + Sua jornada (alertas coloridos por nivel: overfitting/win-enganoso/melhor backtest). Conselhos honestos.
   v4.1: OffMind — aba Padroes + botao Detectar padroes; chama /offmind/analisar e mostra ranking dos padroes do mais assertivo ao menos (melhor horizonte de cada, mini-tabela dos 4 horizontes, disclaimer honesto)
   v3.9: removido botao NTSL duplicado da barra superior (mantido Exportar para NTSL na coluna esquerda)
   v3.8: botoes timeframe com mesmo fundo destacado dos campos (cinza nos 2 temas), ativo (rodando) mantem verde
@@ -636,6 +637,7 @@ select option{background:#141920}
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
   <button class="tbtn" id="tab-robustez-btn" onclick="switchTab('robustez')">🔬 Robustez</button>
   <button class="tbtn" id="tab-padroes-btn" onclick="switchTab('padroes')">🔍 Padrões</button>
+  <button class="tbtn" id="tab-baby-btn" onclick="switchTab('baby')">🧠 BabyMachine</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
@@ -868,6 +870,7 @@ select option{background:#141920}
       <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
       <button class="otim-btn" id="robustez-btn" onclick="validarRobustez()" style="border-color:rgba(0,208,132,0.35)">🔬 Validar robustez (out-of-sample)</button>
       <button class="otim-btn" id="padroes-btn" onclick="analisarPadroes()" style="border-color:rgba(157,111,255,0.4)">🔍 Detectar padrões (OffMind)</button>
+      <button class="otim-btn" id="baby-btn" onclick="analisarBabyMachine()" style="border-color:rgba(0,180,216,0.4)">🧠 Análise BabyMachine</button>
       <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
     </div>
   </div>
@@ -1224,6 +1227,13 @@ select option{background:#141920}
             <div style="font-size:14px;color:var(--muted2);max-width:400px;line-height:1.6">Clique em <strong style="color:var(--purple)">🔍 Detectar padrões</strong> à esquerda. O <strong>OffMind</strong> varre o histórico do ativo procurando padrões recorrentes e mede honestamente <strong>quantas vezes cada um acertou e quantas falhou</strong> — em vários horizontes. Padrões ordenados do mais assertivo ao menos.</div>
           </div>
           <div id="pad-resultado" style="display:none"></div>
+        </div>
+        <div id="tab-baby" style="display:none;padding:20px 16px;overflow-y:auto;">
+          <div id="baby-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
+            <div style="font-size:34px">🧠</div>
+            <div style="font-size:14px;color:var(--muted2);max-width:420px;line-height:1.6">Clique em <strong style="color:#00b4d8">🧠 Análise BabyMachine</strong> à esquerda. A BabyMachine aprende com os dados da plataforma: mostra <strong>tendências do conjunto de todos os backtests</strong> e analisa <strong>a sua própria jornada</strong> em busca de armadilhas comuns (overfitting, win rate enganoso...). Conselhos honestos, nunca promessas.</div>
+          </div>
+          <div id="baby-resultado" style="display:none"></div>
         </div>
         <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
           <div style="max-width:860px;margin:0 auto;">
@@ -1847,7 +1857,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar','robustez','padroes'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar','robustez','padroes','baby'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -2292,6 +2302,89 @@ function renderPadroes(d){
   });
 
   html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">O ranking usa o melhor horizonte de cada padrão (maior taxa de acerto com amostra suficiente). Próximo passo recomendado: validar o padrão vencedor fora da amostra na aba <strong style="color:var(--green)">🔬 Robustez</strong> antes de confiar.</div>';
+
+  res.innerHTML = html;
+}
+
+// ── BABYMACHINE — Análise dos dados coletados ─────────────────
+async function analisarBabyMachine(){
+  const btn = document.getElementById('baby-btn');
+  const txt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='🧠 Analisando...'; }
+  switchTab('baby');
+  const vazio = document.getElementById('baby-vazio');
+  const res = document.getElementById('baby-resultado');
+  if(vazio) vazio.style.display='none';
+  if(res){
+    res.style.display='block';
+    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">A BabyMachine está lendo os dados da plataforma e sua jornada...</div></div>';
+  }
+  try{
+    const params = {
+      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
+      sessao_id: BB_SESSAO_ID,
+    };
+    const r = await fetch(API+'/babymachine/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
+    const d = await r.json();
+    renderBabyMachine(d);
+  }catch(err){
+    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro na análise: '+(err.message||err)+'</div>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=txt; }
+  }
+}
+
+function renderBabyMachine(d){
+  const res = document.getElementById('baby-resultado');
+  if(!res) return;
+  if(!d || !d.disponivel){
+    res.innerHTML='<div style="color:var(--muted);padding:30px;text-align:center">'+((d&&d.motivo)||'Análise indisponível no momento.')+'</div>';
+    return;
+  }
+  const cor = {alto:'#ff4d6a', medio:'#ffb830', info:'#00b4d8'};
+  const icone = {alto:'⚠️', medio:'🟡', info:'💡'};
+
+  let html =
+    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🧠 BabyMachine</div>'+
+    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:18px">A inteligência da plataforma aprende com os dados e te dá conselhos honestos sobre suas decisões.</div>';
+
+  // ── SEÇÃO B: COLETIVO ──
+  const col = d.coletivo || {};
+  html +=
+    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:16px">'+
+      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🌐 Aprendizado coletivo</div>'+
+      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Tendências de '+(col.total_backtests||0)+' backtests anônimos de toda a plataforma.</div>';
+  (col.insights||[]).forEach(ins => {
+    html += '<div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.55"><span style="flex-shrink:0">📊</span><span>'+ins+'</span></div>';
+  });
+  if(!(col.insights||[]).length){
+    html += '<div style="font-size:12.5px;color:var(--muted)">Ainda há poucos dados para tendências confiáveis.</div>';
+  }
+  html += '</div>';
+
+  // ── SEÇÃO C: SUA JORNADA ──
+  const comp = d.comportamento || {};
+  html +=
+    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px">'+
+      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🧭 Sua jornada</div>'+
+      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">'+(comp.resumo||'')+'</div>';
+  if(comp.disponivel && (comp.alertas||[]).length){
+    (comp.alertas||[]).forEach(a => {
+      const c = cor[a.nivel] || '#00b4d8';
+      const ic = icone[a.nivel] || '💡';
+      html +=
+        '<div style="display:flex;gap:10px;align-items:flex-start;background:'+c+'14;border:1px solid '+c+'55;border-left:3px solid '+c+';border-radius:8px;padding:11px 13px;margin-bottom:9px">'+
+          '<span style="flex-shrink:0;font-size:15px">'+ic+'</span>'+
+          '<span style="font-size:13px;color:var(--text);line-height:1.55">'+a.texto+'</span>'+
+        '</div>';
+    });
+  } else if(!comp.disponivel){
+    html += '<div style="font-size:12.5px;color:var(--muted)">Rode mais alguns backtests para a BabyMachine analisar seus padrões de decisão.</div>';
+  }
+  html += '</div>';
+
+  html += '<div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">A BabyMachine analisa estatísticas do passado para te ajudar a evitar armadilhas comuns. Não é conselho de investimento nem promessa de retorno.</div>';
 
   res.innerHTML = html;
 }
