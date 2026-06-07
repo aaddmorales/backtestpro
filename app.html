@@ -1,7 +1,8 @@
 <!--
-  BotBacktest Frontend — v2.4
+  BotBacktest Frontend — v2.5
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  v2.4: Passo B (jeito seguro) — ao terminar otimizacao, campea (1a) abre grafico automatico na Overview
+  v2.5: Passo B COMPLETO — grafico aparece EMBAIXO da tabela de ranking (move #ov-result p/ slot na aba Otimizacao); campea abre automatico; ver no grafico troca; rodarBacktest restaura ov-result p/ Overview
+  v2.4: Passo B (jeito seguro) — campea abre na Overview
   v2.3: painel de codigo (strategy.py) movido da coluna direita p/ DENTRO da aba Editor; tela principal mais limpa; focusIA troca p/ aba editor
   v2.2: correcoes visuais — Comissao->Spread/custo; select Ordenar por (altura/line-height); alerta overfitting e aviso win-rate com fundo escuro solido (legivel tema claro+escuro); botao ver no grafico fundo escuro+contorno verde
   v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
@@ -1936,7 +1937,7 @@ function renderOtimizacao(d){
       '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.profit_factor)+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted2)">'+_fmt(row.win_rate,'%')+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:#ff8a8a">'+_fmt(row.max_drawdown,'%')+'</td>'+
-      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:5px 12px;border-radius:6px;border:1px solid #00d084;background:#0f1620;color:#00d084;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
+      '<td style="padding:8px 6px"><button onclick="mostrarGraficoNaOtimizacao('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:5px 12px;border-radius:6px;border:1px solid #00d084;background:#0f1620;color:#00d084;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
       '</tr>';
   });
   res.innerHTML=
@@ -1948,12 +1949,56 @@ function renderOtimizacao(d){
     '<thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left">'+
     '<th style="padding:8px 6px">#</th><th style="padding:8px 6px">Stop</th><th style="padding:8px 6px">Take</th><th style="padding:8px 6px">EMA</th><th style="padding:8px 6px">Retorno</th><th style="padding:8px 6px">Sharpe</th><th style="padding:8px 6px">P.Factor</th><th style="padding:8px 6px">Win%</th><th style="padding:8px 6px">Drawdown</th><th style="padding:8px 6px"></th>'+
     '</tr></thead><tbody>'+linhas+'</tbody></table></div>'+
-    '<div id="otim-auto-aviso" style="margin-top:14px;padding:10px 13px;background:#0f1620;border:1px solid #00d084;border-radius:8px;font-size:12px;color:#00d084;display:flex;align-items:center;gap:8px"><span>📊</span><span>Abrindo o gráfico completo da combinação campeã (🏆) na aba Overview...</span></div>';
+    '<div id="otim-grafico-slot" style="margin-top:18px"></div>';
 
-  // Passo B (jeito seguro): abre automaticamente o gráfico da campeã na Overview
+  // Passo B completo: abre o gráfico da campeã EMBAIXO da tabela (mesma aba)
   const campea = (d.ranking && d.ranking[0]) ? d.ranking[0] : null;
   if(campea){
-    setTimeout(()=>{ aplicarCombo(campea.stop_loss, campea.take_profit, campea.ema_period); }, 1200);
+    setTimeout(()=>{ mostrarGraficoNaOtimizacao(campea.stop_loss, campea.take_profit, campea.ema_period); }, 400);
+  }
+}
+
+// Move o #ov-result (gráfico+relatório completo) p/ dentro do slot embaixo da tabela
+async function mostrarGraficoNaOtimizacao(sl,tp,ema){
+  const slot = document.getElementById('otim-grafico-slot');
+  if(!slot) return;
+  // cabeçalho indicando qual combinação está sendo exibida
+  slot.innerHTML = '<div style="margin:6px 0 12px;font-size:13px;color:var(--text);font-weight:600">📊 Gráfico da combinação · Stop '+sl+' / Take '+tp+' / EMA '+ema+'</div>'+
+    '<div id="otim-grafico-load" style="text-align:center;color:var(--muted);padding:30px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:12px">Carregando gráfico...</div></div>';
+  // preenche os campos da esquerda e roda o backtest dessa combinação
+  document.getElementById('stop_loss').value=sl;
+  document.getElementById('take_profit').value=tp;
+  document.getElementById('ema_period').value=ema;
+  try{
+    const params = {
+      ativo: document.getElementById('ativo').value,
+      periodo: document.getElementById('periodo').value,
+      timeframe: document.getElementById('timeframe').value,
+      indicador: document.getElementById('indicador').value,
+      ema_period: parseInt(ema),
+      stop_loss: parseFloat(sl),
+      take_profit: parseFloat(tp),
+      capital: parseFloat(document.getElementById('capital').value),
+      max_ops: parseInt(document.getElementById('max_ops').value),
+      comissao: parseFloat(document.getElementById('comissao').value),
+      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
+      sessao_id: BB_SESSAO_ID,
+    };
+    const r = await fetch(API+'/backtest/visual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
+    const d = await r.json();
+    lastResult = d;
+    atualizarMetricsBar(d);
+    renderOverview(d, params);           // desenha dentro do #ov-result (na aba Overview)
+    // move o #ov-result pra dentro do slot, embaixo da tabela
+    const ovr = document.getElementById('ov-result');
+    const loadEl = document.getElementById('otim-grafico-load');
+    if(loadEl) loadEl.remove();
+    slot.appendChild(ovr);
+    ovr.style.display='block';
+  }catch(err){
+    const slot2=document.getElementById('otim-grafico-slot');
+    if(slot2) slot2.innerHTML='<div style="color:#ff5a5a;padding:20px;text-align:center">Erro ao carregar o gráfico: '+(err.message||err)+'</div>';
   }
 }
 
@@ -2093,6 +2138,10 @@ async function rodarBacktest() {
     const d = await r.json();
     lastResult = d;
     atualizarMetricsBar(d);
+    // Garante que o #ov-result esteja de volta na aba Overview (pode ter sido movido p/ otimização)
+    const ovrEl = document.getElementById('ov-result');
+    const ovTab = document.getElementById('tab-overview');
+    if(ovrEl && ovTab && ovrEl.parentElement !== ovTab){ ovTab.appendChild(ovrEl); }
     renderOverview(d, params);
     switchTab('overview');
     await incrementarBacktest();
