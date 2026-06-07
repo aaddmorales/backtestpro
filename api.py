@@ -1,6 +1,12 @@
 # ============================================================
-#  BotBacktest API — v1.4
+#  BotBacktest API — v1.5
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.5:
+#  - Otimizacao de parametros: endpoint /otimizar varre combinacoes de
+#    stop_loss, take_profit e ema_period; baixa dados UMA vez e varia em
+#    memoria; retorna ranking + alerta de overfitting. Teto de 50 combos.
+#    Cada combo tambem grava na BabyMachine (backtests_historico).
+#  Historico anterior:
 #  Novidades v1.4:
 #  - BabyMachine: registra historico de cada backtest na tabela
 #    backtests_historico (Supabase). Fundacao p/ IA aprender a
@@ -531,6 +537,110 @@ def converter_para_python(obj):
     elif hasattr(obj, 'item'):
         return obj.item()
     return obj
+
+# ── OTIMIZACAO DE PARAMETROS (v1.5) ─────────────────────────
+class OtimizarParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    indicador: str = "EMA Channel High/Low"
+    capital: float = 10000
+    max_ops: int = 5
+    comissao: float = 0.0002
+    # intervalos: [inicio, fim, passo]
+    stop_loss_range: list = [30, 60, 10]
+    take_profit_range: list = [60, 120, 20]
+    ema_period_range: list = [20, 20, 1]   # padrao: fixo em 20
+    ordenar_por: str = "win_rate"          # win_rate | sharpe | retorno | profit_factor
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+def _gerar_valores(rng):
+    """De [inicio, fim, passo] gera a lista de valores. Seguro contra passo<=0."""
+    try:
+        ini, fim, passo = float(rng[0]), float(rng[1]), float(rng[2])
+    except Exception:
+        return []
+    if passo <= 0:
+        return [ini]
+    vals = []
+    v = ini
+    # +1e-9 para incluir o fim mesmo com float
+    while v <= fim + 1e-9:
+        vals.append(round(v, 6))
+        v += passo
+    return vals or [ini]
+
+@app.post("/otimizar")
+def otimizar(req: OtimizarParams):
+    import sys, copy
+    try:
+        stops = _gerar_valores(req.stop_loss_range)
+        takes = _gerar_valores(req.take_profit_range)
+        emas  = [int(x) for x in _gerar_valores(req.ema_period_range)]
+
+        total = len(stops) * len(takes) * len(emas)
+        TETO = 50
+        if total == 0:
+            raise HTTPException(400, "Intervalos invalidos: nenhuma combinacao gerada.")
+        if total > TETO:
+            raise HTTPException(400, f"{total} combinacoes excedem o teto de {TETO}. Reduza os intervalos ou aumente o passo.")
+
+        # Baixa os dados UMA vez (eficiencia) e reusa em todas as combinacoes
+        df_base = baixar_dados(req.ativo, req.periodo, req.timeframe)
+
+        resultados = []
+        for sl in stops:
+            for tp in takes:
+                for ep in emas:
+                    p = BacktestParams(
+                        ativo=req.ativo, periodo=req.periodo, timeframe=req.timeframe,
+                        indicador=req.indicador, ema_period=ep,
+                        stop_loss=sl, take_profit=tp,
+                        capital=req.capital, max_ops=req.max_ops, comissao=req.comissao,
+                        user_id=req.user_id, sessao_id=req.sessao_id,
+                    )
+                    try:
+                        resultado = rodar_estrategia(df_base.copy(), p)
+                        m = calcular_metricas_completas(resultado, p, df_base)
+                        # alimenta a BabyMachine (non-blocking)
+                        salvar_historico_backtest(p, m, user_id=req.user_id, sessao_id=req.sessao_id, codigo="")
+                        resultados.append({
+                            "stop_loss": sl, "take_profit": tp, "ema_period": ep,
+                            "win_rate": m.get("win_rate"), "sharpe": m.get("sharpe"),
+                            "retorno": m.get("retorno"), "max_drawdown": m.get("max_drawdown"),
+                            "profit_factor": m.get("profit_factor"), "total_trades": m.get("total_trades"),
+                        })
+                    except Exception as e:
+                        print(f"[otimizar] combo sl={sl} tp={tp} ep={ep} falhou: {e}", file=sys.stderr)
+
+        if not resultados:
+            raise HTTPException(400, "Nenhuma combinacao produziu resultado valido.")
+
+        # Ordena pelo criterio escolhido (maior melhor; drawdown nao e usado p/ ordenar)
+        chave = req.ordenar_por if req.ordenar_por in ("win_rate","sharpe","retorno","profit_factor") else "win_rate"
+        resultados.sort(key=lambda r: (r.get(chave) if r.get(chave) is not None else -9e9), reverse=True)
+
+        # Alerta de overfitting: sempre presente, em linguagem honesta
+        alerta = ("Estes resultados sao METRICAS DE BACKTEST sobre dados historicos. "
+                  "Melhor desempenho no passado NAO garante desempenho futuro. "
+                  "A combinacao no topo pode estar superajustada (overfitting) ao historico. "
+                  "Antes de confiar, valide a escolhida fora da amostra (out-of-sample) e em outros periodos.")
+
+        return converter_para_python({
+            "combinacoes_testadas": len(resultados),
+            "ordenado_por": chave,
+            "ranking": resultados,
+            "melhor": resultados[0],
+            "alerta_overfitting": alerta,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO OTIMIZAR: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
+
 
 # ── BABYMACHINE: registro de historico ──────────────────────
 def _sb_admin():
