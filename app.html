@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.3
+  BotBacktest Frontend — v2.4
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.4: Passo B (jeito seguro) — ao terminar otimizacao, campea (1a) abre grafico automatico na Overview
   v2.3: painel de codigo (strategy.py) movido da coluna direita p/ DENTRO da aba Editor; tela principal mais limpa; focusIA troca p/ aba editor
   v2.2: correcoes visuais — Comissao->Spread/custo; select Ordenar por (altura/line-height); alerta overfitting e aviso win-rate com fundo escuro solido (legivel tema claro+escuro); botao ver no grafico fundo escuro+contorno verde
   v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
@@ -1946,7 +1947,14 @@ function renderOtimizacao(d){
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left">'+
     '<th style="padding:8px 6px">#</th><th style="padding:8px 6px">Stop</th><th style="padding:8px 6px">Take</th><th style="padding:8px 6px">EMA</th><th style="padding:8px 6px">Retorno</th><th style="padding:8px 6px">Sharpe</th><th style="padding:8px 6px">P.Factor</th><th style="padding:8px 6px">Win%</th><th style="padding:8px 6px">Drawdown</th><th style="padding:8px 6px"></th>'+
-    '</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>'+
+    '<div id="otim-auto-aviso" style="margin-top:14px;padding:10px 13px;background:#0f1620;border:1px solid #00d084;border-radius:8px;font-size:12px;color:#00d084;display:flex;align-items:center;gap:8px"><span>📊</span><span>Abrindo o gráfico completo da combinação campeã (🏆) na aba Overview...</span></div>';
+
+  // Passo B (jeito seguro): abre automaticamente o gráfico da campeã na Overview
+  const campea = (d.ranking && d.ranking[0]) ? d.ranking[0] : null;
+  if(campea){
+    setTimeout(()=>{ aplicarCombo(campea.stop_loss, campea.take_profit, campea.ema_period); }, 1200);
+  }
 }
 
 function aplicarCombo(sl,tp,ema){
