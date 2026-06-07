@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v3.2
+  BotBacktest Frontend — v3.3
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.3: legibilidade — botoes barra superior com cor mais clara + peso 600 + contorno sutil + ativo com destaque verde; cores --muted clareadas (escuro) e escurecidas (claro) p/ legendas legiveis nos 2 temas
   v3.2: donuts de robustez MAIORES (180px) lado a lado embaixo da tabela (largura toda); mais visivel/profissional
   v3.1: dois donuts (treino vs teste) ao lado da tabela de robustez
   v3.0: deteccao de overfitting (out-of-sample) — botao Validar robustez + aba Robustez com veredito colorido e tabela treino vs teste (chama /validar-overfitting)
@@ -44,7 +45,7 @@
 :root{
   --bg:#080a0d;--bg2:#0e1117;--bg3:#141920;--bg4:#1c2230;
   --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
-  --text:#dde3ee;--muted:#5a6478;--muted2:#8a94a8;
+  --text:#dde3ee;--muted:#8893a6;--muted2:#aab3c4;
   --green:#00d084;--green2:#00a868;--green-bg:rgba(0,208,132,0.08);
   --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
   --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
@@ -88,18 +89,18 @@ body::after{
 
 .tbtn{
   height:30px;padding:0 11px;border-radius:6px;
-  border:1px solid transparent;background:transparent;
-  color:#8a94a8;font-size:12px;font-family:var(--sans);font-weight:500;
+  border:1px solid rgba(255,255,255,0.12);background:transparent;
+  color:#cdd5e0;font-size:12px;font-family:var(--sans);font-weight:600;
   cursor:pointer;display:flex;align-items:center;gap:5px;
   transition:all .15s;white-space:nowrap;
 }
-.tbtn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.1)}
-.tbtn.active{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15)}
-.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.2);color:var(--green)}
+.tbtn:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.25)}
+.tbtn.active{background:rgba(0,208,132,0.18);color:#fff;border-color:#00d084;font-weight:700}
+.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.4);color:var(--green)}
 .tbtn-orange:hover{background:rgba(0,208,132,0.15)}
-.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.2);color:var(--purple)}
+.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.4);color:var(--purple)}
 .tbtn-purple:hover{background:rgba(157,111,255,0.15)}
-.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.2);color:var(--amber)}
+.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.4);color:var(--amber)}
 .tbtn-amber:hover{background:rgba(255,184,48,0.15)}
 
 .spacer{flex:1}
@@ -113,7 +114,7 @@ body::after{
 body.light{
   --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
   --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#111827;--muted:#9ca3af;--muted2:#6b7280;
+  --text:#111827;--muted:#5e6675;--muted2:#434a57;
 }
 body.light::after{
   background:
@@ -141,7 +142,9 @@ body.light .rank-card:hover{background:#f0f2f5}
 body.light .podium-block{border-color:rgba(0,0,0,0.1)}
 body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
 body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tbtn:hover,.body.light .tbtn.active{background:rgba(255,255,255,0.1)}
+body.light .tbtn{color:#3a4254;border-color:rgba(0,0,0,0.14)}
+body.light .tbtn:hover{background:rgba(0,0,0,0.05);color:#000;border-color:rgba(0,0,0,0.25)}
+body.light .tbtn.active{background:rgba(0,208,132,0.16);color:#0a7a4f;border-color:#00d084}
 body.light .trades-tbl tr:hover td{background:#f0f2f5}
 
 /* toggle button */
