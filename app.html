@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v3.4
+  BotBacktest Frontend — v3.5
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.5: fix tema claro — botoes da barra superior mantêm BRANCO nos 2 temas (barra é sempre escura #080a0d), removidas regras que os deixavam pretos e sumiam
   v3.4: legibilidade nivel GitHub — botoes topo branco(#eef1f6)/preto(#1a1f2b), cores muted bem mais contrastadas nos 2 temas, labels .pl mais claras e bold
   v3.3: legibilidade — botoes barra superior com cor mais clara + peso 600 + contorno sutil + ativo com destaque verde; cores --muted clareadas (escuro) e escurecidas (claro) p/ legendas legiveis nos 2 temas
   v3.2: donuts de robustez MAIORES (180px) lado a lado embaixo da tabela (largura toda); mais visivel/profissional
@@ -143,9 +144,7 @@ body.light .rank-card:hover{background:#f0f2f5}
 body.light .podium-block{border-color:rgba(0,0,0,0.1)}
 body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
 body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-body.light .tbtn{color:#1a1f2b;border-color:rgba(0,0,0,0.18)}
-body.light .tbtn:hover{background:rgba(0,0,0,0.05);color:#000;border-color:rgba(0,0,0,0.25)}
-body.light .tbtn.active{background:rgba(0,208,132,0.16);color:#0a7a4f;border-color:#00d084}
+/* barra superior é sempre escura nos 2 temas — botões mantêm o branco da regra base .tbtn */
 body.light .trades-tbl tr:hover td{background:#f0f2f5}
 
 /* toggle button */
