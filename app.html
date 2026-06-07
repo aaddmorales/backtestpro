@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.8
+  BotBacktest Frontend — v2.9
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.9: tela de EXEMPLO completa (Forma C) — usa renderOverview real com dados de demonstracao (grafico + todos os paineis), banner EXEMPLO no topo, some ao rodar real
   v2.8: grafico de amostra REALISTA (random walk + lightweight-charts, mesma lib do real) substituindo SVG artificial; redesenha no toggle de tema
   v2.7: Overview vira aba inicial (botao 1o, antes do Editor); grafico de amostra com selo EXEMPLO na tela inicial; some ao rodar backtest real
   v2.6: fix bug ao TROCAR de combinação no gráfico (devolve ov-result p/ Overview antes de limpar slot)
@@ -950,16 +951,9 @@ select option{background:#141920}
 
           <!-- TAB: OVERVIEW -->
           <div id="tab-overview" style="display:block">
-            <div id="ov-sample" style="padding:18px 16px">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-                <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
-                <span style="font-size:13px;color:var(--muted2)">Assim ficará seu resultado · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong></span>
-              </div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:14px">XAU/USD · 2 anos · 1D · candles + operações (demonstração)</div>
-              <div style="border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--bg2);position:relative">
-                <div style="position:absolute;top:14px;left:14px;background:rgba(15,22,32,0.78);border:1px solid #3a4756;border-radius:7px;padding:7px 13px;font-size:11px;color:#cdd9e3;z-index:3;pointer-events:none">📊 Gráfico de demonstração · <span style="color:var(--muted)">seus resultados reais aparecem aqui</span></div>
-                <div id="candle-chart-sample" style="width:100%;height:380px"></div>
-              </div>
+            <div id="ov-sample-banner" style="display:flex;align-items:center;gap:10px;padding:14px 16px 0">
+              <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
+              <span style="font-size:13px;color:var(--muted2)">Resultado de demonstração · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> para ver o seu</span>
             </div>
             <div class="overview-empty" id="ov-empty" style="display:none">
               <div style="font-size:38px;opacity:.25">📊</div>
@@ -1974,6 +1968,7 @@ function renderOtimizacao(d){
 
 // Move o #ov-result (gráfico+relatório completo) p/ dentro do slot embaixo da tabela
 async function mostrarGraficoNaOtimizacao(sl,tp,ema){
+  modoExemplo = false;
   const slot = document.getElementById('otim-grafico-slot');
   if(!slot) return;
   // IMPORTANTE: se o #ov-result já está dentro do slot (de uma combinação anterior),
@@ -2102,6 +2097,7 @@ function atualizarMetricsBar(d) {
 
 async function rodarBacktest() {
   console.log('rodarBacktest() chamado');
+  modoExemplo = false;
   // Verificar login e limite
   const liberado = await verificarLimite();
   console.log('liberado:', liberado);
@@ -2347,80 +2343,88 @@ function addOverlaysToChart(chart, candlesData, overlays) {
 let lastCandlesData = [];
 let lastMarkers = [];
 
-let sampleChart = null;
-// Gera candles realistas (random walk com volatilidade variável) e desenha com a MESMA lib do gráfico real
-function renderSampleChart() {
-  const container = document.getElementById('candle-chart-sample');
-  if(!container || typeof LightweightCharts === 'undefined') return;
-  const isLight = document.body.classList.contains('light');
-
-  // --- gera ~160 candles diários realistas a partir de XAU/USD ~2000 ---
-  const candles = [];
-  let price = 2000;
-  let vol = 18;                          // volatilidade base
-  const start = Math.floor(Date.now()/1000) - 160*86400;
-  for(let i=0;i<160;i++){
-    // volatilidade oscila (mercado calmo x agitado)
+// Gera um objeto de resultado de EXEMPLO completo e realista, no mesmo formato do backtest real.
+// Reaproveita random walk pros candles e monta equity/roi/trades coerentes.
+function montarDadosExemplo(){
+  const N = 160;
+  const candles_data = [];
+  let price = 2000, vol = 18;
+  const start = Math.floor(Date.now()/1000) - N*86400;
+  for(let i=0;i<N;i++){
     vol = Math.max(8, Math.min(45, vol + (Math.random()-0.5)*6));
-    // leve tendência de alta no geral, com correções
     const drift = (i>40 && i<70) ? -0.35 : (i>110 && i<128 ? -0.5 : 0.18);
     const open = price;
     const change = drift*vol + (Math.random()-0.5)*vol*2;
-    let close = open + change;
-    if(close < 100) close = open;        // piso de segurança
+    let close = open + change; if(close<100) close=open;
     const hi = Math.max(open,close) + Math.random()*vol*0.9;
     const lo = Math.min(open,close) - Math.random()*vol*0.9;
-    candles.push({ time: start + i*86400, open, high: hi, low: lo, close });
+    candles_data.push({ t: start + i*86400, o:+open.toFixed(2), h:+hi.toFixed(2), l:+lo.toFixed(2), c:+close.toFixed(2) });
     price = close;
   }
-
-  const bgColor = isLight ? '#ffffff' : '#0e1117';
-  const textColor = isLight ? '#6b7280' : '#5a6478';
-  const gridColor = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
-
-  container.innerHTML='';
-  if(sampleChart){ try{ sampleChart.remove(); }catch(e){} sampleChart=null; }
-  const chart = LightweightCharts.createChart(container, {
-    width: container.clientWidth, height: 380,
-    layout: { background:{type:'solid',color:bgColor}, textColor },
-    grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor, minimumWidth: 80, scaleMargins:{top:0.12,bottom:0.12} },
-    leftPriceScale: { visible:false },
-    timeScale: { borderColor, timeVisible:false, secondsVisible:false, rightOffset:6, barSpacing:7 },
-    handleScroll:false, handleScale:false,
-  });
-  sampleChart = chart;
-  const series = chart.addCandlestickSeries({
-    upColor:'#00d084', downColor:'#ff4d6a',
-    borderUpColor:'#00d084', borderDownColor:'#ff4d6a',
-    wickUpColor:'#00d084', wickDownColor:'#ff4d6a',
-  });
-  series.setData(candles);
-
-  // marcadores de exemplo (compra/venda) pra parecer um backtest real
-  const mk = [];
-  for(let j=12;j<candles.length-6;j+=Math.floor(14+Math.random()*12)){
-    const buy = candles[j].close < candles[j].open ? true : Math.random()>0.5;
-    mk.push({ time: candles[j].time, position: buy?'belowBar':'aboveBar',
-      color: buy?'#00d084':'#ff4d6a', shape: buy?'arrowUp':'arrowDown',
-      text: buy?'B':'S' });
+  // marcadores de operações
+  const markers = [];
+  for(let j=12;j<N-6;j+=Math.floor(14+Math.random()*12)){
+    const buy = candles_data[j].c < candles_data[j].o ? true : Math.random()>0.5;
+    markers.push({ time: candles_data[j].t, position: buy?'belowBar':'aboveBar',
+      color: buy?'#00d084':'#ff4d6a', shape: buy?'arrowUp':'arrowDown', text: buy?'B':'S' });
   }
-  try{ series.setMarkers(mk); }catch(e){}
-  chart.timeScale().fitContent();
-
-  // redesenha no resize
-  if(!window._sampleResizeBound){
-    window._sampleResizeBound = true;
-    window.addEventListener('resize', ()=>{
-      const c=document.getElementById('candle-chart-sample');
-      const samp=document.getElementById('ov-sample');
-      if(sampleChart && c && samp && samp.style.display!=='none'){
-        try{ sampleChart.applyOptions({width:c.clientWidth}); }catch(e){}
-      }
-    });
+  // métricas de exemplo coerentes (perfil "bom mas honesto")
+  const capital_inicial = 10000;
+  const total_trades = 38, winners = 20, losers = 18;
+  const win_rate = +(winners/total_trades*100).toFixed(2);
+  const retorno = 4.73, lucro_perda = +(capital_inicial*retorno/100).toFixed(2);
+  const capital_final = capital_inicial + lucro_perda;
+  // curva de capital (sobe com solavancos, leve drawdown no meio)
+  const equity_curve = [];
+  let eq = capital_inicial;
+  for(let i=0;i<=total_trades;i++){
+    const step = (i>14 && i<20) ? -55 : (40 + (Math.random()-0.3)*70);
+    eq = Math.max(capital_inicial-600, eq + step);
+    equity_curve.push(+eq.toFixed(2));
   }
+  equity_curve[equity_curve.length-1] = capital_final;
+  // distribuição de ROI por trade
+  const roi_distribution = [
+    {bin:-3.50,count:1,positivo:false},{bin:-2.38,count:1,positivo:false},
+    {bin:-0.80,count:16,positivo:false},{bin:0.74,count:20,positivo:true}
+  ];
+  // trades de exemplo
+  const trades = [];
+  for(let i=0;i<total_trades;i++){
+    const win = i<winners;
+    trades.push({ pnl: win? (60+Math.random()*120) : -(40+Math.random()*90), bars: 1+Math.round(Math.random()*4) });
+  }
+  return {
+    ativo:'XAU/USD', candles:N, data_backtest:new Date().toLocaleDateString('pt-BR'),
+    capital_inicial, capital_final, lucro_perda, retorno,
+    win_rate, sharpe:1.92, max_drawdown:-5.05, profit_factor:1.29,
+    total_trades, winners, losers, breakevens:0,
+    candles_data, markers, equity_curve, roi_distribution, trades,
+    buy_hold:89.37, alpha:-84.64, cagr:2.35,
+    avg_pnl:12.46, avg_pnl_pct:0.125, avg_bars_in_trades:2,
+    maior_ganho:102.88, maior_perda:-376.00,
+    avg_runup:0.960, avg_drawdown_trade:-0.798,
+    account_size_required:10505, gross_profit:1700, gross_loss:1228,
+    sugestao:'', to:''
+  };
+}
+
+// Desenha a tela de EXEMPLO completa usando o renderOverview real (gráfico + painéis)
+let sampleChart = null; // (mantido por compat; não usado na Forma C)
+let modoExemplo = false;
+function renderSampleChart(){
+  if(typeof LightweightCharts === 'undefined') return;
+  const params = {
+    ativo: (document.getElementById('ativo')||{}).value || 'XAU/USD',
+    periodo: (document.getElementById('periodo')||{}).value || '2 anos',
+    timeframe: (document.getElementById('timeframe')||{}).value || '1d',
+    capital: 10000,
+  };
+  const d = montarDadosExemplo();
+  modoExemplo = true;
+  renderOverview(d, params);                       // desenha tudo no #ov-result
+  const banner = document.getElementById('ov-sample-banner');
+  if(banner) banner.style.display = 'flex';
 }
 
 function renderCandleChart(candlesData, markers, isLight, overlays) {
@@ -2579,8 +2583,9 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
 
 function renderOverview(d, params) {
   document.getElementById('ov-empty').style.display = 'none';
-  const sampleEl = document.getElementById('ov-sample');
-  if(sampleEl) sampleEl.style.display = 'none';
+  // esconde o banner EXEMPLO por padrão; só reaparece quando renderSampleChart o reexibe
+  const banner = document.getElementById('ov-sample-banner');
+  if(banner && !modoExemplo) banner.style.display = 'none';
   const area = document.getElementById('ov-result');
   area.style.display = 'block';
 
