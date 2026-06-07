@@ -1,6 +1,11 @@
 # ============================================================
-#  BotBacktest API — v1.3
-#  Data: 2026-06-03 | Deploy: Railway
+#  BotBacktest API — v1.4
+#  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.4:
+#  - BabyMachine: registra historico de cada backtest na tabela
+#    backtests_historico (Supabase). Fundacao p/ IA aprender a
+#    jornada do trader. Gravacao NON-BLOCKING (falha nao quebra o teste).
+#  Historico anterior:
 #  Novidades v1.3:
 #  - Separacao landing/app:
 #      "/"     serve index.html  (landing page)
@@ -24,6 +29,8 @@ from datetime import datetime, timedelta
 import json
 import traceback
 import os
+import hashlib
+import uuid as _uuid
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
@@ -69,6 +76,8 @@ class BacktestParams(BaseModel):
     capital: float = 10000
     max_ops: int = 5
     comissao: float = 0.0002
+    user_id: Optional[str] = None      # BabyMachine: dono do teste (se logado)
+    sessao_id: Optional[str] = None    # BabyMachine: agrupa a jornada de ajustes
 
 class BacktestCustom(BacktestParams):
     codigo: str = ""
@@ -523,6 +532,56 @@ def converter_para_python(obj):
         return obj.item()
     return obj
 
+# ── BABYMACHINE: registro de historico ──────────────────────
+def _sb_admin():
+    """Cliente Supabase com service_role (ignora RLS) para gravacao."""
+    from supabase import create_client
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+def salvar_historico_backtest(params, metricas, user_id=None, sessao_id=None, codigo=""):
+    """Grava 1 linha em backtests_historico. NON-BLOCKING: erro nunca quebra o backtest."""
+    try:
+        sb = _sb_admin()
+        if sb is None or not user_id:
+            return
+        codigo_hash = None
+        if codigo and codigo.strip():
+            codigo_hash = hashlib.sha256(codigo.strip().encode("utf-8")).hexdigest()[:16]
+        parametros = {
+            "ema_period": getattr(params, "ema_period", None),
+            "stop_loss": getattr(params, "stop_loss", None),
+            "take_profit": getattr(params, "take_profit", None),
+            "capital": getattr(params, "capital", None),
+            "max_ops": getattr(params, "max_ops", None),
+            "comissao": getattr(params, "comissao", None),
+        }
+        linha = {
+            "user_id": user_id,
+            "ativo": getattr(params, "ativo", None),
+            "timeframe": getattr(params, "timeframe", None),
+            "periodo": getattr(params, "periodo", None),
+            "estrategia_nome": getattr(params, "indicador", None),
+            "codigo_hash": codigo_hash,
+            "parametros": parametros,
+            "retorno": metricas.get("retorno"),
+            "win_rate": metricas.get("win_rate"),
+            "sharpe": metricas.get("sharpe"),
+            "max_drawdown": metricas.get("max_drawdown"),
+            "profit_factor": metricas.get("profit_factor"),
+            "total_trades": metricas.get("total_trades"),
+            "sessao_id": sessao_id or str(_uuid.uuid4()),
+            "permite_treino": True,
+        }
+        sb.table("backtests_historico").insert(linha).execute()
+    except Exception as e:
+        import sys
+        print(f"[BabyMachine] historico nao gravado: {e}", file=sys.stderr)
+
+
 @app.post("/backtest/visual")
 def backtest_visual(params: BacktestParams):
     import sys
@@ -530,6 +589,7 @@ def backtest_visual(params: BacktestParams):
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
         resultado = rodar_estrategia(df, params)
         metricas = calcular_metricas_completas(resultado, params, df)
+        salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo="")
         return converter_para_python(metricas)
     except HTTPException:
         raise
@@ -551,6 +611,7 @@ def backtest_custom(params: BacktestCustom):
         else:
             resultado = rodar_estrategia(df, params)
         metricas = calcular_metricas_completas(resultado, params, df)
+        salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo=getattr(params, "codigo", ""))
         return converter_para_python(metricas)
     except HTTPException:
         raise
