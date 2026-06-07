@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v1.6
+  BotBacktest Frontend — v1.7
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v1.7: modal otimizacao clareado + contorno; puxa valores da esquerda; "passo"->"intervalo"
   v1.6: interface de Otimizacao de parametros (modal + aba ranking + alerta overfitting)
   v1.5: envia user_id + sessao_id no Rodar Backtest (alimenta BabyMachine)
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
@@ -200,23 +201,27 @@ select option{background:#141920}
 .otim-btn{width:100%;margin-top:8px;padding:11px;border-radius:8px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
 .otim-btn:hover{background:rgba(0,208,132,0.08)}
 .otim-btn:disabled{opacity:.5;cursor:not-allowed}
-.otim-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
-.otim-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:440px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px}
-.otim-modal h3{font-size:16px;margin:0 0 4px;color:var(--text)}
-.otim-modal .sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
-.otim-row{margin-bottom:14px}
-.otim-row .lbl{font-size:12px;color:var(--muted2);margin-bottom:6px;font-weight:600}
+.otim-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.otim-modal{background:#1c2530;border:1px solid #00d084;border-radius:14px;width:460px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 0 0 1px rgba(0,208,132,.15),0 20px 60px rgba(0,0,0,.5)}
+.otim-modal h3{font-size:17px;margin:0 0 4px;color:#fff;font-weight:700}
+.otim-modal .sub{font-size:12px;color:#9fb0c0;margin-bottom:18px;line-height:1.5}
+.otim-row{margin-bottom:15px}
+.otim-row .lbl{font-size:12px;color:#cdd9e3;margin-bottom:7px;font-weight:600}
 .otim-inputs{display:flex;gap:8px}
 .otim-inputs > div{flex:1}
-.otim-inputs .mini{font-size:10px;color:var(--muted);margin-bottom:2px}
-.otim-inputs input{width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:var(--mono);box-sizing:border-box}
-.otim-modal select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:var(--sans)}
-.otim-combos{font-size:11px;color:var(--muted);margin:4px 0 14px;font-family:var(--mono)}
-.otim-combos.over{color:#ff5a5a}
+.otim-inputs .mini{font-size:10px;color:#8a9aa8;margin-bottom:3px}
+.otim-inputs input{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--mono);box-sizing:border-box}
+.otim-inputs input:focus{outline:none;border-color:#00d084}
+.otim-modal select{width:100%;padding:9px;border-radius:7px;border:1px solid #3a4756;background:#0f1620;color:#fff;font-size:13px;font-family:var(--sans)}
+.otim-modal select:focus{outline:none;border-color:#00d084}
+.otim-combos{font-size:12px;color:#9fb0c0;margin:6px 0 16px;font-family:var(--mono)}
+.otim-combos.over{color:#ff6b6b}
 .otim-modal .acts{display:flex;gap:8px;margin-top:6px}
-.otim-modal .btn-go{flex:1;padding:11px;border-radius:8px;border:none;background:var(--green);color:#04140d;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
-.otim-modal .btn-go:disabled{opacity:.5;cursor:not-allowed}
-.otim-modal .btn-cancel{padding:11px 16px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:13px;cursor:pointer;font-family:var(--sans)}
+.otim-modal .btn-go{flex:1;padding:12px;border-radius:8px;border:none;background:var(--green);color:#04140d;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.otim-modal .btn-go:hover{background:#00e88f}
+.otim-modal .btn-go:disabled{opacity:.45;cursor:not-allowed}
+.otim-modal .btn-cancel{padding:12px 18px;border-radius:8px;border:1px solid #3a4756;background:transparent;color:#cdd9e3;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.otim-modal .btn-cancel:hover{background:rgba(255,255,255,.05)}
 
 .exp-btn{
   width:100%;height:38px;margin-top:6px;
@@ -1829,6 +1834,13 @@ function _otimAtualizaContagem(){
 }
 function abrirOtimizar(){
   if(!usuarioAtual){ abrirAuth('login'); return; }
+  // Puxa os valores atuais dos campos da esquerda como ponto de partida ("de")
+  const slAtual = document.getElementById('stop_loss').value;
+  const tpAtual = document.getElementById('take_profit').value;
+  const emaAtual = document.getElementById('ema_period').value;
+  if(slAtual){ document.getElementById('otim-sl-ini').value = slAtual; }
+  if(tpAtual){ document.getElementById('otim-tp-ini').value = tpAtual; }
+  if(emaAtual){ document.getElementById('otim-ema-ini').value = emaAtual; document.getElementById('otim-ema-fim').value = emaAtual; }
   document.getElementById('otim-modal-bg').style.display='flex';
   _otimAtualizaContagem();
   ['otim-sl-ini','otim-sl-fim','otim-sl-passo','otim-tp-ini','otim-tp-fim','otim-tp-passo','otim-ema-ini','otim-ema-fim','otim-ema-passo']
@@ -2693,7 +2705,7 @@ if(localStorage.getItem('btp-theme')==='light'){
       <div class="otim-inputs">
         <div><div class="mini">de</div><input type="number" id="otim-sl-ini" value="30"></div>
         <div><div class="mini">até</div><input type="number" id="otim-sl-fim" value="60"></div>
-        <div><div class="mini">passo</div><input type="number" id="otim-sl-passo" value="10"></div>
+        <div><div class="mini">intervalo</div><input type="number" id="otim-sl-passo" value="10"></div>
       </div>
     </div>
 
@@ -2702,7 +2714,7 @@ if(localStorage.getItem('btp-theme')==='light'){
       <div class="otim-inputs">
         <div><div class="mini">de</div><input type="number" id="otim-tp-ini" value="60"></div>
         <div><div class="mini">até</div><input type="number" id="otim-tp-fim" value="120"></div>
-        <div><div class="mini">passo</div><input type="number" id="otim-tp-passo" value="20"></div>
+        <div><div class="mini">intervalo</div><input type="number" id="otim-tp-passo" value="20"></div>
       </div>
     </div>
 
@@ -2711,7 +2723,7 @@ if(localStorage.getItem('btp-theme')==='light'){
       <div class="otim-inputs">
         <div><div class="mini">de</div><input type="number" id="otim-ema-ini" value="20"></div>
         <div><div class="mini">até</div><input type="number" id="otim-ema-fim" value="20"></div>
-        <div><div class="mini">passo</div><input type="number" id="otim-ema-passo" value="1"></div>
+        <div><div class="mini">intervalo</div><input type="number" id="otim-ema-passo" value="1"></div>
       </div>
     </div>
 
