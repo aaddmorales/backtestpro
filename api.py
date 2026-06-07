@@ -52,6 +52,7 @@
 #      "/app"  serve app.html    (antigo index.html do backtest)
 #  - success_url/cancel_url do Stripe apontam para /app
 #  Historico:
+#  - v2.2: webhook customer.subscription.deleted -> rebaixa cancelados p/ free
 #  - v1.2: fix StripeObject.to_dict() no webhook + SUPABASE_URL
 #  - v1.1: payload completo estilo TradingView (/backtest/visual e /custom)
 # ============================================================
@@ -1687,6 +1688,33 @@ async def webhook_stripe(request: Request):
                 print(f"Supabase update OK: {result}")
             except Exception as e:
                 print(f"Supabase update error: {e}")
+                raise HTTPException(status_code=500, detail=f"Supabase error: {str(e)}")
+
+    # Assinatura cancelada (ou expirada) -> rebaixa o usuario para o plano free.
+    # FREE_LIMIT: ajuste para o limite de backtests do seu plano gratuito,
+    # caso o trigger de signup do Supabase use um valor diferente.
+    elif event["type"] == "customer.subscription.deleted":
+        FREE_LIMIT = 10
+        sub_obj = event["data"]["object"]
+        sub = sub_obj.to_dict() if hasattr(sub_obj, "to_dict") else dict(sub_obj)
+        subscription_id = sub.get("id")
+
+        print(f"Webhook cancelamento recebido: subscription_id={subscription_id}")
+
+        if subscription_id:
+            try:
+                sb = _sb_admin()
+                if sb is not None:
+                    result = sb.table("perfis").update({
+                        "plano": "free",
+                        "backtests_limite": FREE_LIMIT,
+                        "stripe_subscription_id": None
+                    }).eq("stripe_subscription_id", subscription_id).execute()
+                    print(f"Downgrade para free OK: {result}")
+                else:
+                    print("Downgrade ignorado: _sb_admin() retornou None (SUPABASE_URL/KEY ausentes)")
+            except Exception as e:
+                print(f"Supabase downgrade error: {e}")
                 raise HTTPException(status_code=500, detail=f"Supabase error: {str(e)}")
 
     return {"ok": True}
