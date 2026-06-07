@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.2
+  BotBacktest Frontend — v2.3
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.3: painel de codigo (strategy.py) movido da coluna direita p/ DENTRO da aba Editor; tela principal mais limpa; focusIA troca p/ aba editor
   v2.2: correcoes visuais — Comissao->Spread/custo; select Ordenar por (altura/line-height); alerta overfitting e aviso win-rate com fundo escuro solido (legivel tema claro+escuro); botao ver no grafico fundo escuro+contorno verde
   v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
   v2.0: loading de candles centralizado verticalmente (min-height 60vh)
@@ -329,6 +330,9 @@ select option{background:#141920}
    TAB: EDITOR
 ════════════════════════════ */
 .tab-editor{padding:0}
+.editor-code-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:420px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
+.editor-code-wrap .ed-body{flex:1;min-height:0}
+.editor-code-wrap #code-editor{font-size:13px;line-height:1.7}
 .editor-center{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:100%;min-height:400px;gap:20px;padding:40px 20px;
@@ -885,21 +889,56 @@ select option{background:#141920}
 
           <!-- TAB: EDITOR -->
           <div id="tab-editor" class="tab-editor">
-            <div class="editor-center">
-              <div class="editor-drop-zone" onclick="document.getElementById('code-editor').focus()">
-                <div class="edz-icon">🐍</div>
-                <div class="edz-title">Cole seu código Python aqui</div>
-                <div class="edz-sub">Sua estratégia será testada com os parâmetros configurados à esquerda. Use a classe <strong style="color:var(--green);font-family:var(--mono)">Strategy</strong> do backtesting.py.</div>
-                <div class="edz-or">ou</div>
-                <div style="font-size:12px;color:var(--muted2)">Descreva sua estratégia abaixo e deixa a IA gerar o código →</div>
+            <div class="editor-code-wrap">
+              <div class="ed-header">
+                <div class="ed-dot" style="background:#ff5f57"></div>
+                <div class="ed-dot" style="background:#febc2e"></div>
+                <div class="ed-dot" style="background:#28c840"></div>
+                <span class="ed-fname">strategy.py</span>
+                <div class="spacer"></div>
+                <div class="ed-actions" style="gap:4px">
+                  <button class="ea-btn" onclick="document.getElementById('code-editor').value=''">Limpar</button>
+                  <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
+                </div>
               </div>
-              <div class="edz-hint">
-                <span>💡</span>
-                <span>Caso não tenha um código, descreva sua estratégia no campo <strong>DESCREVE A ESTRATÉGIA</strong> e clique em <strong>✨ Gerar Bot com IA</strong> — a IA cria o código completo para você testar.</span>
+              <div class="ed-body">
+                <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
+# Ou descreva abaixo e clica Gerar com IA
+
+# EXEMPLO — EMA Channel XAU/USD:
+# class EMAChannelStrategy(Strategy):
+#     ema_period = 20
+#
+#     def init(self):
+#         self.ema_high = self.I(
+#             lambda h: pd.Series(h).ewm(
+#                 span=self.ema_period,adjust=False
+#             ).mean().values, self.data.High)
+#         self.ema_low = self.I(
+#             lambda l: pd.Series(l).ewm(
+#                 span=self.ema_period,adjust=False
+#             ).mean().values, self.data.Low)
+#
+#     def next(self):
+#         preco = self.data.Close[-1]
+#         if not self.position:
+#             if preco > self.ema_high[-1]:
+#                 self.buy()
+#         else:
+#             if preco < self.ema_low[-1]:
+#                 self.position.close()"></textarea>
               </div>
-              <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2)">
+              <div class="ed-footer">
+                <button class="paste-code-btn" id="paste-ia-btn" onclick="colarCodigoIA()">
+                  📋 Colar código gerado pela IA
+                </button>
+                <div class="pl" style="margin-top:2px">Descreve a Estratégia</div>
+                <input type="text" id="ia-desc" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts...">
+                <button class="ia-gen-btn" id="ia-btn" onclick="gerarBotIA()">✨ Gerar Bot com IA</button>
+              </div>
+              <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2);margin-top:10px">
                 <span>⚡</span>
-                <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong> automaticamente.</span>
+                <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> à esquerda para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong>.</span>
               </div>
             </div>
           </div>
@@ -1205,56 +1244,6 @@ select option{background:#141920}
 
         </div><!-- /col-center -->
       </div><!-- /col-center-wrap -->
-
-      <!-- RIGHT: EDITOR -->
-      <div class="col-right">
-        <div class="ed-header">
-          <div class="ed-dot" style="background:#ff5f57"></div>
-          <div class="ed-dot" style="background:#febc2e"></div>
-          <div class="ed-dot" style="background:#28c840"></div>
-          <span class="ed-fname">strategy.py</span>
-          <div class="spacer"></div>
-          <div class="ed-actions" style="gap:4px">
-            <button class="ea-btn" onclick="document.getElementById('code-editor').value=''">Limpar</button>
-            <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
-          </div>
-        </div>
-        <div class="ed-body">
-          <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
-# Ou descreva abaixo e clica Gerar com IA
-
-# EXEMPLO — EMA Channel XAU/USD:
-# class EMAChannelStrategy(Strategy):
-#     ema_period = 20
-#
-#     def init(self):
-#         self.ema_high = self.I(
-#             lambda h: pd.Series(h).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.High)
-#         self.ema_low = self.I(
-#             lambda l: pd.Series(l).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.Low)
-#
-#     def next(self):
-#         preco = self.data.Close[-1]
-#         if not self.position:
-#             if preco > self.ema_high[-1]:
-#                 self.buy()
-#         else:
-#             if preco < self.ema_low[-1]:
-#                 self.position.close()"></textarea>
-        </div>
-        <div class="ed-footer">
-          <button class="paste-code-btn" id="paste-ia-btn" onclick="colarCodigoIA()">
-            📋 Colar código gerado pela IA
-          </button>
-          <div class="pl" style="margin-top:2px">Descreve a Estratégia</div>
-          <input type="text" id="ia-desc" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts...">
-          <button class="ia-gen-btn" id="ia-btn" onclick="gerarBotIA()">✨ Gerar Bot com IA</button>
-        </div>
-      </div>
 
     </div>
   </div>
@@ -1976,8 +1965,11 @@ function setTF(el, val) {
 }
 
 function focusIA() {
-  document.getElementById('ia-desc').focus();
-  document.getElementById('ia-desc').scrollIntoView();
+  switchTab('editor');
+  setTimeout(()=>{
+    const el=document.getElementById('ia-desc');
+    if(el){ el.focus(); el.scrollIntoView({behavior:'smooth',block:'center'}); }
+  }, 60);
 }
 
 function semCls(m, v) {
