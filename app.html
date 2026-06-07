@@ -1,6 +1,8 @@
 <!--
-  BotBacktest Frontend — v4.2
+  BotBacktest Frontend — v4.4
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v4.4: contador de backtests no topo da coluna esquerda (📊 X backtests realizados) — total do banco via /babymachine/contador; atualiza no login, apos cada backtest; escondido se deslogado ou zero. Tom neutro.
+  v4.3: BabyMachine — secao coletivo SUBSTITUIDA por 2 graficos de evolucao do usuario (Sharpe e retorno por teste, Chart.js linha) — coletivo nao publicado p/ nao comprometer evolucao da base. Aviso anti-overfitting nos graficos. Mantida secao Sua jornada (alertas).
   v4.2: BabyMachine — aba 🧠 + botao Analise BabyMachine; chama /babymachine/analisar e mostra 2 secoes: Aprendizado coletivo (tendencias do banco) + Sua jornada (alertas coloridos por nivel: overfitting/win-enganoso/melhor backtest). Conselhos honestos.
   v4.1: OffMind — aba Padroes + botao Detectar padroes; chama /offmind/analisar e mostra ranking dos padroes do mais assertivo ao menos (melhor horizonte de cada, mini-tabela dos 4 horizontes, disclaimer honesto)
   v3.9: removido botao NTSL duplicado da barra superior (mantido Exportar para NTSL na coluna esquerda)
@@ -680,6 +682,10 @@ select option{background:#141920}
 
   <!-- LEFT: PARAMS -->
   <div class="col-left">
+    <div id="contador-backtests" style="display:none;align-items:center;gap:8px;padding:9px 12px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:9px;font-size:12px;color:var(--muted2)">
+      <span style="font-size:14px">📊</span>
+      <span><strong id="contador-num" style="color:var(--text);font-size:14px">0</strong> backtests realizados</span>
+    </div>
     <div class="ps">
       <div class="pl">Ativo</div>
       <select id="ativo">
@@ -1231,7 +1237,7 @@ select option{background:#141920}
         <div id="tab-baby" style="display:none;padding:20px 16px;overflow-y:auto;">
           <div id="baby-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
             <div style="font-size:34px">🧠</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:420px;line-height:1.6">Clique em <strong style="color:#00b4d8">🧠 Análise BabyMachine</strong> à esquerda. A BabyMachine aprende com os dados da plataforma: mostra <strong>tendências do conjunto de todos os backtests</strong> e analisa <strong>a sua própria jornada</strong> em busca de armadilhas comuns (overfitting, win rate enganoso...). Conselhos honestos, nunca promessas.</div>
+            <div style="font-size:14px;color:var(--muted2);max-width:420px;line-height:1.6">Clique em <strong style="color:#00b4d8">🧠 Análise BabyMachine</strong> à esquerda. A BabyMachine mostra <strong>sua evolução nos backtests</strong> (Sharpe e retorno ao longo do tempo) e analisa <strong>a sua jornada</strong> em busca de armadilhas comuns (overfitting, win rate enganoso...). Conselhos honestos, nunca promessas.</div>
           </div>
           <div id="baby-resultado" style="display:none"></div>
         </div>
@@ -1462,6 +1468,7 @@ async function onLogin(user) {
   perfilAtual = perfil;
   atualizarUI();
   onbVerificar();
+  atualizarContador();
 }
 
 function onLogout() {
@@ -1470,6 +1477,7 @@ function onLogout() {
   document.getElementById('btn-login').style.display = 'flex';
   document.getElementById('btn-user').style.display = 'none';
   document.getElementById('limit-banner').classList.remove('show');
+  const cb = document.getElementById('contador-backtests'); if(cb) cb.style.display='none';
 }
 
 // ══════════════ ONBOARDING POR NÍVEL ══════════════
@@ -2335,6 +2343,23 @@ async function analisarBabyMachine(){
   }
 }
 
+// Contador de backtests no topo da coluna esquerda
+async function atualizarContador(){
+  const box = document.getElementById('contador-backtests');
+  const num = document.getElementById('contador-num');
+  if(!box || !num) return;
+  // só mostra se logado (usa user_id); senão fica escondido
+  if(!(usuarioAtual && usuarioAtual.id)){ box.style.display='none'; return; }
+  try{
+    const r = await fetch(API+'/babymachine/contador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id, sessao_id:BB_SESSAO_ID})});
+    if(!r.ok) return;
+    const d = await r.json();
+    const t = (d && typeof d.total==='number') ? d.total : 0;
+    num.textContent = t.toLocaleString('pt-BR');
+    box.style.display = (t>0) ? 'flex' : 'none';
+  }catch(e){ /* silencioso */ }
+}
+
 function renderBabyMachine(d){
   const res = document.getElementById('baby-resultado');
   if(!res) return;
@@ -2344,27 +2369,31 @@ function renderBabyMachine(d){
   }
   const cor = {alto:'#ff4d6a', medio:'#ffb830', info:'#00b4d8'};
   const icone = {alto:'⚠️', medio:'🟡', info:'💡'};
+  const comp = d.comportamento || {};
+  const evo = comp.evolucao || [];
 
   let html =
     '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🧠 BabyMachine</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:18px">A inteligência da plataforma aprende com os dados e te dá conselhos honestos sobre suas decisões.</div>';
+    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:18px">A inteligência da plataforma aprende com seus testes e te dá conselhos honestos sobre suas decisões.</div>';
 
-  // ── SEÇÃO B: COLETIVO ──
-  const col = d.coletivo || {};
+  // ── SEÇÃO 1: EVOLUÇÃO DO USUÁRIO (2 gráficos) ──
   html +=
     '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:16px">'+
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🌐 Aprendizado coletivo</div>'+
-      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Tendências de '+(col.total_backtests||0)+' backtests anônimos de toda a plataforma.</div>';
-  (col.insights||[]).forEach(ins => {
-    html += '<div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.55"><span style="flex-shrink:0">📊</span><span>'+ins+'</span></div>';
-  });
-  if(!(col.insights||[]).length){
-    html += '<div style="font-size:12.5px;color:var(--muted)">Ainda há poucos dados para tendências confiáveis.</div>';
+      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">📈 Sua evolução nos backtests</div>'+
+      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Como o Sharpe e o retorno dos seus testes variaram ao longo do tempo (cada ponto = um backtest).</div>';
+  if(evo.length >= 2){
+    html +=
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sharpe por teste</div><div style="height:180px"><canvas id="baby-chart-sharpe"></canvas></div></div>'+
+        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Retorno (%) por teste</div><div style="height:180px"><canvas id="baby-chart-retorno"></canvas></div></div>'+
+      '</div>'+
+      '<div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.55">⚠️ Subir aqui não significa necessariamente que sua estratégia ficou melhor — pode ser ajuste excessivo ao passado (overfitting). Sempre confirme na aba <strong style="color:var(--green)">Robustez</strong>.</div>';
+  } else {
+    html += '<div style="font-size:12.5px;color:var(--muted)">Rode pelo menos 2 backtests para ver sua evolução.</div>';
   }
   html += '</div>';
 
-  // ── SEÇÃO C: SUA JORNADA ──
-  const comp = d.comportamento || {};
+  // ── SEÇÃO 2: SUA JORNADA (alertas) ──
   html +=
     '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px">'+
       '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🧭 Sua jornada</div>'+
@@ -2387,6 +2416,36 @@ function renderBabyMachine(d){
   html += '<div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">A BabyMachine analisa estatísticas do passado para te ajudar a evitar armadilhas comuns. Não é conselho de investimento nem promessa de retorno.</div>';
 
   res.innerHTML = html;
+
+  // desenha os 2 gráficos depois do HTML existir
+  if(evo.length >= 2){
+    const labels = evo.map(e => '#'+e.i);
+    desenharLinhaBaby('baby-chart-sharpe', labels, evo.map(e => e.sharpe), '#00b4d8');
+    desenharLinhaBaby('baby-chart-retorno', labels, evo.map(e => e.retorno), '#00d084');
+  }
+}
+
+let _babyCharts = {};
+function desenharLinhaBaby(id, labels, dados, cor){
+  const cv = document.getElementById(id);
+  if(!cv || typeof Chart === 'undefined') return;
+  if(_babyCharts[id]){ try{ _babyCharts[id].destroy(); }catch(e){} }
+  const gridCor = (document.body.classList.contains('light')) ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
+  const txtCor = (document.body.classList.contains('light')) ? '#4a5260' : '#9aa4b6';
+  _babyCharts[id] = new Chart(cv, {
+    type:'line',
+    data:{ labels:labels, datasets:[{
+      data:dados, borderColor:cor, backgroundColor:cor+'22',
+      borderWidth:2, pointRadius:3, pointBackgroundColor:cor, fill:true, tension:0.25
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.parsed.y } } },
+      scales:{
+        x:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} },
+        y:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} }
+      }
+    }
+  });
 }
 
 function setTF(el, val) {
@@ -2524,6 +2583,7 @@ async function rodarBacktest() {
     renderOverview(d, params);
     switchTab('overview');
     await incrementarBacktest();
+    atualizarContador();
   } catch(e) {
     if(e.name==='AbortError') {
       alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
