@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v3.1
+  BotBacktest Frontend — v3.2
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.2: donuts de robustez MAIORES (180px) lado a lado embaixo da tabela (largura toda); mais visivel/profissional
   v3.1: dois donuts (treino vs teste) ao lado da tabela de robustez
   v3.0: deteccao de overfitting (out-of-sample) — botao Validar robustez + aba Robustez com veredito colorido e tabela treino vs teste (chama /validar-overfitting)
   v2.9: tela de EXEMPLO completa (Forma C) — usa renderOverview real com dados de demonstracao (grafico + todos os paineis), banner EXEMPLO no topo, some ao rodar real
@@ -2120,16 +2121,16 @@ function renderRobustez(d){
   const teWin = Math.round(teTotal * Number(te.win_rate||0)/100);
   const teLoss = Math.max(0, teTotal - teWin);
 
-  const donutBlock = (titulo, win, loss, total, wr) => (
-    '<div style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">'+
-      '<div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px;letter-spacing:.3px">'+titulo+'</div>'+
-      '<div style="font-size:12px;color:var(--muted2);margin-bottom:12px">Win Rate '+Number(wr).toFixed(2)+'%</div>'+
-      '<div style="display:flex;align-items:center;gap:16px">'+
-        '<div style="width:110px;height:110px;flex-shrink:0;position:relative"><canvas id="'+(titulo==='TREINO (conhecido)'?'rob-donut-tr':'rob-donut-te')+'"></canvas></div>'+
-        '<div style="font-size:12px;line-height:1.9">'+
-          '<div style="display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:#00d084;display:inline-block"></span><span style="color:var(--muted2)">Ganhos</span> <strong style="color:var(--text);font-family:var(--mono)">'+win+'</strong></div>'+
-          '<div style="display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:#ff4d6a;display:inline-block"></span><span style="color:var(--muted2)">Perdas</span> <strong style="color:var(--text);font-family:var(--mono)">'+loss+'</strong></div>'+
-          '<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;color:var(--muted2)">Total <strong style="color:var(--text);font-family:var(--mono)">'+total+'</strong></div>'+
+  const donutBlock = (titulo, win, loss, total, wr, canvasId) => (
+    '<div style="flex:1;min-width:280px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px 24px">'+
+      '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;letter-spacing:.3px">'+titulo+'</div>'+
+      '<div style="font-size:13px;color:var(--muted2);margin-bottom:18px">Win Rate '+Number(wr).toFixed(2)+'%</div>'+
+      '<div style="display:flex;align-items:center;gap:28px;justify-content:center;flex-wrap:wrap">'+
+        '<div style="width:180px;height:180px;flex-shrink:0;position:relative"><canvas id="'+canvasId+'"></canvas></div>'+
+        '<div style="font-size:14px;line-height:2.2">'+
+          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#00d084;display:inline-block"></span><span style="color:var(--muted2)">Ganhos</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+win+'</strong></div>'+
+          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#ff4d6a;display:inline-block"></span><span style="color:var(--muted2)">Perdas</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+loss+'</strong></div>'+
+          '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;color:var(--muted2)">Total <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+total+'</strong></div>'+
         '</div>'+
       '</div>'+
     '</div>'
@@ -2144,25 +2145,24 @@ function renderRobustez(d){
       '<div style="font-size:13px;color:var(--text);margin-top:7px;line-height:1.6">'+(v.resumo||'')+'</div>'+
       motivosHtml+
     '</div>'+
-    // linha: tabela à esquerda + donuts à direita
-    '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">'+
-      '<div style="flex:1;min-width:320px;overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+
-        '<thead><tr style="border-bottom:1px solid var(--border2)">'+
-          '<th style="padding:8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600">MÉTRICA</th>'+
-          '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TREINO (conhecido)</th>'+
-          '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TESTE (nunca visto)</th>'+
-        '</tr></thead><tbody>'+
-          linha('Retorno','retorno','retorno',fmtPct,true)+
-          linha('Win Rate','win_rate','win_rate',x=>Number(x).toFixed(2)+'%',true)+
-          linha('Sharpe','sharpe','sharpe',x=>Number(x).toFixed(2),true)+
-          linha('Profit Factor','profit_factor','profit_factor',x=>Number(x).toFixed(2),true)+
-          linha('Max Drawdown','max_drawdown','max_drawdown',x=>Number(x).toFixed(2)+'%')+
-          linha('Operações','total_trades','total_trades',x=>Math.round(x))+
-        '</tbody></table></div>'+
-      '<div style="display:flex;flex-direction:column;gap:14px;min-width:300px;flex:1">'+
-        donutBlock('TREINO (conhecido)', trWin, trLoss, trTotal, tr.win_rate||0)+
-        donutBlock('TESTE (nunca visto)', teWin, teLoss, teTotal, te.win_rate||0)+
-      '</div>'+
+    // tabela comparativa (largura toda)
+    '<div style="overflow-x:auto;margin-bottom:22px"><table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="border-bottom:1px solid var(--border2)">'+
+        '<th style="padding:8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600">MÉTRICA</th>'+
+        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TREINO (conhecido)</th>'+
+        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TESTE (nunca visto)</th>'+
+      '</tr></thead><tbody>'+
+        linha('Retorno','retorno','retorno',fmtPct,true)+
+        linha('Win Rate','win_rate','win_rate',x=>Number(x).toFixed(2)+'%',true)+
+        linha('Sharpe','sharpe','sharpe',x=>Number(x).toFixed(2),true)+
+        linha('Profit Factor','profit_factor','profit_factor',x=>Number(x).toFixed(2),true)+
+        linha('Max Drawdown','max_drawdown','max_drawdown',x=>Number(x).toFixed(2)+'%')+
+        linha('Operações','total_trades','total_trades',x=>Math.round(x))+
+      '</tbody></table></div>'+
+    // dois donuts GRANDES lado a lado embaixo
+    '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">'+
+      donutBlock('TREINO (conhecido)', trWin, trLoss, trTotal, tr.win_rate||0, 'rob-donut-tr')+
+      donutBlock('TESTE (nunca visto)', teWin, teLoss, teTotal, te.win_rate||0, 'rob-donut-te')+
     '</div>'+
     '<div style="margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:680px">Esta análise compara o desempenho da estratégia em dados que ela conhecia (treino) com dados que nunca viu (teste). É uma referência de robustez sobre o histórico — <strong>não é garantia de desempenho futuro</strong>. Valide também em outros ativos e períodos.</div>';
 
