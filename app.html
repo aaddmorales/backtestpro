@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v2.9
+  BotBacktest Frontend — v3.0
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.0: deteccao de overfitting (out-of-sample) — botao Validar robustez + aba Robustez com veredito colorido e tabela treino vs teste (chama /validar-overfitting)
   v2.9: tela de EXEMPLO completa (Forma C) — usa renderOverview real com dados de demonstracao (grafico + todos os paineis), banner EXEMPLO no topo, some ao rodar real
   v2.8: grafico de amostra REALISTA (random walk + lightweight-charts, mesma lib do real) substituindo SVG artificial; redesenha no toggle de tema
   v2.7: Overview vira aba inicial (botao 1o, antes do Editor); grafico de amostra com selo EXEMPLO na tela inicial; some ao rodar backtest real
@@ -620,6 +621,7 @@ select option{background:#141920}
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
+  <button class="tbtn" id="tab-robustez-btn" onclick="switchTab('robustez')">🔬 Robustez</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
@@ -851,6 +853,7 @@ select option{background:#141920}
         <span id="run-txt">Rodar Backtest</span>
       </button>
       <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
+      <button class="otim-btn" id="robustez-btn" onclick="validarRobustez()" style="border-color:rgba(0,208,132,0.35)">🔬 Validar robustez (out-of-sample)</button>
       <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
     </div>
   </div>
@@ -1193,6 +1196,13 @@ select option{background:#141920}
             <div style="font-size:14px;color:var(--muted2);max-width:320px;line-height:1.6">Clique em <strong style="color:var(--green)">⚙ Otimizar parâmetros</strong> à esquerda para testar várias combinações de stop, take e EMA de uma vez e ver um ranking.</div>
           </div>
           <div id="otim-resultado" style="display:none"></div>
+        </div>
+        <div id="tab-robustez" style="display:none;padding:20px 16px;overflow-y:auto;">
+          <div id="rob-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
+            <div style="font-size:34px">🔬</div>
+            <div style="font-size:14px;color:var(--muted2);max-width:380px;line-height:1.6">Clique em <strong style="color:var(--green)">🔬 Validar robustez</strong> à esquerda. A plataforma divide o histórico em <strong>treino</strong> (passado conhecido) e <strong>teste</strong> (dados que a estratégia nunca viu) e compara o desempenho — revelando se a estratégia é robusta ou se apenas <strong>decorou o passado</strong> (overfitting).</div>
+          </div>
+          <div id="rob-resultado" style="display:none"></div>
         </div>
         <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
           <div style="max-width:860px;margin:0 auto;">
@@ -1816,7 +1826,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar','robustez'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -2026,6 +2036,105 @@ function aplicarCombo(sl,tp,ema){
   document.getElementById('ema_period').value=ema;
   // ...e já roda o backtest dessa combinação (rodarBacktest troca pra aba Overview e desenha o gráfico)
   rodarBacktest();
+}
+
+// ── VALIDACAO DE ROBUSTEZ / OVERFITTING (out-of-sample) ──────
+async function validarRobustez(){
+  const btn = document.getElementById('robustez-btn');
+  const txtOriginal = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='🔬 Validando...'; }
+  switchTab('robustez');
+  const vazio = document.getElementById('rob-vazio');
+  const res = document.getElementById('rob-resultado');
+  if(vazio) vazio.style.display='none';
+  if(res){
+    res.style.display='block';
+    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Dividindo o histórico em treino e teste e comparando o desempenho...</div></div>';
+  }
+  try{
+    const params = {
+      ativo: document.getElementById('ativo').value,
+      periodo: document.getElementById('periodo').value,
+      timeframe: document.getElementById('timeframe').value,
+      indicador: document.getElementById('indicador').value,
+      capital: parseFloat(document.getElementById('capital').value),
+      max_ops: parseInt(document.getElementById('max_ops').value),
+      comissao: parseFloat(document.getElementById('comissao').value),
+      ema_period: parseInt(document.getElementById('ema_period').value),
+      stop_loss: parseFloat(document.getElementById('stop_loss').value),
+      take_profit: parseFloat(document.getElementById('take_profit').value),
+      split: 0.70,
+      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
+      sessao_id: BB_SESSAO_ID,
+    };
+    const r = await fetch(API+'/validar-overfitting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
+    const d = await r.json();
+    renderRobustez(d);
+  }catch(err){
+    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao validar: '+(err.message||err)+'</div>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=txtOriginal; }
+  }
+}
+
+function renderRobustez(d){
+  const res = document.getElementById('rob-resultado');
+  if(!res) return;
+  const v = d.veredito||{};
+  // cores por nível
+  const cor = v.nivel==='baixo' ? '#00d084' : (v.nivel==='alto' ? '#ff4d6a' : '#ffb830');
+  const corBg = v.nivel==='baixo' ? 'rgba(0,208,132,0.08)' : (v.nivel==='alto' ? 'rgba(255,77,106,0.08)' : 'rgba(255,184,48,0.08)');
+  const icone = v.nivel==='baixo' ? '✅' : (v.nivel==='alto' ? '⚠️' : '🟡');
+
+  const tr=d.treino||{}, te=d.teste||{};
+  // helper de linha comparativa
+  const fmtPct = x => (x>=0?'+':'')+Number(x).toFixed(2)+'%';
+  const linha = (label, kt, kte, fmt, melhorMaior) => {
+    const a=Number(tr[kt]||0), b=Number(te[kte]||0);
+    const f = fmt||(x=>Number(x).toFixed(2));
+    // cor do teste: verde se manteve/melhorou direção esperada, vermelho se piorou muito
+    let corTe = 'var(--text)';
+    if(melhorMaior!==undefined){
+      if(melhorMaior){ corTe = (b>=0 && b>=a*0.6) ? '#00d084' : (b<0 ? '#ff4d6a' : '#ffb830'); }
+    }
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:9px 8px;color:var(--muted2);font-size:12px">'+label+'</td>'+
+      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--text)">'+f(a)+'</td>'+
+      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:'+corTe+';font-weight:600">'+f(b)+'</td>'+
+      '</tr>';
+  };
+
+  let motivosHtml='';
+  if(v.motivos && v.motivos.length){
+    motivosHtml = '<ul style="margin:10px 0 0;padding-left:18px;color:var(--muted2);font-size:12.5px;line-height:1.7">'+
+      v.motivos.map(m=>'<li>'+m+'</li>').join('')+'</ul>';
+  }
+
+  res.innerHTML =
+    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔬 Validação de robustez (out-of-sample)</div>'+
+    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:16px">'+d.ativo+' · treino: '+d.candles_treino+' candles ('+Math.round(d.split*100)+'%) · teste: '+d.candles_teste+' candles ('+Math.round((1-d.split)*100)+'%)</div>'+
+    // veredito
+    '<div style="background:'+corBg+';border:1px solid '+cor+';border-radius:10px;padding:16px 18px;margin-bottom:18px">'+
+      '<div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:'+cor+'">'+icone+' '+(v.titulo||'')+'</div>'+
+      '<div style="font-size:13px;color:var(--text);margin-top:7px;line-height:1.6">'+(v.resumo||'')+'</div>'+
+      motivosHtml+
+    '</div>'+
+    // tabela comparativa
+    '<div style="overflow-x:auto"><table style="width:100%;max-width:560px;border-collapse:collapse">'+
+      '<thead><tr style="border-bottom:1px solid var(--border2)">'+
+        '<th style="padding:8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600">MÉTRICA</th>'+
+        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TREINO (conhecido)</th>'+
+        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TESTE (nunca visto)</th>'+
+      '</tr></thead><tbody>'+
+        linha('Retorno','retorno','retorno',fmtPct,true)+
+        linha('Win Rate','win_rate','win_rate',x=>Number(x).toFixed(2)+'%',true)+
+        linha('Sharpe','sharpe','sharpe',x=>Number(x).toFixed(2),true)+
+        linha('Profit Factor','profit_factor','profit_factor',x=>Number(x).toFixed(2),true)+
+        linha('Max Drawdown','max_drawdown','max_drawdown',x=>Number(x).toFixed(2)+'%')+
+        linha('Operações','total_trades','total_trades',x=>Math.round(x))+
+      '</tbody></table></div>'+
+    '<div style="margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:560px">Esta análise compara o desempenho da estratégia em dados que ela conhecia (treino) com dados que nunca viu (teste). É uma referência de robustez sobre o histórico — <strong>não é garantia de desempenho futuro</strong>. Valide também em outros ativos e períodos.</div>';
 }
 
 function setTF(el, val) {
