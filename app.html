@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v1.5
+  BotBacktest Frontend — v1.6
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v1.6: interface de Otimizacao de parametros (modal + aba ranking + alerta overfitting)
   v1.5: envia user_id + sessao_id no Rodar Backtest (alimenta BabyMachine)
   Fix: espaço fixo direito no candle chart (rightOffset + scaleMargins)
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
@@ -196,6 +197,26 @@ select option{background:#141920}
 .run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,208,132,0.3)}
 .run-btn:active{transform:translateY(0)}
 .run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.otim-btn{width:100%;margin-top:8px;padding:11px;border-radius:8px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.otim-btn:hover{background:rgba(0,208,132,0.08)}
+.otim-btn:disabled{opacity:.5;cursor:not-allowed}
+.otim-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.otim-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:440px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px}
+.otim-modal h3{font-size:16px;margin:0 0 4px;color:var(--text)}
+.otim-modal .sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.otim-row{margin-bottom:14px}
+.otim-row .lbl{font-size:12px;color:var(--muted2);margin-bottom:6px;font-weight:600}
+.otim-inputs{display:flex;gap:8px}
+.otim-inputs > div{flex:1}
+.otim-inputs .mini{font-size:10px;color:var(--muted);margin-bottom:2px}
+.otim-inputs input{width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:var(--mono);box-sizing:border-box}
+.otim-modal select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:var(--sans)}
+.otim-combos{font-size:11px;color:var(--muted);margin:4px 0 14px;font-family:var(--mono)}
+.otim-combos.over{color:#ff5a5a}
+.otim-modal .acts{display:flex;gap:8px;margin-top:6px}
+.otim-modal .btn-go{flex:1;padding:11px;border-radius:8px;border:none;background:var(--green);color:#04140d;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.otim-modal .btn-go:disabled{opacity:.5;cursor:not-allowed}
+.otim-modal .btn-cancel{padding:11px 16px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:13px;cursor:pointer;font-family:var(--sans)}
 
 .exp-btn{
   width:100%;height:38px;margin-top:6px;
@@ -562,6 +583,7 @@ select option{background:#141920}
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
+  <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
@@ -792,6 +814,7 @@ select option{background:#141920}
         <span id="run-icon">▶</span>
         <span id="run-txt">Rodar Backtest</span>
       </button>
+      <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
       <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
     </div>
   </div>
@@ -1089,6 +1112,13 @@ select option{background:#141920}
           </div>
 
         <!-- TAB: PLANOS -->
+        <div id="tab-otimizar" style="display:none;padding:20px 16px;overflow-y:auto;">
+          <div id="otim-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
+            <div style="font-size:34px">⚙</div>
+            <div style="font-size:14px;color:var(--muted2);max-width:320px;line-height:1.6">Clique em <strong style="color:var(--green)">⚙ Otimizar parâmetros</strong> à esquerda para testar várias combinações de stop, take e EMA de uma vez e ver um ranking.</div>
+          </div>
+          <div id="otim-resultado" style="display:none"></div>
+        </div>
         <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
           <div style="max-width:860px;margin:0 auto;">
             <h2 style="font-size:22px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px;">Escolha seu plano</h2>
@@ -1761,7 +1791,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1769,6 +1799,129 @@ function switchTab(tab) {
   if (tab === 'overview') {
     document.getElementById('tab-overview').style.display = 'block';
   }
+}
+
+// ── OTIMIZACAO DE PARAMETROS (v1.6) ──────────────────────────
+const OTIM_TETO = 50;
+function _otimVals(ini, fim, passo){
+  ini=parseFloat(ini); fim=parseFloat(fim); passo=parseFloat(passo);
+  if(isNaN(ini)||isNaN(fim)||isNaN(passo)) return [];
+  if(passo<=0) return [ini];
+  const v=[]; let x=ini;
+  while(x<=fim+1e-9){ v.push(Math.round(x*1e6)/1e6); x+=passo; }
+  return v.length?v:[ini];
+}
+function _otimContar(){
+  const s=_otimVals(val('otim-sl-ini'),val('otim-sl-fim'),val('otim-sl-passo'));
+  const t=_otimVals(val('otim-tp-ini'),val('otim-tp-fim'),val('otim-tp-passo'));
+  const e=_otimVals(val('otim-ema-ini'),val('otim-ema-fim'),val('otim-ema-passo'));
+  return s.length*t.length*e.length;
+}
+function val(id){ return document.getElementById(id).value; }
+function _otimAtualizaContagem(){
+  const n=_otimContar();
+  const el=document.getElementById('otim-combos');
+  const go=document.getElementById('otim-go');
+  el.textContent = n + ' combinaç' + (n===1?'ão':'ões') + ' (teto ' + OTIM_TETO + ')';
+  if(n>OTIM_TETO){ el.classList.add('over'); el.textContent += ' — reduza o intervalo'; go.disabled=true; }
+  else if(n===0){ el.classList.add('over'); el.textContent='intervalos inválidos'; go.disabled=true; }
+  else { el.classList.remove('over'); go.disabled=false; }
+}
+function abrirOtimizar(){
+  if(!usuarioAtual){ abrirAuth('login'); return; }
+  document.getElementById('otim-modal-bg').style.display='flex';
+  _otimAtualizaContagem();
+  ['otim-sl-ini','otim-sl-fim','otim-sl-passo','otim-tp-ini','otim-tp-fim','otim-tp-passo','otim-ema-ini','otim-ema-fim','otim-ema-passo']
+    .forEach(id=>{ const el=document.getElementById(id); el.oninput=_otimAtualizaContagem; });
+}
+function fecharOtimizar(){ document.getElementById('otim-modal-bg').style.display='none'; }
+
+async function rodarOtimizar(){
+  const n=_otimContar();
+  if(n<1||n>OTIM_TETO) return;
+  const body={
+    ativo: document.getElementById('ativo').value,
+    periodo: document.getElementById('periodo').value,
+    timeframe: document.getElementById('timeframe').value,
+    indicador: document.getElementById('indicador').value,
+    capital: parseFloat(document.getElementById('capital').value),
+    max_ops: parseInt(document.getElementById('max_ops').value),
+    comissao: parseFloat(document.getElementById('comissao').value),
+    stop_loss_range: [parseFloat(val('otim-sl-ini')),parseFloat(val('otim-sl-fim')),parseFloat(val('otim-sl-passo'))],
+    take_profit_range: [parseFloat(val('otim-tp-ini')),parseFloat(val('otim-tp-fim')),parseFloat(val('otim-tp-passo'))],
+    ema_period_range: [parseFloat(val('otim-ema-ini')),parseFloat(val('otim-ema-fim')),parseFloat(val('otim-ema-passo'))],
+    ordenar_por: document.getElementById('otim-ordenar').value,
+    user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
+    sessao_id: BB_SESSAO_ID,
+  };
+  const go=document.getElementById('otim-go');
+  const txtOrig=go.textContent;
+  go.disabled=true; go.textContent='Rodando '+n+' testes...';
+  fecharOtimizar();
+  switchTab('otimizar');
+  document.getElementById('otim-vazio').style.display='none';
+  const res=document.getElementById('otim-resultado');
+  res.style.display='block';
+  res.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px"><div class="spinner" style="margin:0 auto 12px"></div>Rodando '+n+' combinações... isso pode levar até 1-2 minutos.</div>';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),180000);
+    const r=await fetch(API+'/otimizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro na otimização'); }
+    const d=await r.json();
+    renderOtimizacao(d);
+  }catch(err){
+    res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro: '+(err.message||err)+'</div>';
+  }finally{
+    go.disabled=false; go.textContent=txtOrig;
+  }
+}
+
+function _fmt(v,suf){ if(v===null||v===undefined) return '—'; return (typeof v==='number'?v.toFixed(2):v)+(suf||''); }
+function renderOtimizacao(d){
+  const res=document.getElementById('otim-resultado');
+  const m=d.melhor||{};
+  const ord=d.ordenado_por;
+  const ordLabel={sharpe:'Sharpe',profit_factor:'Profit Factor',retorno:'Retorno',win_rate:'Win Rate'}[ord]||ord;
+  // aviso quando win rate alto mas retorno negativo
+  let avisoWR='';
+  if(m.win_rate>=50 && m.retorno<0){
+    avisoWR='<div style="background:rgba(255,90,90,.1);border:1px solid rgba(255,90,90,.4);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#ff8a8a;line-height:1.5">⚠ Atenção: a combinação com mais acertos perde dinheiro (win rate alto, retorno negativo). Taxa de acerto não é lucro.</div>';
+  }
+  let linhas='';
+  (d.ranking||[]).forEach((row,i)=>{
+    const top=i===0;
+    const retCor = row.retorno>0?'#00d084':(row.retorno<0?'#ff5a5a':'var(--muted2)');
+    linhas+='<tr style="'+(top?'background:rgba(0,208,132,.08)':'')+'">'+
+      '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted)">'+(i+1)+(top?' 🏆':'')+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.stop_loss+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.take_profit+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">'+row.ema_period+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono);color:'+retCor+';font-weight:600">'+_fmt(row.retorno,'%')+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.sharpe)+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.profit_factor)+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted2)">'+_fmt(row.win_rate,'%')+'</td>'+
+      '<td style="padding:8px 6px;font-family:var(--mono);color:#ff8a8a">'+_fmt(row.max_drawdown,'%')+'</td>'+
+      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:4px 10px;border-radius:5px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;cursor:pointer;font-family:var(--sans)">aplicar</button></td>'+
+      '</tr>';
+  });
+  res.innerHTML=
+    '<div style="margin-bottom:6px;font-size:15px;color:var(--text);font-weight:600">Resultado da otimização</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+d.combinacoes_testadas+' combinações testadas · ordenado por <strong style="color:var(--green)">'+ordLabel+'</strong></div>'+
+    avisoWR+
+    '<div style="background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.35);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#ffcc66;line-height:1.5">⚠ '+(d.alerta_overfitting||'')+'</div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="border-bottom:1px solid var(--border2);color:var(--muted);text-align:left">'+
+    '<th style="padding:8px 6px">#</th><th style="padding:8px 6px">Stop</th><th style="padding:8px 6px">Take</th><th style="padding:8px 6px">EMA</th><th style="padding:8px 6px">Retorno</th><th style="padding:8px 6px">Sharpe</th><th style="padding:8px 6px">P.Factor</th><th style="padding:8px 6px">Win%</th><th style="padding:8px 6px">Drawdown</th><th style="padding:8px 6px"></th>'+
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>';
+}
+
+function aplicarCombo(sl,tp,ema){
+  document.getElementById('stop_loss').value=sl;
+  document.getElementById('take_profit').value=tp;
+  document.getElementById('ema_period').value=ema;
+  switchTab('editor');
 }
 
 function setTF(el, val) {
@@ -2529,5 +2682,56 @@ if(localStorage.getItem('btp-theme')==='light'){
   document.getElementById('theme-btn').textContent = '☀️';
 }
 </script>
+<!-- MODAL OTIMIZACAO -->
+<div class="otim-modal-bg" id="otim-modal-bg">
+  <div class="otim-modal">
+    <h3>⚙ Otimizar parâmetros</h3>
+    <div class="sub">Testa várias combinações de uma vez e mostra um ranking. Os campos abaixo definem o intervalo: de / até / passo.</div>
+
+    <div class="otim-row">
+      <div class="lbl">Stop Loss (pts)</div>
+      <div class="otim-inputs">
+        <div><div class="mini">de</div><input type="number" id="otim-sl-ini" value="30"></div>
+        <div><div class="mini">até</div><input type="number" id="otim-sl-fim" value="60"></div>
+        <div><div class="mini">passo</div><input type="number" id="otim-sl-passo" value="10"></div>
+      </div>
+    </div>
+
+    <div class="otim-row">
+      <div class="lbl">Take Profit (pts)</div>
+      <div class="otim-inputs">
+        <div><div class="mini">de</div><input type="number" id="otim-tp-ini" value="60"></div>
+        <div><div class="mini">até</div><input type="number" id="otim-tp-fim" value="120"></div>
+        <div><div class="mini">passo</div><input type="number" id="otim-tp-passo" value="20"></div>
+      </div>
+    </div>
+
+    <div class="otim-row">
+      <div class="lbl">Período EMA</div>
+      <div class="otim-inputs">
+        <div><div class="mini">de</div><input type="number" id="otim-ema-ini" value="20"></div>
+        <div><div class="mini">até</div><input type="number" id="otim-ema-fim" value="20"></div>
+        <div><div class="mini">passo</div><input type="number" id="otim-ema-passo" value="1"></div>
+      </div>
+    </div>
+
+    <div class="otim-row">
+      <div class="lbl">Ordenar por</div>
+      <select id="otim-ordenar">
+        <option value="sharpe" selected>Sharpe (qualidade — recomendado)</option>
+        <option value="profit_factor">Profit Factor (qualidade)</option>
+        <option value="retorno">Retorno (%)</option>
+        <option value="win_rate">Win Rate (cuidado: pode enganar)</option>
+      </select>
+    </div>
+
+    <div class="otim-combos" id="otim-combos">— combinações</div>
+
+    <div class="acts">
+      <button class="btn-go" id="otim-go" onclick="rodarOtimizar()">Rodar otimização</button>
+      <button class="btn-cancel" onclick="fecharOtimizar()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
