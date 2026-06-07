@@ -1,6 +1,14 @@
 # ============================================================
-#  BotBacktest API — v1.6
+#  BotBacktest API — v1.7
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v1.7:
+#  - OpenClaw (Association Rules): engine generica de deteccao de padroes.
+#    /openclaw/analisar detecta padrao no historico e mede acerto/falha
+#    em varios horizontes (3/5/10/20 velas), com alvo/stop por ATR.
+#    /openclaw/padroes lista os padroes disponiveis. Detectores plugaveis
+#    (Categoria 1: engolfo, martelo, estrela, 3 velas). Sempre honesto:
+#    mostra acerto E falha, nunca promete retorno futuro.
+#  Historico anterior:
 #  Novidades v1.6:
 #  - Deteccao de overfitting (out-of-sample): endpoint /validar-overfitting
 #    fatia o historico em treino (split%) e teste (resto, dados nunca vistos),
@@ -831,6 +839,257 @@ def _avaliar_overfitting(treino: dict, teste: dict) -> dict:
         resumo = "O comportamento entre treino e teste não é claramente bom nem ruim. Teste em mais períodos e ativos."
 
     return {"nivel": nivel, "titulo": titulo, "resumo": resumo, "motivos": motivos}
+
+
+# ════════════════════════════════════════════════════════════
+#  OPENCLAW — Engine de detecção de padrões (Association Rules)
+#  Filosofia: detectar padrões no histórico e medir HONESTAMENTE
+#  (acerto E falha). Nunca promete retorno futuro.
+# ════════════════════════════════════════════════════════════
+
+def calcular_atr(df, period=14):
+    """Average True Range — mede a volatilidade recente. Usado p/ alvo e stop."""
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        (high - low),
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return tr.rolling(period, min_periods=1).mean()
+
+# ── DETECTORES DE PADRÃO ──────────────────────────────────────
+# Cada detector recebe o df e retorna lista de (índice, direção_esperada).
+# direção: "alta" (espera subir) ou "baixa" (espera cair).
+# Plugar um padrão novo = escrever uma função aqui e registrar em PADROES_OPENCLAW.
+
+def _corpo(o, c):       # tamanho do corpo da vela
+    return abs(c - o)
+
+def det_engolfo_alta(df):
+    """Candle verde cujo corpo engole o corpo do candle vermelho anterior."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(1, len(df)):
+        prev_baixa = c[i-1] < o[i-1]           # vela anterior vermelha
+        atual_alta = c[i] > o[i]               # vela atual verde
+        engole = (o[i] <= c[i-1]) and (c[i] >= o[i-1])
+        if prev_baixa and atual_alta and engole and _corpo(o[i],c[i]) > _corpo(o[i-1],c[i-1]):
+            out.append((i, "alta"))
+    return out
+
+def det_engolfo_baixa(df):
+    """Candle vermelho que engole o corpo do verde anterior."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(1, len(df)):
+        prev_alta = c[i-1] > o[i-1]
+        atual_baixa = c[i] < o[i]
+        engole = (o[i] >= c[i-1]) and (c[i] <= o[i-1])
+        if prev_alta and atual_baixa and engole and _corpo(o[i],c[i]) > _corpo(o[i-1],c[i-1]):
+            out.append((i, "baixa"))
+    return out
+
+def det_martelo(df):
+    """Pin bar de baixo: pavio inferior longo, corpo pequeno no topo → reversão p/ cima."""
+    o, c, h, l = df['Open'].values, df['Close'].values, df['High'].values, df['Low'].values
+    out = []
+    for i in range(len(df)):
+        rng = h[i] - l[i]
+        if rng <= 0: continue
+        corpo = _corpo(o[i], c[i])
+        pavio_inf = min(o[i], c[i]) - l[i]
+        pavio_sup = h[i] - max(o[i], c[i])
+        if corpo <= rng*0.35 and pavio_inf >= rng*0.5 and pavio_sup <= rng*0.2:
+            out.append((i, "alta"))
+    return out
+
+def det_estrela_cadente(df):
+    """Pin bar de cima: pavio superior longo → reversão p/ baixo."""
+    o, c, h, l = df['Open'].values, df['Close'].values, df['High'].values, df['Low'].values
+    out = []
+    for i in range(len(df)):
+        rng = h[i] - l[i]
+        if rng <= 0: continue
+        corpo = _corpo(o[i], c[i])
+        pavio_inf = min(o[i], c[i]) - l[i]
+        pavio_sup = h[i] - max(o[i], c[i])
+        if corpo <= rng*0.35 and pavio_sup >= rng*0.5 and pavio_inf <= rng*0.2:
+            out.append((i, "baixa"))
+    return out
+
+def det_tres_verdes(df):
+    """3 velas verdes seguidas → mede se continua ou exausta."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(2, len(df)):
+        if c[i]>o[i] and c[i-1]>o[i-1] and c[i-2]>o[i-2]:
+            out.append((i, "alta"))
+    return out
+
+def det_tres_vermelhas(df):
+    """3 velas vermelhas seguidas."""
+    o, c = df['Open'].values, df['Close'].values
+    out = []
+    for i in range(2, len(df)):
+        if c[i]<o[i] and c[i-1]<o[i-1] and c[i-2]<o[i-2]:
+            out.append((i, "baixa"))
+    return out
+
+PADROES_OPENCLAW = {
+    "engolfo_alta":    {"fn": det_engolfo_alta,    "nome": "Engolfo de alta",        "categoria": "candle"},
+    "engolfo_baixa":   {"fn": det_engolfo_baixa,   "nome": "Engolfo de baixa",       "categoria": "candle"},
+    "martelo":         {"fn": det_martelo,         "nome": "Martelo (pin bar alta)", "categoria": "candle"},
+    "estrela_cadente": {"fn": det_estrela_cadente, "nome": "Estrela cadente (pin bar baixa)", "categoria": "candle"},
+    "tres_verdes":     {"fn": det_tres_verdes,     "nome": "3 velas verdes",         "categoria": "candle"},
+    "tres_vermelhas":  {"fn": det_tres_vermelhas,  "nome": "3 velas vermelhas",      "categoria": "candle"},
+}
+
+# ── ENGINE GENÉRICA DE MEDIÇÃO ────────────────────────────────
+def _medir_ocorrencia(df, atr, i, direcao, velas_frente, atr_mult_alvo, atr_mult_stop):
+    """
+    A partir da ocorrência no índice i, simula entrada no fechamento da vela i
+    com alvo/stop baseados em ATR, olhando até `velas_frente` velas à frente.
+    Retorna: 'acerto' (bateu alvo antes do stop), 'falha' (bateu stop antes),
+    'neutro' (não bateu nenhum no horizonte) e o movimento % no fim do horizonte.
+    """
+    entrada = float(df['Close'].iloc[i])
+    a = float(atr.iloc[i]) if atr.iloc[i] == atr.iloc[i] else 0.0  # NaN-safe
+    if a <= 0 or entrada <= 0:
+        return None
+    if direcao == "alta":
+        alvo = entrada + atr_mult_alvo * a
+        stop = entrada - atr_mult_stop * a
+    else:
+        alvo = entrada - atr_mult_alvo * a
+        stop = entrada + atr_mult_stop * a
+
+    fim = min(i + velas_frente, len(df) - 1)
+    resultado = "neutro"
+    for j in range(i+1, fim+1):
+        hi = float(df['High'].iloc[j]); lo = float(df['Low'].iloc[j])
+        if direcao == "alta":
+            bateu_alvo = hi >= alvo
+            bateu_stop = lo <= stop
+        else:
+            bateu_alvo = lo <= alvo
+            bateu_stop = hi >= stop
+        # se ambos no mesmo candle, assume pior caso (stop primeiro) p/ ser conservador
+        if bateu_stop:
+            resultado = "falha"; break
+        if bateu_alvo:
+            resultado = "acerto"; break
+    preco_fim = float(df['Close'].iloc[fim])
+    mov_pct = (preco_fim - entrada)/entrada*100
+    if direcao == "baixa":
+        mov_pct = -mov_pct   # p/ baixa, mov favorável é queda
+    return {"resultado": resultado, "mov_pct": mov_pct}
+
+def analisar_padrao(df, detector, horizontes, atr_mult_alvo=2.0, atr_mult_stop=1.0):
+    """Engine genérica: roda o detector e mede o resultado em vários horizontes."""
+    atr = calcular_atr(df)
+    ocorrencias = detector(df)
+    total = len(ocorrencias)
+    por_horizonte = []
+    for h in horizontes:
+        acertos = falhas = neutros = 0
+        movs = []
+        for (i, direcao) in ocorrencias:
+            if i >= len(df)-1:
+                continue
+            r = _medir_ocorrencia(df, atr, i, direcao, h, atr_mult_alvo, atr_mult_stop)
+            if r is None:
+                continue
+            movs.append(r["mov_pct"])
+            if r["resultado"] == "acerto": acertos += 1
+            elif r["resultado"] == "falha": falhas += 1
+            else: neutros += 1
+        validos = acertos + falhas + neutros
+        decididos = acertos + falhas
+        taxa_acerto = (acertos/decididos*100) if decididos > 0 else 0.0
+        taxa_falha = (falhas/decididos*100) if decididos > 0 else 0.0
+        mov_medio = (sum(movs)/len(movs)) if movs else 0.0
+        por_horizonte.append({
+            "horizonte": h,
+            "ocorrencias_medidas": validos,
+            "acertos": acertos,
+            "falhas": falhas,
+            "neutros": neutros,
+            "taxa_acerto": round(taxa_acerto, 2),
+            "taxa_falha": round(taxa_falha, 2),
+            "mov_medio_pct": round(mov_medio, 3),
+        })
+    return {"total_ocorrencias": total, "por_horizonte": por_horizonte}
+
+
+class OpenClawParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    padrao: str = "engolfo_alta"        # chave em PADROES_OPENCLAW, ou "todos"
+    horizontes: list = [3, 5, 10, 20]
+    atr_mult_alvo: float = 2.0
+    atr_mult_stop: float = 1.0
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+
+
+@app.get("/openclaw/padroes")
+def openclaw_listar_padroes():
+    """Lista os padrões disponíveis na engine."""
+    return {"padroes": [
+        {"chave": k, "nome": v["nome"], "categoria": v["categoria"]}
+        for k, v in PADROES_OPENCLAW.items()
+    ]}
+
+
+@app.post("/openclaw/analisar")
+def openclaw_analisar(params: OpenClawParams):
+    """Detecta padrão(ões) no histórico e mede acerto/falha em vários horizontes."""
+    import sys
+    try:
+        df = baixar_dados(params.ativo, params.periodo, params.timeframe)
+        if df is None or len(df) < 40:
+            raise HTTPException(status_code=400, detail="Dados insuficientes para análise de padrões.")
+
+        horizontes = [int(h) for h in (params.horizontes or [3,5,10,20]) if int(h) > 0][:6] or [3,5,10,20]
+        alvo = params.atr_mult_alvo if params.atr_mult_alvo > 0 else 2.0
+        stop = params.atr_mult_stop if params.atr_mult_stop > 0 else 1.0
+
+        if params.padrao == "todos":
+            chaves = list(PADROES_OPENCLAW.keys())
+        elif params.padrao in PADROES_OPENCLAW:
+            chaves = [params.padrao]
+        else:
+            raise HTTPException(status_code=400, detail=f"Padrão desconhecido: {params.padrao}")
+
+        resultados = []
+        for k in chaves:
+            meta = PADROES_OPENCLAW[k]
+            r = analisar_padrao(df, meta["fn"], horizontes, alvo, stop)
+            resultados.append({
+                "chave": k, "nome": meta["nome"], "categoria": meta["categoria"],
+                "total_ocorrencias": r["total_ocorrencias"],
+                "por_horizonte": r["por_horizonte"],
+            })
+
+        return converter_para_python({
+            "ativo": params.ativo,
+            "periodo": params.periodo,
+            "timeframe": params.timeframe,
+            "candles_analisados": len(df),
+            "atr_mult_alvo": alvo,
+            "atr_mult_stop": stop,
+            "resultados": resultados,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"ERRO OPENCLAW: {str(e)}\n{tb}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
 
 
 @app.post("/backtest/visual")
