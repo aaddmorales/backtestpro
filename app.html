@@ -119,6 +119,13 @@ body::after{
 .api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
 .api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
+.bbc-pill{align-items:center;gap:10px;background:rgba(0,208,132,.10);border:1px solid rgba(0,208,132,.35);border-radius:999px;padding:7px 14px;margin-bottom:12px;width:fit-content;max-width:100%;white-space:nowrap}
+.bbc-dot{position:relative;display:inline-flex;width:8px;height:8px;flex-shrink:0}
+.bbc-ping{position:absolute;inset:0;border-radius:50%;background:#00d084;opacity:.35;animation:bbcPing 1.8s ease-out infinite}
+.bbc-core{position:relative;width:8px;height:8px;border-radius:50%;background:#00d084}
+.bbc-num{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.bbc-label{font-size:13px;color:var(--muted)}
+@keyframes bbcPing{0%{transform:scale(1);opacity:.35}70%{transform:scale(2.4);opacity:0}100%{opacity:0}}
 
 /* ── LIGHT THEME ── */
 body.light{
@@ -682,9 +689,10 @@ select option{background:#141920}
 
   <!-- LEFT: PARAMS -->
   <div class="col-left">
-    <div id="contador-backtests" style="display:none;align-items:center;gap:8px;padding:9px 12px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:9px;font-size:12px;color:var(--muted2)">
-      <span style="font-size:14px">📊</span>
-      <span><strong id="contador-num" style="color:var(--text);font-size:14px">0</strong> backtests realizados</span>
+    <div id="contador-backtests" class="bbc-pill" style="display:none" title="Total de backtests rodados na plataforma">
+      <span class="bbc-dot"><span class="bbc-ping"></span><span class="bbc-core"></span></span>
+      <span class="bbc-num" id="contador-num">0</span>
+      <span class="bbc-label">backtests rodados</span>
     </div>
     <div class="ps">
       <div class="pl">Ativo</div>
@@ -2356,7 +2364,7 @@ async function atualizarContador(){
     const d = await r.json();
     const t = (d && typeof d.total==='number') ? d.total : 0;
     num.textContent = t.toLocaleString('pt-BR');
-    box.style.display = (t>0) ? 'flex' : 'none';
+    box.style.display = (t>0) ? 'inline-flex' : 'none';
   }catch(e){ /* silencioso */ }
 }
 
