@@ -1,6 +1,7 @@
 <!--
-  BotBacktest Frontend — v3.5
+  BotBacktest Frontend — v3.6
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v3.6: tema claro mais profissional — campos (select/input) com fundo cinza #e9edf2 e borda mais marcada, coluna esquerda cinza suave #f4f6f9 (em vez de branco puro) p/ os campos se destacarem
   v3.5: fix tema claro — botoes da barra superior mantêm BRANCO nos 2 temas (barra é sempre escura #080a0d), removidas regras que os deixavam pretos e sumiam
   v3.4: legibilidade nivel GitHub — botoes topo branco(#eef1f6)/preto(#1a1f2b), cores muted bem mais contrastadas nos 2 temas, labels .pl mais claras e bold
   v3.3: legibilidade — botoes barra superior com cor mais clara + peso 600 + contorno sutil + ativo com destaque verde; cores --muted clareadas (escuro) e escurecidas (claro) p/ legendas legiveis nos 2 temas
@@ -124,10 +125,10 @@ body.light::after{
     radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
 }
 body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(255,255,255,0.06)}
-body.light .col-left{background:rgba(255,255,255,0.9)}
+body.light .col-left{background:#f4f6f9}
 body.light .col-right{background:rgba(255,255,255,0.9)}
 body.light .metrics-bar{background:rgba(255,255,255,0.97)}
-body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.1);color:var(--text)}
+body.light select,body.light input[type=number],body.light input[type=text]{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
 body.light select option{background:#ffffff}
 body.light #code-editor{background:#f8f9fb;color:#383a42}
 body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
