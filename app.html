@@ -1,6 +1,8 @@
 <!--
-  BotBacktest Frontend — v1.9
+  BotBacktest Frontend — v2.1
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
+  v2.1: botao da otimizacao "ver no grafico" — aplica combo E roda backtest (mostra grafico na Overview)
+  v2.0: loading de candles centralizado verticalmente (min-height 60vh)
   v1.9: loading animado (candles) na otimizacao + tempo minimo visivel
   v1.8: fix cor do select Ordenar por + texto descricao
   v1.7: modal otimizacao clareado + contorno; puxa valores da esquerda; passo->intervalo
@@ -508,7 +510,7 @@ select option{background:#141920}
 /* ── SPINNER ── */
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:13px;height:13px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
-.otim-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:22px}
+.otim-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:20px;gap:22px}
 .otim-candles{display:flex;align-items:flex-end;gap:7px;height:70px}
 .otim-candle{width:11px;border-radius:2px;animation:candlePulse 1s ease-in-out infinite}
 .otim-candle.up{background:#00d084}
@@ -1943,7 +1945,7 @@ function renderOtimizacao(d){
       '<td style="padding:8px 6px;font-family:var(--mono)">'+_fmt(row.profit_factor)+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:var(--muted2)">'+_fmt(row.win_rate,'%')+'</td>'+
       '<td style="padding:8px 6px;font-family:var(--mono);color:#ff8a8a">'+_fmt(row.max_drawdown,'%')+'</td>'+
-      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:4px 10px;border-radius:5px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;cursor:pointer;font-family:var(--sans)">aplicar</button></td>'+
+      '<td style="padding:8px 6px"><button onclick="aplicarCombo('+row.stop_loss+','+row.take_profit+','+row.ema_period+')" style="padding:4px 10px;border-radius:5px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;cursor:pointer;font-family:var(--sans);white-space:nowrap">ver no gráfico</button></td>'+
       '</tr>';
   });
   res.innerHTML=
@@ -1958,10 +1960,12 @@ function renderOtimizacao(d){
 }
 
 function aplicarCombo(sl,tp,ema){
+  // Preenche os campos da esquerda com a combinação escolhida...
   document.getElementById('stop_loss').value=sl;
   document.getElementById('take_profit').value=tp;
   document.getElementById('ema_period').value=ema;
-  switchTab('editor');
+  // ...e já roda o backtest dessa combinação (rodarBacktest troca pra aba Overview e desenha o gráfico)
+  rodarBacktest();
 }
 
 function setTF(el, val) {
