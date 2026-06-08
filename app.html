@@ -678,7 +678,8 @@ select option{background:#141920}
         <div class="user-dropdown-plan" id="dd-plano">Plano Free</div>
         <div class="user-dropdown-uso" id="dd-uso">0 / 5 backtests este mês</div>
       </div>
-      <div class="user-dropdown-item" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
+      <div class="user-dropdown-item" id="dd-upgrade" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
+      <div class="user-dropdown-item" id="dd-gerenciar" onclick="abrirPortal()" style="display:none">⚙️ Gerenciar assinatura</div>
       <div class="user-dropdown-item" onclick="fazerLogout()" style="color:var(--red)">🚪 Sair</div>
     </div>
   </div>
@@ -1631,6 +1632,14 @@ function atualizarUI() {
   document.getElementById('dd-plano').textContent = plano === 'free' ? 'Plano Free' : plano === 'pro' ? 'Plano Pro' : 'Plano Trader Pro';
   document.getElementById('dd-uso').textContent = plano === 'free' ? `${usados} / ${limite} backtests este mês` : 'Backtests ilimitados';
 
+  // Free vê "upgrade"; pago vê "gerenciar assinatura" (portal Stripe)
+  const ddUpgrade = document.getElementById('dd-upgrade');
+  const ddGerenciar = document.getElementById('dd-gerenciar');
+  if (ddUpgrade && ddGerenciar) {
+    if (plano === 'free') { ddUpgrade.style.display = 'flex'; ddGerenciar.style.display = 'none'; }
+    else { ddUpgrade.style.display = 'none'; ddGerenciar.style.display = 'flex'; }
+  }
+
   // Limite banner
   if (plano === 'free' && usados >= limite) {
     document.getElementById('limit-banner').classList.add('show');
@@ -1749,6 +1758,19 @@ async function assinar(plano) {
     if (data.url) window.open(data.url, '_blank');
     else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function abrirPortal() {
+  if (!usuarioAtual) { abrirAuth('login'); return; }
+  try {
+    const resp = await fetch(API+'/criar-portal', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: usuarioAtual.id })
+    });
+    const data = await resp.json();
+    if (data.url) window.location.href = data.url;
+    else alert(data.detail || 'Não foi possível abrir o portal de assinatura.');
+  } catch(e) { alert('Erro ao abrir o portal: ' + e.message); }
 }
 
 async function verificarLimite() {
