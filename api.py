@@ -52,6 +52,7 @@
 #      "/app"  serve app.html    (antigo index.html do backtest)
 #  - success_url/cancel_url do Stripe apontam para /app
 #  Historico:
+#  - v2.3: endpoint /criar-portal (Stripe Customer Portal: usuario cancela/gerencia sozinho)
 #  - v2.2: webhook customer.subscription.deleted -> rebaixa cancelados p/ free
 #  - v1.2: fix StripeObject.to_dict() no webhook + SUPABASE_URL
 #  - v1.1: payload completo estilo TradingView (/backtest/visual e /custom)
@@ -1626,6 +1627,39 @@ def criar_checkout(req: CheckoutRequest):
             cancel_url="https://backtestpro-production-eb9a.up.railway.app/app?checkout=cancel",
         )
         return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class PortalRequest(BaseModel):
+    user_id: str
+
+@app.post("/criar-portal")
+def criar_portal(req: PortalRequest):
+    """Abre o Stripe Customer Portal para o usuario gerenciar/cancelar a assinatura.
+    Resolve tudo no servidor: user_id -> stripe_subscription_id (perfis) -> customer -> portal."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            raise HTTPException(status_code=500, detail="Supabase indisponivel")
+
+        resp = sb.table("perfis").select("stripe_subscription_id").eq("id", req.user_id).single().execute()
+        sub_id = (resp.data or {}).get("stripe_subscription_id")
+        if not sub_id:
+            raise HTTPException(status_code=400, detail="Nenhuma assinatura ativa encontrada para gerenciar.")
+
+        sub_obj = stripe.Subscription.retrieve(sub_id)
+        sub = sub_obj.to_dict() if hasattr(sub_obj, "to_dict") else dict(sub_obj)
+        customer_id = sub.get("customer")
+        if not customer_id:
+            raise HTTPException(status_code=400, detail="Cliente Stripe nao encontrado.")
+
+        portal = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url="https://backtestpro-production-eb9a.up.railway.app/app",
+        )
+        return {"url": portal.url}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
