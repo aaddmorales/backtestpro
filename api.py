@@ -52,6 +52,7 @@
 #      "/app"  serve app.html    (antigo index.html do backtest)
 #  - success_url/cancel_url do Stripe apontam para /app
 #  Historico:
+#  - v2.5: fix plano "trader"->"trader_pro" (batia com check constraint perfis_plano_check)
 #  - v2.4: trava anti-duplicação no /criar-checkout (já tem assinatura ativa -> portal)
 #  - v2.3: endpoint /criar-portal (Stripe Customer Portal: usuario cancela/gerencia sozinho)
 #  - v2.2: webhook customer.subscription.deleted -> rebaixa cancelados p/ free
@@ -1725,7 +1726,7 @@ async def webhook_stripe(request: Request):
                 for item in items:
                     pid = item.get("price", {}).get("id", "")
                     if pid in PRICE_IDS.get("trader", {}).values():
-                        plano = "trader"
+                        plano = "trader_pro"
                         break
         except Exception as e:
             print(f"Stripe subscription retrieve error: {e}")
@@ -1739,7 +1740,7 @@ async def webhook_stripe(request: Request):
                     os.getenv("SUPABASE_URL", ""),
                     os.getenv("SUPABASE_SERVICE_KEY", "")
                 )
-                limite = 999999 if plano == "trader" else 200
+                limite = 999999 if plano == "trader_pro" else 200
                 result = sb.table("perfis").update({
                     "plano": plano,
                     "backtests_limite": limite,
