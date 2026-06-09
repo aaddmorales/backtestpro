@@ -52,6 +52,7 @@
 #      "/app"  serve app.html    (antigo index.html do backtest)
 #  - success_url/cancel_url do Stripe apontam para /app
 #  Historico:
+#  - v2.4: trava anti-duplicação no /criar-checkout (já tem assinatura ativa -> portal)
 #  - v2.3: endpoint /criar-portal (Stripe Customer Portal: usuario cancela/gerencia sozinho)
 #  - v2.2: webhook customer.subscription.deleted -> rebaixa cancelados p/ free
 #  - v1.2: fix StripeObject.to_dict() no webhook + SUPABASE_URL
@@ -1617,6 +1618,31 @@ def criar_checkout(req: CheckoutRequest):
         price_id = PRICE_IDS.get(req.plano, {}).get(req.moeda)
         if not price_id:
             raise HTTPException(status_code=400, detail="Plano ou moeda inválido")
+
+        # Trava anti-duplicação: se o usuário já tem assinatura ativa, NÃO cria outra.
+        # Devolve o link do Customer Portal para ele gerenciar a existente.
+        # Fail-open: se a checagem falhar, segue o fluxo normal (não bloqueia assinatura legítima).
+        try:
+            sb = _sb_admin()
+            if sb is not None:
+                resp = sb.table("perfis").select("stripe_subscription_id").eq("id", req.user_id).single().execute()
+                sub_id = (resp.data or {}).get("stripe_subscription_id")
+                if sub_id:
+                    sub_obj = stripe.Subscription.retrieve(sub_id)
+                    sub = sub_obj.to_dict() if hasattr(sub_obj, "to_dict") else dict(sub_obj)
+                    if sub.get("status") in ("active", "trialing", "past_due"):
+                        customer_id = sub.get("customer")
+                        portal_url = None
+                        if customer_id:
+                            portal = stripe.billing_portal.Session.create(
+                                customer=customer_id,
+                                return_url="https://backtestpro-production-eb9a.up.railway.app/app",
+                            )
+                            portal_url = portal.url
+                        return {"already_subscribed": True, "portal_url": portal_url}
+        except Exception as e:
+            print(f"Anti-duplicação: checagem ignorada ({e})")
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
