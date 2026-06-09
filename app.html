@@ -1755,6 +1755,15 @@ async function assinar(plano) {
       body: JSON.stringify({ plano, moeda, user_id: usuarioAtual.id, email: usuarioAtual.email })
     });
     const data = await resp.json();
+    if (data.already_subscribed) {
+      if (data.portal_url) {
+        alert('Você já tem uma assinatura ativa. Vamos te levar para gerenciá-la (trocar plano, cartão ou cancelar).');
+        window.location.href = data.portal_url;
+      } else {
+        alert('Você já tem uma assinatura ativa.');
+      }
+      return;
+    }
     if (data.url) window.open(data.url, '_blank');
     else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
   } catch(e) { alert('Erro: ' + e.message); }
