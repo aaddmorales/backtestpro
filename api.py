@@ -149,7 +149,7 @@ class IARequest(BaseModel):
 import time as _time
 _DADOS_CACHE = {}           # chave -> (timestamp, DataFrame)
 _DADOS_CACHE_TTL = 600      # 10 minutos
-_DADOS_CACHE_MAX = 60       # teto de entradas (descarta a mais antiga)
+_DADOS_CACHE_MAX = 20       # teto de entradas (RAM limitada no Railway)
 
 def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     ticker = ATIVOS_MAP.get(ativo, "GC=F")
@@ -205,11 +205,12 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     if len(df) < 5:
         raise HTTPException(400, f"Dados insuficientes para {ativo}.")
 
-    # guarda no cache (com teto de entradas)
-    if len(_DADOS_CACHE) >= _DADOS_CACHE_MAX:
-        mais_velha = min(_DADOS_CACHE, key=lambda k: _DADOS_CACHE[k][0])
-        _DADOS_CACHE.pop(mais_velha, None)
-    _DADOS_CACHE[chave] = (agora, df.copy())
+    # guarda no cache (com teto de entradas; intraday pesado fica de fora p/ poupar RAM)
+    if len(df) <= 6000:
+        if len(_DADOS_CACHE) >= _DADOS_CACHE_MAX:
+            mais_velha = min(_DADOS_CACHE, key=lambda k: _DADOS_CACHE[k][0])
+            _DADOS_CACHE.pop(mais_velha, None)
+        _DADOS_CACHE[chave] = (agora, df.copy())
 
     return df
 
