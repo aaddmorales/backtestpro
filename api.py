@@ -145,6 +145,12 @@ class IARequest(BaseModel):
     descricao: str
 
 # ── HELPERS ─────────────────────────────────────────────────
+# ── Cache de dados (v3.2): evita rate-limit do Yahoo e acelera repetições ──
+import time as _time
+_DADOS_CACHE = {}           # chave -> (timestamp, DataFrame)
+_DADOS_CACHE_TTL = 600      # 10 minutos
+_DADOS_CACHE_MAX = 60       # teto de entradas (descarta a mais antiga)
+
 def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     ticker = ATIVOS_MAP.get(ativo, "GC=F")
     periodo_yf = PERIODOS_MAP.get(periodo, "2y")
@@ -153,14 +159,38 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
     if intervalo_yf in ["5m","15m","30m"]:
         periodo_yf = "60d"
 
-    try:
-        tk = yf.Ticker(ticker)
-        df = tk.history(period=periodo_yf, interval=intervalo_yf)
-    except Exception as e:
-        raise HTTPException(400, f"Erro ao baixar dados: {str(e)}")
+    chave = f"{ticker}|{periodo_yf}|{intervalo_yf}"
+    agora = _time.time()
+
+    # 1) cache fresco? serve da memória (sem bater no Yahoo)
+    hit = _DADOS_CACHE.get(chave)
+    if hit and (agora - hit[0]) < _DADOS_CACHE_TTL:
+        return hit[1].copy()
+
+    # 2) baixa com 1 retry (rate-limit transitório do Yahoo)
+    df = None
+    erro = None
+    for tentativa in range(2):
+        try:
+            tk = yf.Ticker(ticker)
+            df = tk.history(period=periodo_yf, interval=intervalo_yf)
+            if df is not None and not df.empty:
+                break
+        except Exception as e:
+            erro = e
+        if tentativa == 0:
+            _time.sleep(2)
+
+    # 3) falhou agora, mas tem cache velho? melhor servir dado de até 2h
+    if (df is None or df.empty) and hit and (agora - hit[0]) < 7200:
+        return hit[1].copy()
 
     if df is None or df.empty:
-        raise HTTPException(400, f"Sem dados para {ativo}.")
+        if erro:
+            raise HTTPException(400, f"Erro ao baixar dados: {str(erro)}")
+        raise HTTPException(400,
+            f"Fonte de dados temporariamente indisponível para {ativo} "
+            f"(limite de requisições). Aguarde ~1 minuto e tente de novo.")
 
     # Flatten MultiIndex se existir
     if hasattr(df.columns, 'levels'):
@@ -174,6 +204,12 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
 
     if len(df) < 5:
         raise HTTPException(400, f"Dados insuficientes para {ativo}.")
+
+    # guarda no cache (com teto de entradas)
+    if len(_DADOS_CACHE) >= _DADOS_CACHE_MAX:
+        mais_velha = min(_DADOS_CACHE, key=lambda k: _DADOS_CACHE[k][0])
+        _DADOS_CACHE.pop(mais_velha, None)
+    _DADOS_CACHE[chave] = (agora, df.copy())
 
     return df
 
