@@ -1,6 +1,14 @@
 # ============================================================
-#  BotBacktest API — v2.1
+#  BotBacktest API — v3.0
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v3.0:
+#  - Catalogo 40 ativos em 7 categorias com gating por plano (/ativos/catalogo)
+#  - Galeria de 10 estrategias prontas, 2 assinaturas da casa (/estrategias/prontas)
+#  - Conector MT5 read-only: /conector/registrar, /conector/snapshot,
+#    /conector/evento, /conector/bots (token, nunca credenciais de corretora)
+#  - Agente Bloco F (F1-F4): consistencia vivo x backtest, cooldown anti-spam
+#    (/agente/sugestoes, /agente/sugestoes/lida)
+#  Historico anterior:
 #  Novidades v2.1:
 #  - /babymachine/contador: endpoint leve que retorna total de backtests
 #    do usuario (count exact) p/ contador no topo da coluna esquerda.
@@ -1778,4 +1786,696 @@ async def webhook_stripe(request: Request):
                 print(f"Supabase downgrade error: {e}")
                 raise HTTPException(status_code=500, detail=f"Supabase error: {str(e)}")
 
+    return {"ok": True}
+
+
+# ════════════════════════════════════════════════════════════
+#  v3.0 — CATÁLOGO 40 ATIVOS (gating por plano)
+#  7 categorias. Free: 11 | Pro: 30 | Elite (trader_pro): 40
+# ════════════════════════════════════════════════════════════
+import secrets as _secrets
+from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+
+_PLANO_NIVEL = {"free": 0, "pro": 1, "trader_pro": 2, "elite": 2}
+
+# plano: nivel mínimo p/ usar o ativo (0=free, 1=pro, 2=elite)
+CATALOGO_ATIVOS = {
+    "Índices Globais": [
+        {"nome": "S&P500",    "ticker": "^GSPC",  "nivel": 0},
+        {"nome": "NASDAQ",    "ticker": "^IXIC",  "nivel": 0},
+        {"nome": "IBOVESPA",  "ticker": "^BVSP",  "nivel": 0},
+        {"nome": "US30",      "ticker": "^DJI",   "nivel": 1},
+        {"nome": "DAX40",     "ticker": "^GDAXI", "nivel": 1},
+        {"nome": "FTSE100",   "ticker": "^FTSE",  "nivel": 2},
+        {"nome": "NIKKEI225", "ticker": "^N225",  "nivel": 2},
+    ],
+    "Forex": [
+        {"nome": "EUR/USD", "ticker": "EURUSD=X", "nivel": 0},
+        {"nome": "USD/BRL", "ticker": "BRL=X",    "nivel": 0},
+        {"nome": "GBP/USD", "ticker": "GBPUSD=X", "nivel": 1},
+        {"nome": "USD/JPY", "ticker": "JPY=X",    "nivel": 1},
+        {"nome": "AUD/USD", "ticker": "AUDUSD=X", "nivel": 1},
+        {"nome": "USD/CAD", "ticker": "CAD=X",    "nivel": 1},
+    ],
+    "Commodities": [
+        {"nome": "XAU/USD (Ouro)",    "ticker": "GC=F", "nivel": 0},
+        {"nome": "XAG/USD (Prata)",   "ticker": "SI=F", "nivel": 1},
+        {"nome": "Petróleo WTI",      "ticker": "CL=F", "nivel": 1},
+        {"nome": "Gás Natural",       "ticker": "NG=F", "nivel": 2},
+    ],
+    "Cripto": [
+        {"nome": "BTC/USD", "ticker": "BTC-USD", "nivel": 0},
+        {"nome": "ETH/USD", "ticker": "ETH-USD", "nivel": 0},
+        {"nome": "SOL/USD", "ticker": "SOL-USD", "nivel": 2},
+        {"nome": "BNB/USD", "ticker": "BNB-USD", "nivel": 2},
+    ],
+    "Magnificent 7": [
+        {"nome": "Apple",     "ticker": "AAPL",  "nivel": 0},
+        {"nome": "NVIDIA",    "ticker": "NVDA",  "nivel": 0},
+        {"nome": "Microsoft", "ticker": "MSFT",  "nivel": 1},
+        {"nome": "Google",    "ticker": "GOOGL", "nivel": 1},
+        {"nome": "Amazon",    "ticker": "AMZN",  "nivel": 1},
+        {"nome": "Meta",      "ticker": "META",  "nivel": 1},
+        {"nome": "Tesla",     "ticker": "TSLA",  "nivel": 1},
+    ],
+    "Ações Pro": [
+        {"nome": "JPMorgan",  "ticker": "JPM",  "nivel": 1},
+        {"nome": "Visa",      "ticker": "V",    "nivel": 1},
+        {"nome": "Coca-Cola", "ticker": "KO",   "nivel": 1},
+        {"nome": "Disney",    "ticker": "DIS",  "nivel": 2},
+        {"nome": "Netflix",   "ticker": "NFLX", "nivel": 2},
+        {"nome": "AMD",       "ticker": "AMD",  "nivel": 2},
+    ],
+    "B3 — Brasil": [
+        {"nome": "Petrobras PN", "ticker": "PETR4.SA", "nivel": 0},
+        {"nome": "Vale ON",      "ticker": "VALE3.SA", "nivel": 0},
+        {"nome": "Itaú PN",      "ticker": "ITUB4.SA", "nivel": 1},
+        {"nome": "Bradesco PN",  "ticker": "BBDC4.SA", "nivel": 1},
+        {"nome": "WEG ON",       "ticker": "WEGE3.SA", "nivel": 2},
+        {"nome": "Magazine Luiza","ticker": "MGLU3.SA","nivel": 2},
+    ],
+}
+
+# Integra todos no mapa de tickers usado pelo motor de backtest
+for _cat, _itens in CATALOGO_ATIVOS.items():
+    for _a in _itens:
+        ATIVOS_MAP.setdefault(_a["nome"], _a["ticker"])
+
+@app.get("/ativos/catalogo")
+def ativos_catalogo(plano: str = "free"):
+    """Catálogo completo com flag 'bloqueado' conforme o plano do usuário."""
+    nivel_user = _PLANO_NIVEL.get(plano, 0)
+    out = {}
+    total, liberados = 0, 0
+    for cat, itens in CATALOGO_ATIVOS.items():
+        out[cat] = []
+        for a in itens:
+            total += 1
+            bloq = a["nivel"] > nivel_user
+            if not bloq:
+                liberados += 1
+            out[cat].append({**a, "bloqueado": bloq})
+    return {"catalogo": out, "total": total, "liberados": liberados, "plano": plano}
+
+
+# ════════════════════════════════════════════════════════════
+#  v3.0 — ESTRATÉGIAS PRONTAS (galeria com 10)
+#  2 assinaturas da casa + 8 clássicas. Código backtesting.py.
+#  Sempre honesto: nenhuma promessa de retorno futuro.
+# ════════════════════════════════════════════════════════════
+ESTRATEGIAS_PRONTAS = [
+    {
+        "id": "canal_ema20_hl", "casa": True, "emoji": "🏛️",
+        "nome": "Canal EMA 20 High/Low (Casa)",
+        "desc": "Assinatura BotBacktest: canal entre EMA20 das máximas e EMA20 das mínimas. Rompe pra cima = compra; rompe pra baixo = venda; dentro do canal = lateral, não opera.",
+        "tags": ["TENDÊNCIA", "CASA"], "nivel": "intermediário",
+        "mercados": ["XAU/USD (Ouro)", "NAS100", "BTC/USD"],
+        "codigo": '''from backtesting import Strategy
+from backtesting.lib import crossover
+import pandas as pd
+
+def EMA(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+class CanalEMA20HL(Strategy):
+    n = 20
+    def init(self):
+        self.ema_high = self.I(EMA, self.data.High, self.n)
+        self.ema_low  = self.I(EMA, self.data.Low,  self.n)
+    def next(self):
+        preco = self.data.Close[-1]
+        if preco > self.ema_high[-1] and not self.position.is_long:
+            self.position.close()
+            self.buy()
+        elif preco < self.ema_low[-1] and not self.position.is_short:
+            self.position.close()
+            self.sell()
+        # dentro do canal = lateralizacao, nao abre nada
+'''
+    },
+    {
+        "id": "tendencia_diaria_piramide", "casa": True, "emoji": "🏛️",
+        "nome": "Tendência Diária com Pirâmide (Casa)",
+        "desc": "Assinatura BotBacktest: lê a direção do D1 pela manhã, entra SEMPRE a favor (nunca contra), pirâmide na mesma direção, trailing protege o lucro. Valide por ativo antes de automatizar.",
+        "tags": ["TENDÊNCIA", "PIRÂMIDE", "CASA"], "nivel": "avançado",
+        "mercados": ["XAU/USD (Ouro)", "US30", "S&P500"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def EMA(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+class TendenciaDiariaPiramide(Strategy):
+    n = 20
+    max_piramide = 3
+    trail_pct = 0.015   # trailing 1.5%
+    def init(self):
+        self.ema_high = self.I(EMA, self.data.High, self.n)
+        self.ema_low  = self.I(EMA, self.data.Low,  self.n)
+        self.topo = None
+    def next(self):
+        preco = self.data.Close[-1]
+        alta  = preco > self.ema_high[-1]
+        baixa = preco < self.ema_low[-1]
+        # trailing stop manual
+        if self.position.is_long:
+            self.topo = max(self.topo or preco, preco)
+            if preco < self.topo * (1 - self.trail_pct):
+                self.position.close(); self.topo = None; return
+        # entra/piramida apenas A FAVOR da tendencia
+        if alta and len(self.trades) < self.max_piramide:
+            self.buy()
+        elif baixa and self.position.is_long:
+            self.position.close(); self.topo = None
+'''
+    },
+    {
+        "id": "cruzamento_ema_9_21", "casa": False, "emoji": "📊",
+        "nome": "Cruzamento EMA 9/21",
+        "desc": "Clássica de tendência: EMA9 cruza acima da EMA21 = compra; cruza abaixo = sai/inverte.",
+        "tags": ["TENDÊNCIA", "EMA"], "nivel": "iniciante",
+        "mercados": ["EUR/USD", "S&P500"],
+        "codigo": '''from backtesting import Strategy
+from backtesting.lib import crossover
+import pandas as pd
+
+def EMA(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+class CruzamentoEMA(Strategy):
+    rapida = 9
+    lenta = 21
+    def init(self):
+        self.e1 = self.I(EMA, self.data.Close, self.rapida)
+        self.e2 = self.I(EMA, self.data.Close, self.lenta)
+    def next(self):
+        if crossover(self.e1, self.e2):
+            self.position.close(); self.buy()
+        elif crossover(self.e2, self.e1):
+            self.position.close(); self.sell()
+'''
+    },
+    {
+        "id": "rsi_reversao", "casa": False, "emoji": "📈",
+        "nome": "RSI Sobrevenda/Sobrecompra",
+        "desc": "Reversão: compra com RSI < 30 (sobrevenda), vende com RSI > 70 (sobrecompra).",
+        "tags": ["REVERSÃO", "RSI"], "nivel": "iniciante",
+        "mercados": ["Ações", "Cripto"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def RSI(serie, n=14):
+    s = pd.Series(serie)
+    delta = s.diff()
+    ganho = delta.clip(lower=0).rolling(n).mean()
+    perda = (-delta.clip(upper=0)).rolling(n).mean()
+    rs = ganho / perda
+    return 100 - (100 / (1 + rs))
+
+class RSIReversao(Strategy):
+    n = 14
+    def init(self):
+        self.rsi = self.I(RSI, self.data.Close, self.n)
+    def next(self):
+        if self.rsi[-1] < 30 and not self.position.is_long:
+            self.position.close(); self.buy()
+        elif self.rsi[-1] > 70 and self.position.is_long:
+            self.position.close()
+'''
+    },
+    {
+        "id": "bollinger_reversao", "casa": False, "emoji": "🎯",
+        "nome": "Bandas de Bollinger — Reversão",
+        "desc": "Compra ao tocar a banda inferior, realiza na média central. Funciona melhor em mercado lateral.",
+        "tags": ["REVERSÃO", "BOLLINGER"], "nivel": "intermediário",
+        "mercados": ["Forex", "Índices"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def BB(serie, n=20, k=2.0):
+    s = pd.Series(serie)
+    media = s.rolling(n).mean()
+    desv = s.rolling(n).std()
+    return media, media + k*desv, media - k*desv
+
+class BollingerReversao(Strategy):
+    n = 20
+    def init(self):
+        self.media, self.sup, self.inf = self.I(BB, self.data.Close, self.n)
+    def next(self):
+        preco = self.data.Close[-1]
+        if preco <= self.inf[-1] and not self.position.is_long:
+            self.buy()
+        elif self.position.is_long and preco >= self.media[-1]:
+            self.position.close()
+'''
+    },
+    {
+        "id": "rompimento_donchian", "casa": False, "emoji": "💥",
+        "nome": "Rompimento Donchian 20",
+        "desc": "Estilo Turtle Traders: compra no rompimento da máxima de 20 períodos, sai na mínima de 10.",
+        "tags": ["ROMPIMENTO", "DONCHIAN"], "nivel": "intermediário",
+        "mercados": ["Commodities", "Cripto"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def MAX_N(serie, n):
+    return pd.Series(serie).rolling(n).max()
+
+def MIN_N(serie, n):
+    return pd.Series(serie).rolling(n).min()
+
+class Donchian(Strategy):
+    n_entrada = 20
+    n_saida = 10
+    def init(self):
+        self.topo = self.I(MAX_N, self.data.High, self.n_entrada)
+        self.fundo = self.I(MIN_N, self.data.Low, self.n_saida)
+    def next(self):
+        preco = self.data.Close[-1]
+        if preco >= self.topo[-2] and not self.position.is_long:
+            self.buy()
+        elif self.position.is_long and preco <= self.fundo[-2]:
+            self.position.close()
+'''
+    },
+    {
+        "id": "macd_tendencia", "casa": False, "emoji": "🌊",
+        "nome": "MACD Tendência",
+        "desc": "Compra quando a linha MACD cruza acima da linha de sinal; sai no cruzamento contrário.",
+        "tags": ["TENDÊNCIA", "MACD"], "nivel": "iniciante",
+        "mercados": ["Ações", "Índices"],
+        "codigo": '''from backtesting import Strategy
+from backtesting.lib import crossover
+import pandas as pd
+
+def MACD_LINHA(serie, rapida=12, lenta=26):
+    s = pd.Series(serie)
+    return s.ewm(span=rapida, adjust=False).mean() - s.ewm(span=lenta, adjust=False).mean()
+
+def MACD_SINAL(serie, rapida=12, lenta=26, sinal=9):
+    macd = MACD_LINHA(serie, rapida, lenta)
+    return macd.ewm(span=sinal, adjust=False).mean()
+
+class MACDTendencia(Strategy):
+    def init(self):
+        self.macd  = self.I(MACD_LINHA, self.data.Close)
+        self.sinal = self.I(MACD_SINAL, self.data.Close)
+    def next(self):
+        if crossover(self.macd, self.sinal):
+            self.position.close(); self.buy()
+        elif crossover(self.sinal, self.macd):
+            self.position.close()
+'''
+    },
+    {
+        "id": "engolfo_tendencia", "casa": False, "emoji": "🕯️",
+        "nome": "Engolfo a Favor da Tendência",
+        "desc": "Price action: candle de engolfo de alta acima da EMA50 = compra. Filtro de tendência evita operar contra.",
+        "tags": ["PRICE ACTION", "CANDLE"], "nivel": "intermediário",
+        "mercados": ["XAU/USD (Ouro)", "Forex"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def EMA(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+class EngolfoTendencia(Strategy):
+    n_ema = 50
+    def init(self):
+        self.ema = self.I(EMA, self.data.Close, self.n_ema)
+    def next(self):
+        if len(self.data.Close) < 2:
+            return
+        o1, c1 = self.data.Open[-2], self.data.Close[-2]
+        o2, c2 = self.data.Open[-1], self.data.Close[-1]
+        engolfo_alta = (c1 < o1) and (c2 > o2) and (c2 > o1) and (o2 < c1)
+        acima_ema = self.data.Close[-1] > self.ema[-1]
+        if engolfo_alta and acima_ema and not self.position.is_long:
+            self.buy()
+        elif self.position.is_long and self.data.Close[-1] < self.ema[-1]:
+            self.position.close()
+'''
+    },
+    {
+        "id": "abertura_gap", "casa": False, "emoji": "🌅",
+        "nome": "Gap de Abertura",
+        "desc": "Gap de alta acima de 0,5% na abertura com fechamento anterior forte = segue o movimento no dia.",
+        "tags": ["GAP", "INTRADAY"], "nivel": "avançado",
+        "mercados": ["Ações", "Índices"],
+        "codigo": '''from backtesting import Strategy
+
+class GapAbertura(Strategy):
+    gap_min = 0.005   # 0,5%
+    def init(self):
+        pass
+    def next(self):
+        if len(self.data.Close) < 2:
+            return
+        gap = (self.data.Open[-1] - self.data.Close[-2]) / self.data.Close[-2]
+        if gap >= self.gap_min and not self.position.is_long:
+            self.buy()
+        elif self.position.is_long and gap <= -self.gap_min:
+            self.position.close()
+'''
+    },
+    {
+        "id": "media_atr_trailing", "casa": False, "emoji": "🛡️",
+        "nome": "Média + Trailing ATR",
+        "desc": "Entra na tendência (preço acima da SMA50) e protege com trailing stop de 2x ATR — deixa o lucro correr.",
+        "tags": ["TENDÊNCIA", "ATR", "TRAILING"], "nivel": "intermediário",
+        "mercados": ["Commodities", "Cripto", "Índices"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def SMA(serie, n):
+    return pd.Series(serie).rolling(n).mean()
+
+def ATR(high, low, close, n=14):
+    h, l, c = pd.Series(high), pd.Series(low), pd.Series(close)
+    tr = pd.concat([h-l, (h-c.shift()).abs(), (l-c.shift()).abs()], axis=1).max(axis=1)
+    return tr.rolling(n).mean()
+
+class MediaATRTrailing(Strategy):
+    n_sma = 50
+    mult_atr = 2.0
+    def init(self):
+        self.sma = self.I(SMA, self.data.Close, self.n_sma)
+        self.atr = self.I(ATR, self.data.High, self.data.Low, self.data.Close)
+        self.stop = None
+    def next(self):
+        preco = self.data.Close[-1]
+        if self.position.is_long:
+            novo_stop = preco - self.mult_atr * self.atr[-1]
+            self.stop = max(self.stop or novo_stop, novo_stop)
+            if preco <= self.stop:
+                self.position.close(); self.stop = None; return
+        if preco > self.sma[-1] and not self.position.is_long:
+            self.buy()
+            self.stop = preco - self.mult_atr * self.atr[-1]
+'''
+    },
+]
+
+@app.get("/estrategias/prontas")
+def estrategias_prontas():
+    """Galeria das 10 estratégias prontas (metadados + código)."""
+    return {"estrategias": ESTRATEGIAS_PRONTAS, "total": len(ESTRATEGIAS_PRONTAS)}
+
+
+# ════════════════════════════════════════════════════════════
+#  v3.0 — CONECTOR MT5 (read-only) + AGENTE BLOCO F
+#  Princípio: o EA executa LOCAL na conta do usuário.
+#  A nuvem só OBSERVA (snapshots read-only). Nunca comanda.
+#  Nunca pede credenciais de corretora — apenas bot_token.
+#  Agente: comenta CONSISTÊNCIA do trader vs plano validado.
+#  Nunca comenta direção de mercado. Nunca promete retorno.
+# ════════════════════════════════════════════════════════════
+
+OFFLINE_APOS_SEGUNDOS = 180  # 3 min sem ping = offline
+
+# Cooldown anti-spam por regra (minutos)
+_AGENTE_COOLDOWN_MIN = {"F1": 60, "F2": 30, "F3": 15, "F4": 1440}
+
+# Mapeia símbolo MT5 -> nome do ativo no catálogo (p/ cruzar com backtests)
+_MT5_PARA_CATALOGO = {
+    "XAUUSD": "XAU/USD", "GOLD": "XAU/USD",
+    "BTCUSD": "BTC/USD", "ETHUSD": "ETH/USD",
+    "US500": "S&P500", "SPX500": "S&P500",
+    "NAS100": "NASDAQ", "USTEC": "NASDAQ",
+    "US30": "US30", "EURUSD": "EUR/USD", "GBPUSD": "GBP/USD",
+    "USDJPY": "USD/JPY", "AUDUSD": "AUD/USD", "USDCAD": "USD/CAD",
+    "USDBRL": "USD/BRL", "XAGUSD": "XAG/USD",
+}
+
+class ConectorRegistrar(BaseModel):
+    user_id: str
+    nome: str = "Meu Bot"
+    simbolo: str = ""
+    magic_number: Optional[int] = None
+
+class ConectorSnapshot(BaseModel):
+    bot_token: str
+    conta_login: Optional[str] = None
+    corretora: Optional[str] = None
+    simbolo: Optional[str] = None
+    magic_number: Optional[int] = None
+    equity: Optional[float] = None
+    balance: Optional[float] = None
+    margem_livre: Optional[float] = None
+    posicoes_abertas: int = 0
+    lucro_flutuante: Optional[float] = None
+    drawdown_atual: Optional[float] = None   # em % (ex: 4.2)
+    direcao_d1: Optional[str] = None         # compra | venda | lateral
+    padrao_ativo: Optional[str] = None
+    detalhe: Optional[dict] = None
+
+class ConectorEvento(BaseModel):
+    bot_token: str
+    tipo: str                                 # trade_aberto | trade_fechado | reversao | piramide | erro
+    detalhe: Optional[dict] = None
+
+class SugestaoLida(BaseModel):
+    user_id: str
+    sugestao_id: int
+
+
+def _bot_por_token(sb, bot_token: str):
+    try:
+        r = sb.table("conector_bots").select("*").eq("bot_token", bot_token).limit(1).execute()
+        return r.data[0] if r.data else None
+    except Exception:
+        return None
+
+
+def _agente_em_cooldown(sb, user_id: str, regra: str) -> bool:
+    """True se a regra já disparou dentro da janela de cooldown."""
+    try:
+        minutos = _AGENTE_COOLDOWN_MIN.get(regra, 60)
+        corte = (_dt.now(_tz.utc) - _td(minutes=minutos)).isoformat()
+        r = (sb.table("agente_sugestoes").select("id")
+             .eq("user_id", user_id).eq("regra", regra)
+             .gte("criado_em", corte).limit(1).execute())
+        return bool(r.data)
+    except Exception:
+        return True  # na dúvida, não spamma
+
+
+def _agente_emite(sb, user_id, regra, categoria, mensagem, severidade="info", contexto=None):
+    try:
+        sb.table("agente_sugestoes").insert({
+            "user_id": user_id, "regra": regra, "categoria": categoria,
+            "mensagem": mensagem, "severidade": severidade,
+            "contexto_json": contexto or {},
+        }).execute()
+        sb.table("agente_eventos").insert({
+            "user_id": user_id, "tipo": "sugestao_emitida", "regra": regra,
+            "detalhe_json": {"mensagem": mensagem},
+        }).execute()
+    except Exception as e:
+        print(f"[Agente] falha ao emitir {regra}: {e}")
+
+
+def _agente_bloco_f(sb, user_id: str, bot: dict, snap: ConectorSnapshot):
+    """
+    BLOCO F — consistência vivo × backtest (regras puras, custo zero).
+    F1: drawdown vivo chegou a 80%+ do max_drawdown testado p/ o ativo  -> alerta (cd 60min)
+    F2: pirâmide além do plano (posições abertas > 3)                   -> atenção (cd 30min)
+    F3: drawdown vivo SUPEROU o pior drawdown testado                   -> alerta (cd 15min)
+    F4: operando símbolo SEM nenhum backtest validado                   -> atenção (cd 24h)
+    O agente fala de DISCIPLINA contra o próprio plano. Nunca de mercado.
+    """
+    if not user_id:
+        return 0
+    emitidas = 0
+    simbolo_mt5 = (snap.simbolo or bot.get("simbolo") or "").upper()
+    ativo_catalogo = _MT5_PARA_CATALOGO.get(simbolo_mt5, simbolo_mt5)
+
+    # Busca o pior (maior) drawdown testado pelo usuário nesse ativo
+    max_dd_testado = None
+    tem_backtest = False
+    try:
+        r = (sb.table("backtests_historico").select("max_drawdown")
+             .eq("user_id", user_id).eq("ativo", ativo_catalogo)
+             .order("criado_em", desc=True).limit(50).execute())
+        dds = [abs(float(x["max_drawdown"])) for x in (r.data or []) if x.get("max_drawdown") is not None]
+        tem_backtest = bool(r.data)
+        if dds:
+            max_dd_testado = max(dds)
+    except Exception as e:
+        print(f"[Agente F] consulta historico falhou: {e}")
+
+    dd_vivo = abs(snap.drawdown_atual) if snap.drawdown_atual is not None else None
+
+    # F3 — superou o testado (mais grave, avalia primeiro)
+    if dd_vivo is not None and max_dd_testado and dd_vivo > max_dd_testado:
+        if not _agente_em_cooldown(sb, user_id, "F3"):
+            _agente_emite(sb, user_id, "F3", "posicao",
+                f"O drawdown ao vivo em {ativo_catalogo} ({dd_vivo:.1f}%) já SUPEROU o pior cenário "
+                f"do seu backtest ({max_dd_testado:.1f}%). O mercado está fora do que você validou. "
+                f"Vale revisar a posição contra o seu plano.",
+                "alerta", {"dd_vivo": dd_vivo, "dd_testado": max_dd_testado, "simbolo": simbolo_mt5})
+            emitidas += 1
+    # F1 — aproximando do testado (só se F3 não disparou)
+    elif dd_vivo is not None and max_dd_testado and dd_vivo >= 0.8 * max_dd_testado:
+        if not _agente_em_cooldown(sb, user_id, "F1"):
+            _agente_emite(sb, user_id, "F1", "posicao",
+                f"Drawdown ao vivo em {ativo_catalogo} ({dd_vivo:.1f}%) chegou a 80% do pior drawdown "
+                f"do seu backtest ({max_dd_testado:.1f}%). Ainda dentro do plano, mas no limite dele.",
+                "atencao", {"dd_vivo": dd_vivo, "dd_testado": max_dd_testado, "simbolo": simbolo_mt5})
+            emitidas += 1
+
+    # F2 — pirâmide além do plano
+    if snap.posicoes_abertas and snap.posicoes_abertas > 3:
+        if not _agente_em_cooldown(sb, user_id, "F2"):
+            _agente_emite(sb, user_id, "F2", "intraday",
+                f"{snap.posicoes_abertas} posições abertas em {ativo_catalogo} — acima das 3 da sua "
+                f"pirâmide planejada. Exposição além do que foi testado.",
+                "atencao", {"posicoes": snap.posicoes_abertas, "simbolo": simbolo_mt5})
+            emitidas += 1
+
+    # F4 — símbolo sem backtest validado
+    if not tem_backtest:
+        if not _agente_em_cooldown(sb, user_id, "F4"):
+            _agente_emite(sb, user_id, "F4", "backtest",
+                f"Você está operando {ativo_catalogo} ao vivo, mas não encontrei nenhum backtest seu "
+                f"nesse ativo. Estratégia que funciona num ativo pode falhar em outro — vale validar "
+                f"antes de seguir automatizado.",
+                "atencao", {"simbolo": simbolo_mt5})
+            emitidas += 1
+
+    return emitidas
+
+
+# ── ENDPOINTS DO CONECTOR ───────────────────────────────────
+
+@app.post("/conector/registrar")
+def conector_registrar(req: ConectorRegistrar):
+    """Gera bot_token p/ o conector. Nunca pede credenciais de corretora."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    token = _secrets.token_hex(16)
+    try:
+        sb.table("conector_bots").insert({
+            "user_id": req.user_id, "bot_token": token,
+            "nome": req.nome, "simbolo": req.simbolo,
+            "magic_number": req.magic_number,
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao registrar bot: {e}")
+    return {"ok": True, "bot_token": token,
+            "instrucao": "Cole este token no conector (config). Ele identifica o bot — nunca compartilhe."}
+
+
+@app.post("/conector/snapshot")
+def conector_snapshot(snap: ConectorSnapshot):
+    """Recebe snapshot read-only do conector. Atualiza ping, grava e roda o agente."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    bot = _bot_por_token(sb, snap.bot_token)
+    if not bot:
+        raise HTTPException(status_code=401, detail="bot_token inválido")
+    user_id = bot.get("user_id")
+    agora = _dt.now(_tz.utc).isoformat()
+    try:
+        sb.table("conector_bots").update({
+            "ultimo_ping": agora,
+            "ultimo_equity": snap.equity,
+            "ultimo_dd": snap.drawdown_atual,
+            "ultima_direcao": snap.direcao_d1,
+            "ultimo_padrao": snap.padrao_ativo,
+            "posicoes_abertas": snap.posicoes_abertas,
+        }).eq("id", bot["id"]).execute()
+        sb.table("conector_snapshots").insert({
+            "user_id": user_id, "bot_token": snap.bot_token,
+            "conta_login": snap.conta_login, "corretora": snap.corretora,
+            "simbolo": snap.simbolo, "magic_number": snap.magic_number,
+            "equity": snap.equity, "balance": snap.balance,
+            "margem_livre": snap.margem_livre,
+            "posicoes_abertas": snap.posicoes_abertas,
+            "lucro_flutuante": snap.lucro_flutuante,
+            "drawdown_atual": snap.drawdown_atual,
+            "direcao_d1": snap.direcao_d1, "padrao_ativo": snap.padrao_ativo,
+            "detalhe_json": snap.detalhe or {},
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gravar snapshot: {e}")
+    novas = _agente_bloco_f(sb, user_id, bot, snap)
+    return {"ok": True, "sugestoes_novas": novas}
+
+
+@app.post("/conector/evento")
+def conector_evento(ev: ConectorEvento):
+    """Evento do bot (trade aberto/fechado, reversão, pirâmide...)."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    bot = _bot_por_token(sb, ev.bot_token)
+    if not bot:
+        raise HTTPException(status_code=401, detail="bot_token inválido")
+    try:
+        sb.table("agente_eventos").insert({
+            "user_id": bot.get("user_id"), "tipo": f"bot_{ev.tipo}",
+            "regra": None, "detalhe_json": ev.detalhe or {},
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gravar evento: {e}")
+    return {"ok": True}
+
+
+@app.get("/conector/bots")
+def conector_bots(user_id: str):
+    """Painel: lista bots do usuário com status online/offline (3 min sem ping)."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    try:
+        r = (sb.table("conector_bots").select("*")
+             .eq("user_id", user_id).order("criado_em", desc=True).execute())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar bots: {e}")
+    agora = _dt.now(_tz.utc)
+    bots = []
+    for b in (r.data or []):
+        online = False
+        if b.get("ultimo_ping"):
+            try:
+                ping = _dt.fromisoformat(str(b["ultimo_ping"]).replace("Z", "+00:00"))
+                online = (agora - ping).total_seconds() < OFFLINE_APOS_SEGUNDOS
+            except Exception:
+                pass
+        b.pop("bot_token", None)  # token nunca volta pro front
+        bots.append({**b, "online": online})
+    return {"bots": bots}
+
+
+@app.get("/agente/sugestoes")
+def agente_sugestoes(user_id: str, apenas_nao_lidas: bool = False, limite: int = 30):
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    try:
+        q = (sb.table("agente_sugestoes").select("*")
+             .eq("user_id", user_id).order("criado_em", desc=True).limit(limite))
+        if apenas_nao_lidas:
+            q = q.eq("lida", False)
+        r = q.execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar sugestões: {e}")
+    nao_lidas = sum(1 for s in (r.data or []) if not s.get("lida"))
+    return {"sugestoes": r.data or [], "nao_lidas": nao_lidas}
+
+
+@app.post("/agente/sugestoes/lida")
+def agente_sugestao_lida(req: SugestaoLida):
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    try:
+        (sb.table("agente_sugestoes").update({"lida": True})
+         .eq("id", req.sugestao_id).eq("user_id", req.user_id).execute())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro: {e}")
     return {"ok": True}
