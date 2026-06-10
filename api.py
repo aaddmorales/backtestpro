@@ -1,5 +1,5 @@
 # ============================================================
-#  BotBacktest API — v3.1
+#  BotBacktest API — v3.2
 #  Data: 2026-06-07 | Deploy: Railway
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -377,22 +377,40 @@ def calcular_metricas_completas(resultado: dict, params: BacktestParams, df: pd.
     account_required = round(capital_ini * (1 + abs(max_dd) / 100), 2)
 
     # ── Candles OHLCV para o gráfico ──
+    # v3.2: usa o MESMO df dos trades (indices alinhados) e tempo UNIX (epoch)
+    # p/ intraday funcionar — antes era so a data (str[:10]) e todos os candles
+    # do mesmo dia viravam "duplicados" no front, sumindo do grafico.
+    df_plot = resultado.get('df') if isinstance(resultado.get('df'), pd.DataFrame) else df
+    tempos = []
+    for ix in df_plot.index:
+        try:
+            tempos.append(int(ix.timestamp()))
+        except Exception:
+            tempos.append(int(pd.Timestamp(str(ix)).timestamp()))
     candles = []
-    for idx, row in df.iterrows():
+    for i, (idx, row) in enumerate(df_plot.iterrows()):
         candles.append({
-            "t": str(idx)[:10],
+            "t": tempos[i],
             "o": round(float(row['Open']), 4),
             "h": round(float(row['High']), 4),
             "l": round(float(row['Low']), 4),
             "c": round(float(row['Close']), 4),
-            "v": int(row.get('Volume', 0)),
+            "v": int(row.get('Volume', 0) or 0),
         })
 
-    # ── Markers de trades nos candles ──
+    # ── Markers de trades nos candles (tempo UNIX pelo indice do trade) ──
+    def _tempo_do_idx(i, fallback):
+        if isinstance(i, int) and 0 <= i < len(tempos):
+            return tempos[i]
+        try:
+            return int(pd.Timestamp(fallback).timestamp())
+        except Exception:
+            return None
     markers = []
     for t in trades:
         markers.append({
             "idx": t['idx_entrada'],
+            "t": _tempo_do_idx(t['idx_entrada'], t['entrada']),
             "data": t['entrada'],
             "tipo": "BUY",
             "preco": t['preco_entrada'],
@@ -400,6 +418,7 @@ def calcular_metricas_completas(resultado: dict, params: BacktestParams, df: pd.
         })
         markers.append({
             "idx": t['idx_saida'],
+            "t": _tempo_do_idx(t['idx_saida'], t['saida']),
             "data": t['saida'],
             "tipo": "SELL",
             "preco": t['preco_saida'],
