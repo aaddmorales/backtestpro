@@ -2107,6 +2107,82 @@ class TendenciaDiariaPiramide(Strategy):
 '''
     },
     {
+        "id": "topo_fundo_duplo", "casa": True, "emoji": "🏛️",
+        "nome": "Topo Duplo / Fundo Duplo (Casa)",
+        "desc": "Assinatura BotBacktest: dois topos na mesma altura + rompimento da linha do pescoço (o fundo entre eles) = venda. Mesma família do Ombro-Cabeça-Ombro: quando a cabeça não se forma, vira Topo Duplo — a entrada é a mesma. Espelhado no Fundo Duplo / OCO invertido = compra (mais difícil de ver a olho; o detector acha pra você). Alvo pela altura do padrão, stop atrás dos topos/fundos.",
+        "tags": ["PRICE ACTION", "REVERSÃO", "CASA"], "nivel": "avançado",
+        "mercados": ["XAU/USD (Ouro)", "BTC/USD", "NASDAQ"],
+        "codigo": '''from backtesting import Strategy
+
+class TopoFundoDuplo(Strategy):
+    k = 5              # candles de cada lado p/ confirmar um pivo (topo/fundo)
+    tolerancia = 0.004 # 0.4% de diferenca maxima entre os dois topos/fundos
+    validade = 40      # padrao expira depois de N candles sem rompimento
+
+    def init(self):
+        self.pivos_alta = []    # swing highs confirmados: (indice, preco)
+        self.pivos_baixa = []   # swing lows confirmados
+        self.stop = None
+        self.alvo = None
+        self.usado_alta = -1
+        self.usado_baixa = -1
+
+    def next(self):
+        h, l, c = self.data.High, self.data.Low, self.data.Close
+        i = len(c) - 1
+        if i < 2 * self.k + 1:
+            return
+
+        # confirma pivo k candles atras (precisa de k candles dos dois lados)
+        j = i - self.k
+        jan_h = [h[j + m] for m in range(-self.k, self.k + 1)]
+        jan_l = [l[j + m] for m in range(-self.k, self.k + 1)]
+        if h[j] == max(jan_h):
+            self.pivos_alta.append((j, h[j]))
+        if l[j] == min(jan_l):
+            self.pivos_baixa.append((j, l[j]))
+
+        # gestao de posicao aberta (alvo pela altura / stop atras do padrao)
+        if self.position:
+            if self.position.is_short:
+                if c[-1] <= self.alvo or c[-1] >= self.stop:
+                    self.position.close()
+            else:
+                if c[-1] >= self.alvo or c[-1] <= self.stop:
+                    self.position.close()
+            return
+
+        # TOPO DUPLO -> rompeu a linha do pescoco pra baixo = venda
+        if len(self.pivos_alta) >= 2:
+            (i1, p1), (i2, p2) = self.pivos_alta[-2], self.pivos_alta[-1]
+            recente = (i - i2) <= self.validade
+            mesmo_nivel = abs(p2 - p1) / p1 <= self.tolerancia
+            if recente and mesmo_nivel and i2 != self.usado_alta:
+                pescoco = min(l[m] for m in range(i1, i2 + 1))
+                if c[-1] < pescoco:
+                    altura = (p1 + p2) / 2 - pescoco
+                    self.stop = max(p1, p2)
+                    self.alvo = pescoco - altura
+                    self.usado_alta = i2
+                    self.sell()
+                    return
+
+        # FUNDO DUPLO -> rompeu o topo central pra cima = compra
+        if len(self.pivos_baixa) >= 2:
+            (i1, p1), (i2, p2) = self.pivos_baixa[-2], self.pivos_baixa[-1]
+            recente = (i - i2) <= self.validade
+            mesmo_nivel = abs(p2 - p1) / p1 <= self.tolerancia
+            if recente and mesmo_nivel and i2 != self.usado_baixa:
+                pescoco = max(h[m] for m in range(i1, i2 + 1))
+                if c[-1] > pescoco:
+                    altura = pescoco - (p1 + p2) / 2
+                    self.stop = min(p1, p2)
+                    self.alvo = pescoco + altura
+                    self.usado_baixa = i2
+                    self.buy()
+'''
+    },
+    {
         "id": "cruzamento_ema_9_21", "casa": False, "emoji": "📊",
         "nome": "Cruzamento EMA 9/21",
         "desc": "Clássica de tendência: EMA9 cruza acima da EMA21 = compra; cruza abaixo = sai/inverte.",
