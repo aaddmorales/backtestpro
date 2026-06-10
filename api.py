@@ -1,6 +1,13 @@
 # ============================================================
-#  BotBacktest API — v3.0
+#  BotBacktest API — v3.1
 #  Data: 2026-06-07 | Deploy: Railway
+#  Novidades v3.1:
+#  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
+#    backtesting.py (antes engolia erro e devolvia sempre 0 trades).
+#    Editor Python, IA e galeria de estrategias passam a funcionar de fato.
+#  - Parser do /gerar-bot-ia entende portugues (canal high/low, cruzamento
+#    com periodos, tolerante a typos; "2 medias de 20" = periodo 20).
+#  Historico anterior:
 #  Novidades v3.0:
 #  - Catalogo 40 ativos em 7 categorias com gating por plano (/ativos/catalogo)
 #  - Galeria de 10 estrategias prontas, 2 assinaturas da casa (/estrategias/prontas)
@@ -1359,45 +1366,69 @@ def backtest_custom(params: BacktestCustom):
         raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
 
 def rodar_codigo_custom(df: pd.DataFrame, params: BacktestCustom) -> dict:
-    """Executa estratégia Python customizada do usuário"""
-    capital = params.capital
-    comissao = params.comissao
-    equity_curve = [capital]
-    trades = []
+    """
+    v3.1 - Executa de VERDADE a estrategia Python do usuario com o motor
+    backtesting.py. Aceita classes Strategy (com ou sem imports no codigo).
+    Se falhar, levanta excecao - o chamador cai no motor padrao.
+    """
+    from backtesting import Backtest, Strategy as _Strategy
+    from backtesting.lib import crossover as _crossover
 
-    # Prepara namespace seguro
+    # Namespace com tudo que os codigos gerados/colados costumam usar
     ns = {
         "pd": pd, "np": np,
-        "df": df.copy(),
-        "capital": capital,
-        "comissao": comissao,
-        "trades": trades,
-        "equity_curve": equity_curve,
+        "Strategy": _Strategy, "crossover": _crossover,
+        "__builtins__": __builtins__,
     }
+    exec(params.codigo, ns)  # erro no codigo -> excecao sobe -> fallback
 
-    # Injeta lógica de execução básica
-    codigo_exec = f"""
-import pandas as pd
-import numpy as np
+    # Encontra a classe Strategy definida pelo usuario
+    cls = None
+    for v in ns.values():
+        if isinstance(v, type) and issubclass(v, _Strategy) and v is not _Strategy:
+            cls = v
+    if cls is None:
+        raise ValueError("Nenhuma classe Strategy encontrada no codigo")
 
-df = df.copy()
-posicao = None
-capital_atual = capital
+    dfx = df.copy().dropna()
 
-# Código do usuário
-{params.codigo}
+    # Ativos caros (ex: BTC) > capital: roda com cash ampliado e re-escala
+    capital_user = float(params.capital)
+    preco_max = float(dfx["Close"].max())
+    cash_engine = max(capital_user, preco_max * 3)
+    fator = capital_user / cash_engine
 
-# Tenta executar next() em loop se Strategy foi definida
-if 'Strategy' in dir() or any('class' in linha for linha in '''{params.codigo}'''.split('\\n')):
-    pass  # Strategy baseada em backtesting.py — usa motor padrão
-"""
-    try:
-        exec(params.codigo, ns)
-    except Exception:
-        pass
+    bt = Backtest(dfx, cls, cash=cash_engine,
+                  commission=float(params.comissao), exclusive_orders=True)
+    stats = bt.run()
+
+    # Converte trades pro formato do front
+    trades = []
+    tdf = stats.get("_trades")
+    if tdf is not None and len(tdf):
+        for _, t in tdf.iterrows():
+            pl = float(t["PnL"]) * fator
+            trades.append({
+                "entrada": str(t["EntryTime"])[:16],
+                "saida": str(t["ExitTime"])[:16],
+                "preco_entrada": round(float(t["EntryPrice"]), 5),
+                "preco_saida": round(float(t["ExitPrice"]), 5),
+                "retorno_pct": round(float(t["ReturnPct"]) * 100, 4),
+                "pl": round(pl, 2),
+                "resultado": "Ganho" if pl > 0 else "Perda",
+                "idx_entrada": int(t["EntryBar"]),
+                "idx_saida": int(t["ExitBar"]),
+            })
+
+    # Equity curve re-escalada pro capital do usuario
+    eq = stats["_equity_curve"]["Equity"]
+    equity_curve = [round(float(v) * fator, 2) for v in eq.tolist()]
+    if not equity_curve:
+        equity_curve = [capital_user]
+    capital_final = equity_curve[-1]
 
     return {"trades": trades, "equity_curve": equity_curve,
-            "df": df, "capital_final": capital}
+            "df": dfx, "capital_final": capital_final}
 
 @app.post("/gerar-bot-ia")
 def gerar_bot_ia(req: IARequest):
