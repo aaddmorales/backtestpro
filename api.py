@@ -1401,7 +1401,77 @@ if 'Strategy' in dir() or any('class' in linha for linha in '''{params.codigo}''
 
 @app.post("/gerar-bot-ia")
 def gerar_bot_ia(req: IARequest):
+    import re as _re
     desc = req.descricao.lower()
+    # normaliza erros comuns de digitacao
+    for a, b in [("crusamento", "cruzamento"), ("cruzameto", "cruzamento"),
+                 ("hight", "high"), ("higt", "high"), ("loww", "low"),
+                 ("médias", "medias"), ("média", "media")]:
+        desc = desc.replace(a, b)
+    numeros = [int(n) for n in _re.findall(r"\b(\d{1,3})\b", desc)]
+    # quantidades tipo "2 medias" nao sao periodo — periodo valido: 5 a 200
+    periodos = [n for n in numeros if 5 <= n <= 200]
+
+    # ── PRIORIDADE 1: canal high/low (assinatura da casa) ──
+    # "2 medias de 20 uma high e outra low", "canal ema 20", etc.
+    if ("high" in desc and "low" in desc) or "canal" in desc:
+        periodo = periodos[0] if periodos else 20
+        codigo = f"""class CanalEMAHighLow(Strategy):
+    # Gerado por IA baseado em: {req.descricao}
+    # Canal: EMA{{0}} das maximas (high) e EMA{{0}} das minimas (low).
+    # Preco rompe ACIMA do canal = compra. Rompe ABAIXO = sai/vende.
+    # Dentro do canal = lateral, nao opera.
+    ema_period = {periodo}
+
+    def init(self):
+        self.ema_high = self.I(
+            lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.High
+        )
+        self.ema_low = self.I(
+            lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values,
+            self.data.Low
+        )
+
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]:
+                self.buy()
+        else:
+            if preco < self.ema_low[-1]:
+                self.position.close()"""
+        return {"codigo": codigo, "entendi": f"Canal EMA {periodo} High/Low — rompimento do canal"}
+
+    # ── PRIORIDADE 2: cruzamento de DUAS medias com periodos ──
+    if "cruzamento" in desc and ("media" in desc or "ema" in desc or "sma" in desc):
+        if len(periodos) >= 2:
+            rapida, lenta = sorted(periodos[:2])
+        elif len(periodos) == 1:
+            rapida, lenta = periodos[0], periodos[0] * 2
+        else:
+            rapida, lenta = 9, 21
+        if rapida == lenta:
+            lenta = rapida * 2
+        codigo = f"""class CruzamentoEMA(Strategy):
+    # Gerado por IA baseado em: {req.descricao}
+    # EMA{{rapida}} cruza ACIMA da EMA{{lenta}} = compra. Cruza abaixo = sai.
+    rapida = {rapida}
+    lenta = {lenta}
+
+    def init(self):
+        close = pd.Series(self.data.Close)
+        self.e1 = self.I(lambda: close.ewm(span=self.rapida, adjust=False).mean().values)
+        self.e2 = self.I(lambda: close.ewm(span=self.lenta, adjust=False).mean().values)
+
+    def next(self):
+        if not self.position:
+            if self.e1[-1] > self.e2[-1] and self.e1[-2] <= self.e2[-2]:
+                self.buy()
+        else:
+            if self.e1[-1] < self.e2[-1]:
+                self.position.close()"""
+        return {"codigo": codigo, "entendi": f"Cruzamento EMA {rapida}/{lenta}"}
 
     # Templates inteligentes baseados na descrição
     if "rsi" in desc:
