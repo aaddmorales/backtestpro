@@ -2534,8 +2534,8 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
       fixLeftEdge: false,
       fixRightEdge: false,
     },
-    handleScroll: true,
-    handleScale: true,
+    handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+    handleScale:  { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
   });
 
   if(candleChart) { try { candleChart.remove(); } catch(e) {} }
@@ -2586,6 +2586,53 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
     chart.timeScale().fitContent();
     chart.priceScale('right').applyOptions({ autoScale: true });
   };
+
+  // ── Controles de zoom sobre o gráfico (+ / − / ⛶) ──
+  container.style.position = 'relative';
+  const old = container.querySelector('.chart-zoom-ctl');
+  if (old) old.remove();
+  const ctl = document.createElement('div');
+  ctl.className = 'chart-zoom-ctl';
+  ctl.style.cssText = 'position:absolute;top:10px;right:90px;z-index:5;display:flex;gap:4px;';
+  const mkBtn = (txt, title, fn) => {
+    const b = document.createElement('button');
+    b.textContent = txt; b.title = title;
+    b.style.cssText = 'width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);background:rgba(14,17,23,0.85);color:#dde3ee;font-size:15px;font-weight:700;cursor:pointer;line-height:1;backdrop-filter:blur(4px)';
+    b.onmouseenter = () => b.style.borderColor = 'rgba(0,208,132,0.5)';
+    b.onmouseleave = () => b.style.borderColor = 'rgba(255,255,255,0.14)';
+    b.onclick = (e) => { e.stopPropagation(); fn(); };
+    return b;
+  };
+  const zoomStep = (mult) => {
+    const ts = chart.timeScale();
+    const bs = ts.options().barSpacing || 6;
+    ts.applyOptions({ barSpacing: Math.min(60, Math.max(0.5, bs * mult)) });
+    chart.priceScale('right').applyOptions({ autoScale: true });
+  };
+  ctl.appendChild(mkBtn('−', 'Afastar (zoom out)', () => zoomStep(1/1.35)));
+  ctl.appendChild(mkBtn('+', 'Aproximar (zoom in)', () => zoomStep(1.35)));
+  ctl.appendChild(mkBtn('⛶', 'Enquadrar tudo (ou duplo clique)', () => {
+    chart.timeScale().fitContent();
+    chart.priceScale('right').applyOptions({ autoScale: true });
+  }));
+  container.appendChild(ctl);
+
+  // Ctrl + roda do mouse = zoom no gráfico; roda sozinha = página rola normal
+  container.onwheel = (e) => {
+    if (!e.ctrlKey) return;            // sem Ctrl: deixa a página rolar
+    e.preventDefault();
+    zoomStep(e.deltaY < 0 ? 1.2 : 1/1.2);
+  };
+
+  // Dica discreta de uso (some no primeiro zoom)
+  const oldHint = container.querySelector('.chart-hint');
+  if (oldHint) oldHint.remove();
+  const hint = document.createElement('div');
+  hint.className = 'chart-hint';
+  hint.textContent = 'Ctrl + roda = zoom · duplo clique = enquadrar';
+  hint.style.cssText = 'position:absolute;bottom:28px;left:12px;z-index:5;font-size:10px;color:#5a6478;background:rgba(14,17,23,0.7);padding:3px 8px;border-radius:5px;pointer-events:none';
+  container.appendChild(hint);
+  setTimeout(() => { try { hint.remove(); } catch(_){} }, 8000);
 
   const resizeObs = new ResizeObserver(() => {
     if(container.clientWidth > 0) chart.resize(container.clientWidth, 470);
