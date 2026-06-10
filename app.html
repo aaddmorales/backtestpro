@@ -2328,6 +2328,7 @@ function zoomChart(periodo) {
 
   if(periodo === 'all') {
     ts.fitContent();
+    candleChart.priceScale('right').applyOptions({ autoScale: true });
     return;
   } else if(periodo === '1m') {
     fromTime = toTime - 30*24*3600;
@@ -2340,6 +2341,7 @@ function zoomChart(periodo) {
   }
 
   ts.setVisibleRange({from: fromTime, to: toTime});
+  candleChart.priceScale('right').applyOptions({ autoScale: true });
 }
 
 // ── INDICADORES MULTI-SELECT ──
@@ -2512,14 +2514,15 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
 
   const chart = LightweightCharts.createChart(container, {
     width: container.clientWidth,
-    height: 380,
+    height: 470,
     layout: { background:{type:'solid',color:bgColor}, textColor },
     grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: {
       borderColor,
       minimumWidth: 80,
-      scaleMargins: { top: 0.08, bottom: 0.08 },
+      autoScale: true,
+      scaleMargins: { top: 0.12, bottom: 0.08 },
     },
     leftPriceScale: { visible: false },
     timeScale: {
@@ -2562,7 +2565,7 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
           position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
           color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
           shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
-          text: m.tipo === 'BUY' ? `B ${parseFloat(m.preco||0).toFixed(2)}` : `S ${parseFloat(m.preco||0).toFixed(2)}`,
+          text: m.tipo === 'BUY' ? 'B' : 'S',
           size: 1,
         }))
         .sort((a,b) => a.time > b.time ? 1 : -1);
@@ -2575,10 +2578,17 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
     }
 
     chart.timeScale().fitContent();
+    chart.priceScale('right').applyOptions({ autoScale: true });
   }
 
+  // Duplo clique = re-enquadrar tudo (comportamento TradingView)
+  container.ondblclick = () => {
+    chart.timeScale().fitContent();
+    chart.priceScale('right').applyOptions({ autoScale: true });
+  };
+
   const resizeObs = new ResizeObserver(() => {
-    if(container.clientWidth > 0) chart.resize(container.clientWidth, 380);
+    if(container.clientWidth > 0) chart.resize(container.clientWidth, 470);
   });
   resizeObs.observe(container);
 }
