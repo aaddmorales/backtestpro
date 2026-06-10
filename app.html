@@ -967,7 +967,14 @@ select option{background:#141920}
               <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">✨ Descreva sua estratégia em português</div>
               <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input type="text" id="ia-hero-desc" placeholder='Ex: "canal EMA 20 high/low, compra no rompimento" ou "cruzamento de médias 9 e 21"' style="flex:1;min-width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
+                <div style="flex:1;min-width:240px;position:relative;display:flex">
+                  <input type="text" id="ia-hero-desc" placeholder='Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾' style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px 0 0 8px;border-right:none;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
+                  <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="width:42px;background:var(--bg2);border:1px solid var(--border2);border-radius:0 8px 8px 0;color:var(--green);font-size:14px;cursor:pointer;font-weight:700">▾</button>
+                  <div id="hero-lista" style="display:none;position:absolute;top:46px;left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
+                    <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
+                    <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
+                  </div>
+                </div>
                 <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px">✨ Gerar estratégia</button>
               </div>
             </div>
@@ -3045,6 +3052,55 @@ async function gerarHeroIA(){
       switchTab('editor');                  // sem codigo? mostra o editor
     }
   }catch(e){ console.log('heroIA', e); }
+  btn.textContent='✨ Gerar estratégia'; btn.disabled=false;
+}
+
+// ── Seletor de estratégias prontas no hero ──
+function toggleHeroLista(e){
+  if(e) e.stopPropagation();
+  const box = document.getElementById('hero-lista');
+  const aberto = box.style.display === 'block';
+  box.style.display = aberto ? 'none' : 'block';
+  if(!aberto) renderHeroLista();
+}
+document.addEventListener('click', (e)=>{
+  const box = document.getElementById('hero-lista');
+  if(box && box.style.display==='block' && !box.contains(e.target) && e.target.id!=='hero-lista-btn'){
+    box.style.display='none';
+  }
+});
+function renderHeroLista(){
+  const alvo = document.getElementById('hero-lista-itens');
+  const g = window._galeria || {};
+  const lista = Object.values(g);
+  if(!lista.length){
+    alvo.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted)">Estratégias ainda carregando — tenta de novo em 2s</div>';
+    carregarGaleria();
+    return;
+  }
+  const ordenadas = [...lista].sort((a,b)=>(b.casa?1:0)-(a.casa?1:0));
+  alvo.innerHTML = ordenadas.map(e=>`
+    <div onclick='usarEstrategiaHero(${JSON.stringify(e.id)})' style="display:flex;gap:10px;align-items:center;padding:10px 13px;cursor:pointer;border-bottom:1px solid var(--border);${e.casa?'background:linear-gradient(90deg,rgba(255,184,48,0.06),transparent)':''}" onmouseenter="this.style.background='var(--bg4)'" onmouseleave="this.style.background='${e.casa?'linear-gradient(90deg,rgba(255,184,48,0.06),transparent)':'transparent'}'">
+      <span style="font-size:17px">${e.emoji}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${e.nome}</div>
+        <div style="font-size:10.5px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.desc}</div>
+      </div>
+      <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:${e.casa?'var(--amber-bg)':'var(--green-bg)'};color:${e.casa?'var(--amber)':'var(--green)'}">${e.casa?'CASA':e.nivel.toUpperCase()}</span>
+    </div>`).join('');
+}
+async function usarEstrategiaHero(id){
+  const e = (window._galeria||{})[id]; if(!e) return;
+  document.getElementById('hero-lista').style.display='none';
+  document.getElementById('ia-hero-desc').value = e.nome;
+  document.getElementById('code-editor').value = e.codigo;
+  lastIACode = e.codigo;
+  const btn = document.getElementById('ia-hero-btn');
+  btn.textContent='▶ Testando...'; btn.disabled=true;
+  try{
+    await rodarBacktest();
+    switchTab('overview');
+  }catch(err){ console.log('estrategia hero', err); }
   btn.textContent='✨ Gerar estratégia'; btn.disabled=false;
 }
 
