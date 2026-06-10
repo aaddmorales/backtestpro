@@ -1,21 +1,11 @@
 <!--
-  BotBacktest Frontend — v4.4
+  BotBacktest Frontend — v5.0
+  v5.0: aba 📡 Monitor (bots MT5 read-only, cards online/offline, polling 20s),
+        sino do agente (Radar) com badge + marcar lida, caixa de linguagem
+        natural em destaque no Overview (editor = modo avançado),
+        galeria dinâmica de 10 estratégias prontas (/estrategias/prontas),
+        registro de bot com token (nunca credenciais de corretora)
   Data: 2026-05-31 | Autor: aaddmorales | Deploy: Railway
-  v4.4: contador de backtests no topo da coluna esquerda (📊 X backtests realizados) — total do banco via /babymachine/contador; atualiza no login, apos cada backtest; escondido se deslogado ou zero. Tom neutro.
-  v4.3: BabyMachine — secao coletivo SUBSTITUIDA por 2 graficos de evolucao do usuario (Sharpe e retorno por teste, Chart.js linha) — coletivo nao publicado p/ nao comprometer evolucao da base. Aviso anti-overfitting nos graficos. Mantida secao Sua jornada (alertas).
-  v4.2: BabyMachine — aba 🧠 + botao Analise BabyMachine; chama /babymachine/analisar e mostra 2 secoes: Aprendizado coletivo (tendencias do banco) + Sua jornada (alertas coloridos por nivel: overfitting/win-enganoso/melhor backtest). Conselhos honestos.
-  v4.1: OffMind — aba Padroes + botao Detectar padroes; chama /offmind/analisar e mostra ranking dos padroes do mais assertivo ao menos (melhor horizonte de cada, mini-tabela dos 4 horizontes, disclaimer honesto)
-  v3.9: removido botao NTSL duplicado da barra superior (mantido Exportar para NTSL na coluna esquerda)
-  v3.8: botoes timeframe com mesmo fundo destacado dos campos (cinza nos 2 temas), ativo (rodando) mantem verde
-  v3.7: tema escuro tambem com campos destacados (fundo #1c2230 + borda mais marcada) — mesma faixa cinza profissional dos 2 temas
-  v3.6: tema claro mais profissional — campos (select/input) com fundo cinza #e9edf2 e borda mais marcada, coluna esquerda cinza suave #f4f6f9 (em vez de branco puro) p/ os campos se destacarem
-  v3.5: fix tema claro — botoes da barra superior mantêm BRANCO nos 2 temas (barra é sempre escura #080a0d), removidas regras que os deixavam pretos e sumiam
-  v3.4: legibilidade nivel GitHub — botoes topo branco(#eef1f6)/preto(#1a1f2b), cores muted bem mais contrastadas nos 2 temas, labels .pl mais claras e bold
-  v3.3: legibilidade — botoes barra superior com cor mais clara + peso 600 + contorno sutil + ativo com destaque verde; cores --muted clareadas (escuro) e escurecidas (claro) p/ legendas legiveis nos 2 temas
-  v3.2: donuts de robustez MAIORES (180px) lado a lado embaixo da tabela (largura toda); mais visivel/profissional
-  v3.1: dois donuts (treino vs teste) ao lado da tabela de robustez
-  v3.0: deteccao de overfitting (out-of-sample) — botao Validar robustez + aba Robustez com veredito colorido e tabela treino vs teste (chama /validar-overfitting)
-  v2.9: tela de EXEMPLO completa (Forma C) — usa renderOverview real com dados de demonstracao (grafico + todos os paineis), banner EXEMPLO no topo, some ao rodar real
   v2.8: grafico de amostra REALISTA (random walk + lightweight-charts, mesma lib do real) substituindo SVG artificial; redesenha no toggle de tema
   v2.7: Overview vira aba inicial (botao 1o, antes do Editor); grafico de amostra com selo EXEMPLO na tela inicial; some ao rodar backtest real
   v2.6: fix bug ao TROCAR de combinação no gráfico (devolve ov-result p/ Overview antes de limpar slot)
@@ -55,7 +45,7 @@
 :root{
   --bg:#080a0d;--bg2:#0e1117;--bg3:#141920;--bg4:#1c2230;
   --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
-  --text:#eef1f6;--muted:#9aa4b6;--muted2:#c4ccd9;
+  --text:#dde3ee;--muted:#5a6478;--muted2:#8a94a8;
   --green:#00d084;--green2:#00a868;--green-bg:rgba(0,208,132,0.08);
   --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
   --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
@@ -99,18 +89,18 @@ body::after{
 
 .tbtn{
   height:30px;padding:0 11px;border-radius:6px;
-  border:1px solid rgba(255,255,255,0.12);background:transparent;
-  color:#eef1f6;font-size:12px;font-family:var(--sans);font-weight:600;
+  border:1px solid transparent;background:transparent;
+  color:#8a94a8;font-size:12px;font-family:var(--sans);font-weight:500;
   cursor:pointer;display:flex;align-items:center;gap:5px;
   transition:all .15s;white-space:nowrap;
 }
-.tbtn:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.25)}
-.tbtn.active{background:rgba(0,208,132,0.18);color:#fff;border-color:#00d084;font-weight:700}
-.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.4);color:var(--green)}
+.tbtn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.1)}
+.tbtn.active{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15)}
+.tbtn-orange{background:var(--green-bg);border-color:rgba(0,208,132,0.2);color:var(--green)}
 .tbtn-orange:hover{background:rgba(0,208,132,0.15)}
-.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.4);color:var(--purple)}
+.tbtn-purple{background:var(--purple-bg);border-color:rgba(157,111,255,0.2);color:var(--purple)}
 .tbtn-purple:hover{background:rgba(157,111,255,0.15)}
-.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.4);color:var(--amber)}
+.tbtn-amber{background:var(--amber-bg);border-color:rgba(255,184,48,0.2);color:var(--amber)}
 .tbtn-amber:hover{background:rgba(255,184,48,0.15)}
 
 .spacer{flex:1}
@@ -119,19 +109,12 @@ body::after{
 .api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
 .api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
-.bbc-pill{align-items:center;gap:10px;background:rgba(0,208,132,.10);border:1px solid rgba(0,208,132,.35);border-radius:999px;padding:7px 14px;margin-bottom:12px;width:fit-content;max-width:100%;white-space:nowrap}
-.bbc-dot{position:relative;display:inline-flex;width:8px;height:8px;flex-shrink:0}
-.bbc-ping{position:absolute;inset:0;border-radius:50%;background:#00d084;opacity:.35;animation:bbcPing 1.8s ease-out infinite}
-.bbc-core{position:relative;width:8px;height:8px;border-radius:50%;background:#00d084}
-.bbc-num{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono)}
-.bbc-label{font-size:13px;color:var(--muted)}
-@keyframes bbcPing{0%{transform:scale(1);opacity:.35}70%{transform:scale(2.4);opacity:0}100%{opacity:0}}
 
 /* ── LIGHT THEME ── */
 body.light{
   --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
   --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#0a0e16;--muted:#4a5260;--muted2:#2a313d;
+  --text:#111827;--muted:#9ca3af;--muted2:#6b7280;
 }
 body.light::after{
   background:
@@ -139,13 +122,10 @@ body.light::after{
     radial-gradient(ellipse 50% 50% at 10% 80%, rgba(77,159,255,0.04) 0%, transparent 60%);
 }
 body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(255,255,255,0.06)}
-body.light .col-left{background:#f4f6f9}
+body.light .col-left{background:rgba(255,255,255,0.9)}
 body.light .col-right{background:rgba(255,255,255,0.9)}
 body.light .metrics-bar{background:rgba(255,255,255,0.97)}
-body.light select,body.light input[type=number],body.light input[type=text]{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
-body.light .tf-btn{background:#e9edf2;border-color:rgba(0,0,0,0.16);color:var(--text)}
-body.light .tf-btn:hover{background:#dde3ea;color:#000;border-color:rgba(0,0,0,0.28)}
-body.light .tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green2)}
+body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.1);color:var(--text)}
 body.light select option{background:#ffffff}
 body.light #code-editor{background:#f8f9fb;color:#383a42}
 body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
@@ -162,7 +142,7 @@ body.light .rank-card:hover{background:#f0f2f5}
 body.light .podium-block{border-color:rgba(0,0,0,0.1)}
 body.light .modal-box{background:#ffffff;border-color:rgba(0,0,0,0.12)}
 body.light .modal-code{background:#f8f9fb;border-color:rgba(0,0,0,0.08)}
-/* barra superior é sempre escura nos 2 temas — botões mantêm o branco da regra base .tbtn */
+body.light .tbtn:hover,.body.light .tbtn.active{background:rgba(255,255,255,0.1)}
 body.light .trades-tbl tr:hover td{background:#f0f2f5}
 
 /* toggle button */
@@ -197,12 +177,12 @@ body.light .theme-toggle::after{background:var(--green);left:14px}
 .col-left::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
 .ps{padding:10px 12px;border-bottom:1px solid var(--border)}
-.pl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
+.pl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
 .pli{font-size:11px;color:var(--muted2);margin-bottom:3px}
 
 select,input[type=number],input[type=text]{
   width:100%;height:30px;
-  background:#1c2230;border:1px solid rgba(255,255,255,0.14);
+  background:var(--bg3);border:1px solid var(--border);
   border-radius:5px;color:var(--text);font-size:12px;
   font-family:var(--sans);padding:0 8px;outline:none;
   transition:border .15s;
@@ -213,12 +193,12 @@ select option{background:#141920}
 .tf-group{display:flex;gap:4px;flex-wrap:wrap}
 .tf-btn{
   height:26px;padding:0 8px;border-radius:4px;
-  border:1px solid rgba(255,255,255,0.14);background:#1c2230;
-  color:var(--text);font-size:11px;font-family:var(--mono);
-  cursor:pointer;transition:all .12s;font-weight:600;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted2);font-size:11px;font-family:var(--mono);
+  cursor:pointer;transition:all .12s;font-weight:500;
 }
-.tf-btn:hover{background:#252c3c;color:#fff;border-color:rgba(255,255,255,0.25)}
-.tf-btn.active{background:var(--green-bg);border-color:#00d084;color:var(--green);font-weight:700}
+.tf-btn:hover{background:var(--bg3);color:var(--text)}
+.tf-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
 
 .pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 
@@ -605,7 +585,7 @@ select option{background:#141920}
 .user-plano{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;font-family:var(--mono)}
 .plano-free{background:var(--bg3);color:var(--muted2)}
 .plano-pro{background:var(--green-bg);color:var(--green)}
-.plano-trader{background:rgba(255,184,48,.15);color:#ffb830}
+.plano-trader{background:var(--purple-bg);color:var(--purple)}
 
 .user-dropdown{position:absolute;top:46px;right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:220px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .user-dropdown-item{padding:10px 14px;font-size:12px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .12s;border-bottom:1px solid var(--border)}
@@ -638,21 +618,27 @@ select option{background:#141920}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v1.4</span>
+    <span class="vtag">v5.0</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
-  <button class="tbtn" id="tab-robustez-btn" onclick="switchTab('robustez')">🔬 Robustez</button>
-  <button class="tbtn" id="tab-padroes-btn" onclick="switchTab('padroes')">🔍 Padrões</button>
-  <button class="tbtn" id="tab-baby-btn" onclick="switchTab('baby')">🧠 BabyMachine</button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
+  <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')">📡 Monitor</button>
   <div class="tsep"></div>
   <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
+  <button class="tbtn tbtn-amber" onclick="abrirNTSL()">📥 NTSL</button>
   <div class="spacer"></div>
+  <div style="position:relative">
+    <button class="theme-icon" id="sino-btn" onclick="toggleSino()" title="Sugestões do agente">🔔<span id="sino-badge" style="display:none;position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px">0</span></button>
+    <div id="sino-dropdown" style="display:none;position:absolute;top:40px;right:0;width:330px;max-height:420px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:200;box-shadow:0 10px 35px rgba(0,0,0,0.5)">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text)" id="sino-titulo">🤖 Sugestões do agente</div>
+      <div id="sino-lista" style="padding:6px"><div style="padding:18px;text-align:center;font-size:12px;color:var(--muted)">Nenhuma sugestão por enquanto</div></div>
+    </div>
+  </div>
   <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
   <div class="tsep"></div>
   <button class="lang-btn active">PT</button>
@@ -678,8 +664,7 @@ select option{background:#141920}
         <div class="user-dropdown-plan" id="dd-plano">Plano Free</div>
         <div class="user-dropdown-uso" id="dd-uso">0 / 5 backtests este mês</div>
       </div>
-      <div class="user-dropdown-item" id="dd-upgrade" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
-      <div class="user-dropdown-item" id="dd-gerenciar" onclick="abrirPortal()" style="display:none">⚙️ Gerenciar assinatura</div>
+      <div class="user-dropdown-item" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
       <div class="user-dropdown-item" onclick="fazerLogout()" style="color:var(--red)">🚪 Sair</div>
     </div>
   </div>
@@ -690,11 +675,6 @@ select option{background:#141920}
 
   <!-- LEFT: PARAMS -->
   <div class="col-left">
-    <div id="contador-backtests" class="bbc-pill" style="display:none" title="Total de backtests rodados na plataforma">
-      <span class="bbc-dot"><span class="bbc-ping"></span><span class="bbc-core"></span></span>
-      <span class="bbc-num" id="contador-num">0</span>
-      <span class="bbc-label">backtests rodados</span>
-    </div>
     <div class="ps">
       <div class="pl">Ativo</div>
       <select id="ativo">
@@ -883,9 +863,6 @@ select option{background:#141920}
         <span id="run-txt">Rodar Backtest</span>
       </button>
       <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
-      <button class="otim-btn" id="robustez-btn" onclick="validarRobustez()" style="border-color:rgba(0,208,132,0.35)">🔬 Validar robustez (out-of-sample)</button>
-      <button class="otim-btn" id="padroes-btn" onclick="analisarPadroes()" style="border-color:rgba(157,111,255,0.4)">🔍 Detectar padrões (OffMind)</button>
-      <button class="otim-btn" id="baby-btn" onclick="analisarBabyMachine()" style="border-color:rgba(0,180,216,0.4)">🧠 Análise BabyMachine</button>
       <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
     </div>
   </div>
@@ -986,9 +963,24 @@ select option{background:#141920}
 
           <!-- TAB: OVERVIEW -->
           <div id="tab-overview" style="display:block">
-            <div id="ov-sample-banner" style="display:flex;align-items:center;gap:10px;padding:14px 16px 0">
-              <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
-              <span style="font-size:13px;color:var(--muted2)">Resultado de demonstração · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> para ver o seu</span>
+            <div id="ia-hero" style="margin:16px 16px 0;padding:18px 20px;background:linear-gradient(135deg,rgba(157,111,255,0.10),rgba(0,208,132,0.07));border:1px solid rgba(157,111,255,0.30);border-radius:12px">
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">✨ Descreva sua estratégia em português</div>
+              <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input type="text" id="ia-hero-desc" placeholder='Ex: "compra ouro quando o preço rompe o canal da EMA 20, stop de 50 pontos, alvo 100"' style="flex:1;min-width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
+                <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px">✨ Gerar estratégia</button>
+              </div>
+            </div>
+            <div id="ov-sample" style="padding:18px 16px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
+                <span style="font-size:13px;color:var(--muted2)">Assim ficará seu resultado · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong></span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:14px">XAU/USD · 2 anos · 1D · candles + operações (demonstração)</div>
+              <div style="border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--bg2);position:relative">
+                <div style="position:absolute;top:14px;left:14px;background:rgba(15,22,32,0.78);border:1px solid #3a4756;border-radius:7px;padding:7px 13px;font-size:11px;color:#cdd9e3;z-index:3;pointer-events:none">📊 Gráfico de demonstração · <span style="color:var(--muted)">seus resultados reais aparecem aqui</span></div>
+                <div id="candle-chart-sample" style="width:100%;height:380px"></div>
+              </div>
             </div>
             <div class="overview-empty" id="ov-empty" style="display:none">
               <div style="font-size:38px;opacity:.25">📊</div>
@@ -1003,6 +995,7 @@ select option{background:#141920}
             <div class="tpl-list">
               <div class="tpl-header">Selecione uma Estratégia</div>
               <div class="tpl-sub">Estratégias prontas e testadas. Selecione, ajuste os parâmetros e rode.</div>
+              <div id="galeria-prontas"></div>
               <div class="tpl-card selected" onclick="usarTemplate(this,'ema_channel')">
                 <div class="tpl-icon">📊</div>
                 <div class="tpl-info">
@@ -1229,27 +1222,51 @@ select option{background:#141920}
           </div>
           <div id="otim-resultado" style="display:none"></div>
         </div>
-        <div id="tab-robustez" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="rob-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🔬</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:380px;line-height:1.6">Clique em <strong style="color:var(--green)">🔬 Validar robustez</strong> à esquerda. A plataforma divide o histórico em <strong>treino</strong> (passado conhecido) e <strong>teste</strong> (dados que a estratégia nunca viu) e compara o desempenho — revelando se a estratégia é robusta ou se apenas <strong>decorou o passado</strong> (overfitting).</div>
+                <!-- TAB: MONITOR (v5.0) -->
+        <div id="tab-monitor" style="display:none;padding:20px 18px;overflow-y:auto">
+          <div style="max-width:1000px;margin:0 auto">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+              <span style="font-size:20px">📡</span>
+              <span style="font-size:17px;font-weight:800;color:var(--text)">Monitor de Bots</span>
+              <span id="agente-nome-tag" style="background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25);font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px"></span>
+            </div>
+            <div style="font-size:12px;color:var(--muted2);margin-bottom:18px;line-height:1.6">Seu EA executa <b>localmente</b> na sua conta MT5. A nuvem só observa (read-only) e nunca comanda nada. O agente compara o ao vivo com o que você <b>validou no backtest</b> — fala de disciplina, nunca de direção de mercado.</div>
+
+            <div id="monitor-login-aviso" style="display:none;padding:22px;text-align:center;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;font-size:13px;color:var(--muted2)">🔐 Entre na sua conta para conectar e monitorar seus bots.</div>
+
+            <div id="monitor-conteudo" style="display:none">
+              <div id="bots-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin-bottom:22px"></div>
+
+              <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:18px 20px;margin-bottom:18px">
+                <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">🔌 Conectar meu MT5 — 4 passos</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:15px">
+                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 1</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Dê um nome ao bot e gere o token abaixo</div></div>
+                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 2</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Baixe o <b>BotBacktest Conector</b> (Windows) e abra</div></div>
+                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 3</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Cole o token no conector — ele acha seu MT5 sozinho. <b>Nunca pedimos senha de corretora</b></div></div>
+                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 4</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Pronto: o card do bot aparece aqui em até 1 min, de qualquer dispositivo</div></div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                  <input type="text" id="novo-bot-nome" placeholder="Nome do bot (ex: TrailingBot XAU)" style="flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:10px 12px;outline:none">
+                  <input type="text" id="novo-bot-simbolo" placeholder="Símbolo (ex: XAUUSD)" style="width:150px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:10px 12px;outline:none">
+                  <button class="tbtn tbtn-orange" onclick="registrarBot()" id="btn-registrar-bot" style="padding:10px 16px;font-size:12px">🔑 Gerar token</button>
+                </div>
+                <div id="novo-bot-token-box" style="display:none;margin-top:12px;padding:12px 14px;background:var(--green-bg);border:1px solid rgba(0,208,132,0.3);border-radius:9px">
+                  <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:5px">TOKEN GERADO — cole no conector (aparece só uma vez, guarde bem):</div>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <code id="novo-bot-token" style="flex:1;font-family:var(--mono);font-size:12px;color:var(--text);word-break:break-all"></code>
+                    <button class="tbtn" onclick="copiarToken()" style="padding:7px 12px;font-size:11px">📋 Copiar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:18px 20px">
+                <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px" id="sugestoes-titulo">🤖 Sugestões do agente</div>
+                <div id="sugestoes-lista"><div style="font-size:12px;color:var(--muted);padding:8px 0">Nenhuma sugestão por enquanto. O agente fala quando o ao vivo sair do plano que você validou.</div></div>
+              </div>
+            </div>
           </div>
-          <div id="rob-resultado" style="display:none"></div>
         </div>
-        <div id="tab-padroes" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="pad-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🔍</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:400px;line-height:1.6">Clique em <strong style="color:var(--purple)">🔍 Detectar padrões</strong> à esquerda. O <strong>OffMind</strong> varre o histórico do ativo procurando padrões recorrentes e mede honestamente <strong>quantas vezes cada um acertou e quantas falhou</strong> — em vários horizontes. Padrões ordenados do mais assertivo ao menos.</div>
-          </div>
-          <div id="pad-resultado" style="display:none"></div>
-        </div>
-        <div id="tab-baby" style="display:none;padding:20px 16px;overflow-y:auto;">
-          <div id="baby-vazio" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;color:var(--muted)">
-            <div style="font-size:34px">🧠</div>
-            <div style="font-size:14px;color:var(--muted2);max-width:420px;line-height:1.6">Clique em <strong style="color:#00b4d8">🧠 Análise BabyMachine</strong> à esquerda. A BabyMachine mostra <strong>sua evolução nos backtests</strong> (Sharpe e retorno ao longo do tempo) e analisa <strong>a sua jornada</strong> em busca de armadilhas comuns (overfitting, win rate enganoso...). Conselhos honestos, nunca promessas.</div>
-          </div>
-          <div id="baby-resultado" style="display:none"></div>
-        </div>
+
         <div id="tab-planos" style="display:none;padding:24px;overflow-y:auto;">
           <div style="max-width:860px;margin:0 auto;">
             <h2 style="font-size:22px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px;">Escolha seu plano</h2>
@@ -1477,7 +1494,6 @@ async function onLogin(user) {
   perfilAtual = perfil;
   atualizarUI();
   onbVerificar();
-  atualizarContador();
 }
 
 function onLogout() {
@@ -1486,7 +1502,6 @@ function onLogout() {
   document.getElementById('btn-login').style.display = 'flex';
   document.getElementById('btn-user').style.display = 'none';
   document.getElementById('limit-banner').classList.remove('show');
-  const cb = document.getElementById('contador-backtests'); if(cb) cb.style.display='none';
 }
 
 // ══════════════ ONBOARDING POR NÍVEL ══════════════
@@ -1632,14 +1647,6 @@ function atualizarUI() {
   document.getElementById('dd-plano').textContent = plano === 'free' ? 'Plano Free' : plano === 'pro' ? 'Plano Pro' : 'Plano Trader Pro';
   document.getElementById('dd-uso').textContent = plano === 'free' ? `${usados} / ${limite} backtests este mês` : 'Backtests ilimitados';
 
-  // Free vê "upgrade"; pago vê "gerenciar assinatura" (portal Stripe)
-  const ddUpgrade = document.getElementById('dd-upgrade');
-  const ddGerenciar = document.getElementById('dd-gerenciar');
-  if (ddUpgrade && ddGerenciar) {
-    if (plano === 'free') { ddUpgrade.style.display = 'flex'; ddGerenciar.style.display = 'none'; }
-    else { ddUpgrade.style.display = 'none'; ddGerenciar.style.display = 'flex'; }
-  }
-
   // Limite banner
   if (plano === 'free' && usados >= limite) {
     document.getElementById('limit-banner').classList.add('show');
@@ -1755,31 +1762,9 @@ async function assinar(plano) {
       body: JSON.stringify({ plano, moeda, user_id: usuarioAtual.id, email: usuarioAtual.email })
     });
     const data = await resp.json();
-    if (data.already_subscribed) {
-      if (data.portal_url) {
-        alert('Você já tem uma assinatura ativa. Vamos te levar para gerenciá-la (trocar plano, cartão ou cancelar).');
-        window.location.href = data.portal_url;
-      } else {
-        alert('Você já tem uma assinatura ativa.');
-      }
-      return;
-    }
     if (data.url) window.open(data.url, '_blank');
     else alert('Erro ao criar checkout: ' + (data.detail || 'Tente novamente'));
   } catch(e) { alert('Erro: ' + e.message); }
-}
-
-async function abrirPortal() {
-  if (!usuarioAtual) { abrirAuth('login'); return; }
-  try {
-    const resp = await fetch(API+'/criar-portal', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ user_id: usuarioAtual.id })
-    });
-    const data = await resp.json();
-    if (data.url) window.location.href = data.url;
-    else alert(data.detail || 'Não foi possível abrir o portal de assinatura.');
-  } catch(e) { alert('Erro ao abrir o portal: ' + e.message); }
 }
 
 async function verificarLimite() {
@@ -1904,7 +1889,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar','robustez','padroes','baby'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar','monitor'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1912,6 +1897,7 @@ function switchTab(tab) {
   if (tab === 'overview') {
     document.getElementById('tab-overview').style.display = 'block';
   }
+  if (tab === 'monitor') { carregarBots(); iniciarPollingBots(); } else { pararPollingBots(); }
 }
 
 // ── OTIMIZACAO DE PARAMETROS (v1.6) ──────────────────────────
@@ -2056,7 +2042,6 @@ function renderOtimizacao(d){
 
 // Move o #ov-result (gráfico+relatório completo) p/ dentro do slot embaixo da tabela
 async function mostrarGraficoNaOtimizacao(sl,tp,ema){
-  modoExemplo = false;
   const slot = document.getElementById('otim-grafico-slot');
   if(!slot) return;
   // IMPORTANTE: se o #ov-result já está dentro do slot (de uma combinação anterior),
@@ -2114,377 +2099,6 @@ function aplicarCombo(sl,tp,ema){
   document.getElementById('ema_period').value=ema;
   // ...e já roda o backtest dessa combinação (rodarBacktest troca pra aba Overview e desenha o gráfico)
   rodarBacktest();
-}
-
-// ── VALIDACAO DE ROBUSTEZ / OVERFITTING (out-of-sample) ──────
-async function validarRobustez(){
-  const btn = document.getElementById('robustez-btn');
-  const txtOriginal = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🔬 Validando...'; }
-  switchTab('robustez');
-  const vazio = document.getElementById('rob-vazio');
-  const res = document.getElementById('rob-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Dividindo o histórico em treino e teste e comparando o desempenho...</div></div>';
-  }
-  try{
-    const params = {
-      ativo: document.getElementById('ativo').value,
-      periodo: document.getElementById('periodo').value,
-      timeframe: document.getElementById('timeframe').value,
-      indicador: document.getElementById('indicador').value,
-      capital: parseFloat(document.getElementById('capital').value),
-      max_ops: parseInt(document.getElementById('max_ops').value),
-      comissao: parseFloat(document.getElementById('comissao').value),
-      ema_period: parseInt(document.getElementById('ema_period').value),
-      stop_loss: parseFloat(document.getElementById('stop_loss').value),
-      take_profit: parseFloat(document.getElementById('take_profit').value),
-      split: 0.70,
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/validar-overfitting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderRobustez(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao validar: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txtOriginal; }
-  }
-}
-
-function renderRobustez(d){
-  const res = document.getElementById('rob-resultado');
-  if(!res) return;
-  const v = d.veredito||{};
-  // cores por nível
-  const cor = v.nivel==='baixo' ? '#00d084' : (v.nivel==='alto' ? '#ff4d6a' : '#ffb830');
-  const corBg = v.nivel==='baixo' ? 'rgba(0,208,132,0.08)' : (v.nivel==='alto' ? 'rgba(255,77,106,0.08)' : 'rgba(255,184,48,0.08)');
-  const icone = v.nivel==='baixo' ? '✅' : (v.nivel==='alto' ? '⚠️' : '🟡');
-
-  const tr=d.treino||{}, te=d.teste||{};
-  // helper de linha comparativa
-  const fmtPct = x => (x>=0?'+':'')+Number(x).toFixed(2)+'%';
-  const linha = (label, kt, kte, fmt, melhorMaior) => {
-    const a=Number(tr[kt]||0), b=Number(te[kte]||0);
-    const f = fmt||(x=>Number(x).toFixed(2));
-    // cor do teste: verde se manteve/melhorou direção esperada, vermelho se piorou muito
-    let corTe = 'var(--text)';
-    if(melhorMaior!==undefined){
-      if(melhorMaior){ corTe = (b>=0 && b>=a*0.6) ? '#00d084' : (b<0 ? '#ff4d6a' : '#ffb830'); }
-    }
-    return '<tr style="border-bottom:1px solid var(--border)">'+
-      '<td style="padding:9px 8px;color:var(--muted2);font-size:12px">'+label+'</td>'+
-      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--text)">'+f(a)+'</td>'+
-      '<td style="padding:9px 8px;text-align:right;font-family:var(--mono);font-size:13px;color:'+corTe+';font-weight:600">'+f(b)+'</td>'+
-      '</tr>';
-  };
-
-  let motivosHtml='';
-  if(v.motivos && v.motivos.length){
-    motivosHtml = '<ul style="margin:10px 0 0;padding-left:18px;color:var(--muted2);font-size:12.5px;line-height:1.7">'+
-      v.motivos.map(m=>'<li>'+m+'</li>').join('')+'</ul>';
-  }
-
-  // calcula winners/losers de cada fase (a partir de win_rate e total_trades)
-  const trTotal = Math.round(Number(tr.total_trades||0));
-  const trWin = Math.round(trTotal * Number(tr.win_rate||0)/100);
-  const trLoss = Math.max(0, trTotal - trWin);
-  const teTotal = Math.round(Number(te.total_trades||0));
-  const teWin = Math.round(teTotal * Number(te.win_rate||0)/100);
-  const teLoss = Math.max(0, teTotal - teWin);
-
-  const donutBlock = (titulo, win, loss, total, wr, canvasId) => (
-    '<div style="flex:1;min-width:280px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px 24px">'+
-      '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;letter-spacing:.3px">'+titulo+'</div>'+
-      '<div style="font-size:13px;color:var(--muted2);margin-bottom:18px">Win Rate '+Number(wr).toFixed(2)+'%</div>'+
-      '<div style="display:flex;align-items:center;gap:28px;justify-content:center;flex-wrap:wrap">'+
-        '<div style="width:180px;height:180px;flex-shrink:0;position:relative"><canvas id="'+canvasId+'"></canvas></div>'+
-        '<div style="font-size:14px;line-height:2.2">'+
-          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#00d084;display:inline-block"></span><span style="color:var(--muted2)">Ganhos</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+win+'</strong></div>'+
-          '<div style="display:flex;align-items:center;gap:9px"><span style="width:11px;height:11px;border-radius:50%;background:#ff4d6a;display:inline-block"></span><span style="color:var(--muted2)">Perdas</span> <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+loss+'</strong></div>'+
-          '<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;color:var(--muted2)">Total <strong style="color:var(--text);font-family:var(--mono);font-size:16px">'+total+'</strong></div>'+
-        '</div>'+
-      '</div>'+
-    '</div>'
-  );
-
-  res.innerHTML =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔬 Validação de robustez (out-of-sample)</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:16px">'+d.ativo+' · treino: '+d.candles_treino+' candles ('+Math.round(d.split*100)+'%) · teste: '+d.candles_teste+' candles ('+Math.round((1-d.split)*100)+'%)</div>'+
-    // veredito
-    '<div style="background:'+corBg+';border:1px solid '+cor+';border-radius:10px;padding:16px 18px;margin-bottom:18px">'+
-      '<div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:'+cor+'">'+icone+' '+(v.titulo||'')+'</div>'+
-      '<div style="font-size:13px;color:var(--text);margin-top:7px;line-height:1.6">'+(v.resumo||'')+'</div>'+
-      motivosHtml+
-    '</div>'+
-    // tabela comparativa (largura toda)
-    '<div style="overflow-x:auto;margin-bottom:22px"><table style="width:100%;border-collapse:collapse">'+
-      '<thead><tr style="border-bottom:1px solid var(--border2)">'+
-        '<th style="padding:8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600">MÉTRICA</th>'+
-        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TREINO (conhecido)</th>'+
-        '<th style="padding:8px;text-align:right;font-size:11px;color:var(--muted);font-weight:600">TESTE (nunca visto)</th>'+
-      '</tr></thead><tbody>'+
-        linha('Retorno','retorno','retorno',fmtPct,true)+
-        linha('Win Rate','win_rate','win_rate',x=>Number(x).toFixed(2)+'%',true)+
-        linha('Sharpe','sharpe','sharpe',x=>Number(x).toFixed(2),true)+
-        linha('Profit Factor','profit_factor','profit_factor',x=>Number(x).toFixed(2),true)+
-        linha('Max Drawdown','max_drawdown','max_drawdown',x=>Number(x).toFixed(2)+'%')+
-        linha('Operações','total_trades','total_trades',x=>Math.round(x))+
-      '</tbody></table></div>'+
-    // dois donuts GRANDES lado a lado embaixo
-    '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">'+
-      donutBlock('TREINO (conhecido)', trWin, trLoss, trTotal, tr.win_rate||0, 'rob-donut-tr')+
-      donutBlock('TESTE (nunca visto)', teWin, teLoss, teTotal, te.win_rate||0, 'rob-donut-te')+
-    '</div>'+
-    '<div style="margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:680px">Esta análise compara o desempenho da estratégia em dados que ela conhecia (treino) com dados que nunca viu (teste). É uma referência de robustez sobre o histórico — <strong>não é garantia de desempenho futuro</strong>. Valide também em outros ativos e períodos.</div>';
-
-  // desenha os dois donuts com Chart.js (após o HTML existir)
-  setTimeout(()=>{ desenharDonutRob('rob-donut-tr', trWin, trLoss); desenharDonutRob('rob-donut-te', teWin, teLoss); }, 50);
-}
-
-let _robDonuts = {};
-function desenharDonutRob(id, win, loss){
-  const cv = document.getElementById(id);
-  if(!cv || typeof Chart === 'undefined') return;
-  if(_robDonuts[id]){ try{ _robDonuts[id].destroy(); }catch(e){} }
-  _robDonuts[id] = new Chart(cv, {
-    type:'doughnut',
-    data:{ labels:['Ganhos','Perdas'], datasets:[{ data:[win, loss], backgroundColor:['#00d084','#ff4d6a'], borderWidth:0 }] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.label+': '+c.parsed } } } }
-  });
-}
-
-// ── OFFMIND — Detecção de padrões ────────────────────────────
-async function analisarPadroes(){
-  const btn = document.getElementById('padroes-btn');
-  const txt = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🔍 Analisando...'; }
-  switchTab('padroes');
-  const vazio = document.getElementById('pad-vazio');
-  const res = document.getElementById('pad-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">Varrendo o histórico em busca de padrões e medindo acerto/falha...</div></div>';
-  }
-  try{
-    const params = {
-      ativo: document.getElementById('ativo').value,
-      periodo: document.getElementById('periodo').value,
-      timeframe: document.getElementById('timeframe').value,
-      padrao: 'todos',
-      horizontes: [3,5,10,20],
-      atr_mult_alvo: 2.0,
-      atr_mult_stop: 1.0,
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/offmind/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderPadroes(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro ao analisar padrões: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txt; }
-  }
-}
-
-function renderPadroes(d){
-  const res = document.getElementById('pad-resultado');
-  if(!res) return;
-  const MIN_OCORR = 8;  // amostra mínima p/ considerar confiável
-
-  // pra cada padrão, escolhe o melhor horizonte (maior taxa de acerto) entre os com amostra suficiente
-  const linhas = (d.resultados||[]).map(p => {
-    const candidatos = (p.por_horizonte||[]).filter(h => h.ocorrencias_medidas >= MIN_OCORR);
-    const pool = candidatos.length ? candidatos : (p.por_horizonte||[]);
-    let melhor = pool[0] || {taxa_acerto:0,taxa_falha:0,horizonte:0,mov_medio_pct:0,ocorrencias_medidas:0};
-    for(const h of pool){ if(h.taxa_acerto > melhor.taxa_acerto) melhor = h; }
-    return { ...p, melhor, confiavel: p.total_ocorrencias >= MIN_OCORR };
-  }).sort((a,b) => b.melhor.taxa_acerto - a.melhor.taxa_acerto);
-
-  const corTaxa = t => t>=55 ? '#00d084' : (t>=45 ? '#ffb830' : '#ff4d6a');
-
-  let html =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🔍 OffMind · Padrões detectados</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:8px">'+d.ativo+' · '+d.periodo+' · '+d.timeframe+' · '+d.candles_analisados+' candles · alvo/stop por ATR ('+d.atr_mult_alvo+'×/'+d.atr_mult_stop+'×)</div>'+
-    '<div style="background:rgba(255,184,48,0.1);border:1px solid rgba(255,184,48,0.35);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--text);margin-bottom:18px;line-height:1.6">⚠️ Estas são <strong>estatísticas do passado</strong> sobre o histórico deste ativo. NÃO são promessa de desempenho futuro. "Acerto" = bateu o alvo (2× ATR) antes do stop (1× ATR). Padrões com menos de '+MIN_OCORR+' ocorrências são pouco confiáveis (amostra pequena).</div>';
-
-  linhas.forEach((p, idx) => {
-    const m = p.melhor;
-    const medalha = idx===0 ? '🏆 ' : (idx===1 ? '🥈 ' : (idx===2 ? '🥉 ' : ''));
-    const cor = corTaxa(m.taxa_acerto);
-    const destaque = idx===0 ? 'border:1px solid #00d084;background:rgba(0,208,132,0.06)' : 'border:1px solid var(--border2);background:var(--bg2)';
-    // mini-tabela dos horizontes
-    const hRows = (p.por_horizonte||[]).map(h =>
-      '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;color:var(--muted2)'+(h.horizonte===m.horizonte?';color:var(--text);font-weight:600':'')+'">'+
-        '<span>'+h.horizonte+' velas</span>'+
-        '<span style="font-family:var(--mono);color:'+corTaxa(h.taxa_acerto)+'">'+h.taxa_acerto.toFixed(0)+'% acerto</span>'+
-        '<span style="font-family:var(--mono)">'+h.acertos+'/'+h.ocorrencias_medidas+'</span>'+
-        '<span style="font-family:var(--mono);color:'+(h.mov_medio_pct>=0?'#00d084':'#ff4d6a')+'">'+(h.mov_medio_pct>=0?'+':'')+h.mov_medio_pct.toFixed(2)+'%</span>'+
-      '</div>'
-    ).join('');
-    html +=
-      '<div style="'+destaque+';border-radius:10px;padding:14px 16px;margin-bottom:12px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
-          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+medalha+p.nome+
-            (p.confiavel?'':' <span style="font-size:10px;color:#ffb830;font-weight:600">(amostra pequena)</span>')+
-          '</div>'+
-          '<div style="text-align:right">'+
-            '<div style="font-size:22px;font-weight:800;font-family:var(--mono);color:'+cor+'">'+m.taxa_acerto.toFixed(0)+'%</div>'+
-            '<div style="font-size:10.5px;color:var(--muted)">melhor em '+m.horizonte+' velas · '+p.total_ocorrencias+' ocorrências</div>'+
-          '</div>'+
-        '</div>'+
-        '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px"><span>Horizonte</span><span>Acerto</span><span>Acertos/Total</span><span>Mov. médio</span></div>'+
-          hRows+
-        '</div>'+
-      '</div>';
-  });
-
-  html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">O ranking usa o melhor horizonte de cada padrão (maior taxa de acerto com amostra suficiente). Próximo passo recomendado: validar o padrão vencedor fora da amostra na aba <strong style="color:var(--green)">🔬 Robustez</strong> antes de confiar.</div>';
-
-  res.innerHTML = html;
-}
-
-// ── BABYMACHINE — Análise dos dados coletados ─────────────────
-async function analisarBabyMachine(){
-  const btn = document.getElementById('baby-btn');
-  const txt = btn ? btn.textContent : '';
-  if(btn){ btn.disabled=true; btn.textContent='🧠 Analisando...'; }
-  switchTab('baby');
-  const vazio = document.getElementById('baby-vazio');
-  const res = document.getElementById('baby-resultado');
-  if(vazio) vazio.style.display='none';
-  if(res){
-    res.style.display='block';
-    res.innerHTML = '<div style="text-align:center;color:var(--muted);padding:50px"><div class="otim-candles" style="justify-content:center"><div class="otim-candle up"></div><div class="otim-candle down"></div><div class="otim-candle up"></div><div class="otim-candle up"></div><div class="otim-candle down"></div></div><div style="margin-top:14px">A BabyMachine está lendo os dados da plataforma e sua jornada...</div></div>';
-  }
-  try{
-    const params = {
-      user_id: (usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:null,
-      sessao_id: BB_SESSAO_ID,
-    };
-    const r = await fetch(API+'/babymachine/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-    if(!r.ok){ const e=await r.json().catch(()=>({detail:'Erro'})); throw new Error(e.detail||'Erro'); }
-    const d = await r.json();
-    renderBabyMachine(d);
-  }catch(err){
-    if(res) res.innerHTML='<div style="color:#ff5a5a;padding:30px;text-align:center">Erro na análise: '+(err.message||err)+'</div>';
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent=txt; }
-  }
-}
-
-// Contador de backtests no topo da coluna esquerda
-async function atualizarContador(){
-  const box = document.getElementById('contador-backtests');
-  const num = document.getElementById('contador-num');
-  if(!box || !num) return;
-  // só mostra se logado (usa user_id); senão fica escondido
-  if(!(usuarioAtual && usuarioAtual.id)){ box.style.display='none'; return; }
-  try{
-    const r = await fetch(API+'/babymachine/contador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id, sessao_id:BB_SESSAO_ID})});
-    if(!r.ok) return;
-    const d = await r.json();
-    const t = (d && typeof d.total==='number') ? d.total : 0;
-    num.textContent = t.toLocaleString('pt-BR');
-    box.style.display = (t>0) ? 'inline-flex' : 'none';
-  }catch(e){ /* silencioso */ }
-}
-
-function renderBabyMachine(d){
-  const res = document.getElementById('baby-resultado');
-  if(!res) return;
-  if(!d || !d.disponivel){
-    res.innerHTML='<div style="color:var(--muted);padding:30px;text-align:center">'+((d&&d.motivo)||'Análise indisponível no momento.')+'</div>';
-    return;
-  }
-  const cor = {alto:'#ff4d6a', medio:'#ffb830', info:'#00b4d8'};
-  const icone = {alto:'⚠️', medio:'🟡', info:'💡'};
-  const comp = d.comportamento || {};
-  const evo = comp.evolucao || [];
-
-  let html =
-    '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">🧠 BabyMachine</div>'+
-    '<div style="font-size:12.5px;color:var(--muted2);margin-bottom:18px">A inteligência da plataforma aprende com seus testes e te dá conselhos honestos sobre suas decisões.</div>';
-
-  // ── SEÇÃO 1: EVOLUÇÃO DO USUÁRIO (2 gráficos) ──
-  html +=
-    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:16px">'+
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">📈 Sua evolução nos backtests</div>'+
-      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Como o Sharpe e o retorno dos seus testes variaram ao longo do tempo (cada ponto = um backtest).</div>';
-  if(evo.length >= 2){
-    html +=
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sharpe por teste</div><div style="height:180px"><canvas id="baby-chart-sharpe"></canvas></div></div>'+
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Retorno (%) por teste</div><div style="height:180px"><canvas id="baby-chart-retorno"></canvas></div></div>'+
-      '</div>'+
-      '<div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.55">⚠️ Subir aqui não significa necessariamente que sua estratégia ficou melhor — pode ser ajuste excessivo ao passado (overfitting). Sempre confirme na aba <strong style="color:var(--green)">Robustez</strong>.</div>';
-  } else {
-    html += '<div style="font-size:12.5px;color:var(--muted)">Rode pelo menos 2 backtests para ver sua evolução.</div>';
-  }
-  html += '</div>';
-
-  // ── SEÇÃO 2: SUA JORNADA (alertas) ──
-  html +=
-    '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px">'+
-      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">🧭 Sua jornada</div>'+
-      '<div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">'+(comp.resumo||'')+'</div>';
-  if(comp.disponivel && (comp.alertas||[]).length){
-    (comp.alertas||[]).forEach(a => {
-      const c = cor[a.nivel] || '#00b4d8';
-      const ic = icone[a.nivel] || '💡';
-      html +=
-        '<div style="display:flex;gap:10px;align-items:flex-start;background:'+c+'14;border:1px solid '+c+'55;border-left:3px solid '+c+';border-radius:8px;padding:11px 13px;margin-bottom:9px">'+
-          '<span style="flex-shrink:0;font-size:15px">'+ic+'</span>'+
-          '<span style="font-size:13px;color:var(--text);line-height:1.55">'+a.texto+'</span>'+
-        '</div>';
-    });
-  } else if(!comp.disponivel){
-    html += '<div style="font-size:12.5px;color:var(--muted)">Rode mais alguns backtests para a BabyMachine analisar seus padrões de decisão.</div>';
-  }
-  html += '</div>';
-
-  html += '<div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;max-width:680px">A BabyMachine analisa estatísticas do passado para te ajudar a evitar armadilhas comuns. Não é conselho de investimento nem promessa de retorno.</div>';
-
-  res.innerHTML = html;
-
-  // desenha os 2 gráficos depois do HTML existir
-  if(evo.length >= 2){
-    const labels = evo.map(e => '#'+e.i);
-    desenharLinhaBaby('baby-chart-sharpe', labels, evo.map(e => e.sharpe), '#00b4d8');
-    desenharLinhaBaby('baby-chart-retorno', labels, evo.map(e => e.retorno), '#00d084');
-  }
-}
-
-let _babyCharts = {};
-function desenharLinhaBaby(id, labels, dados, cor){
-  const cv = document.getElementById(id);
-  if(!cv || typeof Chart === 'undefined') return;
-  if(_babyCharts[id]){ try{ _babyCharts[id].destroy(); }catch(e){} }
-  const gridCor = (document.body.classList.contains('light')) ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
-  const txtCor = (document.body.classList.contains('light')) ? '#4a5260' : '#9aa4b6';
-  _babyCharts[id] = new Chart(cv, {
-    type:'line',
-    data:{ labels:labels, datasets:[{
-      data:dados, borderColor:cor, backgroundColor:cor+'22',
-      borderWidth:2, pointRadius:3, pointBackgroundColor:cor, fill:true, tension:0.25
-    }]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.parsed.y } } },
-      scales:{
-        x:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} },
-        y:{ grid:{color:gridCor}, ticks:{color:txtCor, font:{size:9}} }
-      }
-    }
-  });
 }
 
 function setTF(el, val) {
@@ -2556,7 +2170,6 @@ function atualizarMetricsBar(d) {
 
 async function rodarBacktest() {
   console.log('rodarBacktest() chamado');
-  modoExemplo = false;
   // Verificar login e limite
   const liberado = await verificarLimite();
   console.log('liberado:', liberado);
@@ -2622,7 +2235,6 @@ async function rodarBacktest() {
     renderOverview(d, params);
     switchTab('overview');
     await incrementarBacktest();
-    atualizarContador();
   } catch(e) {
     if(e.name==='AbortError') {
       alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
@@ -2803,88 +2415,80 @@ function addOverlaysToChart(chart, candlesData, overlays) {
 let lastCandlesData = [];
 let lastMarkers = [];
 
-// Gera um objeto de resultado de EXEMPLO completo e realista, no mesmo formato do backtest real.
-// Reaproveita random walk pros candles e monta equity/roi/trades coerentes.
-function montarDadosExemplo(){
-  const N = 160;
-  const candles_data = [];
-  let price = 2000, vol = 18;
-  const start = Math.floor(Date.now()/1000) - N*86400;
-  for(let i=0;i<N;i++){
+let sampleChart = null;
+// Gera candles realistas (random walk com volatilidade variável) e desenha com a MESMA lib do gráfico real
+function renderSampleChart() {
+  const container = document.getElementById('candle-chart-sample');
+  if(!container || typeof LightweightCharts === 'undefined') return;
+  const isLight = document.body.classList.contains('light');
+
+  // --- gera ~160 candles diários realistas a partir de XAU/USD ~2000 ---
+  const candles = [];
+  let price = 2000;
+  let vol = 18;                          // volatilidade base
+  const start = Math.floor(Date.now()/1000) - 160*86400;
+  for(let i=0;i<160;i++){
+    // volatilidade oscila (mercado calmo x agitado)
     vol = Math.max(8, Math.min(45, vol + (Math.random()-0.5)*6));
+    // leve tendência de alta no geral, com correções
     const drift = (i>40 && i<70) ? -0.35 : (i>110 && i<128 ? -0.5 : 0.18);
     const open = price;
     const change = drift*vol + (Math.random()-0.5)*vol*2;
-    let close = open + change; if(close<100) close=open;
+    let close = open + change;
+    if(close < 100) close = open;        // piso de segurança
     const hi = Math.max(open,close) + Math.random()*vol*0.9;
     const lo = Math.min(open,close) - Math.random()*vol*0.9;
-    candles_data.push({ t: start + i*86400, o:+open.toFixed(2), h:+hi.toFixed(2), l:+lo.toFixed(2), c:+close.toFixed(2) });
+    candles.push({ time: start + i*86400, open, high: hi, low: lo, close });
     price = close;
   }
-  // marcadores de operações
-  const markers = [];
-  for(let j=12;j<N-6;j+=Math.floor(14+Math.random()*12)){
-    const buy = candles_data[j].c < candles_data[j].o ? true : Math.random()>0.5;
-    markers.push({ time: candles_data[j].t, position: buy?'belowBar':'aboveBar',
-      color: buy?'#00d084':'#ff4d6a', shape: buy?'arrowUp':'arrowDown', text: buy?'B':'S' });
-  }
-  // métricas de exemplo coerentes (perfil "bom mas honesto")
-  const capital_inicial = 10000;
-  const total_trades = 38, winners = 20, losers = 18;
-  const win_rate = +(winners/total_trades*100).toFixed(2);
-  const retorno = 4.73, lucro_perda = +(capital_inicial*retorno/100).toFixed(2);
-  const capital_final = capital_inicial + lucro_perda;
-  // curva de capital (sobe com solavancos, leve drawdown no meio)
-  const equity_curve = [];
-  let eq = capital_inicial;
-  for(let i=0;i<=total_trades;i++){
-    const step = (i>14 && i<20) ? -55 : (40 + (Math.random()-0.3)*70);
-    eq = Math.max(capital_inicial-600, eq + step);
-    equity_curve.push(+eq.toFixed(2));
-  }
-  equity_curve[equity_curve.length-1] = capital_final;
-  // distribuição de ROI por trade
-  const roi_distribution = [
-    {bin:-3.50,count:1,positivo:false},{bin:-2.38,count:1,positivo:false},
-    {bin:-0.80,count:16,positivo:false},{bin:0.74,count:20,positivo:true}
-  ];
-  // trades de exemplo
-  const trades = [];
-  for(let i=0;i<total_trades;i++){
-    const win = i<winners;
-    trades.push({ pnl: win? (60+Math.random()*120) : -(40+Math.random()*90), bars: 1+Math.round(Math.random()*4) });
-  }
-  return {
-    ativo:'XAU/USD', candles:N, data_backtest:new Date().toLocaleDateString('pt-BR'),
-    capital_inicial, capital_final, lucro_perda, retorno,
-    win_rate, sharpe:1.92, max_drawdown:-5.05, profit_factor:1.29,
-    total_trades, winners, losers, breakevens:0,
-    candles_data, markers, equity_curve, roi_distribution, trades,
-    buy_hold:89.37, alpha:-84.64, cagr:2.35,
-    avg_pnl:12.46, avg_pnl_pct:0.125, avg_bars_in_trades:2,
-    maior_ganho:102.88, maior_perda:-376.00,
-    avg_runup:0.960, avg_drawdown_trade:-0.798,
-    account_size_required:10505, gross_profit:1700, gross_loss:1228,
-    sugestao:'', to:''
-  };
-}
 
-// Desenha a tela de EXEMPLO completa usando o renderOverview real (gráfico + painéis)
-let sampleChart = null; // (mantido por compat; não usado na Forma C)
-let modoExemplo = false;
-function renderSampleChart(){
-  if(typeof LightweightCharts === 'undefined') return;
-  const params = {
-    ativo: (document.getElementById('ativo')||{}).value || 'XAU/USD',
-    periodo: (document.getElementById('periodo')||{}).value || '2 anos',
-    timeframe: (document.getElementById('timeframe')||{}).value || '1d',
-    capital: 10000,
-  };
-  const d = montarDadosExemplo();
-  modoExemplo = true;
-  renderOverview(d, params);                       // desenha tudo no #ov-result
-  const banner = document.getElementById('ov-sample-banner');
-  if(banner) banner.style.display = 'flex';
+  const bgColor = isLight ? '#ffffff' : '#0e1117';
+  const textColor = isLight ? '#6b7280' : '#5a6478';
+  const gridColor = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
+  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+
+  container.innerHTML='';
+  if(sampleChart){ try{ sampleChart.remove(); }catch(e){} sampleChart=null; }
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth, height: 380,
+    layout: { background:{type:'solid',color:bgColor}, textColor },
+    grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor, minimumWidth: 80, scaleMargins:{top:0.12,bottom:0.12} },
+    leftPriceScale: { visible:false },
+    timeScale: { borderColor, timeVisible:false, secondsVisible:false, rightOffset:6, barSpacing:7 },
+    handleScroll:false, handleScale:false,
+  });
+  sampleChart = chart;
+  const series = chart.addCandlestickSeries({
+    upColor:'#00d084', downColor:'#ff4d6a',
+    borderUpColor:'#00d084', borderDownColor:'#ff4d6a',
+    wickUpColor:'#00d084', wickDownColor:'#ff4d6a',
+  });
+  series.setData(candles);
+
+  // marcadores de exemplo (compra/venda) pra parecer um backtest real
+  const mk = [];
+  for(let j=12;j<candles.length-6;j+=Math.floor(14+Math.random()*12)){
+    const buy = candles[j].close < candles[j].open ? true : Math.random()>0.5;
+    mk.push({ time: candles[j].time, position: buy?'belowBar':'aboveBar',
+      color: buy?'#00d084':'#ff4d6a', shape: buy?'arrowUp':'arrowDown',
+      text: buy?'B':'S' });
+  }
+  try{ series.setMarkers(mk); }catch(e){}
+  chart.timeScale().fitContent();
+
+  // redesenha no resize
+  if(!window._sampleResizeBound){
+    window._sampleResizeBound = true;
+    window.addEventListener('resize', ()=>{
+      const c=document.getElementById('candle-chart-sample');
+      const samp=document.getElementById('ov-sample');
+      if(sampleChart && c && samp && samp.style.display!=='none'){
+        try{ sampleChart.applyOptions({width:c.clientWidth}); }catch(e){}
+      }
+    });
+  }
 }
 
 function renderCandleChart(candlesData, markers, isLight, overlays) {
@@ -3043,9 +2647,8 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
 
 function renderOverview(d, params) {
   document.getElementById('ov-empty').style.display = 'none';
-  // esconde o banner EXEMPLO por padrão; só reaparece quando renderSampleChart o reexibe
-  const banner = document.getElementById('ov-sample-banner');
-  if(banner && !modoExemplo) banner.style.display = 'none';
+  const sampleEl = document.getElementById('ov-sample');
+  if(sampleEl) sampleEl.style.display = 'none';
   const area = document.getElementById('ov-result');
   area.style.display = 'block';
 
@@ -3350,6 +2953,164 @@ function initSampleChart(){
   try{ renderSampleChart(); }catch(e){ console.warn('sample chart:', e); }
 }
 setTimeout(initSampleChart, 150);
+
+
+// ════════════ v5.0 — AGENTE + MONITOR + GALERIA + HERO IA ════════════
+const AGENT_NAME = 'Radar';   // nome do agente — troque aqui se decidir outro
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tag = document.getElementById('agente-nome-tag');
+  if(tag) tag.textContent = AGENT_NAME + ' ativo';
+  const st = document.getElementById('sino-titulo');
+  if(st) st.textContent = '🤖 ' + AGENT_NAME + ' — sugestões';
+  const sg = document.getElementById('sugestoes-titulo');
+  if(sg) sg.textContent = '🤖 ' + AGENT_NAME + ' — sugestões';
+  carregarGaleria();
+  setInterval(atualizarSino, 60000);
+  setTimeout(atualizarSino, 2500);
+});
+
+// ── Hero IA (linguagem natural no topo) ──
+function gerarHeroIA(){
+  const v = document.getElementById('ia-hero-desc').value.trim();
+  if(!v){ document.getElementById('ia-hero-desc').focus(); return; }
+  document.getElementById('ia-desc').value = v;
+  const btn = document.getElementById('ia-hero-btn');
+  btn.textContent='⏳ Gerando...'; btn.disabled=true;
+  Promise.resolve(gerarBotIA()).finally(()=>{
+    btn.textContent='✨ Gerar estratégia'; btn.disabled=false;
+    switchTab('editor');
+  });
+}
+
+// ── Galeria de estratégias prontas ──
+async function carregarGaleria(){
+  try{
+    const r = await fetch(API+'/estrategias/prontas');
+    const d = await r.json();
+    const box = document.getElementById('galeria-prontas');
+    if(!box || !d.estrategias) return;
+    box.innerHTML = d.estrategias.map(e=>`
+      <div class="tpl-card${e.casa?' tpl-casa':''}" onclick='usarEstrategiaPronta(${JSON.stringify(e.id)})' style="${e.casa?'border-color:rgba(255,184,48,0.35);background:linear-gradient(135deg,rgba(255,184,48,0.05),transparent)':''}">
+        <div class="tpl-icon">${e.emoji}</div>
+        <div class="tpl-info">
+          <div class="tpl-name">${e.nome}</div>
+          <div class="tpl-desc">${e.desc}</div>
+          <div class="tpl-meta">${e.tags.map(t=>`<span class="tpl-tag" style="background:${t==='CASA'?'var(--amber-bg)':'var(--green-bg)'};color:${t==='CASA'?'var(--amber)':'var(--green)'}">${t}</span>`).join('')}
+            <span class="tpl-tag" style="background:var(--blue-bg);color:var(--blue)">${e.nivel.toUpperCase()}</span></div>
+        </div>
+        <div class="tpl-perf" style="color:var(--muted2);font-size:10px">${(e.mercados||[]).slice(0,2).join(' · ')}</div>
+      </div>`).join('');
+    window._galeria = {}; d.estrategias.forEach(e=>window._galeria[e.id]=e);
+  }catch(e){ console.log('galeria offline', e); }
+}
+function usarEstrategiaPronta(id){
+  const e = (window._galeria||{})[id]; if(!e) return;
+  document.getElementById('code-editor').value = e.codigo;
+  switchTab('editor');
+}
+
+// ── Sino do agente ──
+let _sinoAberto = false;
+function toggleSino(){
+  _sinoAberto = !_sinoAberto;
+  document.getElementById('sino-dropdown').style.display = _sinoAberto ? 'block' : 'none';
+  if(_sinoAberto) atualizarSino(true);
+}
+async function atualizarSino(render){
+  if(!(usuarioAtual&&usuarioAtual.id)) return;
+  try{
+    const r = await fetch(API+'/agente/sugestoes?user_id='+usuarioAtual.id);
+    const d = await r.json();
+    const badge = document.getElementById('sino-badge');
+    if(d.nao_lidas>0){ badge.style.display='block'; badge.textContent=d.nao_lidas; }
+    else badge.style.display='none';
+    if(render||_sinoAberto) renderSugestoes(d.sugestoes, 'sino-lista');
+    renderSugestoes(d.sugestoes, 'sugestoes-lista');
+  }catch(e){}
+}
+function renderSugestoes(lista, alvo){
+  const box = document.getElementById(alvo); if(!box) return;
+  if(!lista || !lista.length){
+    box.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--muted)">Nenhuma sugestão por enquanto</div>'; return;
+  }
+  const cor = s => s==='alerta' ? 'var(--red)' : (s==='atencao' ? 'var(--amber)' : 'var(--blue)');
+  const bg  = s => s==='alerta' ? 'var(--red-bg)' : (s==='atencao' ? 'var(--amber-bg)' : 'var(--blue-bg)');
+  box.innerHTML = lista.slice(0,15).map(s=>`
+    <div style="padding:10px 12px;margin:5px 0;background:${s.lida?'var(--bg2)':bg(s.severidade)};border:1px solid var(--border);border-left:3px solid ${cor(s.severidade)};border-radius:8px;${s.lida?'opacity:.55':''}">
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <span style="font-size:10px;font-weight:700;color:${cor(s.severidade)}">${s.regra} · ${(s.severidade||'info').toUpperCase()}</span>
+        ${s.lida?'':`<span style="font-size:10px;color:var(--muted);cursor:pointer" onclick="marcarLida(${s.id});event.stopPropagation()">✓ marcar lida</span>`}
+      </div>
+      <div style="font-size:11.5px;color:var(--text);line-height:1.55">${s.mensagem}</div>
+    </div>`).join('');
+}
+async function marcarLida(id){
+  if(!(usuarioAtual&&usuarioAtual.id)) return;
+  try{
+    await fetch(API+'/agente/sugestoes/lida',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id,sugestao_id:id})});
+    atualizarSino(true);
+  }catch(e){}
+}
+
+// ── Monitor: bots ──
+let _pollBots = null;
+function iniciarPollingBots(){ pararPollingBots(); _pollBots = setInterval(carregarBots, 20000); }
+function pararPollingBots(){ if(_pollBots){ clearInterval(_pollBots); _pollBots=null; } }
+async function carregarBots(){
+  const logado = !!(usuarioAtual&&usuarioAtual.id);
+  document.getElementById('monitor-login-aviso').style.display = logado ? 'none' : 'block';
+  document.getElementById('monitor-conteudo').style.display   = logado ? 'block' : 'none';
+  if(!logado) return;
+  try{
+    const r = await fetch(API+'/conector/bots?user_id='+usuarioAtual.id);
+    const d = await r.json();
+    const grid = document.getElementById('bots-grid');
+    if(!d.bots || !d.bots.length){
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:18px;text-align:center;background:var(--bg3);border:1px dashed var(--border2);border-radius:10px;font-size:12px;color:var(--muted)">Nenhum bot conectado ainda — gere um token abaixo e conecte seu MT5</div>';
+      return;
+    }
+    grid.innerHTML = d.bots.map(b=>`
+      <div style="background:var(--bg3);border:1px solid ${b.online?'rgba(0,208,132,0.35)':'var(--border2)'};border-radius:11px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🤖 ${b.nome||'Bot'}</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${b.online?'var(--green)':'var(--muted)'};${b.online?'box-shadow:0 0 7px var(--green)':''}"></div>
+            <span style="font-size:10px;font-weight:700;color:${b.online?'var(--green)':'var(--muted)'}">${b.online?'ONLINE':'OFFLINE'}</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px">
+          <div><span style="color:var(--muted)">Símbolo</span><br><b style="color:var(--text);font-family:var(--mono)">${b.simbolo||'—'}</b></div>
+          <div><span style="color:var(--muted)">Direção D1</span><br><b style="color:${b.ultima_direcao==='compra'?'var(--green)':(b.ultima_direcao==='venda'?'var(--red)':'var(--muted2)')}">${(b.ultima_direcao||'—').toUpperCase()}</b></div>
+          <div><span style="color:var(--muted)">Equity</span><br><b style="color:var(--text);font-family:var(--mono)">${b.ultimo_equity!=null?Number(b.ultimo_equity).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</b></div>
+          <div><span style="color:var(--muted)">Drawdown</span><br><b style="color:${(b.ultimo_dd||0)>5?'var(--red)':'var(--text)'};font-family:var(--mono)">${b.ultimo_dd!=null?Number(b.ultimo_dd).toFixed(1)+'%':'—'}</b></div>
+          <div><span style="color:var(--muted)">Posições</span><br><b style="color:var(--text)">${b.posicoes_abertas??0}</b></div>
+          <div><span style="color:var(--muted)">Padrão</span><br><b style="color:var(--muted2)">${b.ultimo_padrao||'—'}</b></div>
+        </div>
+      </div>`).join('');
+  }catch(e){ console.log('bots erro', e); }
+}
+async function registrarBot(){
+  if(!(usuarioAtual&&usuarioAtual.id)){ abrirAuth('login'); return; }
+  const nome = document.getElementById('novo-bot-nome').value.trim() || 'Meu Bot';
+  const simbolo = document.getElementById('novo-bot-simbolo').value.trim().toUpperCase();
+  const btn = document.getElementById('btn-registrar-bot');
+  btn.disabled = true; btn.textContent = '⏳...';
+  try{
+    const r = await fetch(API+'/conector/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id,nome,simbolo})});
+    const d = await r.json();
+    if(d.bot_token){
+      document.getElementById('novo-bot-token').textContent = d.bot_token;
+      document.getElementById('novo-bot-token-box').style.display = 'block';
+      carregarBots();
+    } else alert('Erro ao gerar token.');
+  }catch(e){ alert('Erro ao conectar com a API.'); }
+  btn.disabled = false; btn.textContent = '🔑 Gerar token';
+}
+function copiarToken(){
+  const t = document.getElementById('novo-bot-token').textContent;
+  navigator.clipboard.writeText(t).then(()=>alert('Token copiado!'));
+}
 </script>
 <!-- MODAL OTIMIZACAO -->
 <div class="otim-modal-bg" id="otim-modal-bg">
