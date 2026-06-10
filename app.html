@@ -2549,19 +2549,20 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
 
   const candleFormatted = candlesData
     .filter(c => c.o && c.h && c.l && c.c)
-    .map(c => ({ time: c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c) }))
-    .filter((c,i,arr) => i===0 || c.time !== arr[i-1].time)
-    .sort((a,b) => a.time > b.time ? 1 : -1);
+    .map(c => ({ time: (typeof c.t === 'number') ? c.t : c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c) }))
+    .sort((a,b) => a.time > b.time ? 1 : -1)
+    .filter((c,i,arr) => i===0 || c.time !== arr[i-1].time);
 
   if(candleFormatted.length > 0) {
     candleSeries.setData(candleFormatted);
 
     if(markers && markers.length > 0) {
       const validTimes = new Set(candleFormatted.map(c=>c.time));
+      const tempoDoMarker = m => (typeof m.t === 'number') ? m.t : m.data?.substring(0,10);
       const mks = markers
-        .filter(m => validTimes.has(m.data?.substring(0,10)))
+        .filter(m => validTimes.has(tempoDoMarker(m)))
         .map(m => ({
-          time: m.data?.substring(0,10),
+          time: tempoDoMarker(m),
           position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
           color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
           shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
