@@ -967,7 +967,7 @@ select option{background:#141920}
               <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">✨ Descreva sua estratégia em português</div>
               <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input type="text" id="ia-hero-desc" placeholder='Ex: "compra ouro quando o preço rompe o canal da EMA 20, stop de 50 pontos, alvo 100"' style="flex:1;min-width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
+                <input type="text" id="ia-hero-desc" placeholder='Ex: "canal EMA 20 high/low, compra no rompimento" ou "cruzamento de médias 9 e 21"' style="flex:1;min-width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
                 <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px">✨ Gerar estratégia</button>
               </div>
             </div>
@@ -2971,16 +2971,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // ── Hero IA (linguagem natural no topo) ──
-function gerarHeroIA(){
+async function gerarHeroIA(){
   const v = document.getElementById('ia-hero-desc').value.trim();
   if(!v){ document.getElementById('ia-hero-desc').focus(); return; }
   document.getElementById('ia-desc').value = v;
   const btn = document.getElementById('ia-hero-btn');
   btn.textContent='⏳ Gerando...'; btn.disabled=true;
-  Promise.resolve(gerarBotIA()).finally(()=>{
-    btn.textContent='✨ Gerar estratégia'; btn.disabled=false;
-    switchTab('editor');
-  });
+  try{
+    await gerarBotIA();                     // gera e cola no editor
+    if(lastIACode){
+      btn.textContent='▶ Testando...';
+      await rodarBacktest();                // roda na hora — resultado na Overview
+      switchTab('overview');
+    } else {
+      switchTab('editor');                  // sem codigo? mostra o editor
+    }
+  }catch(e){ console.log('heroIA', e); }
+  btn.textContent='✨ Gerar estratégia'; btn.disabled=false;
 }
 
 // ── Galeria de estratégias prontas ──
