@@ -2357,13 +2357,27 @@ const indColors = {1:'#3b82f6', 2:'#f59e0b', 3:'#8b5cf6'};
 function toggleIndicador(n) {
   const active = document.getElementById(`ind${n}-active`).checked;
   document.getElementById(`ind${n}-controls`).style.display = active ? 'block' : 'none';
+  atualizarOverlays();
 }
 
 function setIndColor(n, btn) {
   document.querySelectorAll(`#ind${n}-controls .color-btn`).forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   indColors[n] = btn.dataset.color;
+  atualizarOverlays();
 }
+
+// Redesenha o gráfico atual com os overlays marcados — sem rodar backtest de novo
+function atualizarOverlays() {
+  if(!lastCandlesData || !lastCandlesData.length) return;  // ainda sem gráfico real
+  const isLight = document.body.classList.contains('light');
+  renderCandleChart(lastCandlesData, lastMarkers || [], isLight, getOverlays());
+}
+
+// Mudou período / fonte (High-Low-Close) de qualquer indicador? Redesenha também
+document.addEventListener('change', (e) => {
+  if(e.target && e.target.id && /^ind[123]-(period|source)$/.test(e.target.id)) atualizarOverlays();
+});
 
 function getOverlays() {
   const overlays = [];
