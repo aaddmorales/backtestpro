@@ -616,7 +616,7 @@ select option{background:#141920}
 .plano-pro{background:var(--green-bg);color:var(--green)}
 .plano-trader{background:var(--purple-bg);color:var(--purple)}
 
-.user-dropdown{position:absolute;top:46px;right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:220px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.user-dropdown{position:absolute;top:calc(100% + 4px);right:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:248px;z-index:150;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .user-dropdown-item{padding:10px 14px;font-size:12px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .12s;border-bottom:1px solid var(--border)}
 .user-dropdown-item:last-child{border-bottom:none}
 .user-dropdown-item:hover{background:var(--bg3);color:var(--text)}
@@ -692,7 +692,8 @@ select option{background:#141920}
         <div class="user-dropdown-plan" id="dd-plano">Plano Free</div>
         <div class="user-dropdown-uso" id="dd-uso">0 / 5 backtests este mês</div>
       </div>
-      <div class="user-dropdown-item" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
+      <div class="user-dropdown-item" id="dd-upgrade" onclick="abrirAuth('upgrade')">⚡ Fazer upgrade para Pro</div>
+      <div class="user-dropdown-item" id="dd-portal" style="display:none" onclick="abrirPortal()">💳 Gerenciar assinatura</div>
       <div class="user-dropdown-item" onclick="fazerLogout()" style="color:var(--red)">🚪 Sair</div>
     </div>
   </div>
@@ -1684,6 +1685,8 @@ function atualizarUI() {
   document.getElementById('dd-email').textContent = email;
   document.getElementById('dd-plano').textContent = plano === 'free' ? 'Plano Free' : plano === 'pro' ? 'Plano Pro' : 'Plano Trader Pro';
   document.getElementById('dd-uso').textContent = plano === 'free' ? `${usados} / ${limite} backtests este mês` : 'Backtests ilimitados';
+  document.getElementById('dd-upgrade').style.display = plano === 'free' ? 'flex' : 'none';
+  document.getElementById('dd-portal').style.display  = plano === 'free' ? 'none' : 'flex';
 
   // Limite banner
   if (plano === 'free' && usados >= limite) {
@@ -1709,6 +1712,21 @@ function switchAuthTab(tab) {
   document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
   document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
   document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
+}
+
+async function abrirPortal() {
+  if(!(usuarioAtual && usuarioAtual.id)) return;
+  const item = document.getElementById('dd-portal');
+  item.textContent = '⏳ Abrindo portal...';
+  try{
+    const r = await fetch(API + '/criar-portal', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: usuarioAtual.id})});
+    const d = await r.json();
+    if(d.url){ window.location.href = d.url; return; }
+    alert(d.detail || 'Não foi possível abrir o portal de assinatura.');
+  }catch(e){ alert('Erro ao conectar com o portal.'); }
+  item.textContent = '💳 Gerenciar assinatura';
 }
 
 function toggleUserMenu() {
