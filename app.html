@@ -105,8 +105,11 @@ body::after{
   display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:300;
   box-shadow:0 6px 24px rgba(0,208,132,0.25);transition:transform .15s}
 .radar-fab:hover{transform:scale(1.08)}
-.radar-fab.pulsando{animation:radarpulse 2s infinite}
-@keyframes radarpulse{0%{box-shadow:0 0 0 0 rgba(0,208,132,0.45)}70%{box-shadow:0 0 0 14px rgba(0,208,132,0)}100%{box-shadow:0 0 0 0 rgba(0,208,132,0)}}
+.radar-fab.pulsando{animation:radarpulse 1.8s infinite, radarbounce 1.8s infinite}
+@keyframes radarpulse{0%{box-shadow:0 0 0 0 rgba(0,208,132,0.55)}70%{box-shadow:0 0 0 16px rgba(0,208,132,0)}100%{box-shadow:0 0 0 0 rgba(0,208,132,0)}}
+@keyframes radarbounce{0%,100%{transform:translateY(0)}12%{transform:translateY(-7px)}24%{transform:translateY(0)}36%{transform:translateY(-4px)}48%{transform:translateY(0)}}
+.radar-sep{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:10px;color:var(--muted);font-family:var(--mono)}
+.radar-sep::before,.radar-sep::after{content:'';flex:1;height:1px;background:var(--border)}
 .radar-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
   font-weight:700;min-width:17px;height:17px;border-radius:9px;line-height:17px;text-align:center;display:none}
 .radar-panel{position:fixed;bottom:86px;right:22px;width:360px;max-width:92vw;max-height:520px;
@@ -3165,6 +3168,24 @@ function toggleRadar(){
     document.getElementById('radar-fab').classList.remove('pulsando');
   }
 }
+// Fecha o Radar clicando em qualquer lugar fora dele
+document.addEventListener('click', (e) => {
+  if(!_radarAberto) return;
+  if(e.target.closest('#radar-panel') || e.target.closest('#radar-fab') || e.target.closest('#radar-toast')) return;
+  toggleRadar();
+});
+
+// Separador visual entre testes no chat do Radar
+function radarSeparador(rotulo){
+  const body = document.getElementById('radar-body');
+  if(!body) return;
+  const div = document.createElement('div');
+  div.className = 'radar-sep';
+  div.textContent = rotulo;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
 function radarFala(msg, sev){
   const body = document.getElementById('radar-body');
   if(!body) return;
@@ -3188,6 +3209,10 @@ function radarFala(msg, sev){
 // Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
 function radarCoach(d){
   try{
+    const ativo = document.getElementById('ativo')?.value || '';
+    const tf = document.querySelector('.tf-btn.active, [data-tf].active')?.textContent || '';
+    const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    radarSeparador(`${ativo}${tf ? ' · '+tf : ''} · ${hora}`.trim());
     const m = d.metricas || d;
     const wr = parseFloat(m.win_rate ?? m.winRate ?? NaN);
     const pf = parseFloat(m.profit_factor ?? NaN);
