@@ -974,7 +974,7 @@ select option{background:#141920}
               <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <div style="flex:1;min-width:240px;position:relative;display:flex">
-                  <input type="text" id="ia-hero-desc" autocomplete="off" name="descricao-estrategia" placeholder='Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾' style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px 0 0 8px;border-right:none;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
+                  <input type="text" id="ia-hero-desc" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" placeholder='Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾' style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px 0 0 8px;border-right:none;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
                   <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="width:42px;background:var(--bg2);border:1px solid var(--border2);border-radius:0 8px 8px 0;color:var(--green);font-size:14px;cursor:pointer;font-weight:700">▾</button>
                   <div id="hero-lista" style="display:none;position:absolute;top:46px;left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
                     <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
@@ -3136,7 +3136,15 @@ async function atualizarContador(){
 }
 setInterval(atualizarContador, 45000);
 
+// Anti-autofill: Chrome às vezes injeta o e-mail no campo da IA — remove
+function limparAutofillHero(){
+  const el = document.getElementById('ia-hero-desc');
+  if(el && /^[^\s]+@[^\s]+\.[^\s]+$/.test(el.value.trim())) el.value = '';
+}
 document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(limparAutofillHero, 500);
+  setTimeout(limparAutofillHero, 1500);
+  setTimeout(limparAutofillHero, 3000);
   setTimeout(atualizarContador, 1800);
   const tag = document.getElementById('agente-nome-tag');
   if(tag) tag.textContent = AGENT_NAME + ' ativo';
