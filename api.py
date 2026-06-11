@@ -1556,28 +1556,29 @@ def radar_analisar(p: RadarAnalisarParams):
                 txt += "Use o ⚙ Otimizar pra refinar stop/take em volta dela e valide out-of-sample antes do MT5."
             mensagens.append(txt)
         elif base:
-            aplicar = {
-                "indicador": base["indicador"],
-                "ema_period": base["ema_period"],
-                "stop_loss": None,
-                "take_profit": None,
-            }
             texto = (f"📐 Leitura: o perfil dominante de {p.ativo} nesse timeframe favorece "
                      f"<b>{'reversão' if 'reversao' in classe else 'continuação'}</b>. "
                      f"Gatilho de entrada que conversa com isso: <b>{base['indicador']}</b> — {base['gatilho']}.")
+            # A caixa de sugestão SÓ aparece se for MELHORA comprovada no histórico:
+            # config coletiva com PF claramente acima do resultado atual do usuário.
             if melhor_cfg and melhor_cfg.get("stop_loss"):
-                aplicar["stop_loss"] = melhor_cfg["stop_loss"]
-                aplicar["take_profit"] = melhor_cfg["take_profit"]
-                if melhor_cfg.get("indicador"):
-                    aplicar["indicador"] = melhor_cfg["indicador"]
-                if melhor_cfg.get("ema_period"):
-                    aplicar["ema_period"] = melhor_cfg["ema_period"]
+                pf_coletivo = float(melhor_cfg.get("pf") or 0)
+                melhora = (pf_u is None) or (pf_coletivo > max(1.1, pf_u * 1.15))
                 texto += (f" No histórico coletivo deste ativo, a config mais forte foi "
                           f"<b>{melhor_cfg['indicador']}</b> (período {melhor_cfg['ema_period']}, "
                           f"stop {melhor_cfg['stop_loss']} / take {melhor_cfg['take_profit']}): "
                           f"PF <b>{melhor_cfg['pf']}</b>, WR {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades.")
                 if pf_u is not None:
                     texto += f" Seu teste atual: PF <b>{pf_u}</b>" + (f", WR {wr_u}%" if wr_u is not None else "") + f" em {nt_u} trades."
+                if melhora:
+                    aplicar = {
+                        "indicador": melhor_cfg.get("indicador") or base["indicador"],
+                        "ema_period": melhor_cfg.get("ema_period") or base["ema_period"],
+                        "stop_loss": melhor_cfg["stop_loss"],
+                        "take_profit": melhor_cfg["take_profit"],
+                        "pf": melhor_cfg["pf"],
+                        "pf_atual": pf_u,
+                    }
             mensagens.append(texto)
 
         if not mensagens:
