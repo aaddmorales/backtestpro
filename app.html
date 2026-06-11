@@ -99,6 +99,34 @@ body::after{
 .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
 .top-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
 
+/* ── RADAR: bot flutuante ── */
+.radar-fab{position:fixed;bottom:22px;right:22px;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,#0d2b1f,#0a1a14);border:2px solid rgba(0,208,132,0.55);
+  display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:300;
+  box-shadow:0 6px 24px rgba(0,208,132,0.25);transition:transform .15s}
+.radar-fab:hover{transform:scale(1.08)}
+.radar-fab.pulsando{animation:radarpulse 2s infinite}
+@keyframes radarpulse{0%{box-shadow:0 0 0 0 rgba(0,208,132,0.45)}70%{box-shadow:0 0 0 14px rgba(0,208,132,0)}100%{box-shadow:0 0 0 0 rgba(0,208,132,0)}}
+.radar-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
+  font-weight:700;min-width:17px;height:17px;border-radius:9px;line-height:17px;text-align:center;display:none}
+.radar-panel{position:fixed;bottom:86px;right:22px;width:360px;max-width:92vw;max-height:520px;
+  background:var(--bg2);border:1px solid rgba(0,208,132,0.3);border-radius:14px;z-index:300;
+  display:none;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.6)}
+.radar-head{padding:13px 16px;background:linear-gradient(135deg,rgba(0,208,132,0.12),transparent);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.radar-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.radar-msg{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--green);
+  border-radius:0 10px 10px 10px;padding:10px 12px;font-size:12px;color:var(--text);line-height:1.6;max-width:95%}
+.radar-msg.alerta{border-left-color:var(--red)}
+.radar-msg.atencao{border-left-color:var(--amber)}
+.radar-acts{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap}
+.radar-act{flex:1;min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all .12s}
+.radar-act:hover{border-color:rgba(0,208,132,0.5);background:var(--bg4)}
+.radar-toast{position:fixed;bottom:86px;right:86px;max-width:300px;background:var(--bg2);
+  border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:11px 14px;font-size:11.5px;
+  color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
+
 /* Contador de backtests — pílula verde com pulso */
 .bt-counter{
   display:inline-flex;align-items:center;gap:7px;
@@ -2835,7 +2863,8 @@ function renderOverview(d, params) {
   const equity = d.equity_curve||[];
   const trades = d.trades||[];
   const roiDist = d.roi_distribution||[];
-  const iaSug = d.sugestao||'';
+  const iaSug = '';  // sugestão migrou para o Radar flutuante
+  setTimeout(()=>radarCoach(d), 700);
   const avgPnl = parseFloat(d.avg_pnl||0);
   const avgBars = parseInt(d.avg_bars_in_trades||0);
   const maiorGanho = parseFloat(d.maior_ganho||0);
@@ -3120,7 +3149,70 @@ setTimeout(initSampleChart, 150);
 
 
 // ════════════ v5.0 — AGENTE + MONITOR + GALERIA + HERO IA ════════════
-const AGENT_NAME = 'Radar';   // nome do agente — troque aqui se decidir outro
+const AGENT_NAME = 'Radar';
+
+// ── RADAR FLUTUANTE: coaching por regras a partir do resultado real ──
+let _radarAberto = false;
+let _radarNaoLidas = 0;
+function toggleRadar(){
+  _radarAberto = !_radarAberto;
+  document.getElementById('radar-panel').style.display = _radarAberto ? 'flex' : 'none';
+  document.getElementById('radar-toast').style.display = 'none';
+  if(_radarAberto){
+    _radarNaoLidas = 0;
+    const b = document.getElementById('radar-badge');
+    b.style.display = 'none';
+    document.getElementById('radar-fab').classList.remove('pulsando');
+  }
+}
+function radarFala(msg, sev){
+  const body = document.getElementById('radar-body');
+  if(!body) return;
+  const div = document.createElement('div');
+  div.className = 'radar-msg' + (sev ? ' ' + sev : '');
+  div.innerHTML = msg;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  if(!_radarAberto){
+    _radarNaoLidas++;
+    const b = document.getElementById('radar-badge');
+    b.textContent = _radarNaoLidas; b.style.display = 'block';
+    document.getElementById('radar-fab').classList.add('pulsando');
+    const t = document.getElementById('radar-toast');
+    t.innerHTML = '📡 <b>' + AGENT_NAME + ':</b> ' + msg.replace(/<[^>]*>/g,'').slice(0,110) + '...';
+    t.style.display = 'block';
+    clearTimeout(window._radarToastTimer);
+    window._radarToastTimer = setTimeout(()=>{ t.style.display='none'; }, 9000);
+  }
+}
+// Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
+function radarCoach(d){
+  try{
+    const m = d.metricas || d;
+    const wr = parseFloat(m.win_rate ?? m.winRate ?? NaN);
+    const pf = parseFloat(m.profit_factor ?? NaN);
+    const dd = Math.abs(parseFloat(m.max_drawdown ?? NaN));
+    const nt = parseInt(m.total_trades ?? (d.trades||[]).length ?? 0);
+    const ret = parseFloat(m.retorno ?? NaN);
+    if(d.sugestao) radarFala('💡 ' + d.sugestao);
+    if(nt > 0 && nt < 10){
+      radarFala(`Só <b>${nt} trades</b> nesse teste — amostra pequena demais pra confiar. Aumente o período ou teste um timeframe menor antes de tirar conclusão.`, 'atencao');
+    }
+    if(!isNaN(pf) && pf < 1 && nt >= 10){
+      radarFala(`Profit factor <b>${pf.toFixed(2)}</b> — essa configuração perde no histórico. Antes de descartar: use o <b>⚙ Otimizar</b> pra varrer stop/take e período, ou teste a mesma lógica em outro ativo.`, 'alerta');
+    }
+    if(!isNaN(pf) && pf >= 1.3 && !isNaN(dd) && dd > 15){
+      radarFala(`Lucrativa (PF ${pf.toFixed(2)}), mas drawdown de <b>${dd.toFixed(1)}%</b> é pesado. Reduza exposição (Máx. Ops) ou aperte o stop — sobreviver ao pior momento importa mais que o retorno.`, 'atencao');
+    }
+    if(!isNaN(wr) && wr >= 45 && !isNaN(pf) && pf >= 1.3 && nt >= 20){
+      radarFala(`Resultado sólido: win rate <b>${wr.toFixed(1)}%</b>, PF <b>${pf.toFixed(2)}</b> em ${nt} trades. Próximo passo profissional: validação <b>out-of-sample</b> — se segurar nos dados que a estratégia nunca viu, aí sim vale automatizar no MT5. 📡`);
+    }
+    if(!isNaN(wr) && wr < 35 && !isNaN(pf) && pf >= 1.2){
+      radarFala(`Win rate baixo (${wr.toFixed(1)}%) mas PF ${pf.toFixed(2)} positivo = estratégia que <b>erra pequeno e acerta grande</b>. É um perfil válido — exige disciplina pra aguentar sequências de perda.`);
+    }
+  }catch(e){ console.log('radarCoach', e); }
+}
+   // nome do agente — troque aqui se decidir outro
 
 async function atualizarContador(){
   try{
@@ -3150,6 +3242,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(tag) tag.textContent = AGENT_NAME + ' ativo';
   const st = document.getElementById('sino-titulo');
   if(st) st.textContent = '🤖 ' + AGENT_NAME + ' — sugestões';
+  const rt = document.getElementById('radar-titulo');
+  if(rt) rt.textContent = AGENT_NAME;
   const sg = document.getElementById('sugestoes-titulo');
   if(sg) sg.textContent = '🤖 ' + AGENT_NAME + ' — sugestões';
   carregarGaleria();
@@ -3270,6 +3364,13 @@ async function atualizarSino(render){
     else badge.style.display='none';
     if(render||_sinoAberto) renderSugestoes(d.sugestoes, 'sino-lista');
     renderSugestoes(d.sugestoes, 'sugestoes-lista');
+    // novas sugestões não lidas também falam pelo Radar
+    (d.sugestoes||[]).filter(x=>!x.lida).slice(0,3).forEach(x=>{
+      if(!window._radarVistos) window._radarVistos = new Set();
+      if(window._radarVistos.has(x.id)) return;
+      window._radarVistos.add(x.id);
+      radarFala(`<b>${x.regra}</b> · ${x.mensagem}`, x.severidade==='alerta'?'alerta':(x.severidade==='atencao'?'atencao':''));
+    });
   }catch(e){}
 }
 function renderSugestoes(lista, alvo){
@@ -3404,6 +3505,27 @@ function copiarToken(){
       <button class="btn-go" id="otim-go" onclick="rodarOtimizar()">Rodar otimização</button>
       <button class="btn-cancel" onclick="fecharOtimizar()">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- ── RADAR: bot flutuante ── -->
+<div class="radar-fab" id="radar-fab" onclick="toggleRadar()" title="Radar — seu copiloto">📡<span class="radar-badge" id="radar-badge">0</span></div>
+<div class="radar-toast" id="radar-toast" onclick="toggleRadar();this.style.display='none'"></div>
+<div class="radar-panel" id="radar-panel">
+  <div class="radar-head">
+    <span style="font-size:20px">📡</span>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:var(--text)" id="radar-titulo">Radar</div>
+      <div style="font-size:10px;color:var(--muted2)">Seu copiloto de validação — fala de disciplina, nunca prevê mercado</div>
+    </div>
+  </div>
+  <div class="radar-body" id="radar-body">
+    <div class="radar-msg">Olá! Rode um backtest que eu te digo o que os números estão contando — e o melhor próximo passo. 🎯</div>
+  </div>
+  <div class="radar-acts">
+    <button class="radar-act" onclick="abrirOtimizar();toggleRadar()">⚙ Otimizar</button>
+    <button class="radar-act" onclick="switchTab('monitor');toggleRadar()">📡 Conectar MT5</button>
+    <button class="radar-act" onclick="switchTab('templates');toggleRadar()">🏛️ Estratégias</button>
   </div>
 </div>
 </body>
