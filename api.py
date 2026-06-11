@@ -79,7 +79,7 @@
 from fastapi import FastAPI, HTTPException, Request
 import stripe
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import yfinance as yf
@@ -557,6 +557,23 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
     return " | ".join(sugestoes)
 
 # ── ENDPOINTS ───────────────────────────────────────────────
+
+# ── Porteiro: se um NAVEGADOR visitar um endpoint de dados (GET pedindo
+#    text/html), redireciona pro app em vez de mostrar JSON cru.
+#    fetch() do front pede Accept: */* e continua recebendo JSON normalmente.
+_ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json"}
+
+@app.middleware("http")
+async def _redirecionar_navegador(request: Request, call_next):
+    try:
+        if request.method == "GET" and request.url.path not in _ROTAS_HTML:
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept:
+                return RedirectResponse(url="/app")
+    except Exception:
+        pass
+    return await call_next(request)
+
 
 @app.get("/debug")
 def debug_backtest():
@@ -1392,9 +1409,12 @@ class RadarAnalisarParams(BaseModel):
     sessao_id: Optional[str] = None
     indicador_atual: Optional[str] = None
     ema_period_atual: Optional[int] = None
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
     win_rate: Optional[float] = None
     profit_factor: Optional[float] = None
     total_trades: Optional[int] = None
+    retorno: Optional[float] = None
 
 
 # Mapa: classe de padrão dominante -> indicador + gatilho de entrada sugeridos
@@ -1430,11 +1450,15 @@ def radar_analisar(p: RadarAnalisarParams):
     try:
         # ── 1) OffMind: varre os 6 padrões no ativo/timeframe (dados vêm do cache) ──
         fortes = []
+        # relação risco/retorno que o usuário pediu (take/stop), limitada a 0.5..4
+        ratio = 2.0
+        if p.stop_loss and p.take_profit and float(p.stop_loss) > 0:
+            ratio = max(0.5, min(4.0, float(p.take_profit) / float(p.stop_loss)))
         try:
             df = baixar_dados(p.ativo, p.periodo, p.timeframe)
             if df is not None and len(df) >= 60:
                 for k, meta in PADROES_OFFMIND.items():
-                    r = analisar_padrao(df, meta["fn"], [5, 10], 2.0, 1.0)
+                    r = analisar_padrao(df, meta["fn"], [5, 10], ratio, 1.0)
                     if r["total_ocorrencias"] < 8:
                         continue
                     melhor = None
@@ -1457,11 +1481,12 @@ def radar_analisar(p: RadarAnalisarParams):
                     for f in top:
                         partes.append(
                             f"<b>{f['nome']}</b> apareceu {f['ocorrencias']}x; "
-                            f"em até {f['horizonte']} candles, <b>{f['taxa']:.0f}%</b> bateram alvo de 2 ATR antes do stop de 1 ATR"
+                            f"em até {f['horizonte']} candles, <b>{f['taxa']:.0f}%</b> bateram o alvo antes do stop"
                         )
                     mensagens.append(
-                        f"🧠 OffMind varreu {len(df)} candles de {p.ativo} {p.timeframe.upper()}: "
-                        + "; ".join(partes) + ". (medição histórica, conservadora: empate no candle conta como stop)"
+                        f"🧠 OffMind varreu {len(df)} candles de {p.ativo} {p.timeframe.upper()} "
+                        f"usando a <b>sua</b> relação risco/retorno (1:{ratio:.1f}, como no seu stop/take): "
+                        + "; ".join(partes) + ". (medição histórica conservadora: empate no candle conta como stop)"
                     )
         except Exception as e:
             print(f"RADAR offmind: {e}", file=sys.stderr)
@@ -1494,10 +1519,43 @@ def radar_analisar(p: RadarAnalisarParams):
         except Exception as e:
             print(f"RADAR coletivo: {e}", file=sys.stderr)
 
-        # ── 3) Monta a sugestão aplicável ──
+        # ── 3) Sugestão CONTEXTUAL: olha o que o usuário ACABOU de rodar ──
         classe = _RADAR_CLASSES.get(fortes[0]["chave"]) if fortes else None
         base = _RADAR_SUGESTOES.get(classe) if classe else None
-        if base:
+
+        def _num(x):
+            try: return round(float(x), 2)
+            except Exception: return None
+
+        # a config que o usuário acabou de testar
+        cfg_usuario = (str(p.indicador_atual or ""), _num(p.ema_period_atual),
+                       _num(p.stop_loss), _num(p.take_profit))
+        cfg_melhor = None
+        if melhor_cfg:
+            cfg_melhor = (str(melhor_cfg.get("indicador") or ""), _num(melhor_cfg.get("ema_period")),
+                          _num(melhor_cfg.get("stop_loss")), _num(melhor_cfg.get("take_profit")))
+        ja_esta_na_melhor = cfg_melhor is not None and cfg_melhor == cfg_usuario
+
+        # comparação do resultado DESTE teste com o melhor do coletivo
+        pf_u = _num(p.profit_factor); wr_u = _num(p.win_rate); nt_u = p.total_trades or 0
+
+        if ja_esta_na_melhor:
+            # não repete a sugestão da mesma config: evolui a conversa
+            txt = (f"📊 Você <b>já está</b> na config mais forte do histórico coletivo deste ativo "
+                   f"(PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades). ")
+            if pf_u is not None and melhor_cfg.get("pf"):
+                if pf_u >= float(melhor_cfg["pf"]) * 0.85:
+                    txt += (f"Seu teste agora confirmou: PF <b>{pf_u}</b> em {nt_u} trades. "
+                            f"Próximo passo profissional: <b>validação out-of-sample</b> e depois o ⚙ Otimizar "
+                            f"pra varrer stop/take EM VOLTA dessa base — pequenos ajustes, não revolução.")
+                else:
+                    txt += (f"Mas seu teste agora deu PF <b>{pf_u}</b> — abaixo do registrado. "
+                            f"Diferença comum: janela de período diferente pegou outra fase do mercado. "
+                            f"Rode um período maior pra confirmar, ou use o ⚙ Otimizar pra recalibrar stop/take.")
+            else:
+                txt += "Use o ⚙ Otimizar pra refinar stop/take em volta dela e valide out-of-sample antes do MT5."
+            mensagens.append(txt)
+        elif base:
             aplicar = {
                 "indicador": base["indicador"],
                 "ema_period": base["ema_period"],
@@ -1514,10 +1572,12 @@ def radar_analisar(p: RadarAnalisarParams):
                     aplicar["indicador"] = melhor_cfg["indicador"]
                 if melhor_cfg.get("ema_period"):
                     aplicar["ema_period"] = melhor_cfg["ema_period"]
-                texto += (f" No histórico coletivo deste ativo, a config mais forte até agora foi "
+                texto += (f" No histórico coletivo deste ativo, a config mais forte foi "
                           f"<b>{melhor_cfg['indicador']}</b> (período {melhor_cfg['ema_period']}, "
                           f"stop {melhor_cfg['stop_loss']} / take {melhor_cfg['take_profit']}): "
-                          f"PF <b>{melhor_cfg['pf']}</b>, win rate {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades.")
+                          f"PF <b>{melhor_cfg['pf']}</b>, WR {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades.")
+                if pf_u is not None:
+                    texto += f" Seu teste atual: PF <b>{pf_u}</b>" + (f", WR {wr_u}%" if wr_u is not None else "") + f" em {nt_u} trades."
             mensagens.append(texto)
 
         if not mensagens:
