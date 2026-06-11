@@ -3251,9 +3251,12 @@ function radarSugestaoBox(ap){
   div.className = 'radar-msg';
   div.innerHTML = `🎯 <b>Quer testar essa configuração?</b><br>${partes.join(' · ')}
     <div style="display:flex;gap:7px;margin-top:9px">
-      <button class="radar-act" onclick='aplicarSugestaoRadar(${JSON.stringify(ap)}, false)'>✅ Aplicar</button>
-      <button class="radar-act" style="border-color:rgba(0,208,132,0.5);color:var(--green)" onclick='aplicarSugestaoRadar(${JSON.stringify(ap)}, true)'>▶ Aplicar e rodar</button>
+      <button class="radar-act radar-btn-aplicar">✅ Aplicar</button>
+      <button class="radar-act radar-btn-rodar" style="border-color:rgba(0,208,132,0.5);color:var(--green)">▶ Aplicar e rodar</button>
     </div>`;
+  // sugestão fica guardada no objeto JS — nada de serializar em atributo HTML
+  div.querySelector('.radar-btn-aplicar').addEventListener('click', () => aplicarSugestaoRadar(ap, false));
+  div.querySelector('.radar-btn-rodar').addEventListener('click',  () => aplicarSugestaoRadar(ap, true));
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;
   if(!_radarAberto){
@@ -3274,10 +3277,18 @@ function aplicarSugestaoRadar(ap, rodar){
     if(ap.ema_period)  document.getElementById('ema_period').value = ap.ema_period;
     if(ap.stop_loss)   document.getElementById('stop_loss').value = ap.stop_loss;
     if(ap.take_profit) document.getElementById('take_profit').value = ap.take_profit;
-    atualizarOverlays();
-    radarFala('✅ Configuração aplicada nos parâmetros à esquerda.' + (rodar ? ' Rodando o backtest...' : ' Clique em <b>▶ Rodar Backtest</b> quando quiser.'));
-    if(rodar){ toggleRadar(); rodarBacktest(); }
-  }catch(e){ console.log('aplicarSugestao', e); }
+    try{ atualizarOverlays(); }catch(e2){ console.log('overlay', e2); }
+    const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    radarFala('✅ <b>' + (ap.indicador||'Config') + '</b> aplicada às ' + hora + (rodar ? ' — rodando o backtest...' : '. Clique em <b>▶ Rodar Backtest</b> quando quiser.'));
+  }catch(e){
+    radarFala('⚠️ Não consegui aplicar: ' + (e.message||e), 'alerta');
+    console.error('aplicarSugestao', e);
+  }
+  if(rodar){
+    if(_radarAberto) toggleRadar();
+    try{ rodarBacktest(); }
+    catch(e){ radarFala('⚠️ Erro ao rodar: ' + (e.message||e), 'alerta'); console.error(e); }
+  }
 }
 
 // Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
