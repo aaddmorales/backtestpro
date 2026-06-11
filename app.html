@@ -126,6 +126,17 @@ body::after{
 .radar-act{flex:1;min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);
   background:var(--bg3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all .12s}
 .radar-act:hover{border-color:rgba(0,208,132,0.5);background:var(--bg4)}
+.radar-loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(4,9,7,0.6);backdrop-filter:blur(4px);z-index:290}
+.radar-loading-card{background:var(--bg2);border:1px solid rgba(0,208,132,0.4);border-radius:16px;
+  padding:26px 34px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);max-width:420px}
+.radar-loading-icon{font-size:38px;animation:radarscan 1.6s ease-in-out infinite}
+@keyframes radarscan{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}
+.radar-loading-txt{margin-top:12px;font-size:13px;color:var(--text);font-weight:600;min-height:20px}
+.radar-loading-sub{margin-top:5px;font-size:11px;color:var(--muted2)}
+.radar-loading-bar{margin-top:14px;height:3px;border-radius:2px;background:var(--bg4);overflow:hidden}
+.radar-loading-bar div{height:100%;width:35%;border-radius:2px;background:var(--green);animation:radarbar 1.3s ease-in-out infinite}
+@keyframes radarbar{0%{margin-left:-35%}100%{margin-left:100%}}
 .radar-toast{position:fixed;bottom:86px;right:86px;max-width:300px;background:var(--bg2);
   border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:11px 14px;font-size:11.5px;
   color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
@@ -3212,9 +3223,35 @@ function radarFala(msg, sev){
 }
 // ── ANÁLISE DO RADAR: OffMind (padrões) + histórico coletivo -> sugestão aplicável ──
 let _radarAnalisando = false;
+const _radarFrases = [
+  'Analisando seu teste minuciosamente...',
+  'OffMind varrendo o histórico com SEUS parâmetros...',
+  'Medindo padrões com sua relação risco/retorno...',
+  'Consultando o banco coletivo de backtests...',
+  'Cruzando seu resultado com as melhores configs...',
+];
+function radarLoadingMostrar(){
+  const ov = document.getElementById('radar-loading');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  let i = 0;
+  document.getElementById('radar-loading-txt').textContent = _radarFrases[0];
+  window._radarFraseTimer = setInterval(()=>{
+    i = (i+1) % _radarFrases.length;
+    document.getElementById('radar-loading-txt').textContent = _radarFrases[i];
+  }, 1400);
+}
+function radarLoadingEsconder(){
+  clearInterval(window._radarFraseTimer);
+  const ov = document.getElementById('radar-loading');
+  if(ov) ov.style.display = 'none';
+}
+
 async function radarAnalisarAtivo(d){
   if(_radarAnalisando) return;
   _radarAnalisando = true;
+  const inicio = Date.now();
+  radarLoadingMostrar();
   try{
     const m = d.metricas || d;
     const body = {
@@ -3225,25 +3262,36 @@ async function radarAnalisarAtivo(d){
       sessao_id: BB_SESSAO_ID,
       indicador_atual: document.getElementById('indicador').value,
       ema_period_atual: parseInt(document.getElementById('ema_period').value) || null,
+      stop_loss: parseFloat(document.getElementById('stop_loss').value) || null,
+      take_profit: parseFloat(document.getElementById('take_profit').value) || null,
       win_rate: parseFloat(m.win_rate) || null,
       profit_factor: parseFloat(m.profit_factor) || null,
       total_trades: parseInt(m.total_trades) || null,
+      retorno: parseFloat(m.retorno) || null,
     };
     const r = await fetch(API + '/radar/analisar', {method:'POST',
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const resp = await r.json();
+    // overlay fica visível no mínimo 1.4s — análise séria merece presença
+    const falta = Math.max(0, 1400 - (Date.now() - inicio));
+    await new Promise(res => setTimeout(res, falta));
+    radarLoadingEsconder();
     (resp.mensagens || []).forEach(msg => radarFala(msg));
     if(resp.aplicar && resp.aplicar.indicador){
       radarSugestaoBox(resp.aplicar);
     }
-  }catch(e){ console.log('radarAnalisar', e); }
+  }catch(e){ radarLoadingEsconder(); console.log('radarAnalisar', e); }
   _radarAnalisando = false;
 }
 
 // Bolha com a sugestão + botões de ação
+const _radarSugeridas = new Set();
 function radarSugestaoBox(ap){
   const body = document.getElementById('radar-body');
   if(!body) return;
+  const assinatura = [ap.indicador, ap.ema_period, ap.stop_loss, ap.take_profit].join('|');
+  if(_radarSugeridas.has(assinatura)) return;   // mesma config já foi oferecida nesta sessão
+  _radarSugeridas.add(assinatura);
   const partes = [`<b>${ap.indicador}</b> · período ${ap.ema_period || 20}`];
   if(ap.stop_loss)  partes.push(`stop ${ap.stop_loss}`);
   if(ap.take_profit) partes.push(`take ${ap.take_profit}`);
@@ -3619,6 +3667,14 @@ function copiarToken(){
 </div>
 
 <!-- ── RADAR: bot flutuante ── -->
+<div class="radar-loading" id="radar-loading">
+  <div class="radar-loading-card">
+    <div class="radar-loading-icon">📡</div>
+    <div class="radar-loading-txt" id="radar-loading-txt">Analisando seu teste minuciosamente...</div>
+    <div class="radar-loading-sub">OffMind + histórico coletivo trabalhando nos seus parâmetros</div>
+    <div class="radar-loading-bar"><div></div></div>
+  </div>
+</div>
 <div class="radar-fab" id="radar-fab" onclick="toggleRadar()" title="Radar — seu copiloto">📡<span class="radar-badge" id="radar-badge">0</span></div>
 <div class="radar-toast" id="radar-toast" onclick="toggleRadar();this.style.display='none'"></div>
 <div class="radar-panel" id="radar-panel">
