@@ -2408,6 +2408,149 @@ class MediaATRTrailing(Strategy):
             self.stop = preco - self.mult_atr * self.atr[-1]
 '''
     },
+    {
+        "id": "sr_dia_anterior", "casa": False, "emoji": "📐",
+        "nome": "Suporte & Resistência do Dia Anterior",
+        "desc": "Price action clássico: a máxima e a mínima de ontem viram as referências de hoje. Fechou acima da máxima de ontem = compra (rompimento); abaixo da mínima = venda. Sai quando o preço cruza a referência oposta.",
+        "tags": ["PRICE ACTION", "ROMPIMENTO", "S/R"], "nivel": "intermediário",
+        "mercados": ["XAU/USD (Ouro)", "NASDAQ", "Índices"],
+        "codigo": '''from backtesting import Strategy
+
+class SuporteResistenciaOntem(Strategy):
+    # Maxima/minima do dia anterior como suporte e resistencia de hoje.
+    # No diario, vale a maxima/minima do candle anterior (mesma logica).
+
+    def init(self):
+        self.dia = None
+        self.h_ontem = None
+        self.l_ontem = None
+        self.h_hoje = None
+        self.l_hoje = None
+
+    def next(self):
+        d = self.data.index[-1].date()
+        h, l, c = self.data.High[-1], self.data.Low[-1], self.data.Close[-1]
+
+        if self.dia is None:
+            self.dia, self.h_hoje, self.l_hoje = d, h, l
+            return
+        if d != self.dia:
+            # virou o dia: ontem fica congelado como referencia
+            self.h_ontem, self.l_ontem = self.h_hoje, self.l_hoje
+            self.dia, self.h_hoje, self.l_hoje = d, h, l
+        else:
+            self.h_hoje = max(self.h_hoje, h)
+            self.l_hoje = min(self.l_hoje, l)
+
+        if self.h_ontem is None:
+            return
+
+        if not self.position:
+            if c > self.h_ontem:
+                self.buy()      # rompeu a resistencia de ontem
+            elif c < self.l_ontem:
+                self.sell()     # rompeu o suporte de ontem
+        else:
+            if self.position.is_long and c < self.l_ontem:
+                self.position.close()
+            elif self.position.is_short and c > self.h_ontem:
+                self.position.close()
+'''
+    },
+    {
+        "id": "microcanal", "casa": False, "emoji": "🪜",
+        "nome": "Microcanal de Impulso",
+        "desc": "Price action: sequência de mínimas ascendentes coladas na EMA curta = impulso comprador (microcanal). Entra na continuação; sai quando um candle perde a mínima do anterior (canal quebrado).",
+        "tags": ["PRICE ACTION", "TENDÊNCIA", "IMPULSO"], "nivel": "avançado",
+        "mercados": ["XAU/USD (Ouro)", "BTC/USD", "NAS100"],
+        "codigo": '''from backtesting import Strategy
+import pandas as pd
+
+def EMA(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+class Microcanal(Strategy):
+    n_seq = 3    # quantas minimas ascendentes seguidas formam o microcanal
+    n_ema = 9    # EMA curta de referencia do impulso
+
+    def init(self):
+        self.ema = self.I(EMA, self.data.Close, self.n_ema)
+
+    def next(self):
+        l, c = self.data.Low, self.data.Close
+        i = len(c) - 1
+        if i < self.n_seq + 1:
+            return
+
+        # quebrou a minima do candle anterior = microcanal acabou
+        if self.position:
+            if c[-1] < l[-2]:
+                self.position.close()
+            return
+
+        minimas_ascendentes = all(l[-k] > l[-k - 1] for k in range(1, self.n_seq + 1))
+        acima_ema = c[-1] > self.ema[-1]
+        if minimas_ascendentes and acima_ema:
+            self.buy()
+'''
+    },
+    {
+        "id": "fechamento_ima", "casa": False, "emoji": "🧲",
+        "nome": "Fechamento Anterior como Ímã",
+        "desc": "Abriu longe do fechamento de ontem? O preço tende a voltar pra ele (efeito ímã / fechamento de gap). Opera a volta: alvo no fechamento anterior, stop na continuação do gap. Versão multi-mercado do clássico ajuste dos futuros.",
+        "tags": ["GAP", "REVERSÃO", "ÍMÃ"], "nivel": "intermediário",
+        "mercados": ["Índices", "Ações", "XAU/USD (Ouro)"],
+        "codigo": '''from backtesting import Strategy
+
+class FechamentoIma(Strategy):
+    gap_min = 0.003   # 0,3% de distancia minima na abertura p/ operar a volta
+
+    def init(self):
+        self.dia = None
+        self.fech_ontem = None
+        self.fech_hoje = None
+        self.alvo = None
+        self.stop = None
+
+    def next(self):
+        d = self.data.index[-1].date()
+        o, c = self.data.Open[-1], self.data.Close[-1]
+
+        if self.dia is None:
+            self.dia, self.fech_hoje = d, c
+            return
+        novo_dia = d != self.dia
+        if novo_dia:
+            self.fech_ontem = self.fech_hoje
+            self.dia = d
+        self.fech_hoje = c
+
+        if self.fech_ontem is None:
+            return
+
+        # gestao: alvo no fechamento de ontem, stop na continuacao
+        if self.position:
+            if self.position.is_long and (c >= self.alvo or c <= self.stop):
+                self.position.close()
+            elif self.position.is_short and (c <= self.alvo or c >= self.stop):
+                self.position.close()
+            return
+
+        # so avalia na abertura de um dia novo
+        if novo_dia:
+            gap = (o - self.fech_ontem) / self.fech_ontem
+            if gap >= self.gap_min:
+                # abriu acima: aposta na volta ao fechamento (vende)
+                self.alvo = self.fech_ontem
+                self.stop = o * (1 + abs(gap))
+                self.sell()
+            elif gap <= -self.gap_min:
+                # abriu abaixo: aposta na volta ao fechamento (compra)
+                self.alvo = self.fech_ontem
+                self.stop = o * (1 - abs(gap))
+                self.buy()
+'''
+    },
 ]
 
 @app.get("/estrategias/prontas")
