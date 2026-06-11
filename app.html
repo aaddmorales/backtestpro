@@ -285,7 +285,8 @@ select option{background:#141920}
 /* ── FIXED METRICS BAR (always visible, below topbar above center) ── */
 .metrics-bar{
   display:grid;grid-template-columns:repeat(4,1fr);
-  border-bottom:1px solid var(--border);
+  margin:12px 16px 0;
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;
   background:rgba(14,17,23,0.95);flex-shrink:0;
 }
 .mb-card{
@@ -658,8 +659,6 @@ select option{background:#141920}
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
   <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')">📡 Monitor</button>
-  <div class="tsep"></div>
-  <button class="tbtn tbtn-purple" onclick="focusIA()">✨ Gerar com IA</button>
   <div class="spacer"></div>
   <div class="top-right">
   <div style="position:relative">
@@ -905,34 +904,6 @@ select option{background:#141920}
   <!-- CENTER + RIGHT WRAPPER -->
   <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
 
-    <!-- FIXED METRICS BAR -->
-    <div class="metrics-bar" id="metrics-bar">
-      <div class="mb-card">
-        <div class="mb-name">Win Rate</div>
-        <div class="mb-val" id="m-wr">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-wr-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-wr-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Sharpe Ratio</div>
-        <div class="mb-val" id="m-sh">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-sh-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-sh-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Max Drawdown</div>
-        <div class="mb-val" id="m-dd">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-dd-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-dd-sem"></div>
-      </div>
-      <div class="mb-card">
-        <div class="mb-name">Profit Factor</div>
-        <div class="mb-val" id="m-pf">—</div>
-        <div class="mb-bar"><div class="mb-fill" id="m-pf-bar" style="width:0%;background:var(--muted)"></div></div>
-        <div class="sem" id="m-pf-sem"></div>
-      </div>
-    </div>
-
     <!-- CENTER + RIGHT split -->
     <div style="flex:1;display:flex;overflow:hidden">
 
@@ -1013,6 +984,33 @@ select option{background:#141920}
                 <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px">✨ Gerar estratégia</button>
               </div>
             </div>
+            <!-- MÉTRICAS (abaixo da caixa da IA) -->
+    <div class="metrics-bar" id="metrics-bar">
+      <div class="mb-card">
+        <div class="mb-name">Win Rate</div>
+        <div class="mb-val" id="m-wr">—</div>
+        <div class="mb-bar"><div class="mb-fill" id="m-wr-bar" style="width:0%;background:var(--muted)"></div></div>
+        <div class="sem" id="m-wr-sem"></div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-name">Sharpe Ratio</div>
+        <div class="mb-val" id="m-sh">—</div>
+        <div class="mb-bar"><div class="mb-fill" id="m-sh-bar" style="width:0%;background:var(--muted)"></div></div>
+        <div class="sem" id="m-sh-sem"></div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-name">Max Drawdown</div>
+        <div class="mb-val" id="m-dd">—</div>
+        <div class="mb-bar"><div class="mb-fill" id="m-dd-bar" style="width:0%;background:var(--muted)"></div></div>
+        <div class="sem" id="m-dd-sem"></div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-name">Profit Factor</div>
+        <div class="mb-val" id="m-pf">—</div>
+        <div class="mb-bar"><div class="mb-fill" id="m-pf-bar" style="width:0%;background:var(--muted)"></div></div>
+        <div class="sem" id="m-pf-sem"></div>
+      </div>
+    </div>
             <div id="ov-sample" style="padding:18px 16px">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
                 <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
