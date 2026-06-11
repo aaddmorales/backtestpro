@@ -17,6 +17,7 @@
 #    (/agente/sugestoes, /agente/sugestoes/lida)
 #  Historico anterior:
 #  Novidades v2.1:
+#  - v3.3: /radar/analisar (OffMind + coletivo -> sugestao aplicavel no chat do Radar)
 #  - /babymachine/contador: endpoint leve que retorna total de backtests
 #    do usuario (count exact) p/ contador no topo da coluna esquerda.
 #  Historico anterior:
@@ -1381,6 +1382,151 @@ def offmind_analisar(params: OffMindParams):
         tb = traceback.format_exc()
         print(f"ERRO OFFMIND: {str(e)}\n{tb}", file=sys.stderr)
         raise HTTPException(status_code=500, detail=f"{str(e)}")
+
+
+class RadarAnalisarParams(BaseModel):
+    ativo: str = "XAU/USD"
+    periodo: str = "2 anos"
+    timeframe: str = "1d"
+    user_id: Optional[str] = None
+    sessao_id: Optional[str] = None
+    indicador_atual: Optional[str] = None
+    ema_period_atual: Optional[int] = None
+    win_rate: Optional[float] = None
+    profit_factor: Optional[float] = None
+    total_trades: Optional[int] = None
+
+
+# Mapa: classe de padrão dominante -> indicador + gatilho de entrada sugeridos
+_RADAR_SUGESTOES = {
+    "reversao_alta": {
+        "indicador": "Bollinger Bands", "ema_period": 20,
+        "gatilho": "comprar quando o preço toca a banda inferior e fecha um candle de reversão (martelo/engolfo de alta)",
+    },
+    "reversao_baixa": {
+        "indicador": "Bollinger Bands", "ema_period": 20,
+        "gatilho": "operar reversões: preço esticado na banda superior + candle de rejeição costuma devolver",
+    },
+    "continuacao": {
+        "indicador": "EMA Channel High/Low", "ema_period": 20,
+        "gatilho": "entrar no rompimento do canal a favor da sequência (preço fecha fora do canal na direção do movimento)",
+    },
+}
+_RADAR_CLASSES = {
+    "engolfo_alta": "reversao_alta", "martelo": "reversao_alta",
+    "engolfo_baixa": "reversao_baixa", "estrela_cadente": "reversao_baixa",
+    "tres_verdes": "continuacao", "tres_vermelhas": "continuacao",
+}
+
+
+@app.post("/radar/analisar")
+def radar_analisar(p: RadarAnalisarParams):
+    """Análise do Radar: OffMind (padrões do ativo) + histórico coletivo (BabyMachine)
+    => leitura honesta + sugestão de indicador/gatilho APLICÁVEL.
+    Sempre validação histórica, nunca previsão."""
+    import sys
+    mensagens = []
+    aplicar = None
+    try:
+        # ── 1) OffMind: varre os 6 padrões no ativo/timeframe (dados vêm do cache) ──
+        fortes = []
+        try:
+            df = baixar_dados(p.ativo, p.periodo, p.timeframe)
+            if df is not None and len(df) >= 60:
+                for k, meta in PADROES_OFFMIND.items():
+                    r = analisar_padrao(df, meta["fn"], [5, 10], 2.0, 1.0)
+                    if r["total_ocorrencias"] < 8:
+                        continue
+                    melhor = None
+                    for h in r["por_horizonte"]:
+                        if (h["acertos"] + h["falhas"]) < 6:
+                            continue
+                        if melhor is None or h["taxa_acerto"] > melhor["taxa_acerto"]:
+                            melhor = h
+                    if melhor:
+                        fortes.append({
+                            "chave": k, "nome": meta["nome"],
+                            "ocorrencias": r["total_ocorrencias"],
+                            "horizonte": melhor["horizonte"],
+                            "taxa": melhor["taxa_acerto"],
+                        })
+                fortes.sort(key=lambda x: x["taxa"], reverse=True)
+                if fortes:
+                    top = fortes[:2]
+                    partes = []
+                    for f in top:
+                        partes.append(
+                            f"<b>{f['nome']}</b> apareceu {f['ocorrencias']}x; "
+                            f"em até {f['horizonte']} candles, <b>{f['taxa']:.0f}%</b> bateram alvo de 2 ATR antes do stop de 1 ATR"
+                        )
+                    mensagens.append(
+                        f"🧠 OffMind varreu {len(df)} candles de {p.ativo} {p.timeframe.upper()}: "
+                        + "; ".join(partes) + ". (medição histórica, conservadora: empate no candle conta como stop)"
+                    )
+        except Exception as e:
+            print(f"RADAR offmind: {e}", file=sys.stderr)
+
+        # ── 2) Histórico coletivo: melhor config já validada nesse ativo ──
+        melhor_cfg = None
+        try:
+            sb = _sb_admin()
+            if sb is not None:
+                resp = sb.table("backtests_historico").select(
+                    "estrategia_nome,parametros,profit_factor,win_rate,total_trades,timeframe"
+                ).eq("ativo", p.ativo).gte("total_trades", 10).order(
+                    "profit_factor", desc=True).limit(8).execute()
+                for row in (resp.data or []):
+                    pf = row.get("profit_factor")
+                    if pf is None or float(pf) < 1.1:
+                        continue
+                    pr = row.get("parametros") or {}
+                    melhor_cfg = {
+                        "indicador": row.get("estrategia_nome"),
+                        "ema_period": pr.get("ema_period"),
+                        "stop_loss": pr.get("stop_loss"),
+                        "take_profit": pr.get("take_profit"),
+                        "pf": round(float(pf), 2),
+                        "wr": round(float(row.get("win_rate") or 0), 1),
+                        "trades": row.get("total_trades"),
+                        "timeframe": row.get("timeframe"),
+                    }
+                    break
+        except Exception as e:
+            print(f"RADAR coletivo: {e}", file=sys.stderr)
+
+        # ── 3) Monta a sugestão aplicável ──
+        classe = _RADAR_CLASSES.get(fortes[0]["chave"]) if fortes else None
+        base = _RADAR_SUGESTOES.get(classe) if classe else None
+        if base:
+            aplicar = {
+                "indicador": base["indicador"],
+                "ema_period": base["ema_period"],
+                "stop_loss": None,
+                "take_profit": None,
+            }
+            texto = (f"📐 Leitura: o perfil dominante de {p.ativo} nesse timeframe favorece "
+                     f"<b>{'reversão' if 'reversao' in classe else 'continuação'}</b>. "
+                     f"Gatilho de entrada que conversa com isso: <b>{base['indicador']}</b> — {base['gatilho']}.")
+            if melhor_cfg and melhor_cfg.get("stop_loss"):
+                aplicar["stop_loss"] = melhor_cfg["stop_loss"]
+                aplicar["take_profit"] = melhor_cfg["take_profit"]
+                if melhor_cfg.get("indicador"):
+                    aplicar["indicador"] = melhor_cfg["indicador"]
+                if melhor_cfg.get("ema_period"):
+                    aplicar["ema_period"] = melhor_cfg["ema_period"]
+                texto += (f" No histórico coletivo deste ativo, a config mais forte até agora foi "
+                          f"<b>{melhor_cfg['indicador']}</b> (período {melhor_cfg['ema_period']}, "
+                          f"stop {melhor_cfg['stop_loss']} / take {melhor_cfg['take_profit']}): "
+                          f"PF <b>{melhor_cfg['pf']}</b>, win rate {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades.")
+            mensagens.append(texto)
+
+        if not mensagens:
+            mensagens.append("🧠 OffMind não encontrou padrões com amostra suficiente nesse ativo/timeframe ainda. Rode em 1D ou aumente o período pra eu ter mais candles pra medir.")
+
+        return converter_para_python({"mensagens": mensagens, "aplicar": aplicar})
+    except Exception as e:
+        print(f"ERRO RADAR ANALISAR: {e}", file=sys.stderr)
+        return {"mensagens": [], "aplicar": None}
 
 
 @app.post("/backtest/visual")
