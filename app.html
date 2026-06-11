@@ -3186,9 +3186,13 @@ function radarSeparador(rotulo){
   body.scrollTop = body.scrollHeight;
 }
 
+const _radarDitas = new Set();
 function radarFala(msg, sev){
   const body = document.getElementById('radar-body');
   if(!body) return;
+  const chave = msg.replace(/<[^>]*>/g,'').slice(0,140);
+  if(_radarDitas.has(chave)) return;   // já disse isso — não repete
+  _radarDitas.add(chave);
   const div = document.createElement('div');
   div.className = 'radar-msg' + (sev ? ' ' + sev : '');
   div.innerHTML = msg;
@@ -3206,6 +3210,76 @@ function radarFala(msg, sev){
     window._radarToastTimer = setTimeout(()=>{ t.style.display='none'; }, 9000);
   }
 }
+// ── ANÁLISE DO RADAR: OffMind (padrões) + histórico coletivo -> sugestão aplicável ──
+let _radarAnalisando = false;
+async function radarAnalisarAtivo(d){
+  if(_radarAnalisando) return;
+  _radarAnalisando = true;
+  try{
+    const m = d.metricas || d;
+    const body = {
+      ativo: document.getElementById('ativo').value,
+      periodo: document.getElementById('periodo').value,
+      timeframe: document.getElementById('timeframe').value,
+      user_id: (usuarioAtual && usuarioAtual.id) || null,
+      sessao_id: BB_SESSAO_ID,
+      indicador_atual: document.getElementById('indicador').value,
+      ema_period_atual: parseInt(document.getElementById('ema_period').value) || null,
+      win_rate: parseFloat(m.win_rate) || null,
+      profit_factor: parseFloat(m.profit_factor) || null,
+      total_trades: parseInt(m.total_trades) || null,
+    };
+    const r = await fetch(API + '/radar/analisar', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const resp = await r.json();
+    (resp.mensagens || []).forEach(msg => radarFala(msg));
+    if(resp.aplicar && resp.aplicar.indicador){
+      radarSugestaoBox(resp.aplicar);
+    }
+  }catch(e){ console.log('radarAnalisar', e); }
+  _radarAnalisando = false;
+}
+
+// Bolha com a sugestão + botões de ação
+function radarSugestaoBox(ap){
+  const body = document.getElementById('radar-body');
+  if(!body) return;
+  const partes = [`<b>${ap.indicador}</b> · período ${ap.ema_period || 20}`];
+  if(ap.stop_loss)  partes.push(`stop ${ap.stop_loss}`);
+  if(ap.take_profit) partes.push(`take ${ap.take_profit}`);
+  const div = document.createElement('div');
+  div.className = 'radar-msg';
+  div.innerHTML = `🎯 <b>Quer testar essa configuração?</b><br>${partes.join(' · ')}
+    <div style="display:flex;gap:7px;margin-top:9px">
+      <button class="radar-act" onclick='aplicarSugestaoRadar(${JSON.stringify(ap)}, false)'>✅ Aplicar</button>
+      <button class="radar-act" style="border-color:rgba(0,208,132,0.5);color:var(--green)" onclick='aplicarSugestaoRadar(${JSON.stringify(ap)}, true)'>▶ Aplicar e rodar</button>
+    </div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  if(!_radarAberto){
+    _radarNaoLidas++;
+    const b = document.getElementById('radar-badge');
+    b.textContent = _radarNaoLidas; b.style.display = 'block';
+    document.getElementById('radar-fab').classList.add('pulsando');
+  }
+}
+
+// Preenche os campos com a sugestão; opcionalmente já roda o backtest
+function aplicarSugestaoRadar(ap, rodar){
+  try{
+    if(ap.indicador){
+      const sel = document.getElementById('indicador');
+      if([...sel.options].some(o => o.value === ap.indicador)) sel.value = ap.indicador;
+    }
+    if(ap.ema_period)  document.getElementById('ema_period').value = ap.ema_period;
+    if(ap.stop_loss)   document.getElementById('stop_loss').value = ap.stop_loss;
+    if(ap.take_profit) document.getElementById('take_profit').value = ap.take_profit;
+    atualizarOverlays();
+    radarFala('✅ Configuração aplicada nos parâmetros à esquerda.' + (rodar ? ' Rodando o backtest...' : ' Clique em <b>▶ Rodar Backtest</b> quando quiser.'));
+    if(rodar){ toggleRadar(); rodarBacktest(); }
+  }catch(e){ console.log('aplicarSugestao', e); }
+}
+
 // Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
 function radarCoach(d){
   try{
@@ -3219,7 +3293,7 @@ function radarCoach(d){
     const dd = Math.abs(parseFloat(m.max_drawdown ?? NaN));
     const nt = parseInt(m.total_trades ?? (d.trades||[]).length ?? 0);
     const ret = parseFloat(m.retorno ?? NaN);
-    if(d.sugestao) radarFala('💡 ' + d.sugestao);
+    setTimeout(()=>radarAnalisarAtivo(d), 900);  // análise OffMind + coletivo
     if(nt > 0 && nt < 10){
       radarFala(`Só <b>${nt} trades</b> nesse teste — amostra pequena demais pra confiar. Aumente o período ou teste um timeframe menor antes de tirar conclusão.`, 'atencao');
     }
