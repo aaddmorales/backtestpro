@@ -3299,8 +3299,9 @@ function radarSugestaoBox(ap){
   if(ap.stop_loss)  partes.push(`stop ${ap.stop_loss}`);
   if(ap.take_profit) partes.push(`take ${ap.take_profit}`);
   let ganho = '';
-  if(ap.pf && ap.pf_atual) ganho = `<br><span style="color:var(--green);font-size:11px">PF histórico <b>${ap.pf}</b> vs seu teste <b>${ap.pf_atual}</b> — melhora validada no coletivo</span>`;
-  else if(ap.pf) ganho = `<br><span style="color:var(--green);font-size:11px">PF histórico <b>${ap.pf}</b> no coletivo deste ativo</span>`;
+  const robustez = ap.trades ? ` em ${ap.trades} trades, mesmo timeframe` : '';
+  if(ap.pf && ap.pf_atual) ganho = `<br><span style="color:var(--green);font-size:12px">PF histórico <b>${ap.pf}</b>${robustez} vs seu teste <b>${ap.pf_atual}</b></span>`;
+  else if(ap.pf) ganho = `<br><span style="color:var(--green);font-size:12px">PF histórico <b>${ap.pf}</b>${robustez}</span>`;
   const div = document.createElement('div');
   div.className = 'radar-msg';
   div.innerHTML = `🎯 <b>Encontrei uma configuração historicamente mais forte:</b><br>${partes.join(' · ')}${ganho}
@@ -3322,6 +3323,14 @@ function radarSugestaoBox(ap){
 // Preenche os campos com a sugestão; opcionalmente já roda o backtest
 function aplicarSugestaoRadar(ap, rodar){
   try{
+    // guarda a config anterior pra comparar o resultado e poder reverter
+    window._radarAntes = {
+      indicador: document.getElementById('indicador').value,
+      ema_period: document.getElementById('ema_period').value,
+      stop_loss: document.getElementById('stop_loss').value,
+      take_profit: document.getElementById('take_profit').value,
+      pf: (typeof window._radarUltimoPF === 'number') ? window._radarUltimoPF : null,
+    };
     if(ap.indicador){
       const sel = document.getElementById('indicador');
       if([...sel.options].some(o => o.value === ap.indicador)) sel.value = ap.indicador;
@@ -3344,6 +3353,28 @@ function aplicarSugestaoRadar(ap, rodar){
 }
 
 // Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
+// Prestação de contas: a sugestão aplicada piorou? Assume e oferece reverter.
+function radarPrestaContas(antes, pfNovo){
+  const body = document.getElementById('radar-body');
+  if(!body) return;
+  const div = document.createElement('div');
+  div.className = 'radar-msg atencao';
+  div.innerHTML = `↩️ <b>Sendo honesto com você:</b> a config sugerida rendeu <b>menos</b> que a sua neste recorte (PF ${pfNovo.toFixed(2)} vs ${antes.pf.toFixed(2)}). O histórico coletivo orienta, mas o <b>seu teste</b> é quem manda. Esse resultado também entra no banco — é assim que a base aprende.
+    <div style="display:flex;margin-top:9px">
+      <button class="radar-act radar-btn-revert" style="flex:1;font-size:12.5px;padding:10px">↩ Voltar pra minha configuração (stop ${antes.stop_loss} / take ${antes.take_profit})</button>
+    </div>`;
+  div.querySelector('.radar-btn-revert').addEventListener('click', () => {
+    document.getElementById('indicador').value = antes.indicador;
+    document.getElementById('ema_period').value = antes.ema_period;
+    document.getElementById('stop_loss').value = antes.stop_loss;
+    document.getElementById('take_profit').value = antes.take_profit;
+    try{ atualizarOverlays(); }catch(e){}
+    radarFala('✅ Sua configuração anterior voltou pros parâmetros. Rode o backtest quando quiser confirmar.');
+  });
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
 function radarReset(){
   const body = document.getElementById('radar-body');
   if(body) body.innerHTML = '';
@@ -3376,6 +3407,17 @@ function radarCoach(d){
       if(!isNaN(wr)) resumo += ` Win rate <b>${wr.toFixed(1)}%</b> = acertou ~${Math.round(wr)} de cada 100 entradas.`;
       radarFala(resumo);
     }
+
+    // a sugestão aplicada melhorou ou piorou? presta contas
+    if(window._radarAntes && window._radarAntes.pf != null && !isNaN(pf)){
+      if(pf < window._radarAntes.pf){
+        radarPrestaContas(window._radarAntes, pf);
+      } else {
+        radarFala(`📈 <b>A sugestão melhorou seu resultado:</b> PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>. Esse teste também entra no banco coletivo.`);
+      }
+      window._radarAntes = null;
+    }
+    window._radarUltimoPF = isNaN(pf) ? null : pf;
     if(nt > 0 && nt < 10){
       radarFala(`🔍 <b>Amostra pequena.</b> Só <b>${nt} trades</b> — pouco pra separar sorte de estratégia. <b>O que fazer:</b> aumente o período do teste ou desça de timeframe pra gerar mais entradas antes de concluir qualquer coisa.`, 'atencao');
     }
