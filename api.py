@@ -88,6 +88,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import traceback
+import random
 import os
 import hashlib
 import uuid as _uuid
@@ -1493,13 +1494,22 @@ def radar_analisar(p: RadarAnalisarParams):
                             f"<b>{f['nome']}</b> apareceu {f['ocorrencias']}x; "
                             f"em até {f['horizonte']} candles, <b>{f['taxa']:.0f}%</b> bateram o alvo antes do stop"
                         )
-                    mensagens.append(
-                        f"🧠 <b>O que o passado deste ativo mostra:</b> varri {len(df)} candles de "
-                        f"{p.ativo} {p.timeframe.upper()} usando a <b>sua</b> relação risco/retorno "
-                        f"(1:{ratio:.1f}, a mesma do seu stop/take). Destaques: " + "; ".join(partes) +
-                        f". <b>Tradução:</b> essas são as frequências reais com que cada padrão pagou o alvo "
-                        f"no histórico — medição conservadora, empate conta como stop, sem maquiagem."
-                    )
+                    destaques = "; ".join(partes)
+                    nc = len(df); atv = p.ativo; tfu = p.timeframe.upper()
+                    mensagens.append(random.choice([
+                        f"🧠 <b>O que o passado deste ativo mostra:</b> varri {nc} candles de {atv} {tfu} "
+                        f"usando a <b>sua</b> relação risco/retorno (1:{ratio:.1f}). Destaques: {destaques}. "
+                        f"<b>Tradução:</b> frequências reais, medição conservadora — empate conta como stop.",
+                        f"🔬 <b>Mergulhei no histórico:</b> {nc} candles de {atv} {tfu} passaram pelo pente fino, "
+                        f"com a sua régua de risco (1:{ratio:.1f}). O que saltou aos olhos: {destaques}. "
+                        f"Números crus, sem maquiagem — quando empata no candle, eu conto como derrota.",
+                        f"📜 <b>A história que {atv} conta no {tfu}:</b> em {nc} candles, medindo com a sua "
+                        f"relação 1:{ratio:.1f}, os protagonistas foram: {destaques}. São estatísticas do que "
+                        f"JÁ aconteceu — uso o critério mais duro possível pra não te iludir.",
+                        f"🎲 <b>Frequências do passado</b> ({nc} candles, {atv} {tfu}, sua relação 1:{ratio:.1f}): "
+                        f"{destaques}. Lembrete de sempre: padrão que funcionou ontem é pista, não profecia — "
+                        f"e eu meço pelo critério conservador.",
+                    ]))
         except Exception as e:
             print(f"RADAR offmind: {e}", file=sys.stderr)
 
@@ -1566,9 +1576,17 @@ def radar_analisar(p: RadarAnalisarParams):
 
         if ja_esta_na_melhor:
             # não repete a sugestão da mesma config: evolui a conversa
-            txt = (f"🏆 <b>Boa notícia:</b> você já opera a configuração mais forte que a comunidade "
-                   f"validou neste ativo até hoje (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% "
-                   f"em {melhor_cfg['trades']} trades). ")
+            txt = random.choice([
+                f"🏆 <b>Boa notícia:</b> você já opera a configuração mais forte que a comunidade "
+                f"validou neste ativo até hoje (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% "
+                f"em {melhor_cfg['trades']} trades). ",
+                f"👑 <b>Você está no topo da tabela:</b> de tudo que já foi testado neste ativo e timeframe, "
+                f"a sua config é a campeã (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
+                f"{melhor_cfg['trades']} trades). ",
+                f"🥇 <b>Spoiler: ninguém achou nada melhor.</b> A configuração que você usa é a líder do "
+                f"banco coletivo neste recorte — PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
+                f"{melhor_cfg['trades']} trades. ",
+            ])
             if pf_u is not None and melhor_cfg.get("pf"):
                 if pf_u >= float(melhor_cfg["pf"]) * 0.85:
                     txt += (f"Seu teste agora confirmou: PF <b>{pf_u}</b> em {nt_u} trades. "
@@ -1582,10 +1600,20 @@ def radar_analisar(p: RadarAnalisarParams):
                 txt += "Use o ⚙ Otimizar pra refinar stop/take em volta dela e valide out-of-sample antes do MT5."
             mensagens.append(txt)
         elif base:
-            texto = (f"📐 <b>Leitura do ativo:</b> o comportamento dominante de {p.ativo} nesse "
-                     f"timeframe favorece <b>{'reversão' if 'reversao' in classe else 'continuação'}</b> "
-                     f"— ou seja, {'o preço tende a voltar depois de esticar' if 'reversao' in classe else 'movimentos iniciados tendem a continuar'}. "
-                     f"Gatilho de entrada que conversa com isso: <b>{base['indicador']}</b> — {base['gatilho']}.")
+            _tipo = 'reversão' if 'reversao' in classe else 'continuação'
+            _expl = ('o preço tende a voltar depois de esticar' if 'reversao' in classe
+                     else 'movimentos iniciados tendem a continuar')
+            texto = random.choice([
+                f"📐 <b>Leitura do ativo:</b> o comportamento dominante de {p.ativo} nesse timeframe "
+                f"favorece <b>{_tipo}</b> — ou seja, {_expl}. Gatilho que conversa com isso: "
+                f"<b>{base['indicador']}</b> — {base['gatilho']}.",
+                f"🧭 <b>Personalidade do ativo:</b> {p.ativo} nesse timeframe tem alma de <b>{_tipo}</b> "
+                f"({_expl}). Se fosse pra escolher uma arma alinhada com esse temperamento: "
+                f"<b>{base['indicador']}</b> — {base['gatilho']}.",
+                f"📊 <b>O padrão por trás dos padrões:</b> somando as frequências, {p.ativo} aqui se comporta "
+                f"como ativo de <b>{_tipo}</b> — {_expl}. Estratégia que costuma casar com esse perfil: "
+                f"<b>{base['indicador']}</b> ({base['gatilho']}).",
+            ])
             # A caixa de sugestão SÓ aparece se for MELHORA comprovada no histórico:
             # config coletiva com PF claramente acima do resultado atual do usuário.
             if melhor_cfg and melhor_cfg.get("stop_loss"):
@@ -1610,9 +1638,15 @@ def radar_analisar(p: RadarAnalisarParams):
                         "trades": melhor_cfg["trades"],
                     }
             else:
-                texto += (f" 📚 No banco coletivo ainda <b>não há</b> configuração com amostra robusta "
-                          f"(30+ trades) validada <b>neste timeframe</b> que supere seu teste — "
-                          f"só comparo o comparável; config de outro timeframe não vale aqui.")
+                texto += random.choice([
+                    f" 📚 No banco coletivo ainda <b>não há</b> configuração com amostra robusta "
+                    f"(30+ trades) validada <b>neste timeframe</b> que supere seu teste — "
+                    f"só comparo o comparável.",
+                    f" 🗺️ Você está em <b>território pouco mapeado</b>: o coletivo ainda não tem config "
+                    f"robusta validada neste timeframe que bata a sua. Seu teste vira referência pros próximos.",
+                    f" 🔍 Procurei no banco coletivo e... <b>nada supera seu teste neste timeframe</b> com "
+                    f"amostra decente (30+ trades). Config de outro timeframe não entra — comparação justa ou nenhuma.",
+                ])
             mensagens.append(texto)
 
         # ── 4) Combinações de parâmetros: medidas nas bibliotecas, não opinião ──
@@ -1630,9 +1664,14 @@ def radar_analisar(p: RadarAnalisarParams):
                 if len(taxas) >= 2:
                     melhor_rr, melhor_tx = max(taxas, key=lambda t: t[1])
                     partes_rr = " · ".join(f"1:{rr:g} → <b>{tx:.0f}%</b>" for rr, tx in taxas)
-                    msg = (f"🔧 <b>Laboratório de combinações:</b> peguei o padrão dominante "
-                           f"(<b>{f0['nome']}</b>) e testei 3 relações risco/retorno no histórico — "
-                           f"{partes_rr}. ")
+                    msg = random.choice([
+                        f"🔧 <b>Laboratório de combinações:</b> peguei o padrão dominante "
+                        f"(<b>{f0['nome']}</b>) e testei 3 relações risco/retorno no histórico — {partes_rr}. ",
+                        f"⚗️ <b>Experimento do dia:</b> coloquei o padrão <b>{f0['nome']}</b> no banco de provas "
+                        f"com três relações risco/retorno — {partes_rr}. ",
+                        f"🎛️ <b>Girando os botões:</b> mesmo padrão (<b>{f0['nome']}</b>), três calibragens "
+                        f"de alvo no histórico — {partes_rr}. ",
+                    ])
                     if p.stop_loss and float(p.stop_loss) > 0:
                         ratio_user = float(p.take_profit or 0) / float(p.stop_loss) if p.take_profit else None
                         take_sug = round(float(p.stop_loss) * melhor_rr)
@@ -1652,13 +1691,19 @@ def radar_analisar(p: RadarAnalisarParams):
                 if dd > 12 and pf_u >= 1.15:
                     valor_dd = round(float(p.capital) * dd / 100)
                     ops_txt = f" (Máx. Ops {p.max_ops})" if p.max_ops else ""
-                    mensagens.append(
-                        f"💰 <b>Fôlego de capital:</b> estratégia positiva (PF {pf_u}), mas o drawdown de <b>{dd:.1f}%</b> significa "
-                        f"aguentar <b>~${valor_dd:,}</b> de queda com capital de ${float(p.capital):,.0f}{ops_txt}. "
-                        f"Pra atravessar a sequência de perdas sem encerrar no fundo: reduza o Máx. Ops "
-                        f"ou aumente o colchão de capital — no histórico, o resultado só chega pra quem "
-                        f"sobrevive ao pior trecho da curva."
-                    )
+                    mensagens.append(random.choice([
+                        f"💰 <b>Fôlego de capital:</b> estratégia positiva (PF {pf_u}), mas o drawdown de "
+                        f"<b>{dd:.1f}%</b> significa aguentar <b>~${valor_dd:,}</b> de queda com capital de "
+                        f"${float(p.capital):,.0f}{ops_txt}. Reduza o Máx. Ops ou aumente o colchão — "
+                        f"o resultado só chega pra quem sobrevive ao pior trecho.",
+                        f"🛟 <b>Teste de estômago:</b> no pior momento dessa curva você estaria "
+                        f"<b>~${valor_dd:,} no vermelho</b> ({dd:.1f}% de ${float(p.capital):,.0f}{ops_txt}) — "
+                        f"e a estratégia é lucrativa (PF {pf_u})! A pergunta honesta: você seguraria sem "
+                        f"abandonar o plano? Se a resposta for não, menos Máx. Ops ou mais colchão.",
+                        f"⛰️ <b>O vale antes do topo:</b> PF {pf_u} no final, mas o caminho passa por um "
+                        f"drawdown de {dd:.1f}% — <b>~${valor_dd:,}</b> do seu capital{ops_txt}. Quem "
+                        f"dimensiona o capital pro vale colhe o topo; quem não dimensiona, sai no fundo.",
+                    ]))
         except Exception as e:
             print(f"RADAR combos: {e}", file=sys.stderr)
 
