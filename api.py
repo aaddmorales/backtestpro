@@ -79,7 +79,7 @@
 from fastapi import FastAPI, HTTPException, Request
 import stripe
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import yfinance as yf
@@ -1382,7 +1382,9 @@ class MatrizParams(BaseModel):
 
 def _plano_usuario(user_id: str) -> str:
     try:
-        sb = get_supabase()
+        sb = _sb_admin()
+        if sb is None:
+            return "free"
         r = sb.table("perfis").select("plano").eq("id", user_id).single().execute()
         return (r.data or {}).get("plano") or "free"
     except Exception:
