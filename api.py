@@ -1508,26 +1508,39 @@ def radar_analisar(p: RadarAnalisarParams):
         try:
             sb = _sb_admin()
             if sb is not None:
+                # SÓ COMPARA O COMPARÁVEL: mesmo ativo + MESMO timeframe + 30+ trades.
+                # (Lição aprendida: sugerir config de 1D pra quem opera 1H piora resultado.)
                 resp = sb.table("backtests_historico").select(
                     "estrategia_nome,parametros,profit_factor,win_rate,total_trades,timeframe"
-                ).eq("ativo", p.ativo).gte("total_trades", 10).order(
-                    "profit_factor", desc=True).limit(8).execute()
+                ).eq("ativo", p.ativo).eq("timeframe", p.timeframe).gte("total_trades", 30).order(
+                    "profit_factor", desc=True).limit(20).execute()
+
+                def _pf_robusto(pf, n):
+                    # encolhe o PF de amostras pequenas em direção a 1.0 (neutro):
+                    # PF 5.0 em 16 trades vale menos que PF 1.4 em 500 trades
+                    return 1.0 + (float(pf) - 1.0) * (float(n) / (float(n) + 50.0))
+
+                candidatos = []
                 for row in (resp.data or []):
-                    pf = row.get("profit_factor")
-                    if pf is None or float(pf) < 1.1:
+                    pf = row.get("profit_factor"); n = row.get("total_trades") or 0
+                    if pf is None or float(pf) <= 1.0:
                         continue
                     pr = row.get("parametros") or {}
+                    candidatos.append((_pf_robusto(pf, n), row, pr))
+                if candidatos:
+                    candidatos.sort(key=lambda c: c[0], reverse=True)
+                    score, row, pr = candidatos[0]
                     melhor_cfg = {
                         "indicador": row.get("estrategia_nome"),
                         "ema_period": pr.get("ema_period"),
                         "stop_loss": pr.get("stop_loss"),
                         "take_profit": pr.get("take_profit"),
-                        "pf": round(float(pf), 2),
+                        "pf": round(float(row.get("profit_factor")), 2),
+                        "pf_robusto": round(score, 2),
                         "wr": round(float(row.get("win_rate") or 0), 1),
                         "trades": row.get("total_trades"),
                         "timeframe": row.get("timeframe"),
                     }
-                    break
         except Exception as e:
             print(f"RADAR coletivo: {e}", file=sys.stderr)
 
@@ -1576,12 +1589,14 @@ def radar_analisar(p: RadarAnalisarParams):
             # A caixa de sugestão SÓ aparece se for MELHORA comprovada no histórico:
             # config coletiva com PF claramente acima do resultado atual do usuário.
             if melhor_cfg and melhor_cfg.get("stop_loss"):
-                pf_coletivo = float(melhor_cfg.get("pf") or 0)
-                melhora = (pf_u is None) or (pf_coletivo > max(1.1, pf_u * 1.15))
-                texto += (f" No histórico coletivo deste ativo, a config mais forte foi "
-                          f"<b>{melhor_cfg['indicador']}</b> (período {melhor_cfg['ema_period']}, "
-                          f"stop {melhor_cfg['stop_loss']} / take {melhor_cfg['take_profit']}): "
-                          f"PF <b>{melhor_cfg['pf']}</b>, WR {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades.")
+                pf_rob_col = float(melhor_cfg.get("pf_robusto") or 0)
+                pf_rob_user = (1.0 + (pf_u - 1.0) * (nt_u / (nt_u + 50.0))) if (pf_u is not None and nt_u) else None
+                melhora = pf_rob_col > max(1.12, (pf_rob_user or 1.0) * 1.15)
+                texto += (f" No coletivo, a config mais forte <b>neste mesmo timeframe</b> "
+                          f"({melhor_cfg['timeframe']}) foi <b>{melhor_cfg['indicador']}</b> "
+                          f"(período {melhor_cfg['ema_period']}, stop {melhor_cfg['stop_loss']} / "
+                          f"take {melhor_cfg['take_profit']}): PF <b>{melhor_cfg['pf']}</b> "
+                          f"em <b>{melhor_cfg['trades']} trades</b>.")
                 if pf_u is not None:
                     texto += f" Seu teste atual: PF <b>{pf_u}</b>" + (f", WR {wr_u}%" if wr_u is not None else "") + f" em {nt_u} trades."
                 if melhora:
@@ -1592,7 +1607,12 @@ def radar_analisar(p: RadarAnalisarParams):
                         "take_profit": melhor_cfg["take_profit"],
                         "pf": melhor_cfg["pf"],
                         "pf_atual": pf_u,
+                        "trades": melhor_cfg["trades"],
                     }
+            else:
+                texto += (f" 📚 No banco coletivo ainda <b>não há</b> configuração com amostra robusta "
+                          f"(30+ trades) validada <b>neste timeframe</b> que supere seu teste — "
+                          f"só comparo o comparável; config de outro timeframe não vale aqui.")
             mensagens.append(texto)
 
         # ── 4) Combinações de parâmetros: medidas nas bibliotecas, não opinião ──
@@ -1619,9 +1639,11 @@ def radar_analisar(p: RadarAnalisarParams):
                         if ratio_user and abs(ratio_user - melhor_rr) < 0.25:
                             msg += f"Sua relação atual (1:{ratio_user:.1f}) já está alinhada com a mais forte do histórico. ✅"
                         else:
-                            msg += (f"A relação <b>1:{melhor_rr:g}</b> foi historicamente a mais forte — "
-                                    f"mantendo seu stop {float(p.stop_loss):g}, um take de <b>~{take_sug}</b> alinharia com isso. "
-                                    f"(histórico medido, não promessa)")
+                            msg += (f"A relação <b>1:{melhor_rr:g}</b> foi historicamente a mais forte "
+                                    f"<b>para esse padrão de candles</b> — se quiser testar a hipótese, "
+                                    f"mantendo seu stop {float(p.stop_loss):g} o take seria <b>~{take_sug}</b>. "
+                                    f"Valide com um backtest antes de adotar: medição de padrão é termômetro "
+                                    f"do ativo, não garantia pra sua estratégia.")
                     mensagens.append(msg)
 
             # (b) Capital vs drawdown: fôlego pra atravessar o pior momento
