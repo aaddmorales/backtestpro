@@ -108,23 +108,23 @@ body::after{
 .radar-fab.pulsando{animation:radarpulse 1.8s infinite, radarbounce 1.8s infinite}
 @keyframes radarpulse{0%{box-shadow:0 0 0 0 rgba(0,208,132,0.55)}70%{box-shadow:0 0 0 16px rgba(0,208,132,0)}100%{box-shadow:0 0 0 0 rgba(0,208,132,0)}}
 @keyframes radarbounce{0%,100%{transform:translateY(0)}12%{transform:translateY(-7px)}24%{transform:translateY(0)}36%{transform:translateY(-4px)}48%{transform:translateY(0)}}
-.radar-sep{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.radar-sep{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
 .radar-sep::before,.radar-sep::after{content:'';flex:1;height:1px;background:var(--border)}
 .radar-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
   font-weight:700;min-width:17px;height:17px;border-radius:9px;line-height:17px;text-align:center;display:none}
-.radar-panel{position:fixed;bottom:86px;right:22px;width:408px;max-width:94vw;max-height:580px;
+.radar-panel{position:fixed;bottom:86px;right:22px;width:460px;max-width:95vw;max-height:640px;
   background:var(--bg2);border:1px solid rgba(0,208,132,0.3);border-radius:14px;z-index:300;
   display:none;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.6)}
 .radar-head{padding:13px 16px;background:linear-gradient(135deg,rgba(0,208,132,0.12),transparent);
   border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
 .radar-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
 .radar-msg{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--green);
-  border-radius:0 10px 10px 10px;padding:12px 14px;font-size:13.5px;color:var(--text);line-height:1.7;max-width:96%}
+  border-radius:0 10px 10px 10px;padding:14px 16px;font-size:15px;color:var(--text);line-height:1.75;max-width:97%}
 .radar-msg.alerta{border-left-color:var(--red)}
 .radar-msg.atencao{border-left-color:var(--amber)}
 .radar-acts{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap}
 .radar-act{flex:1;min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);
-  background:var(--bg3);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;transition:all .12s}
+  background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;text-align:center;transition:all .12s}
 .radar-act:hover{border-color:rgba(0,208,132,0.5);background:var(--bg4)}
 .radar-loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(4,9,7,0.6);backdrop-filter:blur(4px);z-index:290}
@@ -138,7 +138,7 @@ body::after{
 .radar-loading-bar div{height:100%;width:35%;border-radius:2px;background:var(--green);animation:radarbar 1.3s ease-in-out infinite}
 @keyframes radarbar{0%{margin-left:-35%}100%{margin-left:100%}}
 .radar-toast{position:fixed;bottom:86px;right:86px;max-width:320px;background:var(--bg2);
-  border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:12px 15px;font-size:13px;
+  border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:13px 16px;font-size:14px;
   color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
 
 /* Contador de backtests — pílula verde com pulso */
@@ -3839,8 +3839,8 @@ function copiarToken(){
   <div class="radar-head">
     <span style="font-size:20px">📡</span>
     <div>
-      <div style="font-size:13px;font-weight:800;color:var(--text)" id="radar-titulo">Radar</div>
-      <div style="font-size:10px;color:var(--muted2)">Seu copiloto de validação — fala de disciplina, nunca prevê mercado</div>
+      <div style="font-size:15px;font-weight:800;color:var(--text)" id="radar-titulo">Radar</div>
+      <div style="font-size:11.5px;color:var(--muted2)">Seu copiloto de validação — fala de disciplina, nunca prevê mercado</div>
     </div>
   </div>
   <div class="radar-body" id="radar-body">
