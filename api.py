@@ -1494,9 +1494,11 @@ def radar_analisar(p: RadarAnalisarParams):
                             f"em até {f['horizonte']} candles, <b>{f['taxa']:.0f}%</b> bateram o alvo antes do stop"
                         )
                     mensagens.append(
-                        f"🧠 OffMind varreu {len(df)} candles de {p.ativo} {p.timeframe.upper()} "
-                        f"usando a <b>sua</b> relação risco/retorno (1:{ratio:.1f}, como no seu stop/take): "
-                        + "; ".join(partes) + ". (medição histórica conservadora: empate no candle conta como stop)"
+                        f"🧠 <b>O que o passado deste ativo mostra:</b> varri {len(df)} candles de "
+                        f"{p.ativo} {p.timeframe.upper()} usando a <b>sua</b> relação risco/retorno "
+                        f"(1:{ratio:.1f}, a mesma do seu stop/take). Destaques: " + "; ".join(partes) +
+                        f". <b>Tradução:</b> essas são as frequências reais com que cada padrão pagou o alvo "
+                        f"no histórico — medição conservadora, empate conta como stop, sem maquiagem."
                     )
         except Exception as e:
             print(f"RADAR offmind: {e}", file=sys.stderr)
@@ -1551,8 +1553,9 @@ def radar_analisar(p: RadarAnalisarParams):
 
         if ja_esta_na_melhor:
             # não repete a sugestão da mesma config: evolui a conversa
-            txt = (f"📊 Você <b>já está</b> na config mais forte do histórico coletivo deste ativo "
-                   f"(PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em {melhor_cfg['trades']} trades). ")
+            txt = (f"🏆 <b>Boa notícia:</b> você já opera a configuração mais forte que a comunidade "
+                   f"validou neste ativo até hoje (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% "
+                   f"em {melhor_cfg['trades']} trades). ")
             if pf_u is not None and melhor_cfg.get("pf"):
                 if pf_u >= float(melhor_cfg["pf"]) * 0.85:
                     txt += (f"Seu teste agora confirmou: PF <b>{pf_u}</b> em {nt_u} trades. "
@@ -1566,8 +1569,9 @@ def radar_analisar(p: RadarAnalisarParams):
                 txt += "Use o ⚙ Otimizar pra refinar stop/take em volta dela e valide out-of-sample antes do MT5."
             mensagens.append(txt)
         elif base:
-            texto = (f"📐 Leitura: o perfil dominante de {p.ativo} nesse timeframe favorece "
-                     f"<b>{'reversão' if 'reversao' in classe else 'continuação'}</b>. "
+            texto = (f"📐 <b>Leitura do ativo:</b> o comportamento dominante de {p.ativo} nesse "
+                     f"timeframe favorece <b>{'reversão' if 'reversao' in classe else 'continuação'}</b> "
+                     f"— ou seja, {'o preço tende a voltar depois de esticar' if 'reversao' in classe else 'movimentos iniciados tendem a continuar'}. "
                      f"Gatilho de entrada que conversa com isso: <b>{base['indicador']}</b> — {base['gatilho']}.")
             # A caixa de sugestão SÓ aparece se for MELHORA comprovada no histórico:
             # config coletiva com PF claramente acima do resultado atual do usuário.
@@ -1606,8 +1610,9 @@ def radar_analisar(p: RadarAnalisarParams):
                 if len(taxas) >= 2:
                     melhor_rr, melhor_tx = max(taxas, key=lambda t: t[1])
                     partes_rr = " · ".join(f"1:{rr:g} → <b>{tx:.0f}%</b>" for rr, tx in taxas)
-                    msg = (f"🔧 Laboratório de combinações — testei o padrão dominante "
-                           f"(<b>{f0['nome']}</b>) com 3 relações risco/retorno no histórico: {partes_rr}. ")
+                    msg = (f"🔧 <b>Laboratório de combinações:</b> peguei o padrão dominante "
+                           f"(<b>{f0['nome']}</b>) e testei 3 relações risco/retorno no histórico — "
+                           f"{partes_rr}. ")
                     if p.stop_loss and float(p.stop_loss) > 0:
                         ratio_user = float(p.take_profit or 0) / float(p.stop_loss) if p.take_profit else None
                         take_sug = round(float(p.stop_loss) * melhor_rr)
@@ -1626,7 +1631,7 @@ def radar_analisar(p: RadarAnalisarParams):
                     valor_dd = round(float(p.capital) * dd / 100)
                     ops_txt = f" (Máx. Ops {p.max_ops})" if p.max_ops else ""
                     mensagens.append(
-                        f"💰 Estratégia positiva (PF {pf_u}), mas o drawdown de <b>{dd:.1f}%</b> significa "
+                        f"💰 <b>Fôlego de capital:</b> estratégia positiva (PF {pf_u}), mas o drawdown de <b>{dd:.1f}%</b> significa "
                         f"aguentar <b>~${valor_dd:,}</b> de queda com capital de ${float(p.capital):,.0f}{ops_txt}. "
                         f"Pra atravessar a sequência de perdas sem encerrar no fundo: reduza o Máx. Ops "
                         f"ou aumente o colchão de capital — no histórico, o resultado só chega pra quem "
