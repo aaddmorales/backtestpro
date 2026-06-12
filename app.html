@@ -44,8 +44,9 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#080a0d;--bg2:#0e1117;--bg3:#141920;--bg4:#1c2230;
+  --field:#232b38;--field-border:rgba(255,255,255,0.14);
   --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
-  --text:#dde3ee;--muted:#5a6478;--muted2:#8a94a8;
+  --text:#e6edf3;--muted:#aab4c5;--muted2:#c9d1dc;
   --green:#00d084;--green2:#00a868;--green-bg:rgba(0,208,132,0.08);
   --red:#ff4d6a;--red-bg:rgba(255,77,106,0.08);
   --amber:#ffb830;--amber-bg:rgba(255,184,48,0.08);
@@ -185,8 +186,9 @@ body::after{
 /* ── LIGHT THEME ── */
 body.light{
   --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8ecf1;--bg4:#dde2ea;
+  --field:#eef1f5;--field-border:rgba(0,0,0,0.16);
   --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#111827;--muted:#9ca3af;--muted2:#6b7280;
+  --text:#111827;--muted:#4b5563;--muted2:#374151;
 }
 body.light::after{
   background:
@@ -197,7 +199,7 @@ body.light .topbar{background:#080a0d !important;border-bottom:1px solid rgba(25
 body.light .col-left{background:rgba(255,255,255,0.9)}
 body.light .col-right{background:rgba(255,255,255,0.9)}
 body.light .metrics-bar{background:rgba(255,255,255,0.97)}
-body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.1);color:var(--text)}
+body.light select,body.light input[type=number],body.light input[type=text]{background:#f8f9fb;border-color:rgba(0,0,0,0.18);color:var(--text)}
 body.light select option{background:#ffffff}
 body.light #code-editor{background:#f8f9fb;color:#383a42}
 body.light #ia-desc{background:#f8f9fb;border-color:rgba(0,0,0,0.1)}
@@ -254,7 +256,7 @@ body.light .theme-toggle::after{background:var(--green);left:14px}
 
 select,input[type=number],input[type=text]{
   width:100%;height:30px;
-  background:var(--bg3);border:1px solid var(--border);
+  background:var(--field);border:1px solid var(--field-border);
   border-radius:5px;color:var(--text);font-size:12px;
   font-family:var(--sans);padding:0 8px;outline:none;
   transition:border .15s;
@@ -619,7 +621,7 @@ select option{background:#141920}
 .zoom-btn.active{background:var(--green-bg);border-color:rgba(0,208,132,0.35);color:var(--green)}
 
 /* ── INDICADORES MULTI-SELECT ── */
-.ind-row{border-radius:5px;padding:5px 6px;background:var(--bg3);border:1px solid var(--border)}
+.ind-row{border-radius:5px;padding:5px 6px;background:var(--field);border:1px solid var(--field-border)}
 .ind-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
 .ind-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
 .ind-label{font-size:12px;color:var(--text);font-weight:500}
