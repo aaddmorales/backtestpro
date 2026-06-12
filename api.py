@@ -562,7 +562,7 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 # ── Porteiro: se um NAVEGADOR visitar um endpoint de dados (GET pedindo
 #    text/html), redireciona pro app em vez de mostrar JSON cru.
 #    fetch() do front pede Accept: */* e continua recebendo JSON normalmente.
-_ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao"}
+_ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
@@ -576,7 +576,7 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "3.5 — Radar IA + cache de analises (testes repetidos nao pagam de novo)"
+API_VERSAO = "3.6 — Radar IA + cache + raio-x de dias de tendencia"
 
 @app.get("/versao")
 def versao():
@@ -1369,6 +1369,69 @@ class OffMindParams(BaseModel):
     atr_mult_stop: float = 1.0
     user_id: Optional[str] = None
     sessao_id: Optional[str] = None
+
+
+@app.get("/offmind/dias-tendencia", response_class=HTMLResponse)
+def offmind_dias_tendencia(ativo: str = "XAU/USD", periodo: str = "2 anos",
+                           corpo_min: float = 0.65, range_atr: float = 1.0):
+    """Raio-X de dias de tendencia: quantos dias o ativo passou o dia inteiro
+    numa direcao so (corpo dominante + range relevante). Pagina HTML simples."""
+    try:
+        df = baixar_dados(ativo, periodo, "1d")
+        if df is None or len(df) < 30:
+            return HTMLResponse("<h3>Dados insuficientes</h3>")
+        h, l, c, o = df["High"], df["Low"], df["Close"], df["Open"]
+        tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+        atr = tr.rolling(14).mean()
+        rng = (h - l)
+        corpo = (c - o).abs()
+        frac = corpo / rng.replace(0, np.nan)
+        cond = (frac >= corpo_min) & (rng >= range_atr * atr)
+        alta = cond & (c > o)
+        baixa = cond & (c < o)
+        n = len(df.dropna(subset=["Close"]))
+        na, nb = int(alta.sum()), int(baixa.sum())
+        nt = na + nb
+        rng_medio = float(rng[cond].mean()) if nt else 0.0
+        rng_medio_pct = float((rng[cond] / c[cond]).mean() * 100) if nt else 0.0
+        rng_normal = float(rng[~cond].mean()) if (n - nt) else 0.0
+        # top 5 maiores dias direcionais
+        tops = rng[cond].sort_values(ascending=False).head(5)
+        linhas_top = "".join(
+            f"<tr><td>{str(ix)[:10]}</td><td>{'⬆️ alta' if bool(alta.loc[ix]) else '⬇️ baixa'}</td>"
+            f"<td>${rng.loc[ix]:,.2f}</td><td>{frac.loc[ix]*100:.0f}%</td></tr>"
+            for ix in tops.index)
+        # sequência mais longa de dias direcionais seguidos (qualquer direção)
+        seq = melhor_seq = 0
+        for v in cond.fillna(False).values:
+            seq = seq + 1 if v else 0
+            melhor_seq = max(melhor_seq, seq)
+        freq = nt / n * 100 if n else 0
+        html = f"""<!doctype html><html><head><meta charset='utf-8'>
+<title>Dias de Tendência — {ativo}</title>
+<style>body{{background:#0a0f14;color:#e8ecf1;font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}}
+h1{{color:#00d084;font-size:22px}} .big{{font-size:38px;font-weight:800;color:#00d084}}
+table{{border-collapse:collapse;width:100%;margin:14px 0}} td,th{{border:1px solid #243240;padding:8px 12px;font-size:14px;text-align:left}}
+th{{background:#121a23;color:#9fb0c0}} .muted{{color:#9fb0c0;font-size:13px}}
+.card{{background:#121a23;border:1px solid #243240;border-radius:12px;padding:18px 22px;margin:14px 0}}</style></head><body>
+<h1>📊 Raio-X de Dias de Tendência — {ativo} (D1, {periodo})</h1>
+<div class='card'><div class='muted'>Dias em que o mercado passou <b>o dia inteiro numa direção só</b><br>
+(critério: corpo ≥ {corpo_min*100:.0f}% do range e range ≥ {range_atr:g}× ATR14)</div>
+<div class='big'>{nt} de {n} dias &nbsp;({freq:.1f}%)</div>
+<div>⬆️ Subindo o dia todo: <b>{na} dias</b> &nbsp;·&nbsp; ⬇️ Caindo o dia todo: <b>{nb} dias</b></div>
+<div>≈ <b>{nt/24:.1f} dias por mês</b> · maior sequência seguida: <b>{melhor_seq} dias</b></div></div>
+<div class='card'><b>Tamanho do movimento nesses dias:</b><br>
+Range médio do dia direcional: <b>${rng_medio:,.2f}</b> ({rng_medio_pct:.2f}% do preço)<br>
+<span class='muted'>vs ${rng_normal:,.2f} nos dias normais — o dia de tendência rende {rng_medio/rng_normal:.1f}× mais movimento</span></div>
+<div class='card'><b>🏆 Top 5 maiores dias direcionais:</b>
+<table><tr><th>Data</th><th>Direção</th><th>Range do dia</th><th>Corpo/Range</th></tr>{linhas_top}</table></div>
+<p class='muted'>Medição histórica do OffMind · critério conservador e transparente · histórico medido, não promessa.
+Experimente outros ativos: <code>?ativo=BTC/USD</code>, <code>?ativo=EUR/USD</code> · ajuste o rigor: <code>&corpo_min=0.7</code></p>
+</body></html>"""
+        return HTMLResponse(html)
+    except Exception as e:
+        import traceback as tb
+        return HTMLResponse(f"<pre>Erro: {e}\n{tb.format_exc()[:500]}</pre>")
 
 
 @app.get("/offmind/padroes")
