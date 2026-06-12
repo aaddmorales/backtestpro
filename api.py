@@ -1,5 +1,5 @@
 # ============================================================
-#  BotBacktest API — v3.4 (Radar Lab)
+#  BotBacktest API — v3.5 (Radar IA + cache)
 #  Data: 2026-06-07 | Deploy: Railway
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -576,7 +576,7 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "3.4 — Radar Lab (analise contextual + laboratorio de combinacoes + porteiro)"
+API_VERSAO = "3.5 — Radar IA + cache de analises (testes repetidos nao pagam de novo)"
 
 @app.get("/versao")
 def versao():
@@ -1450,6 +1450,110 @@ _RADAR_CLASSES = {
 }
 
 
+# ── Cache de análises do Radar IA ──
+# Mesmo teste (config + métricas idênticas) = mesma análise, sem pagar de novo.
+# Camada 1: memória do processo. Camada 2: Supabase (persiste entre deploys).
+_RADAR_IA_CACHE = {}
+_RADAR_IA_CACHE_TTL = 7 * 24 * 3600   # 7 dias
+_RADAR_IA_CACHE_MAX = 500
+
+def _radar_cache_chave(base: dict) -> str:
+    import hashlib
+    return hashlib.sha256(json.dumps(base, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:32]
+
+def _radar_cache_get(chave: str):
+    import time as _t, sys
+    hit = _RADAR_IA_CACHE.get(chave)
+    if hit and (_t.time() - hit[0]) < _RADAR_IA_CACHE_TTL:
+        return hit[1]
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            r = sb.table("radar_analises_cache").select("mensagens,criado_em").eq("chave", chave).limit(1).execute()
+            if r.data:
+                from datetime import timezone
+                criado = r.data[0].get("criado_em", "")
+                msgs = r.data[0].get("mensagens")
+                if isinstance(msgs, list) and msgs:
+                    _RADAR_IA_CACHE[chave] = (_t.time(), msgs)
+                    return msgs
+    except Exception as e:
+        print(f"RADAR cache get: {e}", file=sys.stderr)
+    return None
+
+def _radar_cache_set(chave: str, msgs: list):
+    import time as _t, sys
+    if len(_RADAR_IA_CACHE) >= _RADAR_IA_CACHE_MAX:
+        _RADAR_IA_CACHE.pop(next(iter(_RADAR_IA_CACHE)), None)
+    _RADAR_IA_CACHE[chave] = (_t.time(), msgs)
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            sb.table("radar_analises_cache").upsert(
+                {"chave": chave, "mensagens": msgs}, on_conflict="chave").execute()
+    except Exception as e:
+        print(f"RADAR cache set: {e}", file=sys.stderr)
+
+
+def _radar_ia(ctx: dict) -> Optional[list]:
+    """Radar IA: entrega os numeros calculados pelas regras a um LLM que escreve
+    a analise em linguagem natural, unica a cada teste. Regras rigidas no prompt:
+    so usar os numeros fornecidos, nunca prever mercado, nunca prometer retorno.
+    Qualquer falha -> None (caller usa os templates). Requer ANTHROPIC_API_KEY."""
+    import sys
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave:
+        return None
+    try:
+        import httpx
+        sistema = (
+            "Você é o Radar, copiloto de validação do BotBacktest (backtesting de estratégias de trading). "
+            "Sua função: explicar o resultado do backtest do usuário usando EXCLUSIVAMENTE os números do contexto JSON. "
+            "REGRAS INVIOLÁVEIS: (1) nunca preveja o mercado nem prometa lucro futuro — você fala de histórico medido e disciplina; "
+            "(2) use apenas os números fornecidos, jamais invente valores; "
+            "(3) escreva em português brasileiro, tom de mentor experiente: claro, criativo, por vezes bem-humorado, sempre honesto; "
+            "(4) cada análise deve soar DIFERENTE: varie aberturas, metáforas e estrutura; "
+            "(5) traduza jargão (ex.: o que PF significa em dinheiro); "
+            "(6) termine a última mensagem com um próximo passo prático (ex.: otimizar, validar out-of-sample, ajustar Máx. Ops); "
+            "(7) se um dado vier null/ausente, simplesmente não fale dele. "
+            "FORMATO DA RESPOSTA: somente um array JSON de 2 a 4 strings (cada uma vira uma bolha de chat, máx ~450 caracteres), "
+            "podendo usar <b>negrito</b>. Nada fora do array JSON."
+        )
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": chave,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5"),
+                "max_tokens": 800,
+                "temperature": 1.0,
+                "system": sistema,
+                "messages": [{"role": "user", "content":
+                    "Contexto do teste (JSON):\n" + json.dumps(ctx, ensure_ascii=False)}],
+            },
+            timeout=9.0,
+        )
+        if r.status_code != 200:
+            print(f"RADAR IA status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return None
+        texto = "".join(b.get("text", "") for b in r.json().get("content", []))
+        texto = texto.strip()
+        if texto.startswith("```"):
+            texto = texto.strip("`")
+            if texto.startswith("json"):
+                texto = texto[4:]
+        msgs = json.loads(texto)
+        if isinstance(msgs, list) and 1 <= len(msgs) <= 5 and all(isinstance(m, str) and m.strip() for m in msgs):
+            return ["✨ " + m if i == 0 else m for i, m in enumerate(msgs)]
+        return None
+    except Exception as e:
+        print(f"RADAR IA erro: {e}", file=sys.stderr)
+        return None
+
+
 @app.post("/radar/analisar")
 def radar_analisar(p: RadarAnalisarParams):
     """Análise do Radar: OffMind (padrões do ativo) + histórico coletivo (BabyMachine)
@@ -1650,6 +1754,7 @@ def radar_analisar(p: RadarAnalisarParams):
             mensagens.append(texto)
 
         # ── 4) Combinações de parâmetros: medidas nas bibliotecas, não opinião ──
+        lab_info = None
         try:
             # (a) Varredura de relações risco/retorno no padrão dominante
             if fortes:
@@ -1663,6 +1768,9 @@ def radar_analisar(p: RadarAnalisarParams):
                         taxas.append((rr, hh["taxa_acerto"]))
                 if len(taxas) >= 2:
                     melhor_rr, melhor_tx = max(taxas, key=lambda t: t[1])
+                    lab_info = {"padrao": f0["nome"],
+                                "taxas_por_relacao": {f"1:{rr:g}": round(tx, 1) for rr, tx in taxas},
+                                "relacao_mais_forte": f"1:{melhor_rr:g}"}
                     partes_rr = " · ".join(f"1:{rr:g} → <b>{tx:.0f}%</b>" for rr, tx in taxas)
                     msg = random.choice([
                         f"🔧 <b>Laboratório de combinações:</b> peguei o padrão dominante "
@@ -1709,6 +1817,48 @@ def radar_analisar(p: RadarAnalisarParams):
 
         if not mensagens:
             mensagens.append("🧠 OffMind não encontrou padrões com amostra suficiente nesse ativo/timeframe ainda. Rode em 1D ou aumente o período pra eu ter mais candles pra medir.")
+
+        # ── 5) RADAR IA: reescreve a análise em linguagem natural (fallback: templates) ──
+        try:
+            ctx = {
+                "teste": {
+                    "ativo": p.ativo, "timeframe": p.timeframe, "periodo": p.periodo,
+                    "profit_factor": pf_u, "win_rate": wr_u, "total_trades": nt_u,
+                    "retorno_pct": _num(p.retorno), "max_drawdown_pct": _num(p.max_drawdown),
+                    "capital": _num(p.capital), "max_ops": p.max_ops,
+                    "indicador": p.indicador_atual, "periodo_indicador": p.ema_period_atual,
+                    "stop_loss": _num(p.stop_loss), "take_profit": _num(p.take_profit),
+                    "relacao_risco_retorno": f"1:{ratio:.1f}",
+                },
+                "offmind_padroes_no_ativo": [
+                    {"padrao": f["nome"], "ocorrencias": f["ocorrencias"],
+                     "horizonte_candles": f["horizonte"], "taxa_acerto_pct": round(f["taxa"], 1)}
+                    for f in fortes[:3]
+                ],
+                "laboratorio_relacoes": lab_info,
+                "banco_coletivo_mesmo_timeframe": melhor_cfg,
+                "usuario_ja_esta_na_melhor_config": ja_esta_na_melhor,
+                "ha_sugestao_aplicavel": aplicar is not None,
+            }
+            # chave do cache: config + métricas + resumo do coletivo
+            # (mesmo teste com mesmo resultado = mesma análise, custo zero)
+            chave_cache = _radar_cache_chave({
+                "t": ctx["teste"],
+                "col_pf": (melhor_cfg or {}).get("pf"),
+                "col_n": (melhor_cfg or {}).get("trades"),
+                "top": ja_esta_na_melhor,
+                "sug": aplicar is not None,
+            })
+            msgs_cache = _radar_cache_get(chave_cache)
+            if msgs_cache:
+                mensagens = msgs_cache
+            else:
+                msgs_ia = _radar_ia(ctx)
+                if msgs_ia:
+                    mensagens = msgs_ia
+                    _radar_cache_set(chave_cache, msgs_ia)
+        except Exception as e:
+            print(f"RADAR IA contexto: {e}", file=sys.stderr)
 
         return converter_para_python({"mensagens": mensagens, "aplicar": aplicar})
     except Exception as e:
