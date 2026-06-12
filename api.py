@@ -580,7 +580,25 @@ API_VERSAO = "3.5 — Radar IA + cache de analises (testes repetidos nao pagam d
 
 @app.get("/versao")
 def versao():
-    return {"api": API_VERSAO}
+    tem_chave = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    diag = {"api": API_VERSAO,
+            "radar_ia_chave": "configurada" if tem_chave else "AUSENTE — adicione ANTHROPIC_API_KEY no Railway",
+            "radar_ia_modelo": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
+            "cache_analises_memoria": len(_RADAR_IA_CACHE)}
+    if tem_chave:
+        # teste real da IA: chamada mínima pra validar chave+modelo
+        try:
+            import httpx
+            r = httpx.post("https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": os.environ["ANTHROPIC_API_KEY"].strip(),
+                         "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={"model": diag["radar_ia_modelo"], "max_tokens": 8,
+                      "messages": [{"role": "user", "content": "ok"}]},
+                timeout=8.0)
+            diag["radar_ia_teste"] = "✅ funcionando" if r.status_code == 200 else f"❌ erro {r.status_code}: {r.text[:160]}"
+        except Exception as e:
+            diag["radar_ia_teste"] = f"❌ exceção: {e}"
+    return diag
 
 
 @app.get("/debug")
@@ -1527,7 +1545,7 @@ def _radar_ia(ctx: dict) -> Optional[list]:
                 "content-type": "application/json",
             },
             json={
-                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5"),
+                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
                 "max_tokens": 800,
                 "temperature": 1.0,
                 "system": sistema,
