@@ -562,7 +562,7 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 # ── Porteiro: se um NAVEGADOR visitar um endpoint de dados (GET pedindo
 #    text/html), redireciona pro app em vez de mostrar JSON cru.
 #    fetch() do front pede Accept: */* e continua recebendo JSON normalmente.
-_ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia", "/offmind/matriz"}
+_ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
@@ -576,7 +576,7 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "3.7 — matriz estrategia x timeframe (as tops por ativo)"
+API_VERSAO = "3.8 — aba Estudo no app (matriz gated por plano, todos os ativos)"
 
 @app.get("/versao")
 def versao():
@@ -1371,30 +1371,42 @@ class OffMindParams(BaseModel):
     sessao_id: Optional[str] = None
 
 
-@app.get("/offmind/matriz", response_class=HTMLResponse)
-def offmind_matriz(ativo: str = "XAU/USD", tfs: str = "1d,4h,1h,30m,15m"):
-    """Estudo Estrategia x Timeframe: roda a galeria inteira no ativo e mostra
-    onde cada estrategia performa melhor. Parametros padrao do produto;
-    o ajuste fino e papel da Otimizacao depois."""
+# ── MATRIZ ESTRATEGIA x TIMEFRAME (v3.8: recurso de plano, dentro do app) ──
+# No lancamento do Elite: deixar apenas {"elite"} aqui (1 linha)
+PLANOS_MATRIZ = {"elite", "trader_pro"}
+
+class MatrizParams(BaseModel):
+    ativo: str = "XAU/USD"
+    tfs: str = "1d,4h,1h,30m,15m"
+    user_id: str = ""
+
+def _plano_usuario(user_id: str) -> str:
+    try:
+        sb = get_supabase()
+        r = sb.table("perfis").select("plano").eq("id", user_id).single().execute()
+        return (r.data or {}).get("plano") or "free"
+    except Exception:
+        return "free"
+
+def _matriz_calcular(ativo: str, lista_tfs: list) -> dict:
     import time as _t
     inicio = _t.time()
-    lista_tfs = [t.strip() for t in tfs.split(",") if t.strip() in INTERVALOS_MAP]
-    if not lista_tfs:
-        lista_tfs = ["1d", "1h"]
     periodo_por_tf = {"1d": "2 anos", "4h": "2 anos", "1h": "2 anos",
                       "30m": "2 anos", "15m": "2 anos", "5m": "2 anos"}
-    resultados = {}   # (estrategia_id, tf) -> met dict | None
     dfs = {}
     for tf in lista_tfs:
         try:
             dfs[tf] = baixar_dados(ativo, periodo_por_tf.get(tf, "2 anos"), tf)
         except Exception:
             dfs[tf] = None
+    linhas = []
+    ranking = []
     for est in ESTRATEGIAS_PRONTAS:
+        cels = {}
         for tf in lista_tfs:
             df = dfs.get(tf)
             if df is None or len(df) < 60:
-                resultados[(est["id"], tf)] = None
+                cels[tf] = None
                 continue
             try:
                 params = BacktestCustom(
@@ -1404,57 +1416,37 @@ def offmind_matriz(ativo: str = "XAU/USD", tfs: str = "1d,4h,1h,30m,15m"):
                     max_ops=5, comissao=0.0002, codigo=est["codigo"])
                 r = rodar_codigo_custom(df, params)
                 met = calcular_metricas_completas(r, params, df)
-                resultados[(est["id"], tf)] = met
+                cel = {"retorno": float(met.get("retorno") or 0),
+                       "pf": float(met.get("profit_factor") or 0),
+                       "wr": float(met.get("win_rate") or 0),
+                       "sharpe": float(met.get("sharpe") or 0),
+                       "trades": int(met.get("total_trades") or 0)}
+                cel["forca"] = ("forte" if (cel["pf"] >= 1.15 and cel["trades"] >= 30 and cel["sharpe"] > 0.5)
+                                else ("ok" if (cel["pf"] > 1 and cel["trades"] >= 20) else "fraca"))
+                cels[tf] = cel
+                if cel["trades"] >= 20 and cel["pf"] > 1:
+                    ranking.append({"estrategia": est["nome"], "emoji": est.get("emoji", ""),
+                                    "tf": tf, **cel})
             except Exception:
-                resultados[(est["id"], tf)] = None
+                cels[tf] = None
+        linhas.append({"nome": est["nome"], "emoji": est.get("emoji", ""),
+                       "casa": bool(est.get("casa")), "cels": cels})
+    ranking.sort(key=lambda x: x["sharpe"], reverse=True)
+    return {"ativo": ativo, "tfs": lista_tfs, "linhas": linhas,
+            "tops": ranking[:10], "duracao_s": round(_t.time() - inicio)}
 
-    def selo(m):
-        if not m: return "<td style='color:#445'>—</td>"
-        pf = float(m.get("profit_factor") or 0); nt = int(m.get("total_trades") or 0)
-        sh = float(m.get("sharpe") or 0); ret = float(m.get("retorno") or 0)
-        cor = "#00d084" if ret >= 0 else "#ff5b7e"
-        forca = "💪" if (pf >= 1.15 and nt >= 30 and sh > 0.5) else ("✓" if (pf > 1 and nt >= 20) else "·")
-        return (f"<td><span style='color:{cor};font-weight:700'>{ret:+.1f}%</span>"
-                f"<br><span style='color:#9fb0c0;font-size:11px'>PF {pf:.2f} · {nt}t {forca}</span></td>")
-
-    linhas = ""
-    for est in ESTRATEGIAS_PRONTAS:
-        casa = " 🏛️" if est.get("casa") else ""
-        cels = "".join(selo(resultados.get((est["id"], tf))) for tf in lista_tfs)
-        linhas += f"<tr><td><b>{est['emoji']} {est['nome']}</b>{casa}</td>{cels}</tr>"
-
-    # 🏆 Top 10 células por Sharpe (amostra >= 20 trades, PF > 1)
-    ranking = []
-    for (eid, tf), m in resultados.items():
-        if not m: continue
-        if int(m.get("total_trades") or 0) >= 20 and float(m.get("profit_factor") or 0) > 1:
-            nome = next((e["nome"] for e in ESTRATEGIAS_PRONTAS if e["id"] == eid), eid)
-            ranking.append((float(m.get("sharpe") or 0), nome, tf, m))
-    ranking.sort(reverse=True)
-    tops = "".join(
-        f"<tr><td>{i+1}º</td><td><b>{nome}</b></td><td>{tf.upper()}</td>"
-        f"<td>{m['retorno']:+.1f}%</td><td>{m['profit_factor']:.2f}</td>"
-        f"<td>{m['win_rate']:.1f}%</td><td>{m['sharpe']:.2f}</td><td>{m['total_trades']}</td></tr>"
-        for i, (sh, nome, tf, m) in enumerate(ranking[:10]))
-
-    ths = "".join(f"<th>{t.upper()}</th>" for t in lista_tfs)
-    dur = _t.time() - inicio
-    html = f"""<!doctype html><html><head><meta charset='utf-8'>
-<title>Matriz Estratégia × Timeframe — {ativo}</title>
-<style>body{{background:#0a0f14;color:#e8ecf1;font-family:system-ui,sans-serif;max-width:1000px;margin:36px auto;padding:0 20px;line-height:1.6}}
-h1{{color:#00d084;font-size:22px}} h2{{color:#ffb830;font-size:17px;margin-top:30px}}
-table{{border-collapse:collapse;width:100%;margin:14px 0}} td,th{{border:1px solid #243240;padding:8px 10px;font-size:13px;text-align:left;vertical-align:top}}
-th{{background:#121a23;color:#9fb0c0}} .muted{{color:#9fb0c0;font-size:12.5px}}</style></head><body>
-<h1>🧪 Matriz Estratégia × Timeframe — {ativo}</h1>
-<p class='muted'>Estudo OffMind: galeria completa rodada com parâmetros padrão (capital $10.000, custos incluídos).
-💪 = robusta (PF ≥ 1.15, 30+ trades, Sharpe > 0.5) · ✓ = positiva com amostra ok · gerado em {dur:.0f}s</p>
-<table><tr><th>Estratégia</th>{ths}</tr>{linhas}</table>
-<h2>🏆 As Tops deste ativo (ranking por Sharpe, mín. 20 trades)</h2>
-<table><tr><th>#</th><th>Estratégia</th><th>TF</th><th>Retorno</th><th>PF</th><th>WR</th><th>Sharpe</th><th>Trades</th></tr>{tops}</table>
-<p class='muted'>⚠️ Histórico medido com parâmetros padrão — não é promessa. Próximo passo: pegar as tops e refinar na ⚙ Otimização
-(varrer stop/take em volta), depois validar out-of-sample. Outros ativos: <code>?ativo=BTC/USD</code> · menos colunas (mais rápido): <code>&tfs=1d,1h</code></p>
-</body></html>"""
-    return HTMLResponse(html)
+@app.post("/offmind/matriz-dados")
+def offmind_matriz_dados(p: MatrizParams):
+    """Estudo Estrategia x Timeframe — recurso do plano topo, chamado pela aba Estudo."""
+    plano = _plano_usuario(p.user_id) if p.user_id else "free"
+    if plano not in PLANOS_MATRIZ:
+        return JSONResponse(status_code=403, content={
+            "erro": "Recurso exclusivo do plano profissional.",
+            "upgrade": True, "plano_atual": plano})
+    lista_tfs = [t.strip() for t in p.tfs.split(",") if t.strip() in INTERVALOS_MAP]
+    if not lista_tfs:
+        lista_tfs = ["1d", "1h"]
+    return _matriz_calcular(p.ativo, lista_tfs)
 
 
 @app.get("/offmind/dias-tendencia", response_class=HTMLResponse)
