@@ -3353,6 +3353,61 @@ function aplicarSugestaoRadar(ap, rodar){
 }
 
 // Lê o resultado do backtest e orienta o melhor próximo passo (regras puras)
+// ── CONFETE: celebração quando a sugestão do Radar melhora o resultado ──
+function radarConfete(){
+  try{
+    const alvo = document.querySelector('.ov-retorno');
+    const r = alvo ? alvo.getBoundingClientRect() : null;
+    const ox = r ? r.left + r.width/2 : window.innerWidth/2;
+    const oy = r ? r.top + r.height/2 : window.innerHeight/3;
+
+    const cv = document.createElement('canvas');
+    cv.width = window.innerWidth; cv.height = window.innerHeight;
+    cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:400';
+    document.body.appendChild(cv);
+    const ctx = cv.getContext('2d');
+
+    const cores = ['#00d084','#ffb830','#9d6fff','#ffffff','#4dd0e1','#ff5b7e'];
+    const pecas = [];
+    for(let i=0;i<150;i++){
+      const ang = Math.random()*Math.PI*2;
+      const vel = 4 + Math.random()*9;
+      pecas.push({
+        x: ox, y: oy,
+        vx: Math.cos(ang)*vel,
+        vy: Math.sin(ang)*vel - 7,           // impulso pra cima
+        w: 5 + Math.random()*6, h: 8 + Math.random()*7,
+        cor: cores[(Math.random()*cores.length)|0],
+        rot: Math.random()*Math.PI, vrot: (Math.random()-0.5)*0.3,
+        vida: 1,
+      });
+    }
+    const inicio = performance.now();
+    function anima(t){
+      const dt = (t - inicio)/1000;
+      ctx.clearRect(0,0,cv.width,cv.height);
+      let vivos = 0;
+      for(const p of pecas){
+        p.vy += 0.22;                          // gravidade
+        p.vx *= 0.992;                         // arrasto
+        p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+        p.vida = Math.max(0, 1 - dt/2.8);
+        if(p.vida <= 0 || p.y > cv.height + 20) continue;
+        vivos++;
+        ctx.save();
+        ctx.globalAlpha = p.vida;
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.cor;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+      }
+      if(vivos > 0 && dt < 3) requestAnimationFrame(anima);
+      else cv.remove();
+    }
+    requestAnimationFrame(anima);
+  }catch(e){ console.log('confete', e); }
+}
+
 // Prestação de contas: a sugestão aplicada piorou? Assume e oferece reverter.
 function radarPrestaContas(antes, pfNovo){
   const body = document.getElementById('radar-body');
@@ -3413,7 +3468,8 @@ function radarCoach(d){
       if(pf < window._radarAntes.pf){
         radarPrestaContas(window._radarAntes, pf);
       } else {
-        radarFala(`📈 <b>A sugestão melhorou seu resultado:</b> PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>. Esse teste também entra no banco coletivo.`);
+        radarFala(`🎉 <b>A sugestão acertou!</b> PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>${!isNaN(ret) && ret > 0 ? ` · retorno <b>+${ret.toFixed(2)}%</b>` : ''}. Esse teste entra no banco coletivo — a base fica mais esperta a cada acerto.`);
+        setTimeout(radarConfete, 350);
       }
       window._radarAntes = null;
     }
