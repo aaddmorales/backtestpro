@@ -3164,6 +3164,8 @@ setTimeout(initSampleChart, 150);
 
 // ════════════ v5.0 — AGENTE + MONITOR + GALERIA + HERO IA ════════════
 const AGENT_NAME = 'Radar';
+// sorteia uma variação de mensagem (gerador de conteúdo do Radar)
+function varia(...opcoes){ return opcoes[(Math.random()*opcoes.length)|0]; }
 
 // ── RADAR FLUTUANTE: coaching por regras a partir do resultado real ──
 let _radarAberto = false;
@@ -3457,9 +3459,19 @@ function radarCoach(d){
       const veredito = pf >= 1.3 ? 'resultado <b>positivo e consistente</b> ✅'
                      : pf >= 1   ? 'resultado <b>no limite</b> — ganha pouco acima do que perde ⚖️'
                      :             'resultado <b>negativo no histórico</b> ❌';
-      let resumo = `📋 <b>Resumo do seu teste:</b> ${nt} trades, ${veredito}.<br>` +
-        `PF <b>${pf.toFixed(2)}</b> em bom português: a cada $1 perdido, a estratégia trouxe de volta <b>$${pf.toFixed(2)}</b>.`;
-      if(!isNaN(wr)) resumo += ` Win rate <b>${wr.toFixed(1)}%</b> = acertou ~${Math.round(wr)} de cada 100 entradas.`;
+      const pfTxt = pf.toFixed(2);
+      const wrTxt = !isNaN(wr) ? wr.toFixed(1) : null;
+      let resumo = varia(
+        `📋 <b>Resumo do seu teste:</b> ${nt} trades, ${veredito}.<br>PF <b>${pfTxt}</b> em bom português: a cada $1 perdido, voltou <b>$${pfTxt}</b>.`,
+        `🎬 <b>O filme desse teste:</b> ${nt} entradas no mercado, e o final foi ${veredito}. Cada $1 que saiu trouxe <b>$${pfTxt}</b> de volta (PF ${pfTxt}).`,
+        `⚖️ <b>Na balança:</b> ${nt} trades depois, ${veredito}. O placar ganho/perda fechou em <b>${pfTxt}</b> — pra cada $1 perdido, $${pfTxt} recuperado.`,
+        `🧾 <b>Fechamento de caixa:</b> ${nt} operações, ${veredito}. Profit factor <b>${pfTxt}</b>: é quanto voltou pra cada $1 que a estratégia queimou.`
+      );
+      if(wrTxt) resumo += varia(
+        ` Win rate <b>${wrTxt}%</b> = acertou ~${Math.round(wr)} de cada 100 entradas.`,
+        ` De cada 100 gatilhos, <b>~${Math.round(wr)} acertaram</b> (win rate ${wrTxt}%).`,
+        ` Taxa de acerto: <b>${wrTxt}%</b> das entradas terminaram no alvo.`
+      );
       radarFala(resumo);
     }
 
@@ -3468,26 +3480,51 @@ function radarCoach(d){
       if(pf < window._radarAntes.pf){
         radarPrestaContas(window._radarAntes, pf);
       } else {
-        radarFala(`🎉 <b>A sugestão acertou!</b> PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>${!isNaN(ret) && ret > 0 ? ` · retorno <b>+${ret.toFixed(2)}%</b>` : ''}. Esse teste entra no banco coletivo — a base fica mais esperta a cada acerto.`);
+        const ganhoTxt = `PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>${!isNaN(ret) && ret > 0 ? ` · retorno <b>+${ret.toFixed(2)}%</b>` : ''}`;
+        radarFala(varia(
+          `🎉 <b>A sugestão acertou!</b> ${ganhoTxt}. Esse teste entra no banco coletivo — a base fica mais esperta a cada acerto.`,
+          `🥳 <b>Melhorou de verdade:</b> ${ganhoTxt}. É assim que o ciclo funciona — dados puxando resultado, resultado alimentando dados.`,
+          `📈 <b>Subiu! </b>${ganhoTxt}. Registrado no coletivo: seu acerto vira referência pro próximo trader.`
+        ));
         setTimeout(radarConfete, 350);
       }
       window._radarAntes = null;
     }
     window._radarUltimoPF = isNaN(pf) ? null : pf;
     if(nt > 0 && nt < 10){
-      radarFala(`🔍 <b>Amostra pequena.</b> Só <b>${nt} trades</b> — pouco pra separar sorte de estratégia. <b>O que fazer:</b> aumente o período do teste ou desça de timeframe pra gerar mais entradas antes de concluir qualquer coisa.`, 'atencao');
+      radarFala(varia(
+        `🔍 <b>Amostra pequena.</b> Só <b>${nt} trades</b> — pouco pra separar sorte de estratégia. Aumente o período ou desça de timeframe antes de concluir qualquer coisa.`,
+        `🎲 <b>Cuidado com a sorte de iniciante:</b> ${nt} trades é cara-ou-coroa estatístico. Estique o período do teste — conclusão boa precisa de volume.`,
+        `📏 <b>Régua curta demais:</b> com ${nt} trades, qualquer resultado pode ser acaso. Gere mais entradas (período maior ou timeframe menor) e aí conversamos.`
+      ), 'atencao');
     }
     if(!isNaN(pf) && pf < 1 && nt >= 10){
-      radarFala(`📉 <b>Essa configuração perdeu no histórico</b> (PF ${pf.toFixed(2)}). Calma: isso não condena a lógica — às vezes só o ajuste está errado. <b>O que fazer:</b> rode o <b>⚙ Otimizar</b> pra varrer stop/take e período, ou teste a mesma ideia em outro ativo antes de descartar.`, 'alerta');
+      radarFala(varia(
+        `📉 <b>Essa configuração perdeu no histórico</b> (PF ${pf.toFixed(2)}). Calma: às vezes só o ajuste está errado. Rode o <b>⚙ Otimizar</b> ou teste a mesma ideia em outro ativo antes de descartar.`,
+        `🧪 <b>Hipótese reprovada nesse formato</b> (PF ${pf.toFixed(2)}) — mas reprovar configuração não é reprovar ideia. O <b>⚙ Otimizar</b> varre stop/take e período em segundos; deixa ele procurar o acerto.`,
+        `🚧 <b>No vermelho neste recorte</b> (PF ${pf.toFixed(2)}). Antes do funeral da estratégia: pode ser o ativo errado pra essa lógica, ou o stop/take fora de tom. Otimizar primeiro, descartar depois.`
+      ), 'alerta');
     }
     if(!isNaN(pf) && pf >= 1.3 && !isNaN(dd) && dd > 15){
-      radarFala(`⚠️ <b>Lucrativa, mas com tombo pesado.</b> PF ${pf.toFixed(2)} é bom, só que o drawdown de <b>${dd.toFixed(1)}%</b> testaria seu estômago no pior trecho. <b>O que fazer:</b> reduza o Máx. Ops ou aperte o stop — quem sobrevive ao pior momento é quem colhe a média no fim.`, 'atencao');
+      radarFala(varia(
+        `⚠️ <b>Lucrativa, mas com tombo pesado.</b> PF ${pf.toFixed(2)} é bom, só que o drawdown de <b>${dd.toFixed(1)}%</b> testaria seu estômago. Reduza o Máx. Ops ou aperte o stop — sobreviver ao pior momento é o que garante a média.`,
+        `🎢 <b>Montanha-russa lucrativa:</b> termina no positivo (PF ${pf.toFixed(2)}), mas o mergulho de <b>${dd.toFixed(1)}%</b> no meio derrubaria muita gente do brinquedo. Menos exposição = mais chance de chegar ao final.`,
+        `🥊 <b>Vence no fim, mas apanha no caminho:</b> PF ${pf.toFixed(2)} com drawdown de ${dd.toFixed(1)}%. A pergunta não é se a estratégia aguenta — é se VOCÊ aguenta. Calibre o Máx. Ops pra um soco que você absorve.`
+      ), 'atencao');
     }
     if(!isNaN(wr) && wr >= 45 && !isNaN(pf) && pf >= 1.3 && nt >= 20){
-      radarFala(`🏆 <b>Resultado sólido!</b> Win rate <b>${wr.toFixed(1)}%</b> com PF <b>${pf.toFixed(2)}</b> em ${nt} trades — combinação que poucos testes alcançam. <b>Próximo passo profissional:</b> validação <b>out-of-sample</b> (testar nos dados que a estratégia nunca viu). Se segurar lá, aí sim vale automatizar no MT5. 📡`);
+      radarFala(varia(
+        `🏆 <b>Resultado sólido!</b> Win rate <b>${wr.toFixed(1)}%</b> com PF <b>${pf.toFixed(2)}</b> em ${nt} trades — combinação que poucos testes alcançam. Próximo passo profissional: validação <b>out-of-sample</b>; se segurar, aí sim vale automatizar no MT5. 📡`,
+        `💎 <b>Achado raro:</b> ${nt} trades, win rate ${wr.toFixed(1)}% e PF ${pf.toFixed(2)} juntos. Antes de comemorar demais: rode a validação <b>out-of-sample</b> — estratégia boa de verdade funciona nos dados que ela nunca viu.`,
+        `🚀 <b>Isso aqui tem cara de coisa séria:</b> PF ${pf.toFixed(2)}, ${wr.toFixed(1)}% de acerto, ${nt} trades de amostra. O teste final dos profissionais é o <b>out-of-sample</b> — passou lá, é candidata real ao seu MT5.`
+      ));
     }
     if(!isNaN(wr) && wr < 35 && !isNaN(pf) && pf >= 1.2){
-      radarFala(`🎯 <b>Perfil identificado: erra pequeno, acerta grande.</b> Win rate de ${wr.toFixed(1)}% parece ruim, mas com PF ${pf.toFixed(2)} positivo significa que os acertos pagam os erros com sobra. É um perfil válido e usado por traders profissionais — o desafio é <b>disciplina</b> pra atravessar as sequências de perda sem abandonar o plano.`);
+      radarFala(varia(
+        `🎯 <b>Perfil identificado: erra pequeno, acerta grande.</b> Win rate de ${wr.toFixed(1)}% parece ruim, mas PF ${pf.toFixed(2)} positivo = os acertos pagam os erros com sobra. Perfil válido e profissional — o desafio é <b>disciplina</b> nas sequências de perda.`,
+        `🏹 <b>Estilo sniper:</b> acerta pouco (${wr.toFixed(1)}%), mas quando acerta, acerta grande (PF ${pf.toFixed(2)} no positivo). Funciona — desde que você aguente errar várias seguidas sem abandonar o plano.`,
+        `⚖️ <b>Matemática contra intuição:</b> ${wr.toFixed(1)}% de acerto soa fraco, mas o PF ${pf.toFixed(2)} mostra que o tamanho dos ganhos vence a frequência das perdas. Trade é matemática; a intuição é que precisa de rédea.`
+      ));
     }
   }catch(e){ console.log('radarCoach', e); }
 }
