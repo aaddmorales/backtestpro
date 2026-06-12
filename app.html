@@ -693,12 +693,13 @@ select option{background:#141920}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v5.1</span>
+    <span class="vtag">v5.2</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
+  <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')">🧪 Estudo <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">PRO+</span></button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
@@ -1307,6 +1308,49 @@ select option{background:#141920}
           <div id="otim-resultado" style="display:none"></div>
         </div>
                 <!-- TAB: MONITOR (v5.0) -->
+        <div id="tab-estudo" style="display:none;padding:20px 18px;overflow-y:auto">
+          <div style="max-width:1060px;margin:0 auto">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+              <span style="font-size:20px">🧪</span>
+              <span style="font-size:17px;font-weight:800">Estudo — Matriz Estratégia × Timeframe</span>
+            </div>
+            <div style="font-size:13px;color:var(--muted2);margin-bottom:14px">
+              Roda <b>a galeria inteira de estratégias</b> em todos os timeframes do ativo escolhido e revela onde cada uma realmente funciona.
+              💪 = robusta (PF ≥ 1.15, 30+ trades, Sharpe > 0.5). Ranking por consistência (Sharpe). Histórico medido — não é promessa.
+            </div>
+            <div id="estudo-gate" style="display:none;background:var(--bg2);border:1px solid var(--purple);border-radius:12px;padding:26px;text-align:center">
+              <div style="font-size:30px">🔒</div>
+              <div style="font-size:15px;font-weight:700;margin:8px 0 4px">Recurso do plano profissional</div>
+              <div style="font-size:13px;color:var(--muted2);margin-bottom:14px">O Estudo roda dezenas de backtests numa tacada e entrega o mapa das melhores combinações de cada ativo.</div>
+              <button class="btn-primary" style="max-width:220px;margin:0 auto" onclick="switchTab('planos')">⚡ Conhecer os planos</button>
+            </div>
+            <div id="estudo-ferramenta" style="display:none">
+              <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+                <div style="min-width:230px">
+                  <div class="pli">Ativo (catálogo completo)</div>
+                  <select id="estudo-ativo"></select>
+                </div>
+                <div>
+                  <div class="pli">Timeframes</div>
+                  <div id="estudo-tfs" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="1d" checked><span class="ind-label">1D</span></label>
+                    <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="4h" checked><span class="ind-label">4H</span></label>
+                    <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="1h" checked><span class="ind-label">1H</span></label>
+                    <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="30m" checked><span class="ind-label">30m</span></label>
+                    <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="15m" checked><span class="ind-label">15m</span></label>
+                  </div>
+                </div>
+                <button class="btn-primary" id="estudo-rodar" style="max-width:260px" onclick="rodarEstudo()">🧪 Rodar estudo (1–2 min)</button>
+              </div>
+              <div id="estudo-loading" style="display:none;text-align:center;padding:34px 0">
+                <div style="font-size:30px;animation:radarpulse 1.6s infinite">🧪</div>
+                <div id="estudo-loading-frase" style="font-size:13.5px;color:var(--muted2);margin-top:8px">Rodando dezenas de backtests…</div>
+              </div>
+              <div id="estudo-resultado"></div>
+            </div>
+          </div>
+        </div>
+
         <div id="tab-monitor" style="display:none;padding:20px 18px;overflow-y:auto">
           <div style="max-width:1000px;margin:0 auto">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -1990,7 +2034,7 @@ const TEMPLATES = {
 
 function switchTab(tab) {
   activeTab = tab;
-  ['editor','overview','templates','rank','planos','otimizar','monitor'].forEach(t => {
+  ['editor','overview','templates','rank','planos','otimizar','monitor','estudo'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1999,6 +2043,94 @@ function switchTab(tab) {
     document.getElementById('tab-overview').style.display = 'block';
   }
   if (tab === 'monitor') { carregarBots(); iniciarPollingBots(); } else { pararPollingBots(); }
+  if (tab === 'estudo') prepararAbaEstudo();
+}
+
+// ── ABA ESTUDO: matriz estrategia x timeframe (v5.2, gated por plano) ──
+const ESTUDO_PLANOS = ['trader_pro', 'elite']; // no lançamento do Elite: ['elite']
+let _estudoPreparada = false;
+
+function prepararAbaEstudo() {
+  const plano = perfilAtual?.plano || 'free';
+  const ok = ESTUDO_PLANOS.includes(plano);
+  document.getElementById('estudo-gate').style.display = ok ? 'none' : '';
+  document.getElementById('estudo-ferramenta').style.display = ok ? '' : 'none';
+  if (ok && !_estudoPreparada) {
+    // catálogo completo: clona as opções do seletor principal de ativo
+    const orig = document.getElementById('ativo');
+    const dest = document.getElementById('estudo-ativo');
+    if (orig && dest) { dest.innerHTML = orig.innerHTML; dest.value = orig.value; }
+    _estudoPreparada = true;
+  }
+}
+
+const ESTUDO_FRASES = [
+  'Rodando a galeria inteira de estratégias…',
+  'Testando cada timeframe com dados reais…',
+  'Separando robustez de sorte (mínimo de trades)…',
+  'Rankeando por consistência, não por pico…',
+  'Quase lá — montando o mapa do ativo…'];
+let _estudoFraseTimer = null;
+
+async function rodarEstudo() {
+  const ativo = document.getElementById('estudo-ativo').value;
+  const tfs = Array.from(document.querySelectorAll('#estudo-tfs input:checked')).map(c => c.value);
+  if (!tfs.length) { alert('Escolha ao menos 1 timeframe'); return; }
+  const btn = document.getElementById('estudo-rodar');
+  const load = document.getElementById('estudo-loading');
+  const res = document.getElementById('estudo-resultado');
+  btn.disabled = true; btn.style.opacity = .5; res.innerHTML = ''; load.style.display = '';
+  let fi = 0;
+  document.getElementById('estudo-loading-frase').textContent = ESTUDO_FRASES[0];
+  _estudoFraseTimer = setInterval(() => {
+    fi = (fi + 1) % ESTUDO_FRASES.length;
+    document.getElementById('estudo-loading-frase').textContent = ESTUDO_FRASES[fi];
+  }, 3200);
+  try {
+    const r = await fetch(API + '/offmind/matriz-dados', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo, tfs: tfs.join(','), user_id: usuarioAtual?.id || '' }) });
+    const d = await r.json();
+    if (!r.ok) {
+      res.innerHTML = `<div style="color:var(--amber);font-size:13px;padding:14px">🔒 ${d.erro || 'Sem acesso.'}</div>`;
+      if (d.upgrade) prepararAbaEstudo();
+      return;
+    }
+    res.innerHTML = renderEstudo(d);
+  } catch (e) {
+    res.innerHTML = `<div style="color:var(--red);font-size:13px;padding:14px">Erro ao rodar o estudo: ${e.message}</div>`;
+  } finally {
+    clearInterval(_estudoFraseTimer);
+    load.style.display = 'none'; btn.disabled = false; btn.style.opacity = 1;
+  }
+}
+
+function renderEstudo(d) {
+  const th = 'border:1px solid var(--border2);padding:8px 10px;font-size:12px;text-align:left;background:var(--bg3);color:var(--muted2)';
+  const td = 'border:1px solid var(--border);padding:8px 10px;font-size:12.5px;vertical-align:top';
+  const cel = (c) => {
+    if (!c) return `<td style="${td};color:var(--muted)">—</td>`;
+    const cor = c.retorno >= 0 ? 'var(--green)' : 'var(--red)';
+    const selo = c.forca === 'forte' ? '💪' : (c.forca === 'ok' ? '✓' : '·');
+    return `<td style="${td}"><span style="color:${cor};font-weight:700">${c.retorno >= 0 ? '+' : ''}${c.retorno.toFixed(1)}%</span><br><span style="color:var(--muted2);font-size:11px">PF ${c.pf.toFixed(2)} · ${c.trades}t ${selo}</span></td>`;
+  };
+  const ths = d.tfs.map(t => `<th style="${th}">${t.toUpperCase()}</th>`).join('');
+  const linhas = d.linhas.map(l =>
+    `<tr><td style="${td}"><b>${l.emoji} ${l.nome}</b>${l.casa ? ' 🏛️' : ''}</td>${d.tfs.map(t => cel(l.cels[t])).join('')}</tr>`).join('');
+  const tops = (d.tops || []).map((t, i) =>
+    `<tr><td style="${td}">${i + 1}º</td><td style="${td}"><b>${t.emoji} ${t.estrategia}</b></td><td style="${td}">${t.tf.toUpperCase()}</td>
+     <td style="${td};color:${t.retorno >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:700">${t.retorno >= 0 ? '+' : ''}${t.retorno.toFixed(1)}%</td>
+     <td style="${td}">${t.pf.toFixed(2)}</td><td style="${td}">${t.wr.toFixed(1)}%</td>
+     <td style="${td};font-weight:700">${t.sharpe.toFixed(2)}</td><td style="${td}">${t.trades}</td></tr>`).join('');
+  return `
+    <div style="font-size:12px;color:var(--muted2);margin:6px 0 10px">📊 ${d.ativo} · gerado em ${d.duracao_s}s · parâmetros padrão (o ajuste fino é papel da ⚙ Otimização)</div>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;margin-bottom:22px">
+      <tr><th style="${th}">Estratégia</th>${ths}</tr>${linhas}</table></div>
+    <div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:6px">🏆 As Tops de ${d.ativo} (por Sharpe, mín. 20 trades)</div>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">
+      <tr><th style="${th}">#</th><th style="${th}">Estratégia</th><th style="${th}">TF</th><th style="${th}">Retorno</th><th style="${th}">PF</th><th style="${th}">WR</th><th style="${th}">Sharpe</th><th style="${th}">Trades</th></tr>
+      ${tops || '<tr><td colspan="8" style="' + td + ';color:var(--muted2)">Nenhuma combinação passou no filtro (PF > 1 com 20+ trades) — ativo difícil ou timeframes insuficientes.</td></tr>'}</table></div>
+    <div style="font-size:12px;color:var(--muted2);margin-top:10px">Fluxo profissional: Estudo encontra <b>onde</b> → ⚙ Otimização refina <b>como</b> (stop/take em volta) → validação out-of-sample → MT5.</div>`;
 }
 
 // ── OTIMIZACAO DE PARAMETROS (v1.6) ──────────────────────────
