@@ -576,7 +576,7 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "3.8 — aba Estudo no app (matriz gated por plano, todos os ativos)"
+API_VERSAO = "3.9 — Radar cruza o Estudo (4a fonte de dados) + fix 500"
 
 @app.get("/versao")
 def versao():
@@ -1374,6 +1374,8 @@ class OffMindParams(BaseModel):
 # ── MATRIZ ESTRATEGIA x TIMEFRAME (v3.8: recurso de plano, dentro do app) ──
 # No lancamento do Elite: deixar apenas {"elite"} aqui (1 linha)
 PLANOS_MATRIZ = {"elite", "trader_pro"}
+_MATRIZ_CACHE = {}          # ativo -> (timestamp, resultado) — Radar consulta isso
+_MATRIZ_CACHE_TTL = 86400   # 24h
 
 class MatrizParams(BaseModel):
     ativo: str = "XAU/USD"
@@ -1434,8 +1436,12 @@ def _matriz_calcular(ativo: str, lista_tfs: list) -> dict:
         linhas.append({"nome": est["nome"], "emoji": est.get("emoji", ""),
                        "casa": bool(est.get("casa")), "cels": cels})
     ranking.sort(key=lambda x: x["sharpe"], reverse=True)
-    return {"ativo": ativo, "tfs": lista_tfs, "linhas": linhas,
-            "tops": ranking[:10], "duracao_s": round(_t.time() - inicio)}
+    resultado = {"ativo": ativo, "tfs": lista_tfs, "linhas": linhas,
+                 "tops": ranking[:10], "duracao_s": round(_t.time() - inicio)}
+    _MATRIZ_CACHE[ativo] = (_t.time(), resultado)
+    if len(_MATRIZ_CACHE) > 20:
+        _MATRIZ_CACHE.pop(next(iter(_MATRIZ_CACHE)))
+    return resultado
 
 @app.post("/offmind/matriz-dados")
 def offmind_matriz_dados(p: MatrizParams):
@@ -2001,6 +2007,59 @@ def radar_analisar(p: RadarAnalisarParams):
                 "usuario_ja_esta_na_melhor_config": ja_esta_na_melhor,
                 "ha_sugestao_aplicavel": aplicar is not None,
             }
+            # ── ESTUDO (matriz estrategia x timeframe) como 4a fonte do Radar ──
+            import time as _t2
+            estudo_ctx = None
+            _mc = _MATRIZ_CACHE.get(p.ativo)
+            if _mc and (_t2.time() - _mc[0]) < _MATRIZ_CACHE_TTL:
+                dados_m = _mc[1]
+                tops_m = dados_m.get("tops") or []
+                # celula do usuario (mesma estrategia + mesmo timeframe)
+                cel_u = None
+                melhor_tf_da_minha = None
+                for lin in dados_m.get("linhas", []):
+                    if lin["nome"] == (p.indicador_atual or ""):
+                        cel_u = lin["cels"].get(p.timeframe)
+                        vivas = [(tf, c) for tf, c in lin["cels"].items() if c]
+                        if vivas:
+                            melhor_tf_da_minha = max(vivas, key=lambda x: x[1]["sharpe"])
+                        break
+                if tops_m:
+                    top1 = tops_m[0]
+                    a_frente = sum(1 for t in tops_m if pf_u and t["pf"] > pf_u)
+                    estudo_ctx = {"top1": top1, "celula_do_usuario": cel_u,
+                                  "melhor_tf_da_estrategia_do_usuario":
+                                      ({"tf": melhor_tf_da_minha[0], **melhor_tf_da_minha[1]}
+                                       if melhor_tf_da_minha else None),
+                                  "configs_do_estudo_a_frente_do_usuario_em_pf": a_frente}
+                    import random as _rd
+                    if (top1["estrategia"] != (p.indicador_atual or "")) or (top1["tf"] != p.timeframe):
+                        mensagens.append(_rd.choice([
+                            f"🧪 <b>Cruzando com o Estudo deste ativo:</b> a combinação mais consistente "
+                            f"foi <b>{top1['estrategia']} no {top1['tf'].upper()}</b> (PF {top1['pf']:.2f}, "
+                            f"Sharpe {top1['sharpe']:.2f}, {top1['trades']} trades). Não é ordem de troca — "
+                            f"é mapa: bom saber em que terreno sua config compete.",
+                            f"🧪 <b>O Estudo deste ativo te dá régua:</b> o topo da matriz é "
+                            f"<b>{top1['estrategia']} · {top1['tf'].upper()}</b> com Sharpe {top1['sharpe']:.2f} "
+                            f"(PF {top1['pf']:.2f} em {top1['trades']} trades). Sua config tem "
+                            f"{a_frente} combinações à frente em PF — use a aba 🧪 pra ver o ranking completo.",
+                        ]))
+                    if (melhor_tf_da_minha and melhor_tf_da_minha[0] != p.timeframe
+                            and cel_u and melhor_tf_da_minha[1]["pf"] > max(1.05, (cel_u.get("pf") or 0) * 1.1)
+                            and melhor_tf_da_minha[1]["trades"] >= 20):
+                        mensagens.append(
+                            f"🧭 <b>Detalhe do Estudo:</b> a sua <b>{p.indicador_atual}</b> rendeu mais no "
+                            f"<b>{melhor_tf_da_minha[0].upper()}</b> (PF {melhor_tf_da_minha[1]['pf']:.2f} em "
+                            f"{melhor_tf_da_minha[1]['trades']} trades) do que no {p.timeframe.upper()} que você está testando. "
+                            f"Pode ser o terreno, não a estratégia — vale um backtest lá pra comparar.")
+            elif p.user_id and _plano_usuario(p.user_id) in PLANOS_MATRIZ:
+                import random as _rd
+                if _rd.random() < 0.35:
+                    mensagens.append(
+                        "🧪 <b>Dica:</b> rode o <b>Estudo</b> deste ativo (aba 🧪) — a partir daí eu passo a "
+                        "comparar cada teste seu com a galeria inteira de estratégias e te digo onde sua config "
+                        "está no mapa.")
+            ctx["estudo_matriz"] = estudo_ctx
             # chave do cache: config + métricas + resumo do coletivo
             # (mesmo teste com mesmo resultado = mesma análise, custo zero)
             chave_cache = _radar_cache_chave({
