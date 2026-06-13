@@ -752,7 +752,7 @@ select option{background:#141920}
   <!-- LEFT: PARAMS -->
   <div class="col-left">
     <div class="bt-counter" id="bt-counter" title="Backtests rodados">
-      <span class="pulse"></span><span id="bt-counter-num">0</span>&nbsp;backtests rodados
+      <span class="pulse"></span><span id="bt-counter-num">0</span>&nbsp;<span data-i18n="counter.label">backtests rodados</span>
     </div>
     <div class="ps">
       <div class="pl" data-i18n="lbl.ativo">Ativo</div>
@@ -2041,7 +2041,7 @@ const I18N = {
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco',
+    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados',
     'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2060,7 +2060,7 @@ const I18N = {
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
-    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management',
+    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run',
     'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2079,7 +2079,7 @@ const I18N = {
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo',
+    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados',
     'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
@@ -2113,6 +2113,7 @@ function aplicarIdioma() {
   document.documentElement.lang = LANG;
   // partes geradas por JS que precisam re-render
   if (typeof window._estudoPreparada !== 'undefined') { try { prepararAbaEstudo(); } catch(e){} }
+  try { if (typeof atualizarContador === 'function') atualizarContador(); } catch(e){}
 }
 
 function setLang(lang) {
@@ -3765,7 +3766,7 @@ async function atualizarContador(){
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const d = await r.json();
     const el = document.getElementById('bt-counter-num');
-    if(el && typeof d.total === 'number') el.textContent = d.total.toLocaleString('pt-BR');
+    if(el && typeof d.total === 'number') el.textContent = d.total.toLocaleString(LANG==='en'?'en-US':(LANG==='es'?'es-ES':'pt-BR'));
   }catch(e){}
 }
 setInterval(atualizarContador, 45000);
