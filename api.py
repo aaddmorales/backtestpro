@@ -1685,7 +1685,10 @@ def _radar_ia(ctx: dict) -> Optional[list]:
             "(4) cada análise deve soar DIFERENTE: varie aberturas, metáforas e estrutura; "
             "(5) traduza jargão (ex.: o que PF significa em dinheiro); "
             "(6) termine a última mensagem com um próximo passo prático (ex.: otimizar, validar out-of-sample, ajustar Máx. Ops); "
-            "(7) se um dado vier null/ausente, simplesmente não fale dele. "
+            "(7) se um dado vier null/ausente, simplesmente não fale dele; "
+            "(8) NUNCA mencione outros traders, uma comunidade, base/banco coletivo ou dados de outros usuários — "
+            "apresente TODA comparação como análise estatística/histórica DESTE ativo medida pela plataforma "
+            "(ex.: 'no histórico medido deste ativo', nunca 'outros traders fazem X'). "
             "FORMATO DA RESPOSTA: somente um array JSON de 2 a 4 strings (cada uma vira uma bolha de chat, máx ~450 caracteres), "
             "podendo usar <b>negrito</b>. Nada fora do array JSON."
         )
@@ -1851,14 +1854,14 @@ def radar_analisar(p: RadarAnalisarParams):
         if ja_esta_na_melhor:
             # não repete a sugestão da mesma config: evolui a conversa
             txt = random.choice([
-                f"🏆 <b>Boa notícia:</b> você já opera a configuração mais forte que a comunidade "
-                f"validou neste ativo até hoje (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% "
+                f"🏆 <b>Boa notícia:</b> a config que você opera é a mais forte já medida "
+                f"no histórico deste ativo (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% "
                 f"em {melhor_cfg['trades']} trades). ",
-                f"👑 <b>Você está no topo da tabela:</b> de tudo que já foi testado neste ativo e timeframe, "
-                f"a sua config é a campeã (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
+                f"👑 <b>Config no ponto:</b> de tudo que o histórico deste ativo e timeframe registra, "
+                f"a sua é a mais consistente (PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
                 f"{melhor_cfg['trades']} trades). ",
-                f"🥇 <b>Spoiler: ninguém achou nada melhor.</b> A configuração que você usa é a líder do "
-                f"banco coletivo neste recorte — PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
+                f"🥇 <b>Nada no histórico supera o que você usa</b> neste recorte — "
+                f"PF {melhor_cfg['pf']}, WR {melhor_cfg['wr']}% em "
                 f"{melhor_cfg['trades']} trades. ",
             ])
             if pf_u is not None and melhor_cfg.get("pf"):
@@ -1894,8 +1897,8 @@ def radar_analisar(p: RadarAnalisarParams):
                 pf_rob_col = float(melhor_cfg.get("pf_robusto") or 0)
                 pf_rob_user = (1.0 + (pf_u - 1.0) * (nt_u / (nt_u + 50.0))) if (pf_u is not None and nt_u) else None
                 melhora = pf_rob_col > max(1.12, (pf_rob_user or 1.0) * 1.15)
-                texto += (f" No coletivo, a config mais forte <b>neste mesmo timeframe</b> "
-                          f"({melhor_cfg['timeframe']}) foi <b>{melhor_cfg['indicador']}</b> "
+                texto += (f" No histórico medido <b>neste mesmo timeframe</b> "
+                          f"({melhor_cfg['timeframe']}), a config mais forte foi <b>{melhor_cfg['indicador']}</b> "
                           f"(período {melhor_cfg['ema_period']}, stop {melhor_cfg['stop_loss']} / "
                           f"take {melhor_cfg['take_profit']}): PF <b>{melhor_cfg['pf']}</b> "
                           f"em <b>{melhor_cfg['trades']} trades</b>.")
@@ -1913,12 +1916,12 @@ def radar_analisar(p: RadarAnalisarParams):
                     }
             else:
                 texto += random.choice([
-                    f" 📚 No banco coletivo ainda <b>não há</b> configuração com amostra robusta "
-                    f"(30+ trades) validada <b>neste timeframe</b> que supere seu teste — "
+                    f" 📚 No histórico medido ainda <b>não há</b> configuração com amostra robusta "
+                    f"(30+ trades) <b>neste timeframe</b> que supere seu teste — "
                     f"só comparo o comparável.",
-                    f" 🗺️ Você está em <b>território pouco mapeado</b>: o coletivo ainda não tem config "
-                    f"robusta validada neste timeframe que bata a sua. Seu teste vira referência pros próximos.",
-                    f" 🔍 Procurei no banco coletivo e... <b>nada supera seu teste neste timeframe</b> com "
+                    f" 🗺️ Você está em <b>território pouco mapeado</b>: o histórico ainda não tem config "
+                    f"robusta neste timeframe que bata a sua.",
+                    f" 🔍 Procurei no histórico deste ativo e... <b>nada supera seu teste neste timeframe</b> com "
                     f"amostra decente (30+ trades). Config de outro timeframe não entra — comparação justa ou nenhuma.",
                 ])
             mensagens.append(texto)
@@ -2006,7 +2009,7 @@ def radar_analisar(p: RadarAnalisarParams):
                     for f in fortes[:3]
                 ],
                 "laboratorio_relacoes": lab_info,
-                "banco_coletivo_mesmo_timeframe": melhor_cfg,
+                "config_historica_mais_forte_neste_ativo": melhor_cfg,
                 "usuario_ja_esta_na_melhor_config": ja_esta_na_melhor,
                 "ha_sugestao_aplicavel": aplicar is not None,
             }
