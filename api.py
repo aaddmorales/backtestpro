@@ -576,7 +576,7 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "3.9 — Radar cruza o Estudo (4a fonte de dados) + fix 500"
+API_VERSAO = "4.0 — Radar IA multilíngue (PT/EN/ES) + Estudo como fonte"
 
 @app.get("/versao")
 def versao():
@@ -1593,6 +1593,7 @@ class RadarAnalisarParams(BaseModel):
     max_drawdown: Optional[float] = None
     capital: Optional[float] = None
     max_ops: Optional[int] = None
+    idioma: Optional[str] = "pt"
 
 
 # Mapa: classe de padrão dominante -> indicador + gatilho de entrada sugeridos
@@ -1662,6 +1663,8 @@ def _radar_cache_set(chave: str, msgs: list):
         print(f"RADAR cache set: {e}", file=sys.stderr)
 
 
+_IDIOMA_NOME = {"pt": "português brasileiro", "en": "English (US)", "es": "español"}
+
 def _radar_ia(ctx: dict) -> Optional[list]:
     """Radar IA: entrega os numeros calculados pelas regras a um LLM que escreve
     a analise em linguagem natural, unica a cada teste. Regras rigidas no prompt:
@@ -1678,7 +1681,7 @@ def _radar_ia(ctx: dict) -> Optional[list]:
             "Sua função: explicar o resultado do backtest do usuário usando EXCLUSIVAMENTE os números do contexto JSON. "
             "REGRAS INVIOLÁVEIS: (1) nunca preveja o mercado nem prometa lucro futuro — você fala de histórico medido e disciplina; "
             "(2) use apenas os números fornecidos, jamais invente valores; "
-            "(3) escreva em português brasileiro, tom de mentor experiente: claro, criativo, por vezes bem-humorado, sempre honesto; "
+            f"(3) ESCREVA INTEIRAMENTE NO IDIOMA: {_IDIOMA_NOME.get(ctx.get('idioma','pt'),'português brasileiro')}. Tom de mentor experiente: claro, criativo, por vezes bem-humorado, sempre honesto; "
             "(4) cada análise deve soar DIFERENTE: varie aberturas, metáforas e estrutura; "
             "(5) traduza jargão (ex.: o que PF significa em dinheiro); "
             "(6) termine a última mensagem com um próximo passo prático (ex.: otimizar, validar out-of-sample, ajustar Máx. Ops); "
@@ -2060,6 +2063,7 @@ def radar_analisar(p: RadarAnalisarParams):
                         "comparar cada teste seu com a galeria inteira de estratégias e te digo onde sua config "
                         "está no mapa.")
             ctx["estudo_matriz"] = estudo_ctx
+            ctx["idioma"] = (p.idioma or "pt")
             # chave do cache: config + métricas + resumo do coletivo
             # (mesmo teste com mesmo resultado = mesma análise, custo zero)
             chave_cache = _radar_cache_chave({
