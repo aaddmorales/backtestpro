@@ -696,14 +696,14 @@ select option{background:#141920}
     <span class="vtag">v5.2</span>
   </div>
   <div class="tsep"></div>
-  <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')">Overview</button>
-  <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')">Editor</button>
-  <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')">⚙ Otimização</button>
-  <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')">🧪 Estudo <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">PRO+</span></button>
-  <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')">Templates</button>
-  <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')">🏆 Rank</button>
-  <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')">💳 Planos</button>
-  <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')">📡 Monitor</button>
+  <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
+  <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')" data-i18n="nav.editor">Editor</button>
+  <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')" data-i18n="nav.otimizar">⚙ Otimização</button>
+  <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')"><span data-i18n="nav.estudo">🧪 Estudo</span> <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">PRO+</span></button>
+  <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')" data-i18n="nav.templates">Templates</button>
+  <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')" data-i18n="nav.rank">🏆 Rank</button>
+  <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')" data-i18n="nav.planos">💳 Planos</button>
+  <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')" data-i18n="nav.monitor">📡 Monitor</button>
   <div class="spacer"></div>
   <div class="top-right">
   <div style="position:relative">
@@ -715,12 +715,12 @@ select option{background:#141920}
   </div>
   <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
   <div class="tsep"></div>
-  <button class="lang-btn active">PT</button>
-  <button class="lang-btn">EN</button>
-  <button class="lang-btn">ES</button>
+  <button class="lang-btn active" id="lang-pt" onclick="setLang('pt')">PT</button>
+  <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+  <button class="lang-btn" id="lang-es" onclick="setLang('es')">ES</button>
   <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
     <div class="api-dot" id="api-dot"></div>
-    <span class="api-label" id="api-label">API Online</span>
+    <span class="api-label" id="api-label" data-i18n="nav.apionline">API Online</span>
   </div>
   <div style="margin-left:8px;position:relative">
     <!-- Não logado -->
@@ -755,7 +755,7 @@ select option{background:#141920}
       <span class="pulse"></span><span id="bt-counter-num">0</span>&nbsp;backtests rodados
     </div>
     <div class="ps">
-      <div class="pl">Ativo</div>
+      <div class="pl" data-i18n="lbl.ativo">Ativo</div>
       <select id="ativo">
         <optgroup label="Forex">
           <option value="EUR/USD">EUR/USD — Euro</option>
@@ -776,7 +776,7 @@ select option{background:#141920}
       </select>
     </div>
     <div class="ps">
-      <div class="pl">Período</div>
+      <div class="pl" data-i18n="lbl.periodo">Período</div>
       <select id="periodo">
         <option value="6 meses">6 meses</option>
         <option value="1 ano">1 ano</option>
@@ -801,7 +801,7 @@ select option{background:#141920}
       <div class="pl" style="margin-bottom:8px">Indicadores <span style="color:var(--muted);font-size:9px;font-weight:400">(até 3)</span></div>
 
       <!-- Indicador principal (estratégia) -->
-      <div class="pli" style="margin-bottom:4px">Estratégia principal</div>
+      <div class="pli" style="margin-bottom:4px" data-i18n="lbl.estrategia">Estratégia principal</div>
       <select id="indicador">
         <option value="EMA Channel High/Low">EMA Channel High/Low</option>
         <option value="EMA">EMA Simples</option>
@@ -817,7 +817,7 @@ select option{background:#141920}
 
       <!-- Overlay indicators -->
       <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
-        <div class="pli" style="margin-bottom:6px">Overlay no gráfico</div>
+        <div class="pli" style="margin-bottom:6px" data-i18n="lbl.overlay">Overlay no gráfico</div>
 
         <!-- EMA 1 -->
         <div class="ind-row" id="ind-row-1">
@@ -927,22 +927,22 @@ select option{background:#141920}
     <div class="ps">
       <div class="pl">Gestão de Risco</div>
       <div class="pr">
-        <div><div class="pli">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
-        <div><div class="pli">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
+        <div><div class="pli" data-i18n="lbl.stop">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
+        <div><div class="pli" data-i18n="lbl.take">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
       </div>
       <div class="pr" style="margin-top:6px">
-        <div><div class="pli">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
-        <div><div class="pli">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
+        <div><div class="pli" data-i18n="lbl.capital">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
+        <div><div class="pli" data-i18n="lbl.maxops">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
       </div>
-      <div style="margin-top:6px"><div class="pli">Spread/custo (por op.)</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
+      <div style="margin-top:6px"><div class="pli" data-i18n="lbl.spread">Spread/custo (por op.)</div><input type="number" id="comissao" value="0.0002" step="0.0001"></div>
     </div>
     <div class="ps">
       <button class="run-btn" id="run-btn" onclick="rodarBacktest()">
         <span id="run-icon">▶</span>
-        <span id="run-txt">Rodar Backtest</span>
+        <span id="run-txt" data-i18n="btn.rodar">Rodar Backtest</span>
       </button>
-      <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()">⚙ Otimizar parâmetros</button>
-      <button class="exp-btn" onclick="abrirNTSL()">📥 Exportar para NTSL</button>
+      <button class="otim-btn" id="otim-btn" onclick="abrirOtimizar()" data-i18n="btn.otimizar">⚙ Otimizar parâmetros</button>
+      <button class="exp-btn" onclick="abrirNTSL()" data-i18n="btn.ntsl">📥 Exportar para NTSL</button>
     </div>
   </div>
 
@@ -1015,7 +1015,7 @@ select option{background:#141920}
           <!-- TAB: OVERVIEW -->
           <div id="tab-overview" style="display:block">
             <div id="ia-hero" style="margin:16px 16px 0;padding:18px 20px;background:linear-gradient(135deg,rgba(157,111,255,0.10),rgba(0,208,132,0.07));border:1px solid rgba(157,111,255,0.30);border-radius:12px">
-              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">✨ Descreva sua estratégia em português</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px" data-i18n="hero.titulo">✨ Descreva sua estratégia em português</div>
               <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <div style="flex:1;min-width:240px;position:relative;display:flex">
@@ -1026,31 +1026,31 @@ select option{background:#141920}
                     <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
                   </div>
                 </div>
-                <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px">✨ Gerar estratégia</button>
+                <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px" data-i18n="hero.gerar">✨ Gerar estratégia</button>
               </div>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
       <div class="mb-card">
-        <div class="mb-name">Win Rate</div>
+        <div class="mb-name" data-i18n="met.winrate">Win Rate</div>
         <div class="mb-val" id="m-wr">—</div>
         <div class="mb-bar"><div class="mb-fill" id="m-wr-bar" style="width:0%;background:var(--muted)"></div></div>
         <div class="sem" id="m-wr-sem"></div>
       </div>
       <div class="mb-card">
-        <div class="mb-name">Sharpe Ratio</div>
+        <div class="mb-name" data-i18n="met.sharpe">Sharpe Ratio</div>
         <div class="mb-val" id="m-sh">—</div>
         <div class="mb-bar"><div class="mb-fill" id="m-sh-bar" style="width:0%;background:var(--muted)"></div></div>
         <div class="sem" id="m-sh-sem"></div>
       </div>
       <div class="mb-card">
-        <div class="mb-name">Max Drawdown</div>
+        <div class="mb-name" data-i18n="met.drawdown">Max Drawdown</div>
         <div class="mb-val" id="m-dd">—</div>
         <div class="mb-bar"><div class="mb-fill" id="m-dd-bar" style="width:0%;background:var(--muted)"></div></div>
         <div class="sem" id="m-dd-sem"></div>
       </div>
       <div class="mb-card">
-        <div class="mb-name">Profit Factor</div>
+        <div class="mb-name" data-i18n="met.pf">Profit Factor</div>
         <div class="mb-val" id="m-pf">—</div>
         <div class="mb-bar"><div class="mb-fill" id="m-pf-bar" style="width:0%;background:var(--muted)"></div></div>
         <div class="sem" id="m-pf-sem"></div>
@@ -1312,7 +1312,7 @@ select option{background:#141920}
           <div style="max-width:1060px;margin:0 auto">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
               <span style="font-size:20px">🧪</span>
-              <span style="font-size:17px;font-weight:800">Estudo — Matriz Estratégia × Timeframe</span>
+              <span style="font-size:17px;font-weight:800" data-i18n="estudo.titulo">Estudo — Matriz Estratégia × Timeframe</span>
             </div>
             <div style="font-size:13px;color:var(--muted2);margin-bottom:14px">
               Roda <b>a galeria inteira de estratégias</b> em todos os timeframes do ativo escolhido e revela onde cada uma realmente funciona.
@@ -1320,14 +1320,14 @@ select option{background:#141920}
             </div>
             <div id="estudo-gate" style="display:none;background:var(--bg2);border:1px solid var(--purple);border-radius:12px;padding:26px;text-align:center">
               <div style="font-size:30px">🔒</div>
-              <div style="font-size:15px;font-weight:700;margin:8px 0 4px">Recurso do plano profissional</div>
+              <div style="font-size:15px;font-weight:700;margin:8px 0 4px" data-i18n="estudo.gateTitulo">Recurso do plano profissional</div>
               <div style="font-size:13px;color:var(--muted2);margin-bottom:14px">O Estudo roda dezenas de backtests numa tacada e entrega o mapa das melhores combinações de cada ativo.</div>
-              <button class="btn-primary" style="max-width:220px;margin:0 auto" onclick="switchTab('planos')">⚡ Conhecer os planos</button>
+              <button class="btn-primary" style="max-width:220px;margin:0 auto" onclick="switchTab('planos')" data-i18n="estudo.gateBtn">⚡ Conhecer os planos</button>
             </div>
             <div id="estudo-ferramenta" style="display:none">
               <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
                 <div style="min-width:230px">
-                  <div class="pli">Ativo (catálogo completo)</div>
+                  <div class="pli" data-i18n="estudo.ativo">Ativo (catálogo completo)</div>
                   <select id="estudo-ativo"></select>
                 </div>
                 <div>
@@ -1340,7 +1340,7 @@ select option{background:#141920}
                     <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="15m" checked><span class="ind-label">15m</span></label>
                   </div>
                 </div>
-                <button class="btn-primary" id="estudo-rodar" style="max-width:260px" onclick="rodarEstudo()">🧪 Rodar estudo (1–2 min)</button>
+                <button class="btn-primary" id="estudo-rodar" style="max-width:260px" onclick="rodarEstudo()" data-i18n="estudo.rodar">🧪 Rodar estudo (1–2 min)</button>
               </div>
               <div id="estudo-loading" style="display:none;text-align:center;padding:34px 0">
                 <div style="font-size:30px;animation:radarpulse 1.6s infinite">🧪</div>
@@ -2031,6 +2031,97 @@ const TEMPLATES = {
         else:
             if self.data.Close[-1] < self.support[-2]: self.position.close()`
 };
+
+// ── SISTEMA DE IDIOMAS (i18n) PT/EN/ES — v5.3 ──────────────────
+const I18N = {
+  pt: {
+    'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
+    'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
+    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.apionline':'API Online',
+    'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
+    'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
+    'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
+    'sec.risco':'GESTÃO DE RISCO',
+    'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
+    'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
+    'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
+    'cap.inicial':'Capital Inicial','cap.final':'Capital Final','cap.lucro':'Lucro / Perda','cap.cagr':'Retorno Anual (CAGR)',
+    'estudo.titulo':'Estudo — Matriz Estratégia × Timeframe',
+    'estudo.sub':'Roda <b>a galeria inteira de estratégias</b> em todos os timeframes do ativo escolhido e revela onde cada uma realmente funciona. 💪 = robusta (PF ≥ 1.15, 30+ trades, Sharpe > 0.5). Ranking por consistência (Sharpe). Histórico medido — não é promessa.',
+    'estudo.ativo':'Ativo (catálogo completo)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Rodar estudo (1–2 min)',
+    'estudo.gateTitulo':'Recurso do plano profissional',
+    'estudo.gateSub':'O Estudo roda dezenas de backtests numa tacada e entrega o mapa das melhores combinações de cada ativo.',
+    'estudo.gateBtn':'⚡ Conhecer os planos',
+  },
+  en: {
+    'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
+    'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
+    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.apionline':'API Online',
+    'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
+    'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
+    'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
+    'sec.risco':'RISK MANAGEMENT',
+    'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
+    'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
+    'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
+    'cap.inicial':'Initial Capital','cap.final':'Final Capital','cap.lucro':'Profit / Loss','cap.cagr':'Annual Return (CAGR)',
+    'estudo.titulo':'Study — Strategy × Timeframe Matrix',
+    'estudo.sub':'Runs <b>the entire strategy gallery</b> across every timeframe of the chosen asset and reveals where each one actually works. 💪 = robust (PF ≥ 1.15, 30+ trades, Sharpe > 0.5). Ranked by consistency (Sharpe). Measured history — not a promise.',
+    'estudo.ativo':'Asset (full catalog)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Run study (1–2 min)',
+    'estudo.gateTitulo':'Professional plan feature',
+    'estudo.gateSub':'The Study runs dozens of backtests at once and delivers the map of the best combinations for each asset.',
+    'estudo.gateBtn':'⚡ See the plans',
+  },
+  es: {
+    'nav.overview':'Resumen','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
+    'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
+    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.apionline':'API en línea',
+    'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
+    'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
+    'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
+    'sec.risco':'GESTIÓN DE RIESGO',
+    'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
+    'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
+    'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
+    'cap.inicial':'Capital inicial','cap.final':'Capital final','cap.lucro':'Ganancia / Pérdida','cap.cagr':'Retorno anual (CAGR)',
+    'estudo.titulo':'Estudio — Matriz Estrategia × Timeframe',
+    'estudo.sub':'Ejecuta <b>toda la galería de estrategias</b> en todos los timeframes del activo elegido y revela dónde funciona cada una de verdad. 💪 = robusta (PF ≥ 1.15, 30+ trades, Sharpe > 0.5). Clasificado por consistencia (Sharpe). Histórico medido — no es una promesa.',
+    'estudo.ativo':'Activo (catálogo completo)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Ejecutar estudio (1–2 min)',
+    'estudo.gateTitulo':'Función del plan profesional',
+    'estudo.gateSub':'El Estudio ejecuta decenas de backtests de una vez y entrega el mapa de las mejores combinaciones de cada activo.',
+    'estudo.gateBtn':'⚡ Ver los planes',
+  }
+};
+
+let LANG = localStorage.getItem('bb_lang') || 'pt';
+
+function t(chave) {
+  return (I18N[LANG] && I18N[LANG][chave]) || (I18N.pt && I18N.pt[chave]) || chave;
+}
+
+function aplicarIdioma() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const chave = el.getAttribute('data-i18n');
+    const val = t(chave);
+    if (val) el.innerHTML = val;
+  });
+  // botões de idioma: marca o ativo
+  ['pt','en','es'].forEach(l => {
+    const b = document.getElementById('lang-' + l);
+    if (b) b.classList.toggle('active', l === LANG);
+  });
+  document.documentElement.lang = LANG;
+  // partes geradas por JS que precisam re-render
+  if (typeof window._estudoPreparada !== 'undefined') { try { prepararAbaEstudo(); } catch(e){} }
+}
+
+function setLang(lang) {
+  if (!I18N[lang]) return;
+  LANG = lang;
+  localStorage.setItem('bb_lang', lang);
+  aplicarIdioma();
+}
+
 
 function switchTab(tab) {
   activeTab = tab;
@@ -3033,10 +3124,10 @@ function renderOverview(d, params) {
   </div>
   <div class="${pos?'retorno-pos':'retorno-neg'} ov-retorno" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div>
   <div class="ov-cap-row">
-    <div><div class="ov-cap-label">Capital Inicial</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Capital Final</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Lucro / Perda</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">Retorno Anual (CAGR)</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
+    <div><div class="ov-cap-label">${t('cap.inicial')}</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div><div class="ov-cap-label">${t('cap.final')}</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div><div class="ov-cap-label">${t('cap.lucro')}</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div><div class="ov-cap-label">${t('cap.cagr')}</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
   </div>
 
   <!-- CANDLE CHART -->
@@ -3407,6 +3498,7 @@ async function radarAnalisarAtivo(d){
       max_drawdown: parseFloat(m.max_drawdown) || null,
       capital: parseFloat(document.getElementById('capital').value) || null,
       max_ops: parseInt(document.getElementById('max_ops').value) || null,
+      idioma: LANG,
     };
     const r = await fetch(API + '/radar/analisar', {method:'POST',
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
@@ -3684,6 +3776,7 @@ function limparAutofillHero(){
   if(el && /^[^\s]+@[^\s]+\.[^\s]+$/.test(el.value.trim())) el.value = '';
 }
 document.addEventListener('DOMContentLoaded', ()=>{
+  aplicarIdioma();
   setTimeout(limparAutofillHero, 500);
   setTimeout(limparAutofillHero, 1500);
   setTimeout(limparAutofillHero, 3000);
