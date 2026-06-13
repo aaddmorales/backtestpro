@@ -798,7 +798,7 @@ select option{background:#141920}
       <input type="hidden" id="timeframe" value="1d">
     </div>
     <div class="ps">
-      <div class="pl" style="margin-bottom:8px">Indicadores <span style="color:var(--muted);font-size:9px;font-weight:400">(até 3)</span></div>
+      <div class="pl" style="margin-bottom:8px"><span data-i18n="sec.indicadores">Indicadores</span> <span style="color:var(--muted);font-size:9px;font-weight:400" data-i18n="sec.ate3">(até 3)</span></div>
 
       <!-- Indicador principal (estratégia) -->
       <div class="pli" style="margin-bottom:4px" data-i18n="lbl.estrategia">Estratégia principal</div>
@@ -925,7 +925,7 @@ select option{background:#141920}
       </div>
     </div>
     <div class="ps">
-      <div class="pl">Gestão de Risco</div>
+      <div class="pl" data-i18n="sec.risco">Gestão de Risco</div>
       <div class="pr">
         <div><div class="pli" data-i18n="lbl.stop">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
         <div><div class="pli" data-i18n="lbl.take">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
@@ -2041,7 +2041,7 @@ const I18N = {
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
-    'sec.risco':'GESTÃO DE RISCO',
+    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco',
     'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2060,7 +2060,7 @@ const I18N = {
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
-    'sec.risco':'RISK MANAGEMENT',
+    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management',
     'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2079,7 +2079,7 @@ const I18N = {
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
-    'sec.risco':'GESTIÓN DE RIESGO',
+    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo',
     'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
