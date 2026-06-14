@@ -3593,7 +3593,15 @@ async function radarAnalisarAtivo(d){
     const falta = Math.max(0, 1400 - (Date.now() - inicio));
     await new Promise(res => setTimeout(res, falta));
     radarLoadingEsconder();
-    (resp.mensagens || []).forEach(msg => radarFala(msg));
+    // LEITURA: a IA já vem no idioma certo; sem IA (Free 2º teste/fallback) usa regras localizadas
+    if(resp.ia_usada){
+      (resp.mensagens || []).forEach(msg => radarFala(msg));
+    } else {
+      radarLeituraRegras(d);
+      (resp.mensagens || []).forEach(msg => radarFala(msg));
+    }
+    radarAvisos(d);            // avisos de regra (amostra/PF/drawdown), localizados
+    radarFeedbackSugestao(d);  // feedback se uma sugestão foi aplicada, localizado
     if(resp.aplicar && resp.aplicar.indicador){
       radarSugestaoBox(resp.aplicar);
     }
@@ -3726,19 +3734,32 @@ function radarConfete(){
 function radarPrestaContas(antes, pfNovo){
   const body = document.getElementById('radar-body');
   if(!body) return;
+  const _L = _bbLang();
+  const _txt = {
+    pt:`↩️ <b>Sendo honesto com você:</b> a config sugerida rendeu <b>menos</b> que a sua neste recorte (PF ${pfNovo.toFixed(2)} vs ${antes.pf.toFixed(2)}). A leitura histórica orienta, mas o <b>seu teste</b> é quem manda.`,
+    en:`↩️ <b>Being honest with you:</b> the suggested config performed <b>worse</b> than yours on this window (PF ${pfNovo.toFixed(2)} vs ${antes.pf.toFixed(2)}). The historical read guides, but <b>your test</b> is what rules.`,
+    es:`↩️ <b>Siendo honesto contigo:</b> la config sugerida rindió <b>menos</b> que la tuya en este recorte (PF ${pfNovo.toFixed(2)} vs ${antes.pf.toFixed(2)}). La lectura histórica orienta, pero <b>tu prueba</b> es la que manda.`
+  }[_L] || '';
+  const _btn = {
+    pt:`↩ Voltar pra minha configuração (stop ${antes.stop_loss} / take ${antes.take_profit})`,
+    en:`↩ Back to my configuration (stop ${antes.stop_loss} / take ${antes.take_profit})`,
+    es:`↩ Volver a mi configuración (stop ${antes.stop_loss} / take ${antes.take_profit})`
+  }[_L] || '';
+  const _ok = {
+    pt:'✅ Sua configuração anterior voltou pros parâmetros. Rode o backtest quando quiser confirmar.',
+    en:'✅ Your previous configuration is back in the parameters. Run the backtest whenever you want to confirm.',
+    es:'✅ Tu configuración anterior volvió a los parámetros. Ejecuta el backtest cuando quieras confirmar.'
+  }[_L] || '';
   const div = document.createElement('div');
   div.className = 'radar-msg atencao';
-  div.innerHTML = `↩️ <b>Sendo honesto com você:</b> a config sugerida rendeu <b>menos</b> que a sua neste recorte (PF ${pfNovo.toFixed(2)} vs ${antes.pf.toFixed(2)}). A leitura histórica orienta, mas o <b>seu teste</b> é quem manda.
-    <div style="display:flex;margin-top:9px">
-      <button class="radar-act radar-btn-revert" style="flex:1;font-size:12.5px;padding:10px">↩ Voltar pra minha configuração (stop ${antes.stop_loss} / take ${antes.take_profit})</button>
-    </div>`;
+  div.innerHTML = `${_txt}<div style="display:flex;margin-top:9px"><button class="radar-act radar-btn-revert" style="flex:1;font-size:12.5px;padding:10px">${_btn}</button></div>`;
   div.querySelector('.radar-btn-revert').addEventListener('click', () => {
     document.getElementById('indicador').value = antes.indicador;
     document.getElementById('ema_period').value = antes.ema_period;
     document.getElementById('stop_loss').value = antes.stop_loss;
     document.getElementById('take_profit').value = antes.take_profit;
     try{ atualizarOverlays(); }catch(e){}
-    radarFala('✅ Sua configuração anterior voltou pros parâmetros. Rode o backtest quando quiser confirmar.');
+    radarFala(_ok);
   });
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;
@@ -3751,13 +3772,128 @@ function radarReset(){
   _radarSugeridas.clear();
 }
 
+// ── Mensagens de regra do Radar, localizadas PT/EN/ES (a IA faz a leitura quando roda) ──
+function _bbLang(){ return (typeof LANG!=='undefined' && LANG) ? LANG : 'pt'; }
+const RADAR_MSG = {
+  amostra: {
+    pt:["🔍 <b>Amostra pequena.</b> Só <b>{nt} trades</b> — pouco pra separar sorte de estratégia. Aumente o período ou desça de timeframe antes de concluir.",
+        "📏 <b>Régua curta demais:</b> com {nt} trades, qualquer resultado pode ser acaso. Gere mais entradas (período maior ou timeframe menor)."],
+    en:["🔍 <b>Small sample.</b> Only <b>{nt} trades</b> — too few to tell luck from edge. Extend the period or drop a timeframe before concluding.",
+        "📏 <b>Too short a ruler:</b> with {nt} trades, any result could be chance. Generate more entries (longer period or lower timeframe)."],
+    es:["🔍 <b>Muestra pequeña.</b> Solo <b>{nt} trades</b> — poco para separar suerte de estrategia. Amplía el período o baja de timeframe antes de concluir.",
+        "📏 <b>Regla muy corta:</b> con {nt} trades, cualquier resultado puede ser azar. Genera más entradas (período mayor o timeframe menor)."]
+  },
+  negativo: {
+    pt:["📉 <b>Essa configuração perdeu no histórico</b> (PF {pf}). Às vezes é só o ajuste: rode o <b>⚙ Otimizar</b> ou teste em outro ativo antes de descartar.",
+        "🚧 <b>No vermelho neste recorte</b> (PF {pf}). Pode ser o ativo errado pra essa lógica, ou o stop/take fora de tom. Otimizar primeiro, descartar depois."],
+    en:["📉 <b>This setup lost on the historical data</b> (PF {pf}). Sometimes it is just the tuning: run <b>⚙ Optimize</b> or test another asset before discarding.",
+        "🚧 <b>In the red on this window</b> (PF {pf}). Could be the wrong asset for this logic, or stop/take off-key. Optimize first, discard later."],
+    es:["📉 <b>Esta configuración perdió en el histórico</b> (PF {pf}). A veces es solo el ajuste: ejecuta <b>⚙ Optimizar</b> o prueba otro activo antes de descartar.",
+        "🚧 <b>En rojo en este recorte</b> (PF {pf}). Puede ser el activo equivocado para esta lógica, o el stop/take desafinado. Optimiza primero, descarta después."]
+  },
+  drawdown: {
+    pt:["⚠️ <b>Lucrativa, mas com tombo pesado.</b> PF {pf} é bom, mas o drawdown de <b>{dd}%</b> testaria seu estômago. Reduza o Máx. Ops ou aperte o stop.",
+        "🎢 <b>Montanha-russa lucrativa:</b> termina no positivo (PF {pf}), mas o mergulho de <b>{dd}%</b> derrubaria muita gente. Menos exposição = mais chance de chegar ao fim."],
+    en:["⚠️ <b>Profitable, but with a heavy fall.</b> PF {pf} is good, but the <b>{dd}%</b> drawdown would test your stomach. Lower Max Ops or tighten the stop.",
+        "🎢 <b>Profitable roller-coaster:</b> ends positive (PF {pf}), but the <b>{dd}%</b> dip would shake many out. Less exposure = better odds of reaching the end."],
+    es:["⚠️ <b>Rentable, pero con caída fuerte.</b> PF {pf} es bueno, pero el drawdown de <b>{dd}%</b> pondría a prueba tu estómago. Reduce Máx. Ops o ajusta el stop.",
+        "🎢 <b>Montaña rusa rentable:</b> termina en positivo (PF {pf}), pero la caída de <b>{dd}%</b> tumbaría a muchos. Menos exposición = más opción de llegar al final."]
+  },
+  melhorou: {
+    pt:["🎉 <b>A sugestão acertou!</b> {ganho}. Seu teste reforça a leitura histórica deste ativo.",
+        "📈 <b>Subiu!</b> {ganho}. Resultado consistente com o histórico medido do ativo."],
+    en:["🎉 <b>The suggestion worked!</b> {ganho}. Your test reinforces the historical read of this asset.",
+        "📈 <b>It went up!</b> {ganho}. Result consistent with the asset's measured history."],
+    es:["🎉 <b>¡La sugerencia acertó!</b> {ganho}. Tu prueba refuerza la lectura histórica de este activo.",
+        "📈 <b>¡Subió!</b> {ganho}. Resultado consistente con el histórico medido del activo."]
+  }
+};
+const RADAR_LEITURA = {
+  veredito: {
+    pos:{pt:"resultado <b>positivo e consistente</b> ✅", en:"a <b>positive, consistent</b> result ✅", es:"resultado <b>positivo y consistente</b> ✅"},
+    lim:{pt:"resultado <b>no limite</b> — ganha pouco acima do que perde ⚖️", en:"a <b>borderline</b> result — wins just above what it loses ⚖️", es:"resultado <b>al límite</b> — gana poco más de lo que pierde ⚖️"},
+    neg:{pt:"resultado <b>negativo no histórico</b> ❌", en:"a <b>negative</b> result on the history ❌", es:"resultado <b>negativo en el histórico</b> ❌"}
+  },
+  resumo: {
+    pt:["⚖️ <b>Na balança:</b> {nt} trades depois, {ver}. Placar ganho/perda em <b>{pf}</b> — pra cada $1 perdido, ${pf} recuperado.",
+        "🧾 <b>Fechamento de caixa:</b> {nt} operações, {ver}. Profit factor <b>{pf}</b>: quanto voltou pra cada $1 que a estratégia arriscou."],
+    en:["⚖️ <b>On balance:</b> after {nt} trades, {ver}. Win/loss score at <b>{pf}</b> — for every $1 lost, ${pf} recovered.",
+        "🧾 <b>Closing the books:</b> {nt} trades, {ver}. Profit factor <b>{pf}</b>: how much came back for each $1 the strategy risked."],
+    es:["⚖️ <b>En la balanza:</b> tras {nt} trades, {ver}. Marcador ganancia/pérdida en <b>{pf}</b> — por cada $1 perdido, ${pf} recuperado.",
+        "🧾 <b>Cierre de caja:</b> {nt} operaciones, {ver}. Profit factor <b>{pf}</b>: cuánto volvió por cada $1 que la estrategia arriesgó."]
+  },
+  wr: {
+    pt:" Win rate <b>{wr}%</b> = ~{wrr} de cada 100 entradas no alvo.",
+    en:" Win rate <b>{wr}%</b> = ~{wrr} of every 100 entries hit target.",
+    es:" Win rate <b>{wr}%</b> = ~{wrr} de cada 100 entradas al objetivo."
+  }
+};
+function _sub(str, vars){ for(const k in (vars||{})) str = str.split('{'+k+'}').join(vars[k]); return str; }
+function coachMsg(grupo, vars){
+  const g = RADAR_MSG[grupo]; if(!g) return '';
+  const arr = g[_bbLang()] || g.pt || [];
+  return arr.length ? _sub(arr[(Math.random()*arr.length)|0], vars) : '';
+}
+// Leitura por REGRAS (fallback localizado quando a IA não roda — ex.: Free 2º teste)
+function radarLeituraRegras(d){
+  const m = d.metricas || d, L = _bbLang();
+  const wr = parseFloat(m.win_rate ?? m.winRate ?? NaN);
+  const pf = parseFloat(m.profit_factor ?? NaN);
+  const nt = parseInt(m.total_trades ?? (d.trades||[]).length ?? 0);
+  if(!(nt>0) || isNaN(pf)) return;
+  const verKey = pf>=1.3 ? 'pos' : pf>=1 ? 'lim' : 'neg';
+  const ver = RADAR_LEITURA.veredito[verKey][L] || RADAR_LEITURA.veredito[verKey].pt;
+  const arr = RADAR_LEITURA.resumo[L] || RADAR_LEITURA.resumo.pt;
+  let out = _sub(arr[(Math.random()*arr.length)|0], {nt:nt, ver:ver, pf:pf.toFixed(2)});
+  if(!isNaN(wr)){
+    out += _sub((RADAR_LEITURA.wr[L]||RADAR_LEITURA.wr.pt), {wr:wr.toFixed(1), wrr:Math.round(wr)});
+  }
+  radarFala(out);
+}
+// Avisos de regra (sempre, localizados) — não competem com a leitura, complementam
+function radarAvisos(d){
+  const m = d.metricas || d;
+  const wr = parseFloat(m.win_rate ?? m.winRate ?? NaN);
+  const pf = parseFloat(m.profit_factor ?? NaN);
+  const dd = Math.abs(parseFloat(m.max_drawdown ?? NaN));
+  const nt = parseInt(m.total_trades ?? (d.trades||[]).length ?? 0);
+  if(nt>0 && nt<10) radarFala(coachMsg('amostra', {nt:nt}), 'atencao');
+  if(!isNaN(pf) && pf<1 && nt>=10) radarFala(coachMsg('negativo', {pf:pf.toFixed(2)}), 'alerta');
+  if(!isNaN(pf) && pf>=1.3 && !isNaN(dd) && dd>15) radarFala(coachMsg('drawdown', {pf:pf.toFixed(2), dd:dd.toFixed(1)}), 'atencao');
+}
+// Feedback quando uma sugestão foi aplicada (localizado)
+function radarFeedbackSugestao(d){
+  const m = d.metricas || d;
+  const pf = parseFloat(m.profit_factor ?? NaN);
+  const ret = parseFloat(m.retorno ?? NaN);
+  if(window._radarAntes && window._radarAntes.pf != null && !isNaN(pf)){
+    if(pf < window._radarAntes.pf){
+      radarPrestaContas(window._radarAntes, pf);
+    } else {
+      const ganho = `PF ${window._radarAntes.pf.toFixed(2)} → <b>${pf.toFixed(2)}</b>${!isNaN(ret) && ret>0 ? ` · +${ret.toFixed(2)}%` : ''}`;
+      radarFala(coachMsg('melhorou', {ganho:ganho}));
+      setTimeout(radarConfete, 350);
+    }
+    window._radarAntes = null;
+  }
+  window._radarUltimoPF = isNaN(pf) ? null : pf;
+}
+
 function radarCoach(d){
   try{
     radarReset();   // teste novo = conversa nova, sem mensagens velhas
     const ativo = document.getElementById('ativo')?.value || '';
     const tf = document.querySelector('.tf-btn.active, [data-tf].active')?.textContent || '';
-    const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    const _loc = _bbLang()==='pt' ? 'pt-BR' : _bbLang()==='es' ? 'es-ES' : 'en-US';
+    const hora = new Date().toLocaleTimeString(_loc, {hour:'2-digit', minute:'2-digit'});
     radarSeparador(`${ativo}${tf ? ' · '+tf : ''} · ${hora}`.trim());
+    // A leitura (IA ou regras), os avisos e o feedback são renderizados em radarAnalisarAtivo,
+    // em ordem e SEMPRE no idioma certo — sem mistura PT/EN/ES.
+    setTimeout(()=>radarAnalisarAtivo(d), 900);
+  }catch(e){ console.log('radarCoach', e); }
+}
+function _radarCoachLegadoDesativado(d){
+  try{
     const m = d.metricas || d;
     const wr = parseFloat(m.win_rate ?? m.winRate ?? NaN);
     const pf = parseFloat(m.profit_factor ?? NaN);
