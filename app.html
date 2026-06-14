@@ -1020,7 +1020,7 @@ select option{background:#141920}
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <div style="flex:1;min-width:240px;position:relative;display:flex">
                   <input type="text" id="ia-hero-desc" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" data-i18n-ph="hero.ph" placeholder='Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾' style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px 0 0 8px;border-right:none;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarHeroIA()">
-                  <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="width:42px;background:var(--bg2);border:1px solid var(--border2);border-radius:0 8px 8px 0;color:var(--green);font-size:14px;cursor:pointer;font-weight:700">▾</button>
+                  <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="white-space:nowrap;padding:0 14px;background:rgba(0,208,132,0.12);border:1px solid rgba(0,208,132,0.45);border-left:none;border-radius:0 8px 8px 0;color:var(--green);font-size:12.5px;cursor:pointer;font-weight:700">📋 <span data-i18n="hero.prontas">Estratégias prontas</span> ▾</button>
                   <div id="hero-lista" style="display:none;position:absolute;top:46px;left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
                     <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
                     <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
@@ -1071,6 +1071,10 @@ select option{background:#141920}
               <div style="font-size:38px;opacity:.25">📊</div>
               <div style="font-size:14px;font-weight:600;color:var(--muted2)" data-i18n="ov.emptyTitle">Pronto pra testar sua estratégia</div>
               <div style="font-size:12px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6" data-i18n="ov.emptyDesc">Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.</div>
+              <button class="run-btn" id="run-btn-empty" onclick="rodarBacktest()" style="margin-top:10px;max-width:280px;width:100%">
+                <span>▶</span>
+                <span data-i18n="btn.rodar">Rodar Backtest</span>
+              </button>
             </div>
             <div id="ov-result" style="display:none"></div>
           </div>
@@ -2105,6 +2109,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar e rodar','radar.pfHist':'PF histórico','radar.vsSeu':'vs seu teste','radar.emTrades':'em {n} trades',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
     'hero.ph':'Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾',
+    'hero.prontas':'Estratégias prontas',
     'ov.emptyTitle':'Pronto pra testar sua estratégia',
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
@@ -2133,6 +2138,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Apply & run','radar.pfHist':'Historical PF','radar.vsSeu':'vs your test','radar.emTrades':'over {n} trades',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
     'hero.ph':'Describe ("EMA 20 high/low channel") or pick a ready-made one from the button ▾',
+    'hero.prontas':'Ready strategies',
     'ov.emptyTitle':'Ready to test your strategy',
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
@@ -2161,6 +2167,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar y ejecutar','radar.pfHist':'PF histórico','radar.vsSeu':'vs tu prueba','radar.emTrades':'en {n} trades',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
     'hero.ph':'Describe ("canal EMA 20 high/low") o elige una lista en el botón ▾',
+    'hero.prontas':'Estrategias listas',
     'ov.emptyTitle':'Listo para probar tu estrategia',
     'ov.emptyDesc':'Configura los parámetros a la izquierda, elige un activo y haz clic en ▶ Ejecutar Backtest para ver tu resultado aquí.',
   }
