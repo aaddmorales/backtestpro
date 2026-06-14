@@ -1033,6 +1033,7 @@ select option{background:#141920}
                 <button id="hero-limpar-btn" onclick="limparCodigo()" title="Limpar código" style="white-space:nowrap;padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12.5px;cursor:pointer;font-weight:600">🧹 <span data-i18n="hero.limpar">Limpar</span></button>
               </div>
               <div id="param-aviso" data-i18n="param.naoIdent" style="display:none;margin-top:9px;padding:10px 13px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12.5px;line-height:1.45"></div>
+              <div id="free-contador" style="display:none;margin-top:8px;font-size:12px;font-weight:600;color:var(--muted2)"></div>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
@@ -1807,11 +1808,8 @@ function atualizarUI() {
   document.getElementById('dd-upgrade').style.display = plano === 'free' ? 'flex' : 'none';
   document.getElementById('dd-portal').style.display  = plano === 'free' ? 'none' : 'flex';
 
-  // Limite banner
-  if (plano === 'free' && usados >= limite) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido: ${usados}/${limite} backtests este mês.`;
-  }
+  // Status dos 3 testes grátis (modelo novo — backend é a fonte da verdade)
+  atualizarStatusFree();
 
   // Catálogo de ativos conforme o plano (popula o dropdown com cadeados)
   carregarCatalogoAtivos(plano);
@@ -1977,33 +1975,91 @@ async function assinar(plano) {
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
+// ── GATING: 3 testes grátis (backend é a fonte da verdade) ──
+const LIMITE_FREE = 3;
+window._freeCongelado = false;
+
+function setContadorFree(usados, limite, ilimitado, congelado){
+  const dd = document.getElementById('dd-uso');
+  const fc = document.getElementById('free-contador');
+  if(ilimitado){
+    if(dd) dd.textContent = t('gate.ilimitado');
+    if(fc) fc.style.display = 'none';
+    return;
+  }
+  if(dd) dd.textContent = `${usados} / ${limite} ${t('gate.testesGratis')}`;
+  if(fc){
+    fc.style.display = (usuarioAtual ? 'block' : 'none');
+    fc.textContent = `${t('gate.testesGratis')}: ${usados} ${t('gate.de')} ${limite}`;
+    const rest = Math.max(0, limite - usados);
+    fc.style.color = congelado ? 'var(--red)' : (rest <= 1 ? '#ffb830' : 'var(--muted2)');
+  }
+}
+
+async function atualizarStatusFree(){
+  try{
+    if(!usuarioAtual || !usuarioAtual.id){ setContadorFree(0, LIMITE_FREE, false, false); congelarUI(false); return; }
+    const r = await fetch(API + '/free/status?user_id=' + encodeURIComponent(usuarioAtual.id));
+    const d = await r.json();
+    if(d.ilimitado){ setContadorFree(0, 0, true, false); congelarUI(false); return; }
+    setContadorFree(d.usados || 0, d.limite || LIMITE_FREE, false, !!d.congelado);
+    congelarUI(!!d.congelado);
+  }catch(e){ /* silencioso */ }
+}
+
+function congelarUI(congelado){
+  window._freeCongelado = !!congelado;
+  ['run-btn','ia-run-btn','run-btn-empty'].forEach(id=>{
+    const b = document.getElementById(id);
+    if(b){ b.disabled = !!congelado; b.style.opacity = congelado ? '0.5' : ''; b.style.cursor = congelado ? 'not-allowed' : ''; }
+  });
+}
+
+function abrirModalUpgrade(){
+  congelarUI(true);
+  const m = document.getElementById('modal-upgrade');
+  if(m) m.style.display = 'flex';
+}
+function fecharModalUpgrade(){
+  const m = document.getElementById('modal-upgrade');
+  if(m) m.style.display = 'none';
+}
+
+function tratarErroGating(det){
+  if(det.code === 'login_necessario'){ abrirAuth('login'); return; }
+  if(det.code === 'ativo_bloqueado'){
+    const b = document.getElementById('limit-banner'); if(b) b.classList.add('show');
+    const m = document.getElementById('limit-msg'); if(m) m.textContent = t('gate.ativoBloq');
+    return;
+  }
+  if(det.code === 'free_esgotado'){ atualizarStatusFree(); abrirModalUpgrade(); return; }
+  alert(det.msg || 'Erro');
+}
+
 async function verificarLimite() {
-  console.log('verificarLimite → usuarioAtual:', usuarioAtual?.email, '| perfilAtual:', perfilAtual);
-  if (!usuarioAtual) {
-    abrirAuth('login');
-    return false;
-  }
-  if (!perfilAtual) return true;
-  if (perfilAtual.plano === 'free' && perfilAtual.backtests_mes >= (perfilAtual.backtests_limite || 50)) {
-    document.getElementById('limit-banner').classList.add('show');
-    document.getElementById('limit-msg').textContent = `Limite atingido (${perfilAtual.backtests_mes}/${perfilAtual.backtests_limite}). Faça upgrade para continuar.`;
-    return false;
-  }
+  if (!usuarioAtual) { abrirAuth('login'); return false; }
+  if (window._freeCongelado) { abrirModalUpgrade(); return false; }
   return true;
 }
 
 // ── INCREMENTAR CONTADOR APÓS BACKTEST ──
 async function incrementarBacktest() {
-  if (!usuarioAtual || !perfilAtual || perfilAtual.plano !== 'free') return;
-  const novoValor = (perfilAtual.backtests_mes || 0) + 1;
-  await sb.from('perfis').update({ backtests_mes: novoValor }).eq('id', usuarioAtual.id);
-  perfilAtual.backtests_mes = novoValor;
-  atualizarUI();
+  // O backend agora conta os 3 testes grátis (free_tests_usados). Aqui só atualiza a UI.
+  atualizarStatusFree();
 }
 
 // Inicializar auth ao carregar
 initAuth();
 </script>
+<div class="modal-ov" id="modal-upgrade">
+  <div class="modal-box" style="max-width:440px;text-align:center">
+    <div style="font-size:34px;margin-bottom:6px">🚀</div>
+    <div class="modal-title" data-i18n="gate.modalTit">Você usou seus 3 testes grátis</div>
+    <div style="color:var(--muted2);font-size:13px;line-height:1.55;margin:10px 0 18px" data-i18n="gate.modalDesc">Para continuar testando sem limite — todos os ativos, IA e validação out-of-sample — faça upgrade para o Pro.</div>
+    <button class="tbtn tbtn-orange" style="width:100%;padding:12px;font-weight:700;margin-bottom:8px" onclick="assinar('pro')" data-i18n="gate.modalBtn">⚡ Fazer upgrade para Pro</button>
+    <div onclick="fecharModalUpgrade()" style="color:var(--muted);font-size:12px;cursor:pointer;padding:6px" data-i18n="gate.modalDepois">Talvez depois</div>
+  </div>
+</div>
 <div class="modal-ov" id="modal-ntsl">
   <div class="modal-box">
     <div class="modal-title">📥 Exportar para NTSL (Profit/B3)</div>
@@ -2127,7 +2183,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Aplicar e validar (out-of-sample)','radar.oosRodando':'Aplicando e validando out-of-sample…','radar.oosTitulo':'Validação out-of-sample','radar.oosTreino':'Treino','radar.oosTeste':'Teste (nunca visto)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'Não consegui validar: ','radar.oosTitAlto':'Sinais de overfitting','radar.oosResAlto':'Foi bem no histórico conhecido, mas tropeçou nos dados que nunca viu — pode estar ajustada demais ao passado.','radar.oosTitMedio':'Resultado misto','radar.oosResMedio':'Há sinais de fragilidade entre treino e teste. Investigue em mais períodos antes de confiar.','radar.oosTitBaixo':'Mais robusta','radar.oosResBaixo':'Manteve desempenho positivo nos dados que nunca viu. Bom sinal — mas backtest nunca garante o futuro.','oos.validarMeu':'Validar meu código (out-of-sample)','oos.ofertaTit':'Seu código é robusto?','oos.ofertaDesc':'Posso testar o código que você rodou em dados que ele nunca viu (treino/teste) e dizer se ele aguenta — ou se foi sorte de janela.','radar.oosSemCodigo':'Rode um código personalizado primeiro — não há código para validar.',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
     'hero.ph':'Descreva em português ("canal EMA 20 high/low") ou cole seu código Python aqui',
-    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado','hero.limpar':'Limpar','param.naoIdent':'Não identificamos os parâmetros de risco (stop/take) no seu código. Preencha os campos destacados na barra à esquerda e clique em ▶ Rodar teste novamente.',
+    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado','hero.limpar':'Limpar','param.naoIdent':'Não identificamos os parâmetros de risco (stop/take) no seu código. Preencha os campos destacados na barra à esquerda e clique em ▶ Rodar teste novamente.','gate.testesGratis':'testes grátis','gate.de':'de','gate.ilimitado':'Backtests ilimitados','gate.modalTit':'Você usou seus 3 testes grátis','gate.modalDesc':'Para continuar testando sem limite — todos os ativos, IA e validação out-of-sample — faça upgrade para o Pro.','gate.modalBtn':'⚡ Fazer upgrade para Pro','gate.modalDepois':'Talvez depois','gate.ativoBloq':'Esse ativo faz parte de um plano superior. Faça upgrade para acessá-lo.',
     'ov.emptyTitle':'Pronto pra testar sua estratégia',
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
@@ -2159,7 +2215,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Apply & validate (out-of-sample)','radar.oosRodando':'Applying & validating out-of-sample…','radar.oosTitulo':'Out-of-sample validation','radar.oosTreino':'Train','radar.oosTeste':'Test (unseen)','radar.oosRet':'Return','radar.oosTrades':'Trades','radar.oosErro':"Couldn't validate: ",'radar.oosTitAlto':'Overfitting signals','radar.oosResAlto':'It did well on the known history but stumbled on data it never saw — it may be overfitted to the past.','radar.oosTitMedio':'Mixed result','radar.oosResMedio':'There are signs of fragility between train and test. Investigate across more periods before trusting it.','radar.oosTitBaixo':'More robust','radar.oosResBaixo':'It held positive performance on data it never saw. Good sign — but a backtest never guarantees the future.','oos.validarMeu':'Validate my code (out-of-sample)','oos.ofertaTit':'Is your code robust?','oos.ofertaDesc':'I can test the code you ran on data it never saw (train/test) and tell you whether it holds up — or whether it was just luck of the window.','radar.oosSemCodigo':'Run a custom code first — there is no code to validate.',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
     'hero.ph':'Describe it ("EMA 20 high/low channel") or paste your Python code here',
-    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code','hero.limpar':'Clear','param.naoIdent':"We couldn't identify the risk parameters (stop/take) in your code. Fill in the highlighted fields in the left sidebar and click ▶ Run test again.",
+    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code','hero.limpar':'Clear','param.naoIdent':"We couldn't identify the risk parameters (stop/take) in your code. Fill in the highlighted fields in the left sidebar and click ▶ Run test again.",'gate.testesGratis':'free tests','gate.de':'of','gate.ilimitado':'Unlimited backtests','gate.modalTit':"You've used your 3 free tests",'gate.modalDesc':'To keep testing without limits — every asset, AI and out-of-sample validation — upgrade to Pro.','gate.modalBtn':'⚡ Upgrade to Pro','gate.modalDepois':'Maybe later','gate.ativoBloq':'This asset belongs to a higher plan. Upgrade to access it.',
     'ov.emptyTitle':'Ready to test your strategy',
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
@@ -2191,7 +2247,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Aplicar y validar (out-of-sample)','radar.oosRodando':'Aplicando y validando out-of-sample…','radar.oosTitulo':'Validación out-of-sample','radar.oosTreino':'Entrenamiento','radar.oosTeste':'Prueba (no vista)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'No pude validar: ','radar.oosTitAlto':'Señales de overfitting','radar.oosResAlto':'Le fue bien en el histórico conocido, pero tropezó en los datos que nunca vio — puede estar sobreajustada al pasado.','radar.oosTitMedio':'Resultado mixto','radar.oosResMedio':'Hay señales de fragilidad entre entrenamiento y prueba. Investiga en más períodos antes de confiar.','radar.oosTitBaixo':'Más robusta','radar.oosResBaixo':'Mantuvo desempeño positivo en los datos que nunca vio. Buena señal — pero un backtest nunca garantiza el futuro.','oos.validarMeu':'Validar mi código (out-of-sample)','oos.ofertaTit':'¿Tu código es robusto?','oos.ofertaDesc':'Puedo probar el código que ejecutaste en datos que nunca vio (entrenamiento/prueba) y decirte si aguanta — o si fue suerte de ventana.','radar.oosSemCodigo':'Ejecuta un código personalizado primero — no hay código para validar.',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
     'hero.ph':'Descríbela ("canal EMA 20 high/low") o pega tu código Python aquí',
-    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado','hero.limpar':'Limpiar','param.naoIdent':'No identificamos los parámetros de riesgo (stop/take) en tu código. Completa los campos destacados en la barra izquierda y haz clic en ▶ Ejecutar prueba de nuevo.',
+    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado','hero.limpar':'Limpiar','param.naoIdent':'No identificamos los parámetros de riesgo (stop/take) en tu código. Completa los campos destacados en la barra izquierda y haz clic en ▶ Ejecutar prueba de nuevo.','gate.testesGratis':'pruebas gratis','gate.de':'de','gate.ilimitado':'Backtests ilimitados','gate.modalTit':'Usaste tus 3 pruebas gratis','gate.modalDesc':'Para seguir probando sin límite — todos los activos, IA y validación out-of-sample — pasa a Pro.','gate.modalBtn':'⚡ Pasar a Pro','gate.modalDepois':'Quizás después','gate.ativoBloq':'Este activo pertenece a un plan superior. Pasa a Pro para acceder.',
     'ov.emptyTitle':'Listo para probar tu estrategia',
     'ov.emptyDesc':'Configura los parámetros a la izquierda, elige un activo y haz clic en ▶ Ejecutar Backtest para ver tu resultado aquí.',
   }
@@ -2714,8 +2770,10 @@ async function rodarBacktest() {
     clearTimeout(timeoutId);
 
     if(!r.ok) {
-      const err = await r.json().catch(()=>({detail:'Erro desconhecido'}));
-      throw new Error(err.detail||'Erro na API');
+      const err = await r.json().catch(()=>({}));
+      const det = err.detail;
+      if(det && typeof det === 'object' && det.code){ tratarErroGating(det); return; }
+      throw new Error((det && det.msg) || (typeof det==='string'?det:'') || 'Erro na API');
     }
 
     const d = await r.json();
