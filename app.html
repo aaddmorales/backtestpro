@@ -2229,6 +2229,8 @@ function aplicarIdioma() {
   if (typeof window._estudoPreparada !== 'undefined') { try { prepararAbaEstudo(); } catch(e){} }
   try { if (typeof atualizarContador === 'function') atualizarContador(); } catch(e){}
   try { if (typeof carregarGaleria === 'function') carregarGaleria(); } catch(e){}
+  // re-renderiza o resultado visível pra trocar de idioma também (sem re-disparar o Radar)
+  try { if (window._ultimoResultado && typeof renderOverview === 'function') renderOverview(window._ultimoResultado.d, window._ultimoResultado.params, true); } catch(e){}
 }
 
 function setLang(lang) {
@@ -3243,7 +3245,8 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
   }
 }
 
-function renderOverview(d, params) {
+function renderOverview(d, params, relang) {
+  window._ultimoResultado = {d: d, params: params};   // guarda pra re-render em troca de idioma
   document.getElementById('ov-empty').style.display = 'none';
   const sampleEl = document.getElementById('ov-sample');
   if(sampleEl) sampleEl.style.display = 'none';
@@ -3270,8 +3273,10 @@ function renderOverview(d, params) {
   const trades = d.trades||[];
   const roiDist = d.roi_distribution||[];
   const iaSug = '';  // sugestão migrou para o Radar flutuante
-  setTimeout(()=>radarCoach(d), 700);
-  if(window._ultimoRunCustom){ setTimeout(()=>radarOfertaValidarCodigo(), 1500); }
+  if(!relang){
+    setTimeout(()=>radarCoach(d), 700);
+    if(window._ultimoRunCustom){ setTimeout(()=>radarOfertaValidarCodigo(), 1500); }
+  }
   const avgPnl = parseFloat(d.avg_pnl||0);
   const avgBars = parseInt(d.avg_bars_in_trades||0);
   const maiorGanho = parseFloat(d.maior_ganho||0);
