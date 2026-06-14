@@ -1559,6 +1559,22 @@ select option{background:#141920}
       <div class="auth-error" id="signup-error"></div>
       <div class="auth-success" id="signup-success" style="display:none" data-i18n="auth.sucesso">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
     </div>
+
+    <!-- RECUPERAÇÃO DE SENHA -->
+    <div id="auth-recovery" style="display:none">
+      <div style="text-align:center;font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px" data-i18n="auth.recTitulo">Defina sua nova senha</div>
+      <div style="text-align:center;font-size:12px;color:var(--muted2);margin-bottom:18px" data-i18n="auth.recSub">Escolha uma senha nova para sua conta.</div>
+      <div class="auth-field">
+        <label data-i18n="auth.novaSenha">Nova senha</label>
+        <input type="password" id="rec-senha" class="auth-input" placeholder="mínimo 6 caracteres" data-i18n-ph="auth.phNovaSenha">
+      </div>
+      <div class="auth-field">
+        <label data-i18n="auth.confSenha">Confirmar senha</label>
+        <input type="password" id="rec-senha2" class="auth-input" placeholder="digite a senha de novo" data-i18n-ph="auth.phConfSenha" onkeydown="if(event.key==='Enter')definirNovaSenha()">
+      </div>
+      <button class="auth-submit" id="rec-btn" onclick="definirNovaSenha()" data-i18n="auth.recBtn">Salvar nova senha</button>
+      <div class="auth-error" id="rec-error"></div>
+    </div>
   </div>
 </div>
 
@@ -1654,7 +1670,12 @@ function destravarApp(){ const l=document.getElementById('app-lock'); if(l) l.st
 
 async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
-  if (session?.user && session.user.email_confirmed_at) {
+  const isRecovery = (window.location.hash || '').includes('type=recovery');
+  if (isRecovery) {
+    window._recovering = true;
+    travarApp();
+    abrirAuth('recovery');
+  } else if (session?.user && session.user.email_confirmed_at) {
     await onLogin(session.user);
     destravarApp();
   } else {
@@ -1662,6 +1683,13 @@ async function initAuth() {
     abrirAuth('login');
   }
   sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      window._recovering = true;
+      travarApp();
+      abrirAuth('recovery');
+      return;
+    }
+    if (window._recovering && event === 'SIGNED_IN') { return; }
     if (event === 'SIGNED_IN' && session?.user && session.user.email_confirmed_at) {
       await onLogin(session.user);
       fecharAuth();
@@ -1891,10 +1919,14 @@ function fecharAuth() {
 }
 
 function switchAuthTab(tab) {
+  const rec = tab === 'recovery';
   document.getElementById('auth-login').style.display = tab === 'login' ? 'block' : 'none';
   document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
-  document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
-  document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
+  const recEl = document.getElementById('auth-recovery'); if (recEl) recEl.style.display = rec ? 'block' : 'none';
+  const tabsEl = document.querySelector('.auth-tabs'); if (tabsEl) tabsEl.style.display = rec ? 'none' : 'flex';
+  const lb = document.getElementById('tab-login-btn'), sb2 = document.getElementById('tab-signup-btn');
+  if (lb) lb.classList.toggle('active', tab === 'login');
+  if (sb2) sb2.classList.toggle('active', tab === 'signup');
 }
 
 async function abrirPortal() {
@@ -1980,9 +2012,29 @@ async function reenviarConfirmacao(){
 async function recuperarSenha() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) { document.getElementById('login-error').textContent = 'Digite seu email primeiro.'; return; }
-  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app' });
   document.getElementById('login-error').style.color = 'var(--green)';
   document.getElementById('login-error').textContent = '✅ Link de recuperação enviado para ' + email;
+}
+
+async function definirNovaSenha() {
+  const s1 = document.getElementById('rec-senha').value;
+  const s2 = document.getElementById('rec-senha2').value;
+  const erro = document.getElementById('rec-error');
+  const btn = document.getElementById('rec-btn');
+  erro.style.color = '';
+  if (!s1 || !s2) { erro.textContent = t('auth.errCampos'); return; }
+  if (s1.length < 6) { erro.textContent = t('auth.errSenha'); return; }
+  if (s1 !== s2) { erro.textContent = t('auth.errSenhaConf'); return; }
+  btn.disabled = true; btn.textContent = '⏳';
+  const { data, error } = await sb.auth.updateUser({ password: s1 });
+  if (error) { erro.textContent = error.message; btn.disabled = false; btn.textContent = t('auth.recBtn'); return; }
+  window._recovering = false;
+  try { history.replaceState(null, '', window.location.pathname); } catch(e){}
+  erro.style.color = 'var(--green)'; erro.textContent = t('auth.recOk');
+  let u = data && data.user;
+  if (!u) { try { u = (await sb.auth.getUser()).data.user; } catch(e){} }
+  if (u) { await onLogin(u); fecharAuth(); destravarApp(); }
 }
 
 // ── AUTH: LOGOUT ──
@@ -2216,7 +2268,7 @@ const I18N = {
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.sobrenome':'Sobrenome','auth.phSobrenome':'Seu sobrenome','auth.confSenha':'Confirmar senha','auth.phConfSenha':'digite a senha de novo','auth.errSenhaConf':'As senhas não conferem.','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.sobrenome':'Sobrenome','auth.phSobrenome':'Seu sobrenome','auth.confSenha':'Confirmar senha','auth.phConfSenha':'digite a senha de novo','auth.errSenhaConf':'As senhas não conferem.','auth.recTitulo':'Defina sua nova senha','auth.recSub':'Escolha uma senha nova para sua conta.','auth.novaSenha':'Nova senha','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Salvar nova senha','auth.recOk':'✅ Senha alterada! Entrando...','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
     'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2248,7 +2300,7 @@ const I18N = {
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
-    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.sobrenome':'Last name','auth.phSobrenome':'Your last name','auth.confSenha':'Confirm password','auth.phConfSenha':'type the password again','auth.errSenhaConf':'Passwords do not match.','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
+    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.sobrenome':'Last name','auth.phSobrenome':'Your last name','auth.confSenha':'Confirm password','auth.phConfSenha':'type the password again','auth.errSenhaConf':'Passwords do not match.','auth.recTitulo':'Set your new password','auth.recSub':'Choose a new password for your account.','auth.novaSenha':'New password','auth.phNovaSenha':'at least 6 characters','auth.recBtn':'Save new password','auth.recOk':'✅ Password changed! Signing in...','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
     'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2280,7 +2332,7 @@ const I18N = {
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.sobrenome':'Apellido','auth.phSobrenome':'Tu apellido','auth.confSenha':'Confirmar contraseña','auth.phConfSenha':'escribe la contraseña otra vez','auth.errSenhaConf':'Las contraseñas no coinciden.','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.sobrenome':'Apellido','auth.phSobrenome':'Tu apellido','auth.confSenha':'Confirmar contraseña','auth.phConfSenha':'escribe la contraseña otra vez','auth.errSenhaConf':'Las contraseñas no coinciden.','auth.recTitulo':'Define tu nueva contraseña','auth.recSub':'Elige una nueva contraseña para tu cuenta.','auth.novaSenha':'Nueva contraseña','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Guardar nueva contraseña','auth.recOk':'✅ ¡Contraseña cambiada! Entrando...','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
     'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
