@@ -1493,38 +1493,38 @@ select option{background:#141920}
       </svg>
     </div>
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Entrar</button>
-      <button class="auth-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')">Criar conta</button>
+      <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')" data-i18n="auth.tabEntrar">Entrar</button>
+      <button class="auth-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')" data-i18n="auth.tabCriar">Criar conta</button>
     </div>
 
     <!-- LOGIN -->
     <div id="auth-login">
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="login-email" class="auth-input" placeholder="seu@email.com">
+        <label data-i18n="auth.email">Email</label>
+        <input type="email" id="login-email" class="auth-input" placeholder="seu@email.com" data-i18n-ph="auth.phEmail">
       </div>
       <div class="auth-field">
-        <label>Senha</label>
+        <label data-i18n="auth.senha">Senha</label>
         <input type="password" id="login-senha" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()">
       </div>
-      <button class="auth-submit" id="login-btn" onclick="fazerLogin()">Entrar</button>
+      <button class="auth-submit" id="login-btn" onclick="fazerLogin()" data-i18n="auth.btnEntrar">Entrar</button>
       <div class="auth-error" id="login-error"></div>
-      <div class="auth-forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
+      <div class="auth-forgot" onclick="recuperarSenha()" data-i18n="auth.esqueci">Esqueci minha senha</div>
     </div>
 
     <!-- CADASTRO -->
     <div id="auth-signup" style="display:none">
       <div class="auth-field">
-        <label>Nome</label>
-        <input type="text" id="signup-nome" class="auth-input" placeholder="Seu nome">
+        <label data-i18n="auth.nome">Nome</label>
+        <input type="text" id="signup-nome" class="auth-input" placeholder="Seu nome" data-i18n-ph="auth.phNome">
       </div>
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="signup-email" class="auth-input" placeholder="seu@email.com">
+        <label data-i18n="auth.email">Email</label>
+        <input type="email" id="signup-email" class="auth-input" placeholder="seu@email.com" data-i18n-ph="auth.phEmail">
       </div>
       <div class="auth-field">
-        <label>Senha</label>
-        <input type="password" id="signup-senha" class="auth-input" placeholder="mínimo 6 caracteres" onkeydown="if(event.key==='Enter')fazerCadastro()">
+        <label data-i18n="auth.senha">Senha</label>
+        <input type="password" id="signup-senha" class="auth-input" placeholder="mínimo 6 caracteres" data-i18n-ph="auth.phSenha" onkeydown="if(event.key==='Enter')fazerCadastro()">
       </div>
       <div class="auth-field">
         <label data-i18n="auth.idioma">Idioma / Language / Idioma</label>
@@ -1536,7 +1536,7 @@ select option{background:#141920}
       </div>
       <button class="auth-submit" id="signup-btn" onclick="fazerCadastro()" data-i18n="auth.criar">Criar conta grátis</button>
       <div class="auth-error" id="signup-error"></div>
-      <div class="auth-success" id="signup-success" style="display:none">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
+      <div class="auth-success" id="signup-success" style="display:none" data-i18n="auth.sucesso">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
     </div>
   </div>
 </div>
@@ -2162,7 +2162,7 @@ const I18N = {
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
     'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2194,7 +2194,7 @@ const I18N = {
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
-    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
+    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
     'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2226,7 +2226,7 @@ const I18N = {
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
     'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
