@@ -1735,6 +1735,7 @@ def radar_analisar(p: RadarAnalisarParams):
     import sys
     mensagens = []
     aplicar = None
+    ia_usada = False
     try:
         # ── GATING (v3.9): plano de quem chama + regra de IA do Free ──
         # Free: IA no 1º e 3º teste, 2º só regras (contraste + economia). Pro/Trader Pro: IA sempre.
@@ -2088,6 +2089,7 @@ def radar_analisar(p: RadarAnalisarParams):
             # (mesmo teste com mesmo resultado = mesma análise, custo zero)
             chave_cache = _radar_cache_chave({
                 "t": ctx["teste"],
+                "lang": ctx.get("idioma", "pt"),
                 "col_pf": (melhor_cfg or {}).get("pf"),
                 "col_n": (melhor_cfg or {}).get("trades"),
                 "top": ja_esta_na_melhor,
@@ -2097,18 +2099,20 @@ def radar_analisar(p: RadarAnalisarParams):
                 msgs_cache = _radar_cache_get(chave_cache)
                 if msgs_cache:
                     mensagens = msgs_cache
+                    ia_usada = True
                 else:
                     msgs_ia = _radar_ia(ctx)
                     if msgs_ia:
                         mensagens = msgs_ia
+                        ia_usada = True
                         _radar_cache_set(chave_cache, msgs_ia)
         except Exception as e:
             print(f"RADAR IA contexto: {e}", file=sys.stderr)
 
-        return converter_para_python({"mensagens": mensagens, "aplicar": aplicar})
+        return converter_para_python({"mensagens": mensagens, "aplicar": aplicar, "ia_usada": ia_usada})
     except Exception as e:
         print(f"ERRO RADAR ANALISAR: {e}", file=sys.stderr)
-        return {"mensagens": [], "aplicar": None}
+        return {"mensagens": [], "aplicar": None, "ia_usada": False}
 
 
 @app.post("/backtest/visual")
