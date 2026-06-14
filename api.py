@@ -2173,6 +2173,9 @@ def rodar_codigo_custom(df: pd.DataFrame, params: BacktestCustom) -> dict:
     ns = {
         "pd": pd, "np": np,
         "Strategy": _Strategy, "crossover": _crossover,
+        # Valores da barra lateral disponíveis pro código colado (em pontos/USD)
+        "SL_PTS": float(params.stop_loss), "TP_PTS": float(params.take_profit),
+        "MAX_OPS": int(params.max_ops), "CAPITAL": float(params.capital),
         "__builtins__": __builtins__,
     }
     exec(params.codigo, ns)  # erro no codigo -> excecao sobe -> fallback
