@@ -1736,6 +1736,16 @@ def radar_analisar(p: RadarAnalisarParams):
     mensagens = []
     aplicar = None
     try:
+        # ── GATING (v3.9): plano de quem chama + regra de IA do Free ──
+        # Free: IA no 1º e 3º teste, 2º só regras (contraste + economia). Pro/Trader Pro: IA sempre.
+        # Recomendação de melhoria (mapa) = exclusiva Pro+ (cenoura pro upgrade).
+        if p.user_id:
+            plano_radar, _free_usados, _ = _perfil_plano_e_creditos(p.user_id)
+        else:
+            plano_radar, _free_usados = "free", 0
+        nivel_radar = _PLANO_NIVEL.get(plano_radar, 0)
+        pode_recomendar = nivel_radar >= 1
+        usar_ia = True if nivel_radar >= 1 else (_free_usados in (1, 3))
         # ── 1) OffMind: varre os 6 padrões no ativo/timeframe (dados vêm do cache) ──
         fortes = []
         # relação risco/retorno que o usuário pediu (take/stop), limitada a 0.5..4
@@ -2017,7 +2027,7 @@ def radar_analisar(p: RadarAnalisarParams):
             import time as _t2
             estudo_ctx = None
             _mc = _MATRIZ_CACHE.get(p.ativo)
-            if _mc and (_t2.time() - _mc[0]) < _MATRIZ_CACHE_TTL:
+            if pode_recomendar and _mc and (_t2.time() - _mc[0]) < _MATRIZ_CACHE_TTL:
                 dados_m = _mc[1]
                 tops_m = dados_m.get("tops") or []
                 # celula do usuario (mesma estrategia + mesmo timeframe)
@@ -2067,6 +2077,13 @@ def radar_analisar(p: RadarAnalisarParams):
                         "está no mapa.")
             ctx["estudo_matriz"] = estudo_ctx
             ctx["idioma"] = (p.idioma or "pt")
+            if not pode_recomendar:
+                # Free: IA descreve o resultado, mas NÃO entrega o mapa de melhoria (isso é Pro)
+                for _k in ("config_historica_mais_forte_neste_ativo",
+                           "usuario_ja_esta_na_melhor_config",
+                           "ha_sugestao_aplicavel", "estudo_matriz", "laboratorio_relacoes"):
+                    ctx.pop(_k, None)
+                aplicar = None
             # chave do cache: config + métricas + resumo do coletivo
             # (mesmo teste com mesmo resultado = mesma análise, custo zero)
             chave_cache = _radar_cache_chave({
@@ -2076,14 +2093,15 @@ def radar_analisar(p: RadarAnalisarParams):
                 "top": ja_esta_na_melhor,
                 "sug": aplicar is not None,
             })
-            msgs_cache = _radar_cache_get(chave_cache)
-            if msgs_cache:
-                mensagens = msgs_cache
-            else:
-                msgs_ia = _radar_ia(ctx)
-                if msgs_ia:
-                    mensagens = msgs_ia
-                    _radar_cache_set(chave_cache, msgs_ia)
+            if usar_ia:
+                msgs_cache = _radar_cache_get(chave_cache)
+                if msgs_cache:
+                    mensagens = msgs_cache
+                else:
+                    msgs_ia = _radar_ia(ctx)
+                    if msgs_ia:
+                        mensagens = msgs_ia
+                        _radar_cache_set(chave_cache, msgs_ia)
         except Exception as e:
             print(f"RADAR IA contexto: {e}", file=sys.stderr)
 
@@ -2097,11 +2115,13 @@ def radar_analisar(p: RadarAnalisarParams):
 def backtest_visual(params: BacktestParams):
     import sys
     try:
+        _credito = _consumir_credito_backtest(params.user_id, params.ativo)
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
         resultado = rodar_estrategia(df, params)
         metricas = calcular_metricas_completas(resultado, params, df)
         salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo="")
-        return converter_para_python(metricas)
+        _out = converter_para_python(metricas); _out["_credito"] = _credito
+        return _out
     except HTTPException:
         raise
     except Exception as e:
@@ -2113,6 +2133,7 @@ def backtest_visual(params: BacktestParams):
 def backtest_custom(params: BacktestCustom):
     import sys
     try:
+        _credito = _consumir_credito_backtest(params.user_id, params.ativo)
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
         if params.codigo and len(params.codigo.strip()) > 20:
             try:
@@ -2123,7 +2144,8 @@ def backtest_custom(params: BacktestCustom):
             resultado = rodar_estrategia(df, params)
         metricas = calcular_metricas_completas(resultado, params, df)
         salvar_historico_backtest(params, metricas, user_id=params.user_id, sessao_id=params.sessao_id, codigo=getattr(params, "codigo", ""))
-        return converter_para_python(metricas)
+        _out = converter_para_python(metricas); _out["_credito"] = _credito
+        return _out
     except HTTPException:
         raise
     except Exception as e:
@@ -2685,7 +2707,7 @@ CATALOGO_ATIVOS = {
         {"nome": "USD/CAD", "ticker": "CAD=X",    "nivel": 1},
     ],
     "Commodities": [
-        {"nome": "XAU/USD (Ouro)",    "ticker": "GC=F", "nivel": 0},
+        {"nome": "XAU/USD (Ouro)",    "ticker": "GC=F", "nivel": 1},  # TRAVADO no Free: carro-chefe = isca
         {"nome": "XAG/USD (Prata)",   "ticker": "SI=F", "nivel": 1},
         {"nome": "Petróleo WTI",      "ticker": "CL=F", "nivel": 1},
         {"nome": "Gás Natural",       "ticker": "NG=F", "nivel": 2},
@@ -2743,6 +2765,90 @@ def ativos_catalogo(plano: str = "free"):
                 liberados += 1
             out[cat].append({**a, "bloqueado": bloq})
     return {"catalogo": out, "total": total, "liberados": liberados, "plano": plano}
+
+
+# ════════════════════════════════════════════════════════════
+#  GATING DE 3 NÍVEIS (v3.9) — Free=isca / Pro / Trader Pro
+#  Free: 3 backtests no TOTAL + catálogo limitado (XAU travado).
+#  Pro/Trader Pro: ilimitado. Contador mora em perfis.free_tests_usados.
+#  SQL necessário (rodar no Supabase ANTES do deploy):
+#    alter table perfis add column if not exists free_tests_usados int not null default 0;
+# ════════════════════════════════════════════════════════════
+LIMITE_FREE_TESTS = 3
+
+# nível por ticker, montado uma vez a partir do catálogo
+_NIVEL_POR_TICKER = {}
+for _c, _its in CATALOGO_ATIVOS.items():
+    for _a in _its:
+        _NIVEL_POR_TICKER[_a["ticker"]] = _a.get("nivel", 0)
+
+def _nivel_do_ativo(ativo: str) -> int:
+    tk = ATIVOS.get(ativo, ativo)               # nome curto -> ticker
+    return _NIVEL_POR_TICKER.get(tk, 0)         # desconhecido = liberado (fail-open)
+
+def _perfil_plano_e_creditos(user_id: str):
+    """Retorna (plano, free_tests_usados, sb). Tolera coluna ausente/perfil novo."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return ("free", 0, None)
+        r = sb.table("perfis").select("plano,free_tests_usados").eq("id", user_id).single().execute()
+        d = r.data or {}
+        return (d.get("plano") or "free", int(d.get("free_tests_usados") or 0), sb)
+    except Exception:
+        # coluna free_tests_usados pode não existir ainda -> lê só o plano
+        try:
+            sb = _sb_admin()
+            r = sb.table("perfis").select("plano").eq("id", user_id).single().execute()
+            return ((r.data or {}).get("plano") or "free", 0, sb)
+        except Exception:
+            return ("free", 0, None)
+
+def _consumir_credito_backtest(user_id, ativo: str):
+    """Porteiro chamado no topo dos endpoints de backtest.
+       Levanta HTTPException com detail ESTRUTURADO pro front reagir."""
+    if not user_id:
+        raise HTTPException(status_code=401, detail={
+            "code": "login_necessario",
+            "msg": "Crie uma conta grátis pra rodar seu backtest."})
+    plano, usados, sb = _perfil_plano_e_creditos(user_id)
+    nivel_user = _PLANO_NIVEL.get(plano, 0)
+    # ativo bloqueado pro plano (ex.: Free tentando XAU)
+    if _nivel_do_ativo(ativo) > nivel_user:
+        raise HTTPException(status_code=403, detail={
+            "code": "ativo_bloqueado", "plano": plano, "ativo": ativo,
+            "msg": "Esse ativo faz parte de um plano superior."})
+    # pago = ilimitado
+    if nivel_user >= 1:
+        return {"plano": plano, "ilimitado": True}
+    # free = consome 1 dos 3
+    if usados >= LIMITE_FREE_TESTS:
+        raise HTTPException(status_code=402, detail={
+            "code": "free_esgotado", "usados": usados, "limite": LIMITE_FREE_TESTS,
+            "msg": "Você usou seus 3 backtests gratuitos."})
+    novos = usados + 1
+    if sb is not None:
+        try:
+            sb.table("perfis").update({"free_tests_usados": novos}).eq("id", user_id).execute()
+        except Exception as _e:
+            import sys as _sys
+            print(f"[GATING] não consegui gravar free_tests_usados (coluna existe?): {_e}", file=_sys.stderr)
+    return {"plano": plano, "ilimitado": False, "usados": novos,
+            "restantes": max(0, LIMITE_FREE_TESTS - novos)}
+
+@app.get("/free/status")
+def free_status(user_id: str = ""):
+    """Front consulta pra mostrar 'X de 3' e saber se congelou — sem rodar teste."""
+    if not user_id:
+        return {"logado": False, "plano": "free", "usados": 0,
+                "limite": LIMITE_FREE_TESTS, "restantes": LIMITE_FREE_TESTS, "congelado": False}
+    plano, usados, _ = _perfil_plano_e_creditos(user_id)
+    if _PLANO_NIVEL.get(plano, 0) >= 1:
+        return {"logado": True, "plano": plano, "ilimitado": True, "congelado": False}
+    return {"logado": True, "plano": plano, "ilimitado": False,
+            "usados": usados, "limite": LIMITE_FREE_TESTS,
+            "restantes": max(0, LIMITE_FREE_TESTS - usados),
+            "congelado": usados >= LIMITE_FREE_TESTS}
 
 
 # ════════════════════════════════════════════════════════════
