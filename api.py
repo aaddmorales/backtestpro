@@ -1380,6 +1380,7 @@ _MATRIZ_CACHE_TTL = 86400   # 24h
 class MatrizParams(BaseModel):
     ativo: str = "XAU/USD"
     tfs: str = "1d,4h,1h,30m,15m"
+    periodo: str = "2 anos"
     user_id: str = ""
 
 def _plano_usuario(user_id: str) -> str:
@@ -1392,15 +1393,13 @@ def _plano_usuario(user_id: str) -> str:
     except Exception:
         return "free"
 
-def _matriz_calcular(ativo: str, lista_tfs: list) -> dict:
+def _matriz_calcular(ativo: str, lista_tfs: list, periodo: str = "2 anos") -> dict:
     import time as _t
     inicio = _t.time()
-    periodo_por_tf = {"1d": "2 anos", "4h": "2 anos", "1h": "2 anos",
-                      "30m": "2 anos", "15m": "2 anos", "5m": "2 anos"}
     dfs = {}
     for tf in lista_tfs:
         try:
-            dfs[tf] = baixar_dados(ativo, periodo_por_tf.get(tf, "2 anos"), tf)
+            dfs[tf] = baixar_dados(ativo, periodo, tf)
         except Exception:
             dfs[tf] = None
     linhas = []
@@ -1414,7 +1413,7 @@ def _matriz_calcular(ativo: str, lista_tfs: list) -> dict:
                 continue
             try:
                 params = BacktestCustom(
-                    ativo=ativo, periodo=periodo_por_tf.get(tf, "2 anos"), timeframe=tf,
+                    ativo=ativo, periodo=periodo, timeframe=tf,
                     indicador=est["nome"], ema_period=20,
                     stop_loss=50, take_profit=100, capital=10000,
                     max_ops=5, comissao=0.0002, codigo=est["codigo"])
@@ -1438,7 +1437,7 @@ def _matriz_calcular(ativo: str, lista_tfs: list) -> dict:
     ranking.sort(key=lambda x: x["sharpe"], reverse=True)
     resultado = {"ativo": ativo, "tfs": lista_tfs, "linhas": linhas,
                  "tops": ranking[:10], "duracao_s": round(_t.time() - inicio)}
-    _MATRIZ_CACHE[ativo] = (_t.time(), resultado)
+    _MATRIZ_CACHE[f"{ativo}|{periodo}"] = (_t.time(), resultado)
     if len(_MATRIZ_CACHE) > 20:
         _MATRIZ_CACHE.pop(next(iter(_MATRIZ_CACHE)))
     return resultado
@@ -1454,7 +1453,7 @@ def offmind_matriz_dados(p: MatrizParams):
     lista_tfs = [t.strip() for t in p.tfs.split(",") if t.strip() in INTERVALOS_MAP]
     if not lista_tfs:
         lista_tfs = ["1d", "1h"]
-    return _matriz_calcular(p.ativo, lista_tfs)
+    return _matriz_calcular(p.ativo, lista_tfs, p.periodo)
 
 
 @app.get("/offmind/dias-tendencia", response_class=HTMLResponse)
@@ -2027,7 +2026,10 @@ def radar_analisar(p: RadarAnalisarParams):
             # ── ESTUDO (matriz estrategia x timeframe) como 4a fonte do Radar ──
             import time as _t2
             estudo_ctx = None
-            _mc = _MATRIZ_CACHE.get(p.ativo)
+            _mc = None
+            _mc_cands = [v for k, v in _MATRIZ_CACHE.items() if k == p.ativo or k.startswith(p.ativo + "|")]
+            if _mc_cands:
+                _mc = max(_mc_cands, key=lambda x: x[0])
             if pode_recomendar and _mc and (_t2.time() - _mc[0]) < _MATRIZ_CACHE_TTL:
                 dados_m = _mc[1]
                 tops_m = dados_m.get("tops") or []
