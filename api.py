@@ -2783,7 +2783,7 @@ for _c, _its in CATALOGO_ATIVOS.items():
         _NIVEL_POR_TICKER[_a["ticker"]] = _a.get("nivel", 0)
 
 def _nivel_do_ativo(ativo: str) -> int:
-    tk = ATIVOS.get(ativo, ativo)               # nome curto -> ticker
+    tk = ATIVOS_MAP.get(ativo, ativo)           # nome -> ticker
     return _NIVEL_POR_TICKER.get(tk, 0)         # desconhecido = liberado (fail-open)
 
 def _perfil_plano_e_creditos(user_id: str):
