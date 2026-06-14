@@ -966,7 +966,7 @@ select option{background:#141920}
                 <span class="ed-fname">strategy.py</span>
                 <div class="spacer"></div>
                 <div class="ed-actions" style="gap:4px">
-                  <button class="ea-btn" onclick="document.getElementById('code-editor').value=''">Limpar</button>
+                  <button class="ea-btn" onclick="limparCodigo()" data-i18n="hero.limpar">Limpar</button>
                   <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
                 </div>
               </div>
@@ -1018,7 +1018,7 @@ select option{background:#141920}
               <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px" data-i18n="hero.titulo">✨ Descreva sua estratégia em português</div>
               <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
               <div style="position:relative">
-                <textarea id="ia-hero-desc" rows="1" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" data-i18n-ph="hero.ph" placeholder='Descreva ("canal EMA 20 high/low") ou cole seu código Python aqui' oninput="autoGrowHero(this)" onfocus="autoGrowHero(this)" onblur="collapseHero(this)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')rodarHero()" style="width:100%;box-sizing:border-box;resize:none;overflow-y:auto;line-height:1.5;min-height:44px;max-height:320px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none"></textarea>
+                <textarea id="ia-hero-desc" rows="1" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" data-i18n-ph="hero.ph" placeholder='Descreva ("canal EMA 20 high/low") ou cole seu código Python aqui' oninput="autoGrowHero(this)" onfocus="autoGrowHero(this)" onblur="collapseHeroLater(this)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')rodarHero()" style="width:100%;box-sizing:border-box;resize:none;overflow-y:auto;line-height:1.5;min-height:44px;max-height:320px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none"></textarea>
                 <div id="hero-lista" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
                   <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
                   <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
@@ -1028,6 +1028,7 @@ select option{background:#141920}
                 <button id="ia-run-btn" onclick="rodarHero()" style="padding:11px 18px;font-size:12.5px;background:var(--green);color:#04140d;font-weight:700;border:none;border-radius:8px;cursor:pointer" data-i18n="hero.rodar">▶ Rodar teste</button>
                 <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px" data-i18n="hero.gerar">✨ Gerar estratégia</button>
                 <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="white-space:nowrap;padding:9px 14px;background:rgba(0,208,132,0.12);border:1px solid rgba(0,208,132,0.45);border-radius:8px;color:var(--green);font-size:12.5px;cursor:pointer;font-weight:700">📋 <span data-i18n="hero.prontas">Estratégias prontas</span> ▾</button>
+                <button id="hero-limpar-btn" onclick="limparCodigo()" title="Limpar código" style="white-space:nowrap;padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12.5px;cursor:pointer;font-weight:600">🧹 <span data-i18n="hero.limpar">Limpar</span></button>
               </div>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
@@ -2122,7 +2123,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar e rodar','radar.pfHist':'PF histórico','radar.vsSeu':'vs seu teste','radar.emTrades':'em {n} trades',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
     'hero.ph':'Descreva em português ("canal EMA 20 high/low") ou cole seu código Python aqui',
-    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado',
+    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado','hero.limpar':'Limpar',
     'ov.emptyTitle':'Pronto pra testar sua estratégia',
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
@@ -2153,7 +2154,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Apply & run','radar.pfHist':'Historical PF','radar.vsSeu':'vs your test','radar.emTrades':'over {n} trades',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
     'hero.ph':'Describe it ("EMA 20 high/low channel") or paste your Python code here',
-    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code',
+    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code','hero.limpar':'Clear',
     'ov.emptyTitle':'Ready to test your strategy',
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
@@ -2184,7 +2185,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar y ejecutar','radar.pfHist':'PF histórico','radar.vsSeu':'vs tu prueba','radar.emTrades':'en {n} trades',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
     'hero.ph':'Descríbela ("canal EMA 20 high/low") o pega tu código Python aquí',
-    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado',
+    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado','hero.limpar':'Limpiar',
     'ov.emptyTitle':'Listo para probar tu estrategia',
     'ov.emptyDesc':'Configura los parámetros a la izquierda, elige un activo y haz clic en ▶ Ejecutar Backtest para ver tu resultado aquí.',
   }
@@ -4054,6 +4055,19 @@ function autoGrowHero(el){
 }
 function collapseHero(el){   // recolhe ao clicar fora (o conteúdo é preservado)
   if(el) el.style.height = '44px';
+}
+function collapseHeroLater(el){   // espera o clique no botão registrar antes de encolher
+  setTimeout(()=>collapseHero(el), 200);
+}
+function limparCodigo(){   // zera código (campo + editor) e volta a barra ao modo normal
+  const ed=document.getElementById('code-editor'); if(ed) ed.value='';
+  const hero=document.getElementById('ia-hero-desc'); if(hero){ hero.value=''; collapseHero(hero); }
+  lastIACode = null;
+  if(typeof limparModoCustom==='function') limparModoCustom();
+  const sel=document.getElementById('indicador');
+  const optc=document.getElementById('opt-codigo-custom');
+  if(sel && sel.value==='__custom__'){ sel.value = 'EMA Channel High/Low'; }
+  if(optc) optc.remove();
 }
 function _heroBtnLabel(){
   return (typeof I18N!=='undefined' && I18N[LANG] && I18N[LANG]['hero.gerar']) || '✨ Gerar estratégia';
