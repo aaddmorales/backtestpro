@@ -3764,15 +3764,22 @@ function aplicarSugestaoRadar(ap, rodar){
 // ela aguenta em dados nunca vistos. Conveniência que REFORÇA a disciplina:
 // o Radar não entrega a config de bandeja, entrega a config + a prova.
 // Helper compartilhado: chama o OOS e mostra o veredito no Radar
+let _oosRodando = false;
 async function _oosFetchRender(payload){
-  if(!_radarAberto) toggleRadar();
-  radarFala('🔬 ' + t('radar.oosRodando'));
-  const r = await fetch(`${API}/validar-overfitting`, {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-  });
-  if(!r.ok){ const e = await r.json().catch(()=>({detail:r.status})); throw new Error(e.detail||r.status); }
-  const data = await r.json();
-  radarMostrarOOS(data);
+  if(_oosRodando) return;     // evita validações sobrepostas (clique duplo / dois botões)
+  _oosRodando = true;
+  try{
+    if(!_radarAberto) toggleRadar();
+    radarFala('🔬 ' + t('radar.oosRodando'));
+    const r = await fetch(`${API}/validar-overfitting`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if(!r.ok){ const e = await r.json().catch(()=>({detail:r.status})); throw new Error(e.detail||r.status); }
+    const data = await r.json();
+    radarMostrarOOS(data);
+  } finally {
+    _oosRodando = false;
+  }
 }
 
 // Aplica a config SUGERIDA pelo Radar e valida out-of-sample
