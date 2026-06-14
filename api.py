@@ -1381,6 +1381,7 @@ class MatrizParams(BaseModel):
     ativo: str = "XAU/USD"
     tfs: str = "1d,4h,1h,30m,15m"
     periodo: str = "2 anos"
+    idioma: str = "pt"
     user_id: str = ""
 
 def _plano_usuario(user_id: str) -> str:
@@ -1393,7 +1394,7 @@ def _plano_usuario(user_id: str) -> str:
     except Exception:
         return "free"
 
-def _matriz_calcular(ativo: str, lista_tfs: list, periodo: str = "2 anos") -> dict:
+def _matriz_calcular(ativo: str, lista_tfs: list, periodo: str = "2 anos", lang: str = "pt") -> dict:
     import time as _t
     inicio = _t.time()
     dfs = {}
@@ -1428,11 +1429,11 @@ def _matriz_calcular(ativo: str, lista_tfs: list, periodo: str = "2 anos") -> di
                                 else ("ok" if (cel["pf"] > 1 and cel["trades"] >= 20) else "fraca"))
                 cels[tf] = cel
                 if cel["trades"] >= 20 and cel["pf"] > 1:
-                    ranking.append({"estrategia": est["nome"], "emoji": est.get("emoji", ""),
+                    ranking.append({"estrategia": _estrat_loc(est, lang, "nome"), "id": est["id"], "emoji": est.get("emoji", ""),
                                     "tf": tf, **cel})
             except Exception:
                 cels[tf] = None
-        linhas.append({"nome": est["nome"], "emoji": est.get("emoji", ""),
+        linhas.append({"nome": _estrat_loc(est, lang, "nome"), "id": est["id"], "emoji": est.get("emoji", ""),
                        "casa": bool(est.get("casa")), "cels": cels})
     ranking.sort(key=lambda x: x["sharpe"], reverse=True)
     resultado = {"ativo": ativo, "tfs": lista_tfs, "linhas": linhas,
@@ -1453,7 +1454,7 @@ def offmind_matriz_dados(p: MatrizParams):
     lista_tfs = [t.strip() for t in p.tfs.split(",") if t.strip() in INTERVALOS_MAP]
     if not lista_tfs:
         lista_tfs = ["1d", "1h"]
-    return _matriz_calcular(p.ativo, lista_tfs, p.periodo)
+    return _matriz_calcular(p.ativo, lista_tfs, p.periodo, p.idioma)
 
 
 @app.get("/offmind/dias-tendencia", response_class=HTMLResponse)
@@ -2864,10 +2865,10 @@ def free_status(user_id: str = ""):
 # ════════════════════════════════════════════════════════════
 ESTRATEGIAS_PRONTAS = [
     {
-        "id": "canal_ema20_hl", "casa": True, "emoji": "🏛️",
-        "nome": "Canal EMA 20 High/Low (Casa)",
+        "id": "canal_ema20_hl", "casa": False, "emoji": "🛤️",
+        "nome": "Canal EMA 20 High/Low",
         "desc": "Assinatura BotBacktest: canal entre EMA20 das máximas e EMA20 das mínimas. Rompe pra cima = compra; rompe pra baixo = venda; dentro do canal = lateral, não opera.",
-        "tags": ["TENDÊNCIA", "CASA"], "nivel": "intermediário",
+        "tags": ["TENDÊNCIA", "EMA"], "nivel": "intermediário",
         "mercados": ["XAU/USD (Ouro)", "NAS100", "BTC/USD"],
         "codigo": '''from backtesting import Strategy
 from backtesting.lib import crossover
@@ -2893,10 +2894,10 @@ class CanalEMA20HL(Strategy):
 '''
     },
     {
-        "id": "tendencia_diaria_piramide", "casa": True, "emoji": "🏛️",
-        "nome": "Tendência Diária com Pirâmide (Casa)",
+        "id": "tendencia_diaria_piramide", "casa": False, "emoji": "🔺",
+        "nome": "Tendência Diária com Pirâmide",
         "desc": "Assinatura BotBacktest: lê a direção do D1 pela manhã, entra SEMPRE a favor (nunca contra), pirâmide na mesma direção, trailing protege o lucro. Valide por ativo antes de automatizar.",
-        "tags": ["TENDÊNCIA", "PIRÂMIDE", "CASA"], "nivel": "avançado",
+        "tags": ["TENDÊNCIA", "PIRÂMIDE"], "nivel": "avançado",
         "mercados": ["XAU/USD (Ouro)", "US30", "S&P500"],
         "codigo": '''from backtesting import Strategy
 import pandas as pd
@@ -2929,10 +2930,10 @@ class TendenciaDiariaPiramide(Strategy):
 '''
     },
     {
-        "id": "topo_fundo_duplo", "casa": True, "emoji": "🏛️",
-        "nome": "Topo Duplo / Fundo Duplo (Casa)",
+        "id": "topo_fundo_duplo", "casa": False, "emoji": "⛰️",
+        "nome": "Topo Duplo / Fundo Duplo",
         "desc": "Assinatura BotBacktest: dois topos na mesma altura + rompimento da linha do pescoço (o fundo entre eles) = venda. Mesma família do Ombro-Cabeça-Ombro: quando a cabeça não se forma, vira Topo Duplo — a entrada é a mesma. Espelhado no Fundo Duplo / OCO invertido = compra (mais difícil de ver a olho; o detector acha pra você). Alvo pela altura do padrão, stop atrás dos topos/fundos.",
-        "tags": ["PRICE ACTION", "REVERSÃO", "CASA"], "nivel": "avançado",
+        "tags": ["PRICE ACTION", "REVERSÃO"], "nivel": "avançado",
         "mercados": ["XAU/USD (Ouro)", "BTC/USD", "NASDAQ"],
         "codigo": '''from backtesting import Strategy
 
@@ -3375,10 +3376,71 @@ class FechamentoIma(Strategy):
     },
 ]
 
+# ── Tradução das estratégias prontas (nome+desc) PT/EN/ES — lógica fica no id ──
+ESTRATEGIAS_I18N = {
+  "canal_ema20_hl": {
+    "en": {"nome": "EMA 20 High/Low Channel", "desc": "Channel between the EMA20 of the highs and the EMA20 of the lows. Breaks above = buy; breaks below = sell; inside the channel = ranging, no trade."},
+    "es": {"nome": "Canal EMA 20 High/Low", "desc": "Canal entre la EMA20 de los máximos y la EMA20 de los mínimos. Rompe hacia arriba = compra; rompe hacia abajo = venta; dentro del canal = lateral, no opera."}},
+  "tendencia_diaria_piramide": {
+    "en": {"nome": "Daily Trend with Pyramiding", "desc": "Reads the D1 direction in the morning, ALWAYS enters with the trend (never against), pyramids in the same direction, trailing protects profit. Validate per asset before automating."},
+    "es": {"nome": "Tendencia Diaria con Pirámide", "desc": "Lee la dirección del D1 por la mañana, entra SIEMPRE a favor (nunca en contra), pirámide en la misma dirección, trailing protege la ganancia. Valida por activo antes de automatizar."}},
+  "topo_fundo_duplo": {
+    "en": {"nome": "Double Top / Double Bottom", "desc": "Two tops at the same height + a break of the neckline (the low between them) = sell. Same family as Head & Shoulders: when the head does not form, it becomes a Double Top — the entry is the same. Mirrored in the Double Bottom / inverted H&S = buy (harder to spot by eye; the detector finds it for you). Target by the pattern height, stop behind the tops/bottoms."},
+    "es": {"nome": "Doble Techo / Doble Suelo", "desc": "Dos techos a la misma altura + ruptura de la línea del cuello (el suelo entre ellos) = venta. Misma familia que el Hombro-Cabeza-Hombro: cuando la cabeza no se forma, se vuelve Doble Techo — la entrada es la misma. Reflejado en el Doble Suelo / HCH invertido = compra (más difícil de ver a simple vista; el detector lo encuentra por ti). Objetivo por la altura del patrón, stop detrás de los techos/suelos."}},
+  "cruzamento_ema_9_21": {
+    "en": {"nome": "EMA 9/21 Crossover", "desc": "Trend classic: EMA9 crosses above EMA21 = buy; crosses below = exit/reverse."},
+    "es": {"nome": "Cruce EMA 9/21", "desc": "Clásica de tendencia: EMA9 cruza por encima de la EMA21 = compra; cruza por debajo = sale/invierte."}},
+  "rsi_reversao": {
+    "en": {"nome": "RSI Oversold/Overbought", "desc": "Reversal: buy with RSI < 30 (oversold), sell with RSI > 70 (overbought)."},
+    "es": {"nome": "RSI Sobreventa/Sobrecompra", "desc": "Reversión: compra con RSI < 30 (sobreventa), vende con RSI > 70 (sobrecompra)."}},
+  "bollinger_reversao": {
+    "en": {"nome": "Bollinger Bands — Reversal", "desc": "Buy when touching the lower band, take profit at the middle average. Works best in ranging markets."},
+    "es": {"nome": "Bandas de Bollinger — Reversión", "desc": "Compra al tocar la banda inferior, realiza en la media central. Funciona mejor en mercado lateral."}},
+  "rompimento_donchian": {
+    "en": {"nome": "Donchian 20 Breakout", "desc": "Turtle Traders style: buy on the breakout of the 20-period high, exit at the 10-period low."},
+    "es": {"nome": "Ruptura Donchian 20", "desc": "Estilo Turtle Traders: compra en la ruptura del máximo de 20 períodos, sale en el mínimo de 10."}},
+  "macd_tendencia": {
+    "en": {"nome": "MACD Trend", "desc": "Buy when the MACD line crosses above the signal line; exit on the opposite cross."},
+    "es": {"nome": "MACD Tendencia", "desc": "Compra cuando la línea MACD cruza por encima de la línea de señal; sale en el cruce contrario."}},
+  "engolfo_tendencia": {
+    "en": {"nome": "Trend-Following Engulfing", "desc": "Price action: a bullish engulfing candle above the EMA50 = buy. The trend filter avoids trading against it."},
+    "es": {"nome": "Envolvente a Favor de la Tendencia", "desc": "Price action: vela envolvente alcista por encima de la EMA50 = compra. El filtro de tendencia evita operar en contra."}},
+  "abertura_gap": {
+    "en": {"nome": "Opening Gap", "desc": "An opening gap up above 0.5% with a strong prior close = follow the move for the day."},
+    "es": {"nome": "Gap de Apertura", "desc": "Gap alcista por encima del 0,5% en la apertura con cierre anterior fuerte = sigue el movimiento del día."}},
+  "media_atr_trailing": {
+    "en": {"nome": "Moving Average + ATR Trailing", "desc": "Enters the trend (price above the SMA50) and protects with a 2x ATR trailing stop — lets profit run."},
+    "es": {"nome": "Media + Trailing ATR", "desc": "Entra en la tendencia (precio por encima de la SMA50) y protege con un trailing stop de 2x ATR — deja correr la ganancia."}},
+  "sr_dia_anterior": {
+    "en": {"nome": "Previous Day Support & Resistance", "desc": "Classic price action: yesterday's high and low become today's references. Closing above yesterday's high = buy (breakout); below the low = sell. Exits when price crosses the opposite reference."},
+    "es": {"nome": "Soporte y Resistencia del Día Anterior", "desc": "Price action clásico: el máximo y el mínimo de ayer se vuelven las referencias de hoy. Cierre por encima del máximo de ayer = compra (ruptura); por debajo del mínimo = venta. Sale cuando el precio cruza la referencia opuesta."}},
+  "microcanal": {
+    "en": {"nome": "Impulse Micro-Channel", "desc": "Price action: a sequence of rising lows hugging the short EMA = buying impulse (micro-channel). Enters the continuation; exits when a candle loses the previous candle's low (channel broken)."},
+    "es": {"nome": "Microcanal de Impulso", "desc": "Price action: secuencia de mínimos ascendentes pegados a la EMA corta = impulso comprador (microcanal). Entra en la continuación; sale cuando una vela pierde el mínimo de la anterior (canal roto)."}},
+  "fechamento_ima": {
+    "en": {"nome": "Previous Close as a Magnet", "desc": "Opened far from yesterday's close? Price tends to return to it (magnet effect / gap fill). Trades the return: target at the previous close, stop on the gap continuation. A multi-market version of the classic futures settlement."},
+    "es": {"nome": "Cierre Anterior como Imán", "desc": "¿Abrió lejos del cierre de ayer? El precio tiende a volver a él (efecto imán / cierre de gap). Opera el regreso: objetivo en el cierre anterior, stop en la continuación del gap. Versión multimercado del clásico ajuste de futuros."}},
+}
+
+def _estrat_loc(est, lang, campo):
+    """Nome/descrição de exibição no idioma; PT é o original. Lógica nunca usa isso (usa o id)."""
+    if lang and lang != "pt":
+        tr = ESTRATEGIAS_I18N.get(est.get("id"), {}).get(lang, {})
+        if tr.get(campo):
+            return tr[campo]
+    return est.get(campo, "")
+
+
 @app.get("/estrategias/prontas")
-def estrategias_prontas():
-    """Galeria das 10 estratégias prontas (metadados + código)."""
-    return {"estrategias": ESTRATEGIAS_PRONTAS, "total": len(ESTRATEGIAS_PRONTAS)}
+def estrategias_prontas(lang: str = "pt"):
+    """Galeria das estratégias prontas (metadados + código), nome/desc no idioma pedido."""
+    out = []
+    for est in ESTRATEGIAS_PRONTAS:
+        e = dict(est)
+        e["nome"] = _estrat_loc(est, lang, "nome")
+        e["desc"] = _estrat_loc(est, lang, "desc")
+        out.append(e)
+    return {"estrategias": out, "total": len(out)}
 
 
 # ════════════════════════════════════════════════════════════
