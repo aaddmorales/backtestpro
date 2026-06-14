@@ -225,6 +225,13 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
   .hero h1{font-size:30px}
   .section,.cta-band{padding:60px 20px}
 }
+
+/* MERCADOS */
+.mkt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:48px}
+.mkt-cat{background:rgba(4,10,18,0.72);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:22px}
+.mkt-cat h4{font-size:12px;font-weight:700;color:#00d084;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+.mkt-pills{display:flex;flex-wrap:wrap;gap:7px}
+@media(max-width:860px){.mkt-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -235,13 +242,14 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     <div class="nav-menu">
       <a href="#como">Como funciona</a>
       <a href="#diferenciais">Diferenciais</a>
+      <a href="#ativos">Ativos</a>
       <a href="#ranking">Ranking</a>
       <a href="#precos">Preços</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-actions">
       <a class="btn btn-outline" href="/app">Entrar</a>
-      <a class="btn btn-green" href="#precos">Começar grátis</a>
+      <a class="btn btn-green" href="/app">Começar grátis</a>
     </div>
   </div>
 </nav>
@@ -258,7 +266,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
         Backtesting profissional para traders
       </div>
       <h1>Teste sua estratégia.<br><em>Antes de arriscar.</em></h1>
-      <p class="hero-sub">Plataforma de backtesting em Python com suporte a B3, Forex e Cripto. Geração de bots por IA. Exportação para Profit/Nelogica.</p>
+      <p class="hero-sub">Teste qualquer estratégia em <strong style="color:#fff">40 ativos</strong> e em qualquer timeframe, com dados reais. O resultado sai em segundos — e a validação <strong style="color:#fff">out-of-sample</strong> revela se a estratégia funciona de verdade ou só decorou o passado.</p>
       <div class="asset-pills">
         <div class="asset-pill"><div class="dot dot-gold"></div>XAU/USD</div>
         <div class="asset-pill"><div class="dot dot-btc"></div>BITCOIN</div>
@@ -267,7 +275,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
         <div class="asset-pill"><div class="dot dot-br"></div>IBOVESPA</div>
       </div>
       <div class="hero-btns">
-        <a class="btn btn-green btn-xl" href="#precos">Começar grátis →</a>
+        <a class="btn btn-green btn-xl" href="/app">Começar grátis →</a>
         <a class="btn btn-outline btn-lg" href="#como">Como funciona</a>
       </div>
       <div class="hero-trust">
@@ -278,7 +286,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     <div class="hero-card">
       <div class="card-header">
         <div class="card-title">Resultado do backtest</div>
-        <div class="card-status"><div class="card-dot"></div>Concluído</div>
+        <div class="card-status" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#f59e0b"><div class="card-dot" style="background:#f59e0b"></div>Exemplo</div>
       </div>
       <div class="metric-grid">
         <div class="metric"><div class="metric-val green">+38.4%</div><div class="metric-label">Retorno total</div></div>
@@ -303,6 +311,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
         <span class="card-tag">✓ 127 trades · EMA Channel</span>
         <span class="card-info">XAU/USD · 2 anos · 1D</span>
       </div>
+      <p style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:12px;line-height:1.5;text-align:center">Exemplo ilustrativo. Resultado de backtest histórico — não é promessa de retorno futuro.</p>
     </div>
   </div>
 </div>
@@ -310,8 +319,8 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
 <!-- STATS -->
 <div class="stats-bar">
   <div class="stats-grid">
-    <div class="stat"><div class="stat-val">+1.200</div><div class="stat-label">Backtests rodados</div></div>
-    <div class="stat"><div class="stat-val">100%</div><div class="stat-label">Dados reais verificados</div></div>
+    <div class="stat"><div class="stat-val">40</div><div class="stat-label">Ativos disponíveis</div></div>
+    <div class="stat"><div class="stat-val">7</div><div class="stat-label">Mercados globais</div></div>
     <div class="stat"><div class="stat-val">&lt; 5s</div><div class="stat-label">Tempo médio por backtest</div></div>
     <div class="stat"><div class="stat-val">PT · EN · ES</div><div class="stat-label">Idiomas disponíveis</div></div>
   </div>
@@ -327,20 +336,20 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
       <div class="step-card">
         <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <h3>Escolha o ativo e período</h3>
-        <p>Selecione entre 14 ativos: B3, IBOVESPA, XAU/USD, BTC, Forex e mais. Defina o período e o timeframe desejado.</p>
+        <p>Escolha entre 40 ativos — Ouro, Bitcoin, NASDAQ, IBOVESPA, NVIDIA, Petrobras e mais. Defina período e timeframe, do diário ao M5.</p>
         <span class="step-pill">Dados reais via yfinance</span>
       </div>
       <div class="step-card">
         <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="15" x2="8" y2="15" stroke-width="3"/><line x1="12" y1="15" x2="12" y2="15" stroke-width="3"/><line x1="16" y1="15" x2="16" y2="15" stroke-width="3"/></svg></div>
         <h3>Configure ou gere sua estratégia</h3>
-        <p>Use indicadores prontos (EMA, RSI, MACD, Bollinger) ou descreva sua ideia em português e a IA gera o código Python.</p>
+        <p>Use estratégias prontas, escreva seu próprio código Python ou descreva sua ideia e deixe a IA gerar. Você no controle.</p>
         <span class="step-pill">IA integrada</span>
       </div>
       <div class="step-card">
         <div class="step-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div>
-        <h3>Analise o relatório completo</h3>
-        <p>Win rate, Sharpe, Drawdown, Profit Factor, equity curve e gráfico de candles com marcadores de entrada e saída.</p>
-        <span class="step-pill">Estilo TradingView</span>
+        <h3>Rode e veja a verdade na hora</h3>
+        <p>Win rate, Sharpe, drawdown, profit factor, equity curve e gráfico — em segundos. E a validação out-of-sample diz se a estratégia é robusta ou só overfitting.</p>
+        <span class="step-pill">Validação anti-overfitting</span>
       </div>
     </div>
   </div>
@@ -355,35 +364,53 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     <div class="feat-grid">
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-        <h4>Python real — não Pine Script</h4>
-        <p>Estratégias em Python puro. Mais flexível, portável para MT5, TradingView ou qualquer plataforma.</p>
+        <h4>Validação out-of-sample</h4>
+        <p>Treina em 70% dos dados e testa nos 30% que a estratégia nunca viu. Mostra se ela é robusta — ou se só decorou o passado (overfitting).</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-        <h4>Suporte nativo à B3 e IBOVESPA</h4>
-        <p>Único backtester com dados brasileiros reais. Teste WIN, WDO, PETR4, VALE3 e IBOV sem configuração extra.</p>
+        <h4>Backtests ilimitados</h4>
+        <p>Outros cobram por teste. Aqui você roda quantas vezes quiser dentro do plano — sem contador, sem pedágio por backtest.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="15" x2="8" y2="15" stroke-width="3"/><line x1="12" y1="15" x2="12" y2="15" stroke-width="3"/><line x1="16" y1="15" x2="16" y2="15" stroke-width="3"/></svg></div>
-        <h4>Geração de bot por IA</h4>
-        <p>Descreva sua ideia em português e a inteligência artificial gera o código da estratégia automaticamente.</p>
+        <h4>Radar de desempenho</h4>
+        <p>Acompanha seu bot e compara o que você planejou com o que ele executou. Fala da sua disciplina — nunca da direção do mercado.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
-        <h4>Exportação NTSL para Profit</h4>
-        <p>Exclusivo no mercado: exporte sua estratégia pronta para rodar na Nelogica Profit, sem reescrever nada.</p>
+        <h4>Sem lock-in de corretora</h4>
+        <p>Teste sem precisar de conta em corretora nenhuma. Você cria e valida sua estratégia — ela é sua, leve pra onde quiser.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <h4>Relatório estilo TradingView</h4>
-        <p>Equity curve, distribuição de ROI, run-ups, drawdowns por trade e marcadores no gráfico de candles.</p>
+        <h4>40 ativos, qualquer timeframe</h4>
+        <p>A mesma estratégia testada do diário ao M5, em 7 mercados: índices, forex, commodities, cripto, ações globais e B3.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d084" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
-        <h4>Ranking público de bots</h4>
-        <p>Ranking onde traders submetem suas estratégias e têm a performance documentada a partir do backtest.</p>
+        <h4>Exporte pra onde quiser</h4>
+        <p>Sua estratégia pronta em NTSL (Profit/Nelogica), MQL5 (MetaTrader) e Pine (TradingView). Sem reescrever nada.</p>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ATIVOS -->
+<div class="section section-dark" id="ativos">
+  <div class="wrap">
+    <div class="section-tag">Mercados</div>
+    <div class="section-title">40 ativos. 7 mercados. Um lugar só.</div>
+    <div class="section-sub">Do Ouro ao Bitcoin, da NVIDIA à Petrobras. Teste a mesma estratégia no mundo inteiro — sem trocar de plataforma e sem conta em corretora.</div>
+    <div class="mkt-grid">
+      <div class="mkt-cat"><h4>Índices Globais</h4><div class="mkt-pills"><span class="asset-pill">S&amp;P500</span><span class="asset-pill">NASDAQ</span><span class="asset-pill">IBOVESPA</span><span class="asset-pill">US30</span><span class="asset-pill">DAX40</span><span class="asset-pill">FTSE100</span><span class="asset-pill">NIKKEI225</span></div></div>
+      <div class="mkt-cat"><h4>Forex</h4><div class="mkt-pills"><span class="asset-pill">EUR/USD</span><span class="asset-pill">USD/BRL</span><span class="asset-pill">GBP/USD</span><span class="asset-pill">USD/JPY</span><span class="asset-pill">AUD/USD</span><span class="asset-pill">USD/CAD</span></div></div>
+      <div class="mkt-cat"><h4>Commodities</h4><div class="mkt-pills"><span class="asset-pill">Ouro (XAU)</span><span class="asset-pill">Prata (XAG)</span><span class="asset-pill">Petróleo WTI</span><span class="asset-pill">Gás Natural</span></div></div>
+      <div class="mkt-cat"><h4>Cripto</h4><div class="mkt-pills"><span class="asset-pill">BTC</span><span class="asset-pill">ETH</span><span class="asset-pill">SOL</span><span class="asset-pill">BNB</span></div></div>
+      <div class="mkt-cat"><h4>Magnificent 7</h4><div class="mkt-pills"><span class="asset-pill">Apple</span><span class="asset-pill">NVIDIA</span><span class="asset-pill">Microsoft</span><span class="asset-pill">Google</span><span class="asset-pill">Amazon</span><span class="asset-pill">Meta</span><span class="asset-pill">Tesla</span></div></div>
+      <div class="mkt-cat"><h4>Ações Pro &amp; B3</h4><div class="mkt-pills"><span class="asset-pill">JPMorgan</span><span class="asset-pill">Visa</span><span class="asset-pill">Coca-Cola</span><span class="asset-pill">Netflix</span><span class="asset-pill">Petrobras</span><span class="asset-pill">Vale</span><span class="asset-pill">Itaú</span><span class="asset-pill">WEG</span></div></div>
+    </div>
+    <p style="text-align:center;margin-top:24px;font-size:12px;color:rgba(255,255,255,0.4)">Catálogo completo com 40 ativos. Alguns ativos premium são exclusivos dos planos pagos.</p>
   </div>
 </div>
 
@@ -453,7 +480,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
         <div style="font-size:32px;margin-bottom:12px">🏆</div>
         <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:6px">Sua estratégia aqui</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:16px">Rode um backtest e apareça no ranking</div>
-        <a class="btn btn-green" style="font-size:13px;padding:8px 18px" href="#precos">Começar grátis →</a>
+        <a class="btn btn-green" style="font-size:13px;padding:8px 18px" href="/app">Começar grátis →</a>
       </div>
     </div>
     <p style="text-align:center;margin-top:30px;font-size:12px;color:rgba(255,255,255,0.42);line-height:1.6">⚠ Dados ilustrativos para demonstração. Rentabilidade passada não garante resultados futuros.</p>
@@ -466,46 +493,47 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     <div class="section-tag">Planos</div>
     <div class="section-title">Simples e transparente</div>
     <div class="section-sub">Comece grátis. Faça upgrade quando precisar de mais.</div>
+    <!-- LANCAMENTO: ao definir o preço, trocar "Em breve" pelos valores. O modo lançamento (desconto + contador) será controlado pelo painel admin (projeto futuro). -->
     <div class="plans-grid">
       <div class="plan">
         <div class="plan-name">Free</div>
-        <div class="plan-price">R$0<sub> /mês</sub></div>
+        <div class="plan-price">R$0<sub> /sempre</sub></div>
         <div class="plan-desc">Para experimentar a plataforma</div>
         <ul class="plan-feats">
-          <li><span class="chk">✓</span>50 backtests por mês</li>
-          <li><span class="chk">✓</span>Indicadores básicos</li>
-          <li><span class="chk">✓</span>Relatório padrão</li>
+          <li><span class="chk">✓</span>3 backtests grátis</li>
+          <li><span class="chk">✓</span>Mercados selecionados</li>
+          <li><span class="chk">✓</span>Relatório completo</li>
+          <li class="off"><span class="chk">–</span>Validação out-of-sample</li>
           <li class="off"><span class="chk">–</span>Geração por IA</li>
-          <li class="off"><span class="chk">–</span>Exportação NTSL</li>
         </ul>
         <a class="btn btn-outline" style="width:100%" href="/app">Criar conta grátis</a>
       </div>
       <div class="plan popular">
         <div class="pop-badge">MAIS POPULAR</div>
         <div class="plan-name">Pro</div>
-        <div class="plan-price">R$67<sub> /mês</sub></div>
+        <div class="plan-price" style="font-size:22px;color:rgba(255,255,255,0.55)">Em breve<sub style="display:block;font-size:11px;margin-top:6px;color:rgba(255,255,255,0.35)">preço de lançamento a definir</sub></div>
         <div class="plan-desc">Para traders ativos</div>
         <ul class="plan-feats">
-          <li><span class="chk">✓</span>200 backtests por mês</li>
-          <li><span class="chk">✓</span>Todos os indicadores</li>
-          <li><span class="chk">✓</span>Relatório completo TradingView</li>
-          <li><span class="chk">✓</span>Geração de bot por IA</li>
-          <li><span class="chk">✓</span>Exportação NTSL</li>
+          <li><span class="chk">✓</span>Backtests ilimitados</li>
+          <li><span class="chk">✓</span>Todos os 40 ativos</li>
+          <li><span class="chk">✓</span>Validação out-of-sample</li>
+          <li><span class="chk">✓</span>Geração por IA + Radar</li>
+          <li><span class="chk">✓</span>Export NTSL / MQL5 / Pine</li>
         </ul>
         <a class="btn btn-green" style="width:100%" href="/app">Assinar Pro →</a>
       </div>
       <div class="plan">
-        <div class="plan-name">Trader</div>
-        <div class="plan-price">R$97<sub> /mês</sub></div>
+        <div class="plan-name">Trader Pro</div>
+        <div class="plan-price" style="font-size:22px;color:rgba(255,255,255,0.55)">Em breve<sub style="display:block;font-size:11px;margin-top:6px;color:rgba(255,255,255,0.35)">preço de lançamento a definir</sub></div>
         <div class="plan-desc">Para profissionais</div>
         <ul class="plan-feats">
-          <li><span class="chk">✓</span>Backtests ilimitados</li>
-          <li><span class="chk">✓</span>Todos os indicadores</li>
-          <li><span class="chk">✓</span>Relatório completo TradingView</li>
-          <li><span class="chk">✓</span>Geração de bot por IA</li>
-          <li><span class="chk">✓</span>Exportação NTSL</li>
+          <li><span class="chk">✓</span>Tudo do Pro, e mais:</li>
+          <li><span class="chk">✓</span>Estratégias verificadas</li>
+          <li><span class="chk">✓</span>Conector MT5 (entrega do bot)</li>
+          <li><span class="chk">✓</span>Relatório de desempenho do bot</li>
+          <li><span class="chk">✓</span>Acesso à API</li>
         </ul>
-        <a class="btn btn-white" style="width:100%" href="/app">Assinar Trader →</a>
+        <a class="btn btn-white" style="width:100%" href="/app">Assinar Trader Pro →</a>
       </div>
     </div>
   </div>
@@ -516,7 +544,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
   <div class="wrap">
     <div class="section-tag">Comparativo</div>
     <div class="section-title">Por que o BotBacktest?</div>
-    <div class="section-sub">A única plataforma que combina Python + B3 + IA + exportação NTSL + bots documentados.</div>
+    <div class="section-sub">Backtests ilimitados, sem lock-in de corretora e validação que mostra a verdade — não só números bonitos.</div>
     <div class="compare-outer">
       <table class="cmp">
         <thead>
@@ -529,12 +557,12 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
           </tr>
         </thead>
         <tbody>
-          <tr><td>Python real</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="yes">✓</span></td><td><span class="no">–</span></td></tr>
-          <tr><td>Dados B3 / IBOVESPA</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="partial">Parcial</span></td></tr>
-          <tr><td>Geração por IA</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
-          <tr><td>Exportação NTSL</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
-          <tr><td>Ranking público de bots</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
-          <tr><td>Interface PT / ES</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="partial">Parcial</span></td></tr>
+          <tr><td>Backtests ilimitados</td><td class="hl"><span class="yes">✓</span></td><td><span class="partial">Cobram por teste</span></td><td><span class="partial">Parcial</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Validação out-of-sample</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Sem lock-in de corretora</td><td class="hl"><span class="yes">✓</span></td><td><span class="partial">Parcial</span></td><td><span class="no">–</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>40 ativos / 7 mercados</td><td class="hl"><span class="yes">✓</span></td><td><span class="partial">Parcial</span></td><td><span class="partial">Parcial</span></td><td><span class="partial">Parcial</span></td></tr>
+          <tr><td>Export NTSL / MQL5 / Pine</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
+          <tr><td>Radar de disciplina</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td><td><span class="no">–</span></td></tr>
           <tr><td>Preço inicial</td><td class="hl">Grátis</td><td>Pago</td><td>Freemium</td><td>Freemium</td></tr>
         </tbody>
       </table>
@@ -551,28 +579,28 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     </div>
     <div class="faq-wrap">
       <div class="faq-item">
+        <div class="faq-q">Isso é promessa de lucro? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Não, e fazemos questão de ser honestos nisso. Todo número aqui é resultado de teste histórico (backtest): mostra como a estratégia teria se comportado no passado. Passado não garante futuro, e operar envolve risco. A gente te dá a verdade dos dados — não uma promessa.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Preciso de conta em corretora pra começar? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">Não. Você cria e testa sua estratégia sem abrir conta em corretora nenhuma e sem lock-in. Sua estratégia é sua — quando quiser, exporta pro Profit, MetaTrader ou TradingView.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Quantos backtests posso fazer? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">No plano gratuito você roda 3 backtests pra conhecer a plataforma. Nos planos pagos os backtests são ilimitados — sem contador e sem cobrar por teste, ao contrário de outras plataformas.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">O que é a validação out-of-sample? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">É o que separa um backtest honesto de um que engana. Treinamos a estratégia em 70% dos dados e testamos nos 30% que ela nunca viu. Se continua boa no que não viu, é robusta. Se desaba, era só overfitting (decorou o passado).</div>
+      </div>
+      <div class="faq-item">
         <div class="faq-q">Preciso saber programar? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">Não. Você pode usar os indicadores prontos com interface visual. A geração por IA escreve o código Python para você a partir de uma descrição em português.</div>
+        <div class="faq-a">Não. Use estratégias prontas com poucos cliques, ou descreva sua ideia em português e a IA gera o código. Se você programa, tem um editor Python completo à disposição.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">Os dados são reais? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">Sim. Usamos dados reais via yfinance — os mesmos dados que plataformas profissionais utilizam, com histórico de anos para todos os ativos disponíveis.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Funciona para a Bolsa brasileira? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">Sim. Temos suporte nativo para B3, IBOVESPA, WIN, WDO e principais ações brasileiras — algo raro em plataformas internacionais de backtesting.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">O que é a exportação NTSL? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">É a conversão automática da sua estratégia para o formato NTSL da Nelogica/Profit — a principal plataforma de trading do Brasil. Exclusivo do BotBacktest.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">O que é o ranking de bots? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">Um ranking público com as estratégias testadas na plataforma. Qualquer usuário pode submeter sua estratégia e ter a performance documentada a partir do backtest. Os exemplos exibidos nesta página são ilustrativos.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Posso cancelar a qualquer momento? <span class="faq-arrow">+</span></div>
-        <div class="faq-a">Sim. Sem contratos, sem fidelidade mínima. Cancele quando quiser diretamente pelo painel de controle, sem burocracia.</div>
+        <div class="faq-q">Quais mercados posso testar? <span class="faq-arrow">+</span></div>
+        <div class="faq-a">40 ativos em 7 mercados: índices globais, forex, commodities (Ouro, Prata, Petróleo), cripto, as Magnificent 7, ações globais e a B3 brasileira (Petrobras, Vale, Itaú e mais).</div>
       </div>
     </div>
   </div>
@@ -598,6 +626,7 @@ footer p{font-size:12px;color:rgba(255,255,255,0.2)}
     <a href="#faq">FAQ</a>
     <a href="/app">Entrar</a>
   </div>
+  <p style="max-width:680px;margin:0 auto 14px;line-height:1.6;color:rgba(255,255,255,0.28);font-size:11px">Aviso de risco: o BotBacktest é uma ferramenta de teste de estratégias em dados históricos. Resultados de backtest não são promessa de retorno futuro. Operar nos mercados financeiros envolve risco de perda. Não prestamos recomendação de investimento.</p>
   <p>© 2026 BotBacktest. Todos os direitos reservados. &nbsp;·&nbsp; botbacktest.com</p>
 </footer>
 
