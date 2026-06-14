@@ -1793,6 +1793,40 @@ function atualizarUI() {
     document.getElementById('limit-banner').classList.add('show');
     document.getElementById('limit-msg').textContent = `Limite atingido: ${usados}/${limite} backtests este mês.`;
   }
+
+  // Catálogo de ativos conforme o plano (popula o dropdown com cadeados)
+  carregarCatalogoAtivos(plano);
+}
+
+document.addEventListener('DOMContentLoaded', () => { try{ carregarCatalogoAtivos('free'); }catch(e){} });
+
+// ── CATÁLOGO DE ATIVOS (dinâmico, com cadeado por plano) ──
+async function carregarCatalogoAtivos(plano){
+  const sel = document.getElementById('ativo');
+  if(!sel) return;
+  try{
+    const r = await fetch(`${API}/ativos/catalogo?plano=${encodeURIComponent(plano||'free')}`);
+    const d = await r.json();
+    const cat = d.catalogo || {};
+    const atual = sel.value;
+    let html = '', primeiroLivre = '';
+    for(const grupo of Object.keys(cat)){
+      const itens = cat[grupo] || [];
+      if(!itens.length) continue;
+      html += `<optgroup label="${grupo}">`;
+      for(const a of itens){
+        const bloq = !!a.bloqueado;
+        if(!bloq && !primeiroLivre) primeiroLivre = a.nome;
+        html += `<option value="${a.nome}"${bloq?' disabled':''}>${bloq?'🔒 ':''}${a.nome}</option>`;
+      }
+      html += `</optgroup>`;
+    }
+    if(html){
+      sel.innerHTML = html;
+      const ok = [...sel.options].find(o => o.value === atual && !o.disabled);
+      sel.value = ok ? atual : primeiroLivre;
+    }
+  }catch(e){ /* se a API falhar, mantém as opções estáticas */ }
 }
 
 // ── AUTH: MODAL ──
