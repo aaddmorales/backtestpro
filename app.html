@@ -2212,6 +2212,7 @@ function aplicarIdioma() {
   // partes geradas por JS que precisam re-render
   if (typeof window._estudoPreparada !== 'undefined') { try { prepararAbaEstudo(); } catch(e){} }
   try { if (typeof atualizarContador === 'function') atualizarContador(); } catch(e){}
+  try { if (typeof carregarGaleria === 'function') carregarGaleria(); } catch(e){}
 }
 
 function setLang(lang) {
@@ -2280,7 +2281,7 @@ async function rodarEstudo() {
   try {
     const r = await fetch(API + '/offmind/matriz-dados', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ativo, periodo, tfs: tfs.join(','), user_id: usuarioAtual?.id || '' }) });
+      body: JSON.stringify({ ativo, periodo, idioma: (typeof LANG!=='undefined'?LANG:'pt'), tfs: tfs.join(','), user_id: usuarioAtual?.id || '' }) });
     const d = await r.json();
     if (!r.ok) {
       res.innerHTML = `<div style="color:var(--amber);font-size:13px;padding:14px">🔒 ${d.erro || 'Sem acesso.'}</div>`;
@@ -2297,6 +2298,12 @@ async function rodarEstudo() {
 }
 
 function renderEstudo(d) {
+  const _MLs = {
+    pt:{geradoEm:'gerado em', padrao:'parâmetros padrão (o ajuste fino é papel da ⚙ Otimização)', estrategia:'Estratégia', retorno:'Retorno', trades:'Trades', tops1:'As Tops de ', tops2:' (por Sharpe, mín. 20 trades)', vazio:'Nenhuma combinação passou no filtro (PF > 1 com 20+ trades) — ativo difícil ou timeframes insuficientes.', fluxo:'Fluxo profissional: Estudo encontra <b>onde</b> → ⚙ Otimização refina <b>como</b> (stop/take em volta) → validação out-of-sample → MT5.'},
+    en:{geradoEm:'generated in', padrao:'default parameters (fine-tuning is the job of ⚙ Optimization)', estrategia:'Strategy', retorno:'Return', trades:'Trades', tops1:'Top performers for ', tops2:' (by Sharpe, min. 20 trades)', vazio:'No combination passed the filter (PF > 1 with 20+ trades) — tough asset or not enough timeframes.', fluxo:'Pro workflow: Study finds <b>where</b> → ⚙ Optimization refines <b>how</b> (stop/take around it) → out-of-sample validation → MT5.'},
+    es:{geradoEm:'generado en', padrao:'parámetros por defecto (el ajuste fino es tarea de la ⚙ Optimización)', estrategia:'Estrategia', retorno:'Retorno', trades:'Trades', tops1:'Las Tops de ', tops2:' (por Sharpe, mín. 20 trades)', vazio:'Ninguna combinación pasó el filtro (PF > 1 con 20+ trades) — activo difícil o timeframes insuficientes.', fluxo:'Flujo profesional: Estudio encuentra <b>dónde</b> → ⚙ Optimización refina <b>cómo</b> (stop/take alrededor) → validación out-of-sample → MT5.'}
+  };
+  const ML = _MLs[(typeof _bbLang==='function'?_bbLang():'pt')] || _MLs.pt;
   const th = 'border:1px solid var(--border2);padding:8px 10px;font-size:12px;text-align:left;background:var(--bg3);color:var(--muted2)';
   const td = 'border:1px solid var(--border);padding:8px 10px;font-size:12.5px;vertical-align:top';
   const cel = (c) => {
@@ -2314,14 +2321,14 @@ function renderEstudo(d) {
      <td style="${td}">${t.pf.toFixed(2)}</td><td style="${td}">${t.wr.toFixed(1)}%</td>
      <td style="${td};font-weight:700">${t.sharpe.toFixed(2)}</td><td style="${td}">${t.trades}</td></tr>`).join('');
   return `
-    <div style="font-size:12px;color:var(--muted2);margin:6px 0 10px">📊 ${d.ativo} · gerado em ${d.duracao_s}s · parâmetros padrão (o ajuste fino é papel da ⚙ Otimização)</div>
+    <div style="font-size:12px;color:var(--muted2);margin:6px 0 10px">📊 ${d.ativo} · ${ML.geradoEm} ${d.duracao_s}s · ${ML.padrao}</div>
     <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;margin-bottom:22px">
-      <tr><th style="${th}">Estratégia</th>${ths}</tr>${linhas}</table></div>
-    <div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:6px">🏆 As Tops de ${d.ativo} (por Sharpe, mín. 20 trades)</div>
+      <tr><th style="${th}">${ML.estrategia}</th>${ths}</tr>${linhas}</table></div>
+    <div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:6px">🏆 ${ML.tops1}${d.ativo}${ML.tops2}</div>
     <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">
-      <tr><th style="${th}">#</th><th style="${th}">Estratégia</th><th style="${th}">TF</th><th style="${th}">Retorno</th><th style="${th}">PF</th><th style="${th}">WR</th><th style="${th}">Sharpe</th><th style="${th}">Trades</th></tr>
-      ${tops || '<tr><td colspan="8" style="' + td + ';color:var(--muted2)">Nenhuma combinação passou no filtro (PF > 1 com 20+ trades) — ativo difícil ou timeframes insuficientes.</td></tr>'}</table></div>
-    <div style="font-size:12px;color:var(--muted2);margin-top:10px">Fluxo profissional: Estudo encontra <b>onde</b> → ⚙ Otimização refina <b>como</b> (stop/take em volta) → validação out-of-sample → MT5.</div>`;
+      <tr><th style="${th}">#</th><th style="${th}">${ML.estrategia}</th><th style="${th}">TF</th><th style="${th}">${ML.retorno}</th><th style="${th}">PF</th><th style="${th}">WR</th><th style="${th}">Sharpe</th><th style="${th}">${ML.trades}</th></tr>
+      ${tops || '<tr><td colspan="8" style="' + td + ';color:var(--muted2)">' + ML.vazio + '</td></tr>'}</table></div>
+    <div style="font-size:12px;color:var(--muted2);margin-top:10px">${ML.fluxo}</div>`;
 }
 
 // ── OTIMIZACAO DE PARAMETROS (v1.6) ──────────────────────────
@@ -4102,7 +4109,7 @@ async function usarEstrategiaHero(id){
 // ── Galeria de estratégias prontas ──
 async function carregarGaleria(){
   try{
-    const r = await fetch(API+'/estrategias/prontas');
+    const r = await fetch(API+'/estrategias/prontas?lang='+encodeURIComponent(typeof LANG!=='undefined'?LANG:'pt'));
     const d = await r.json();
     const box = document.getElementById('galeria-prontas');
     if(!box || !d.estrategias) return;
