@@ -1054,13 +1054,20 @@ class ValidarOverfittingParams(BaseModel):
     stop_loss: float = 50
     take_profit: float = 100
     split: float = 0.70   # fração de treino (resto = teste)
+    codigo: str = ""      # se vier, valida o CÓDIGO do cliente (não o indicador)
     user_id: Optional[str] = None
     sessao_id: Optional[str] = None
 
 
 def _metricas_simples(df_slice, base_params):
-    """Roda a estratégia num pedaço do df e devolve só as métricas-chave."""
-    resultado = rodar_estrategia(df_slice, base_params)
+    """Roda a estratégia num pedaço do df e devolve só as métricas-chave.
+    Se base_params tiver código custom, roda o CÓDIGO do cliente (mesmo motor
+    do /backtest/custom); senão, roda pelo indicador."""
+    codigo = (getattr(base_params, "codigo", "") or "").strip()
+    if codigo and not codigo.startswith("#"):
+        resultado = rodar_codigo_custom(df_slice, base_params)
+    else:
+        resultado = rodar_estrategia(df_slice, base_params)
     m = calcular_metricas_completas(resultado, base_params, df_slice)
     return {
         "retorno": float(m.get("retorno") or 0),
@@ -1095,12 +1102,17 @@ def validar_overfitting(params: ValidarOverfittingParams):
             raise HTTPException(status_code=400, detail="Período curto demais para um teste out-of-sample confiável. Use um período maior.")
 
         # 3) parâmetros idênticos nas duas fatias
-        bp = BacktestParams(
+        _cod = (params.codigo or "").strip()
+        _campos = dict(
             ativo=params.ativo, periodo=params.periodo, timeframe=params.timeframe,
             indicador=params.indicador, capital=params.capital, max_ops=params.max_ops,
             comissao=params.comissao, ema_period=params.ema_period,
             stop_loss=params.stop_loss, take_profit=params.take_profit,
         )
+        if _cod and not _cod.startswith("#"):
+            bp = BacktestCustom(**_campos, codigo=params.codigo)
+        else:
+            bp = BacktestParams(**_campos)
 
         treino = _metricas_simples(df_treino, bp)
         teste = _metricas_simples(df_teste, bp)
