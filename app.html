@@ -182,6 +182,8 @@ body::after{
 .api-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
 .api-label{font-size:11px;color:var(--green);font-family:var(--mono)}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,208,132,.4)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(0,208,132,0)}}
+    .campo-piscando{animation:campopisca 1s ease-in-out infinite;border-color:#ffb830 !important}
+    @keyframes campopisca{0%,100%{box-shadow:0 0 0 0 rgba(255,184,48,0)}50%{box-shadow:0 0 0 4px rgba(255,184,48,0.5)}}
 
 /* ── LIGHT THEME ── */
 body.light{
@@ -1030,6 +1032,7 @@ select option{background:#141920}
                 <button id="hero-lista-btn" onclick="toggleHeroLista(event)" title="Escolher estratégia pronta" style="white-space:nowrap;padding:9px 14px;background:rgba(0,208,132,0.12);border:1px solid rgba(0,208,132,0.45);border-radius:8px;color:var(--green);font-size:12.5px;cursor:pointer;font-weight:700">📋 <span data-i18n="hero.prontas">Estratégias prontas</span> ▾</button>
                 <button id="hero-limpar-btn" onclick="limparCodigo()" title="Limpar código" style="white-space:nowrap;padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12.5px;cursor:pointer;font-weight:600">🧹 <span data-i18n="hero.limpar">Limpar</span></button>
               </div>
+              <div id="param-aviso" style="display:none;margin-top:9px;padding:10px 13px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12.5px;line-height:1.45"></div>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
@@ -2124,7 +2127,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Aplicar e validar (out-of-sample)','radar.oosRodando':'Aplicando e validando out-of-sample…','radar.oosTitulo':'Validação out-of-sample','radar.oosTreino':'Treino','radar.oosTeste':'Teste (nunca visto)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'Não consegui validar: ','radar.oosTitAlto':'Sinais de overfitting','radar.oosResAlto':'Foi bem no histórico conhecido, mas tropeçou nos dados que nunca viu — pode estar ajustada demais ao passado.','radar.oosTitMedio':'Resultado misto','radar.oosResMedio':'Há sinais de fragilidade entre treino e teste. Investigue em mais períodos antes de confiar.','radar.oosTitBaixo':'Mais robusta','radar.oosResBaixo':'Manteve desempenho positivo nos dados que nunca viu. Bom sinal — mas backtest nunca garante o futuro.',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
     'hero.ph':'Descreva em português ("canal EMA 20 high/low") ou cole seu código Python aqui',
-    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado','hero.limpar':'Limpar',
+    'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar teste','side.customCode':'Código personalizado','hero.limpar':'Limpar','param.naoIdent':'Não identificamos os parâmetros de risco (stop/take) no seu código. Preencha os campos destacados na barra à esquerda e clique em ▶ Rodar teste novamente.',
     'ov.emptyTitle':'Pronto pra testar sua estratégia',
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
@@ -2156,7 +2159,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Apply & validate (out-of-sample)','radar.oosRodando':'Applying & validating out-of-sample…','radar.oosTitulo':'Out-of-sample validation','radar.oosTreino':'Train','radar.oosTeste':'Test (unseen)','radar.oosRet':'Return','radar.oosTrades':'Trades','radar.oosErro':"Couldn't validate: ",'radar.oosTitAlto':'Overfitting signals','radar.oosResAlto':'It did well on the known history but stumbled on data it never saw — it may be overfitted to the past.','radar.oosTitMedio':'Mixed result','radar.oosResMedio':'There are signs of fragility between train and test. Investigate across more periods before trusting it.','radar.oosTitBaixo':'More robust','radar.oosResBaixo':'It held positive performance on data it never saw. Good sign — but a backtest never guarantees the future.',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
     'hero.ph':'Describe it ("EMA 20 high/low channel") or paste your Python code here',
-    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code','hero.limpar':'Clear',
+    'hero.prontas':'Ready strategies','hero.rodar':'▶ Run test','side.customCode':'Custom code','hero.limpar':'Clear','param.naoIdent':"We couldn't identify the risk parameters (stop/take) in your code. Fill in the highlighted fields in the left sidebar and click ▶ Run test again.",
     'ov.emptyTitle':'Ready to test your strategy',
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
@@ -2188,7 +2191,7 @@ const I18N = {
     'radar.aplicarValidar':'▶ Aplicar y validar (out-of-sample)','radar.oosRodando':'Aplicando y validando out-of-sample…','radar.oosTitulo':'Validación out-of-sample','radar.oosTreino':'Entrenamiento','radar.oosTeste':'Prueba (no vista)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'No pude validar: ','radar.oosTitAlto':'Señales de overfitting','radar.oosResAlto':'Le fue bien en el histórico conocido, pero tropezó en los datos que nunca vio — puede estar sobreajustada al pasado.','radar.oosTitMedio':'Resultado mixto','radar.oosResMedio':'Hay señales de fragilidad entre entrenamiento y prueba. Investiga en más períodos antes de confiar.','radar.oosTitBaixo':'Más robusta','radar.oosResBaixo':'Mantuvo desempeño positivo en los datos que nunca vio. Buena señal — pero un backtest nunca garantiza el futuro.',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
     'hero.ph':'Descríbela ("canal EMA 20 high/low") o pega tu código Python aquí',
-    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado','hero.limpar':'Limpiar',
+    'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar prueba','side.customCode':'Código personalizado','hero.limpar':'Limpiar','param.naoIdent':'No identificamos los parámetros de riesgo (stop/take) en tu código. Completa los campos destacados en la barra izquierda y haz clic en ▶ Ejecutar prueba de nuevo.',
     'ov.emptyTitle':'Listo para probar tu estrategia',
     'ov.emptyDesc':'Configura los parámetros a la izquierda, elige un activo y haz clic en ▶ Ejecutar Backtest para ver tu resultado aquí.',
   }
@@ -2612,12 +2615,55 @@ function atualizarMetricsBar(d) {
   });
 }
 
+// ── DETECÇÃO DE PARÂMETROS NO CÓDIGO DO CLIENTE ──────────────
+// Se o código não usa os parâmetros-padrão da barra (SL_PTS/TP_PTS),
+// NÃO fingimos: zeramos stop/take, piscamos os campos e pedimos pro
+// cliente preencher e rodar de novo. Honesto > adivinhar errado.
+let _codigoAvisado = '';
+function zerarEPiscarParams(){
+  const sl = document.getElementById('stop_loss');
+  const tp = document.getElementById('take_profit');
+  if(sl){ sl.value=''; sl.classList.add('campo-piscando'); }
+  if(tp){ tp.value=''; tp.classList.add('campo-piscando'); }
+  const aviso = document.getElementById('param-aviso');
+  if(aviso){ aviso.textContent = t('param.naoIdent'); aviso.style.display='block'; }
+  try{ radarFala('⚠️ ' + t('param.naoIdent'), 'alerta'); }catch(e){}
+  if(sl){ try{ sl.focus(); sl.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }
+}
+function pararPiscarParams(){
+  ['stop_loss','take_profit'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.remove('campo-piscando');
+  });
+  const aviso=document.getElementById('param-aviso'); if(aviso) aviso.style.display='none';
+}
+
 async function rodarBacktest() {
   console.log('rodarBacktest() chamado');
   // Verificar login e limite
   const liberado = await verificarLimite();
   console.log('liberado:', liberado);
   if (!liberado) return;
+
+  // ── PORTÃO: parâmetros de risco não identificados no código custom ──
+  {
+    const _cod = document.getElementById('code-editor').value.trim();
+    const _ehCustom = _cod && _cod.length > 10 && !_cod.startsWith('#');
+    if (_ehCustom && !/SL_PTS|TP_PTS/.test(_cod)) {
+      const _sl = parseFloat(document.getElementById('stop_loss').value);
+      if (_codigoAvisado !== _cod) {        // 1ª vez vendo este código: avisa e para
+        _codigoAvisado = _cod;
+        zerarEPiscarParams();
+        return;
+      }
+      if (!_sl || _sl <= 0) {               // já avisou, mas ainda está zerado
+        zerarEPiscarParams();
+        return;
+      }
+      pararPiscarParams();                  // preencheu: segue o jogo
+    } else {
+      pararPiscarParams();
+    }
+  }
 
   const btn = document.getElementById('run-btn');
   const icon = document.getElementById('run-icon');
@@ -4149,6 +4195,8 @@ function limparCodigo(){   // zera código (campo + editor) e volta a barra ao m
   const optc=document.getElementById('opt-codigo-custom');
   if(sel && sel.value==='__custom__'){ sel.value = 'EMA Channel High/Low'; }
   if(optc) optc.remove();
+  _codigoAvisado = '';
+  if(typeof pararPiscarParams==='function') pararPiscarParams();
 }
 function _heroBtnLabel(){
   return (typeof I18N!=='undefined' && I18N[LANG] && I18N[LANG]['hero.gerar']) || '✨ Gerar estratégia';
