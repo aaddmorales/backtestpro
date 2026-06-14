@@ -1056,7 +1056,7 @@ select option{background:#141920}
         <div class="sem" id="m-pf-sem"></div>
       </div>
     </div>
-            <div id="ov-sample" style="padding:18px 16px">
+            <div id="ov-sample" style="padding:18px 16px;display:none">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
                 <span style="background:#3a4756;color:#cdd9e3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.5px">EXEMPLO</span>
                 <span style="font-size:13px;color:var(--muted2)">Assim ficará seu resultado · configure à esquerda e clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong></span>
@@ -1067,10 +1067,10 @@ select option{background:#141920}
                 <div id="candle-chart-sample" style="width:100%;height:380px"></div>
               </div>
             </div>
-            <div class="overview-empty" id="ov-empty" style="display:none">
+            <div class="overview-empty" id="ov-empty">
               <div style="font-size:38px;opacity:.25">📊</div>
-              <div style="font-size:14px;font-weight:600;color:var(--muted2)">Nenhum backtest rodado</div>
-              <div style="font-size:12px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">Configure os parâmetros, cole seu código e clique em Rodar Backtest</div>
+              <div style="font-size:14px;font-weight:600;color:var(--muted2)" data-i18n="ov.emptyTitle">Pronto pra testar sua estratégia</div>
+              <div style="font-size:12px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6" data-i18n="ov.emptyDesc">Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.</div>
             </div>
             <div id="ov-result" style="display:none"></div>
           </div>
@@ -2105,6 +2105,8 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar e rodar','radar.pfHist':'PF histórico','radar.vsSeu':'vs seu teste','radar.emTrades':'em {n} trades',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
     'hero.ph':'Descreva ("canal EMA 20 high/low") ou escolha uma pronta no botão ▾',
+    'ov.emptyTitle':'Pronto pra testar sua estratégia',
+    'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
   en: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
@@ -2131,6 +2133,8 @@ const I18N = {
     'radar.aplicarRodar':'▶ Apply & run','radar.pfHist':'Historical PF','radar.vsSeu':'vs your test','radar.emTrades':'over {n} trades',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
     'hero.ph':'Describe ("EMA 20 high/low channel") or pick a ready-made one from the button ▾',
+    'ov.emptyTitle':'Ready to test your strategy',
+    'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
   es: {
     'nav.overview':'Resumen','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
@@ -2157,6 +2161,8 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar y ejecutar','radar.pfHist':'PF histórico','radar.vsSeu':'vs tu prueba','radar.emTrades':'en {n} trades',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
     'hero.ph':'Describe ("canal EMA 20 high/low") o elige una lista en el botón ▾',
+    'ov.emptyTitle':'Listo para probar tu estrategia',
+    'ov.emptyDesc':'Configura los parámetros a la izquierda, elige un activo y haz clic en ▶ Ejecutar Backtest para ver tu resultado aquí.',
   }
 };
 
@@ -3457,7 +3463,7 @@ function initSampleChart(){
   if(typeof LightweightCharts === 'undefined'){ setTimeout(initSampleChart, 200); return; }
   try{ renderSampleChart(); }catch(e){ console.warn('sample chart:', e); }
 }
-setTimeout(initSampleChart, 150);
+/* abertura limpa: gráfico de exemplo desativado — o estado vazio convida à ação */
 
 
 // ════════════ v5.0 — AGENTE + MONITOR + GALERIA + HERO IA ════════════
