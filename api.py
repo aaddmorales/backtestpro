@@ -1396,13 +1396,34 @@ class MatrizParams(BaseModel):
     idioma: str = "pt"
     user_id: str = ""
 
+def _plano_vigente(plano, ate):
+    """Cortesia com prazo: se o plano não é free e a data de validade já passou,
+       trata como free. Assinatura paga do Stripe não tem data -> nunca expira aqui."""
+    try:
+        if plano and plano != "free" and ate:
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(str(ate).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if dt < datetime.now(timezone.utc):
+                return "free"
+    except Exception:
+        pass
+    return plano or "free"
+
+
 def _plano_usuario(user_id: str) -> str:
     try:
         sb = _sb_admin()
         if sb is None:
             return "free"
-        r = sb.table("perfis").select("plano").eq("id", user_id).single().execute()
-        return (r.data or {}).get("plano") or "free"
+        try:
+            r = sb.table("perfis").select("plano,plano_valido_ate").eq("id", user_id).single().execute()
+            d = r.data or {}
+            return _plano_vigente(d.get("plano"), d.get("plano_valido_ate"))
+        except Exception:
+            r = sb.table("perfis").select("plano").eq("id", user_id).single().execute()
+            return (r.data or {}).get("plano") or "free"
     except Exception:
         return "free"
 
@@ -2772,6 +2793,53 @@ for _cat, _itens in CATALOGO_ATIVOS.items():
     for _a in _itens:
         ATIVOS_MAP.setdefault(_a["nome"], _a["ticker"])
 
+class ResgateReq(BaseModel):
+    user_id: str
+    codigo: str
+
+
+@app.post("/resgatar-codigo")
+def resgatar_codigo(req: ResgateReq):
+    """Resgata um código de acesso cortesia. Eleva o plano e grava a validade."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(500, {"code": "indisponivel", "msg": "Serviço indisponível. Tente mais tarde."})
+    code = (req.codigo or "").strip().upper()
+    if not code or not req.user_id:
+        raise HTTPException(400, {"code": "invalido", "msg": "Código inválido."})
+    # busca o código
+    row = None
+    try:
+        r = sb.table("codigos_acesso").select("*").eq("codigo", code).single().execute()
+        row = r.data
+    except Exception:
+        row = None
+    if not row:
+        raise HTTPException(404, {"code": "nao_encontrado", "msg": "Código não encontrado."})
+    if row.get("ativo") is False:
+        raise HTTPException(403, {"code": "inativo", "msg": "Este código foi desativado."})
+    if row.get("usado"):
+        raise HTTPException(409, {"code": "ja_usado", "msg": "Este código já foi utilizado."})
+    plano = row.get("plano") or "trader_pro"
+    dias = int(row.get("dias") or 30)
+    from datetime import datetime, timezone, timedelta
+    agora = datetime.now(timezone.utc)
+    ate = (agora + timedelta(days=dias)).isoformat()
+    # eleva o plano do usuário com validade
+    try:
+        sb.table("perfis").update({"plano": plano, "plano_valido_ate": ate}).eq("id", req.user_id).execute()
+    except Exception as e:
+        raise HTTPException(500, {"code": "erro_perfil", "msg": f"Não consegui aplicar o acesso: {e}"})
+    # marca o código como usado (1 uso só)
+    try:
+        sb.table("codigos_acesso").update({
+            "usado": True, "usado_por": req.user_id, "usado_em": agora.isoformat()
+        }).eq("codigo", code).execute()
+    except Exception:
+        pass
+    return {"ok": True, "plano": plano, "dias": dias, "valido_ate": ate}
+
+
 @app.get("/ativos/catalogo")
 def ativos_catalogo(plano: str = "free"):
     """Catálogo completo com flag 'bloqueado' conforme o plano do usuário."""
@@ -2814,9 +2882,15 @@ def _perfil_plano_e_creditos(user_id: str):
         sb = _sb_admin()
         if sb is None:
             return ("free", 0, None)
-        r = sb.table("perfis").select("plano,free_tests_usados").eq("id", user_id).single().execute()
-        d = r.data or {}
-        return (d.get("plano") or "free", int(d.get("free_tests_usados") or 0), sb)
+        try:
+            r = sb.table("perfis").select("plano,free_tests_usados,plano_valido_ate").eq("id", user_id).single().execute()
+            d = r.data or {}
+            plano_ef = _plano_vigente(d.get("plano"), d.get("plano_valido_ate"))
+            return (plano_ef, int(d.get("free_tests_usados") or 0), sb)
+        except Exception:
+            r = sb.table("perfis").select("plano,free_tests_usados").eq("id", user_id).single().execute()
+            d = r.data or {}
+            return (d.get("plano") or "free", int(d.get("free_tests_usados") or 0), sb)
     except Exception:
         # coluna free_tests_usados pode não existir ainda -> lê só o plano
         try:
