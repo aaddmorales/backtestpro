@@ -494,8 +494,8 @@ def calcular_metricas_completas(resultado: dict, params: BacktestParams, df: pd.
         "gross_loss": round(gross_loss, 2),
 
         # Trades analysis
-        "avg_pnl": round((capital_fin - capital_ini) / total, 2),
-        "avg_pnl_pct": round(retorno / total, 4),
+        "avg_pnl": round((capital_fin - capital_ini) / total, 2) if total > 0 else 0,
+        "avg_pnl_pct": round(retorno / total, 4) if total > 0 else 0,
         "avg_bars_in_trades": avg_bars,
         "maior_ganho": maior_ganho,
         "maior_perda": maior_perda,
@@ -2826,6 +2826,28 @@ def _perfil_plano_e_creditos(user_id: str):
         except Exception:
             return ("free", 0, None)
 
+def _email_confirmado(user_id):
+    """True se o email do usuário está confirmado. Anti multi-conta no Free.
+       FALHA ABERTA de propósito: se a checagem der erro, NÃO trava o usuário
+       legítimo (preferimos deixar passar a bloquear quem tem direito)."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return True
+        resp = sb.auth.admin.get_user_by_id(user_id)
+        user = getattr(resp, "user", None)
+        if user is None and isinstance(resp, dict):
+            user = resp.get("user")
+        ts = getattr(user, "email_confirmed_at", None) if user is not None else None
+        if ts is None and isinstance(user, dict):
+            ts = user.get("email_confirmed_at")
+        return bool(ts)
+    except Exception as _e:
+        import sys as _sys
+        print(f"[GATING] checagem email_confirmado falhou (deixando passar): {_e}", file=_sys.stderr)
+        return True
+
+
 def _consumir_credito_backtest(user_id, ativo: str):
     """Porteiro chamado no topo dos endpoints de backtest.
        Levanta HTTPException com detail ESTRUTURADO pro front reagir."""
@@ -2843,6 +2865,11 @@ def _consumir_credito_backtest(user_id, ativo: str):
     # pago = ilimitado
     if nivel_user >= 1:
         return {"plano": plano, "ilimitado": True}
+    # free precisa de email confirmado (anti multi-conta com emails descartáveis)
+    if not _email_confirmado(user_id):
+        raise HTTPException(status_code=403, detail={
+            "code": "email_nao_confirmado",
+            "msg": "Confirme seu email para liberar seus 3 backtests gratuitos."})
     # free = consome 1 dos 3
     if usados >= LIMITE_FREE_TESTS:
         raise HTTPException(status_code=402, detail={
