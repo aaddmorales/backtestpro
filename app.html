@@ -1437,6 +1437,17 @@ select option{background:#141920}
               <button onclick="setMoeda('USD')" id="btn-usd" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">USD</button>
               <button onclick="setMoeda('EUR')" id="btn-eur" style="padding:5px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">EUR</button>
             </div>
+
+            <!-- CÓDIGO DE ACESSO (cortesia) -->
+            <div style="max-width:420px;margin:0 auto 28px;background:rgba(8,16,28,0.7);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;" data-i18n="codigo.titulo">Tem um código de acesso?</div>
+              <div style="font-size:11px;color:var(--muted2);margin-bottom:12px;" data-i18n="codigo.sub">Resgate seu acesso de cortesia ao Trader Pro.</div>
+              <div style="display:flex;gap:8px;">
+                <input id="codigo-input" type="text" placeholder="EX: AMIGO-XXXX" data-i18n-ph="codigo.ph" style="flex:1;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;font-family:var(--sans);text-transform:uppercase;" onkeydown="if(event.key==='Enter')resgatarCodigo()">
+                <button onclick="resgatarCodigo()" style="padding:9px 18px;border-radius:7px;border:none;background:#00d084;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans);" data-i18n="codigo.btn">Resgatar</button>
+              </div>
+              <div id="codigo-msg" style="font-size:12px;margin-top:10px;min-height:16px;"></div>
+            </div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
               <!-- FREE -->
               <div style="background:var(--bg2);border:1px solid #555;border-radius:12px;padding:24px 20px;">
@@ -2044,6 +2055,34 @@ async function fazerLogout() {
 }
 
 // ── VERIFICAR LIMITE ANTES DO BACKTEST ──
+async function resgatarCodigo() {
+  const inp = document.getElementById('codigo-input');
+  const msg = document.getElementById('codigo-msg');
+  const code = (inp.value || '').trim().toUpperCase();
+  msg.style.color = '';
+  if (!code) { msg.style.color = '#ff5c5c'; msg.textContent = t('codigo.errVazio'); return; }
+  if (!(usuarioAtual && usuarioAtual.id)) { msg.style.color = '#ff5c5c'; msg.textContent = t('codigo.errLogin'); return; }
+  msg.style.color = 'var(--muted2)'; msg.textContent = '⏳';
+  try {
+    const resp = await fetch(API + '/resgatar-codigo', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: usuarioAtual.id, codigo: code })
+    });
+    const d = await resp.json();
+    if (!resp.ok) {
+      const det = d && d.detail;
+      msg.style.color = '#ff5c5c';
+      msg.textContent = (det && det.msg) ? det.msg : t('codigo.errGenerico');
+      return;
+    }
+    msg.style.color = 'var(--green)';
+    msg.textContent = t('codigo.ok');
+    setTimeout(() => location.reload(), 1400);
+  } catch (e) {
+    msg.style.color = '#ff5c5c'; msg.textContent = t('codigo.errGenerico');
+  }
+}
+
 function setMoeda(moeda) {
   const precos = {
     BRL: { pro: 'Em breve', trader: 'Em breve' },
@@ -2268,7 +2307,7 @@ const I18N = {
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.sobrenome':'Sobrenome','auth.phSobrenome':'Seu sobrenome','auth.confSenha':'Confirmar senha','auth.phConfSenha':'digite a senha de novo','auth.errSenhaConf':'As senhas não conferem.','auth.recTitulo':'Defina sua nova senha','auth.recSub':'Escolha uma senha nova para sua conta.','auth.novaSenha':'Nova senha','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Salvar nova senha','auth.recOk':'✅ Senha alterada! Entrando...','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.sobrenome':'Sobrenome','auth.phSobrenome':'Seu sobrenome','auth.confSenha':'Confirmar senha','auth.phConfSenha':'digite a senha de novo','auth.errSenhaConf':'As senhas não conferem.','auth.recTitulo':'Defina sua nova senha','auth.recSub':'Escolha uma senha nova para sua conta.','auth.novaSenha':'Nova senha','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Salvar nova senha','auth.recOk':'✅ Senha alterada! Entrando...','codigo.titulo':'Tem um código de acesso?','codigo.sub':'Resgate seu acesso de cortesia ao Trader Pro.','codigo.ph':'EX: AMIGO-XXXX','codigo.btn':'Resgatar','codigo.ok':'✅ Acesso liberado! Atualizando...','codigo.errVazio':'Digite um código.','codigo.errLogin':'Entre na sua conta primeiro.','codigo.errGenerico':'Não foi possível resgatar o código.','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Bem-vindo ao BotBacktest.',
     'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2300,7 +2339,7 @@ const I18N = {
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
-    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.sobrenome':'Last name','auth.phSobrenome':'Your last name','auth.confSenha':'Confirm password','auth.phConfSenha':'type the password again','auth.errSenhaConf':'Passwords do not match.','auth.recTitulo':'Set your new password','auth.recSub':'Choose a new password for your account.','auth.novaSenha':'New password','auth.phNovaSenha':'at least 6 characters','auth.recBtn':'Save new password','auth.recOk':'✅ Password changed! Signing in...','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
+    'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.sobrenome':'Last name','auth.phSobrenome':'Your last name','auth.confSenha':'Confirm password','auth.phConfSenha':'type the password again','auth.errSenhaConf':'Passwords do not match.','auth.recTitulo':'Set your new password','auth.recSub':'Choose a new password for your account.','auth.novaSenha':'New password','auth.phNovaSenha':'at least 6 characters','auth.recBtn':'Save new password','auth.recOk':'✅ Password changed! Signing in...','codigo.titulo':'Have an access code?','codigo.sub':'Redeem your courtesy access to Trader Pro.','codigo.ph':'EX: FRIEND-XXXX','codigo.btn':'Redeem','codigo.ok':'✅ Access granted! Refreshing...','codigo.errVazio':'Enter a code.','codigo.errLogin':'Sign in to your account first.','codigo.errGenerico':'Could not redeem the code.','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! Welcome to BotBacktest.',
     'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
@@ -2332,7 +2371,7 @@ const I18N = {
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
-    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.sobrenome':'Apellido','auth.phSobrenome':'Tu apellido','auth.confSenha':'Confirmar contraseña','auth.phConfSenha':'escribe la contraseña otra vez','auth.errSenhaConf':'Las contraseñas no coinciden.','auth.recTitulo':'Define tu nueva contraseña','auth.recSub':'Elige una nueva contraseña para tu cuenta.','auth.novaSenha':'Nueva contraseña','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Guardar nueva contraseña','auth.recOk':'✅ ¡Contraseña cambiada! Entrando...','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
+    'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.sobrenome':'Apellido','auth.phSobrenome':'Tu apellido','auth.confSenha':'Confirmar contraseña','auth.phConfSenha':'escribe la contraseña otra vez','auth.errSenhaConf':'Las contraseñas no coinciden.','auth.recTitulo':'Define tu nueva contraseña','auth.recSub':'Elige una nueva contraseña para tu cuenta.','auth.novaSenha':'Nueva contraseña','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Guardar nueva contraseña','auth.recOk':'✅ ¡Contraseña cambiada! Entrando...','codigo.titulo':'¿Tienes un código de acceso?','codigo.sub':'Canjea tu acceso de cortesía a Trader Pro.','codigo.ph':'EJ: AMIGO-XXXX','codigo.btn':'Canjear','codigo.ok':'✅ ¡Acceso liberado! Actualizando...','codigo.errVazio':'Escribe un código.','codigo.errLogin':'Entra en tu cuenta primero.','codigo.errGenerico':'No se pudo canjear el código.','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Bienvenido a BotBacktest.',
     'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
