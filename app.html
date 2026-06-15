@@ -1,5 +1,6 @@
 <!--
-  BotBacktest Frontend — v5.3 (campo de código de cortesia fixo/visível na aba Planos + selo ACESSO DE TESTE; PT/EN/ES)
+  BotBacktest Frontend — v5.4 (auth direto: modal abre na aba certa conforme intenção da landing #criar/#entrar, sem passo intermediário de bloqueio)
+  v5.3: campo de código de cortesia fixo/visível na aba Planos + selo ACESSO DE TESTE; PT/EN/ES
   v5.2: Radar Lab (reset por teste, botao unico, laboratorio de combinacoes)
   v5.0: aba 📡 Monitor (bots MT5 read-only, cards online/offline, polling 20s),
         sino do agente (Radar) com badge + marcar lida, caixa de linguagem
@@ -709,7 +710,7 @@ select option{background:#141920}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v5.3</span>
+    <span class="vtag">v5.4</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1690,10 +1691,12 @@ async function initAuth() {
     abrirAuth('recovery');
   } else if (session?.user && session.user.email_confirmed_at) {
     await onLogin(session.user);
+    fecharAuth();
     destravarApp();
   } else {
     travarApp();
-    abrirAuth('login');
+    const _h = (window.location.hash || '');
+    abrirAuth(_h.indexOf('criar') !== -1 ? 'signup' : 'login');
   }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
@@ -2196,6 +2199,14 @@ async function incrementarBacktest() {
 }
 
 // Inicializar auth ao carregar
+// abre o modal de auth imediatamente conforme a intenção vinda da landing
+// (#criar -> criar conta, senão -> entrar); evita o "flash" da tela de bloqueio.
+// recovery tem fluxo próprio e é ignorado aqui. Se já houver sessão, o initAuth fecha o modal.
+(function(){
+  const h = (window.location.hash || '');
+  if (h.indexOf('type=recovery') !== -1) return;
+  try { abrirAuth(h.indexOf('criar') !== -1 ? 'signup' : 'login'); } catch(e){}
+})();
 initAuth();
 </script>
 <div class="modal-ov" id="modal-upgrade">
