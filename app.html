@@ -727,13 +727,6 @@ select option{background:#141920}
   <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')" data-i18n="nav.monitor">📡 Monitor</button>
   <div class="spacer"></div>
   <div class="top-right">
-  <div style="position:relative">
-    <button class="theme-icon" id="sino-btn" onclick="toggleSino()" title="Sugestões do agente">🔔<span id="sino-badge" style="display:none;position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px">0</span></button>
-    <div id="sino-dropdown" style="display:none;position:absolute;top:40px;right:0;width:330px;max-height:420px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:200;box-shadow:0 10px 35px rgba(0,0,0,0.5)">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text)" id="sino-titulo">🤖 Sugestões do agente</div>
-      <div id="sino-lista" style="padding:6px"><div style="padding:18px;text-align:center;font-size:12px;color:var(--muted)">Nenhuma sugestão por enquanto</div></div>
-    </div>
-  </div>
   <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
   <div class="tsep"></div>
   <button class="lang-btn active" id="lang-pt" onclick="setLang('pt')">PT</button>
@@ -4456,8 +4449,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(atualizarContador, 1800);
   const tag = document.getElementById('agente-nome-tag');
   if(tag) tag.textContent = AGENT_NAME + ' ativo';
-  const st = document.getElementById('sino-titulo');
-  if(st) st.textContent = '🤖 ' + AGENT_NAME + ' — sugestões';
   const rt = document.getElementById('radar-titulo');
   if(rt) rt.textContent = AGENT_NAME;
   const sg = document.getElementById('sugestoes-titulo');
@@ -4659,22 +4650,12 @@ function usarEstrategiaPronta(id){
   switchTab('editor');
 }
 
-// ── Sino do agente ──
-let _sinoAberto = false;
-function toggleSino(){
-  _sinoAberto = !_sinoAberto;
-  document.getElementById('sino-dropdown').style.display = _sinoAberto ? 'block' : 'none';
-  if(_sinoAberto) atualizarSino(true);
-}
+// ── Sugestões do agente (alimenta o Radar) ──
 async function atualizarSino(render){
   if(!(usuarioAtual&&usuarioAtual.id)) return;
   try{
     const r = await fetch(API+'/agente/sugestoes?user_id='+usuarioAtual.id);
     const d = await r.json();
-    const badge = document.getElementById('sino-badge');
-    if(d.nao_lidas>0){ badge.style.display='block'; badge.textContent=d.nao_lidas; }
-    else badge.style.display='none';
-    if(render||_sinoAberto) renderSugestoes(d.sugestoes, 'sino-lista');
     renderSugestoes(d.sugestoes, 'sugestoes-lista');
     // novas sugestões não lidas também falam pelo Radar
     (d.sugestoes||[]).filter(x=>!x.lida).slice(0,3).forEach(x=>{
