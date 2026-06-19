@@ -41,7 +41,9 @@
   .blob.g2{width:420px;height:360px;top:380px;right:18%;background:rgba(0,216,134,.10);animation:drift2 19s ease-in-out infinite}
   @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);opacity:.9}50%{transform:translate(-40px,40px) scale(1.08);opacity:1}}
   @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);opacity:.8}50%{transform:translate(40px,-30px) scale(1.1);opacity:1}}
-  .candles{position:absolute;left:0;right:0;bottom:0;height:300px;opacity:.5;mask-image:linear-gradient(180deg,transparent,#000 70%)}
+  .candles{position:absolute;left:0;right:0;bottom:0;height:62vh;min-height:440px;opacity:.55;
+    mask-image:linear-gradient(180deg,transparent 18%,#000 62%);}
+  .candles .ma{fill:none;stroke-width:2.4;opacity:.9;stroke-linejoin:round;stroke-linecap:round}
 
   nav{position:sticky;top:0;z-index:30;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(4,11,20,.9),rgba(4,11,20,.4));border-bottom:1px solid var(--line)}
   .nav-in{display:flex;align-items:center;gap:28px;height:70px}
@@ -116,6 +118,7 @@
   .verdict-line{display:flex;align-items:center;gap:10px;margin-top:15px;font-size:14px}
   .badge{font-family:var(--mono);font-weight:700;font-size:12px;padding:5px 10px;border-radius:8px;letter-spacing:.02em}
   .badge.seduce{background:var(--amber-soft);color:var(--amber)}
+  .badge.approved{background:var(--green-soft);color:var(--green)}
   .badge.fragile{background:var(--red-soft);color:var(--red)}
   .vline-txt{color:var(--muted)} .vline-txt.warnt{color:#ffd9d9}
 
@@ -174,7 +177,7 @@
 
 <div class="atmos" aria-hidden="true">
   <div class="grid"></div><div class="blob g"></div><div class="blob a"></div><div class="blob g2"></div>
-  <svg class="candles" viewBox="0 0 1440 300" preserveAspectRatio="none"><g id="candleset"></g></svg>
+  <svg class="candles" viewBox="0 0 1440 460" preserveAspectRatio="none"><g id="candleset"></g></svg>
 </div>
 
 <nav>
@@ -215,31 +218,31 @@
           <span class="vmark"></span><span class="vname">estrategia_breakout.v3</span><span class="vtag">XAU/USD · D1</span>
         </div>
         <div class="toggle" role="group">
-          <button class="t-vit" aria-pressed="true" onclick="setView('vit')" data-i="tg_vit"></button>
-          <button class="t-rx" aria-pressed="false" onclick="setView('rx')" data-i="tg_rx"></button>
+          <button class="t-rx" aria-pressed="true" onclick="setView('app')" data-i="tg_app"></button>
+          <button class="t-vit" aria-pressed="false" onclick="setView('rej')" data-i="tg_rej"></button>
         </div>
-        <div class="panel" id="p-vit">
-          <div class="view on" id="v-vit">
-            <div class="big"><span class="num up">+218%</span><span class="cap" data-i="vit_cap"></span></div>
+        <div class="panel" id="p-app">
+          <div class="view on" id="v-app">
+            <div class="big"><span class="num up">+41%</span><span class="cap" data-i="app_cap"></span></div>
             <div class="metrics">
-              <div class="metric"><div class="k" data-i="m_win"></div><div class="v good">87%</div></div>
-              <div class="metric"><div class="k" data-i="m_trades"></div><div class="v neutral">412</div></div>
-              <div class="metric"><div class="k" data-i="m_best"></div><div class="v good">+9,4%</div></div>
-              <div class="metric"><div class="k" data-i="m_curve"></div><div class="v good" data-i="m_curve_v"></div></div>
+              <div class="metric"><div class="k">Sharpe</div><div class="v good">1,8</div></div>
+              <div class="metric"><div class="k" data-i="m_dd"></div><div class="v neutral">−11%</div></div>
+              <div class="metric"><div class="k" data-i="m_oos"></div><div class="v good">+3,2%</div></div>
+              <div class="metric"><div class="k" data-i="m_period"></div><div class="v neutral" data-i="m_period_v"></div></div>
             </div>
-            <div class="verdict-line"><span class="badge seduce" data-i="vit_badge"></span><span class="vline-txt" data-i="vit_line"></span></div>
+            <div class="verdict-line"><span class="badge approved" data-i="app_badge"></span><span class="vline-txt" data-i="app_line"></span></div>
           </div>
         </div>
-        <div class="panel" id="p-rx" style="display:none">
-          <div class="view on" id="v-rx">
-            <div class="big"><span class="num warn">−54%</span><span class="cap" data-i="rx_cap"></span></div>
+        <div class="panel" id="p-rej" style="display:none">
+          <div class="view on" id="v-rej">
+            <div class="big"><span class="num warn">−54%</span><span class="cap" data-i="rej_cap"></span></div>
             <div class="metrics">
               <div class="metric"><div class="k">Sharpe</div><div class="v bad">0,32</div></div>
               <div class="metric"><div class="k" data-i="m_avgloss"></div><div class="v bad" data-i="m_avgloss_v"></div></div>
               <div class="metric"><div class="k" data-i="m_oos"></div><div class="v bad">−2,1%</div></div>
-              <div class="metric"><div class="k">Z-Score</div><div class="v bad">−5,3</div></div>
+              <div class="metric"><div class="k" data-i="m_period"></div><div class="v neutral" data-i="m_period_v"></div></div>
             </div>
-            <div class="verdict-line"><span class="badge fragile" data-i="rx_badge"></span><span class="vline-txt warnt" data-i="rx_line"></span></div>
+            <div class="verdict-line"><span class="badge fragile" data-i="rej_badge"></span><span class="vline-txt warnt" data-i="rej_line"></span></div>
           </div>
         </div>
       </div>
@@ -336,11 +339,11 @@
       sub:"BotTested shows the real risk behind every strategy: <b>drawdown, Sharpe and out-of-sample robustness</b>. Test it free, validate it honestly, and run it on your own MT5 — no broker lock-in.",
       cta1:"Try free now", cta2:"See how it works",
       hint:"While others have a waitlist, <b>you run a backtest today.</b>",
-      tg_vit:"The showcase", tg_rx:"The X-ray",
-      vit_cap:"cumulative return", m_win:"Win rate", m_trades:"Trades", m_best:"Best trade", m_curve:"Curve", m_curve_v:"↑ rising",
-      vit_badge:"LOOKS LIKE GOLD", vit_line:"This is what the seller shows you.",
-      rx_cap:"real max drawdown", m_avgloss:"Avg loss", m_avgloss_v:"2× the win", m_oos:"Out-of-sample",
-      rx_badge:"FRAGILE", rx_line:"Overfitting likely. This is what BotTested shows you.",
+      tg_app:"Approved", tg_rej:"Rejected",
+      app_cap:"return · 10 years tested", m_dd:"Max drawdown", m_oos:"Out-of-sample", m_period:"Tested period", m_period_v:"10 years",
+      app_badge:"VALIDATED", app_line:"Robust in and out of sample.",
+      rej_cap:"real max drawdown", m_avgloss:"Avg loss", m_avgloss_v:"2× the win",
+      rej_badge:"FRAGILE", rej_line:"Overfitting likely. This is what BotTested catches.",
       t1:"Backtest in seconds", t2:"40 assets · 7 markets", t3:"Runs on your MT5", t4:"No broker lock-in",
       s1_eye:"From idea to live trading", s1_h:"Three steps. No guesswork.",
       s1_sub:"You don't need to code or trust anyone's showcase. Describe it, validate it honestly, and automate it on your own MT5.",
@@ -368,11 +371,11 @@
       sub:"BotTested muestra el riesgo real detrás de cada estrategia: <b>drawdown, Sharpe y robustez fuera de muestra</b>. Pruébalo gratis, valídalo con honestidad y ejecútalo en tu propio MT5 — sin atarte a ningún bróker.",
       cta1:"Probar gratis ahora", cta2:"Ver cómo funciona",
       hint:"Mientras otros tienen lista de espera, <b>tú corres un backtest hoy.</b>",
-      tg_vit:"La vitrina", tg_rx:"La radiografía",
-      vit_cap:"retorno acumulado", m_win:"Aciertos", m_trades:"Operaciones", m_best:"Mejor trade", m_curve:"Curva", m_curve_v:"↑ subiendo",
-      vit_badge:"PARECE ORO", vit_line:"Esto es lo que te muestra el vendedor.",
-      rx_cap:"drawdown máximo real", m_avgloss:"Pérdida media", m_avgloss_v:"2× la ganancia", m_oos:"Fuera de muestra",
-      rx_badge:"FRÁGIL", rx_line:"Sobreajuste probable. Esto es lo que te muestra BotTested.",
+      tg_app:"Aprobada", tg_rej:"Rechazada",
+      app_cap:"retorno · 10 años probados", m_dd:"Drawdown máx", m_oos:"Fuera de muestra", m_period:"Período probado", m_period_v:"10 años",
+      app_badge:"VALIDADA", app_line:"Robusta dentro y fuera de muestra.",
+      rej_cap:"drawdown máximo real", m_avgloss:"Pérdida media", m_avgloss_v:"2× la ganancia",
+      rej_badge:"FRÁGIL", rej_line:"Sobreajuste probable. Esto es lo que BotTested detecta.",
       t1:"Backtest en segundos", t2:"40 activos · 7 mercados", t3:"Corre en tu MT5", t4:"Sin atarte a un bróker",
       s1_eye:"De la idea a la operación", s1_h:"Tres pasos. Sin adivinar.",
       s1_sub:"No necesitas programar ni confiar en la vitrina de nadie. Descríbela, valídala con honestidad y automatízala en tu propio MT5.",
@@ -400,11 +403,11 @@
       sub:"O BotTested mostra o risco real por trás de cada estratégia: <b>drawdown, Sharpe e robustez fora da amostra</b>. Teste de graça, valide com honestidade e rode no seu MT5 — sem prender você a corretora nenhuma.",
       cta1:"Testar grátis agora", cta2:"Ver como funciona",
       hint:"Enquanto outros têm lista de espera, <b>você roda um backtest hoje.</b>",
-      tg_vit:"A vitrine", tg_rx:"O raio-x",
-      vit_cap:"retorno acumulado", m_win:"Win rate", m_trades:"Operações", m_best:"Melhor trade", m_curve:"Curva", m_curve_v:"↑ subindo",
-      vit_badge:"PARECE OURO", vit_line:"É isso que o vendedor te mostra.",
-      rx_cap:"drawdown máximo real", m_avgloss:"Perda média", m_avgloss_v:"2× o ganho", m_oos:"Fora da amostra",
-      rx_badge:"FRÁGIL", rx_line:"Overfitting provável. É o que o BotTested te mostra.",
+      tg_app:"Aprovada", tg_rej:"Reprovada",
+      app_cap:"retorno · 10 anos testados", m_dd:"Drawdown máx", m_oos:"Fora da amostra", m_period:"Período testado", m_period_v:"10 anos",
+      app_badge:"VALIDADA", app_line:"Robusta dentro e fora da amostra.",
+      rej_cap:"drawdown máximo real", m_avgloss:"Perda média", m_avgloss_v:"2× o ganho",
+      rej_badge:"FRÁGIL", rej_line:"Overfitting provável. É o que o BotTested detecta.",
       t1:"Backtest em segundos", t2:"40 ativos · 7 mercados", t3:"Roda no seu MT5", t4:"Sem lock-in de corretora",
       s1_eye:"Da ideia à operação", s1_h:"Três passos. Sem achismo.",
       s1_sub:"Você não precisa programar nem confiar na vitrine de ninguém. Descreve, valida com honestidade e automatiza no seu próprio MT5.",
@@ -459,35 +462,51 @@
     if(persist) saveLang(lang); /* lembra a escolha pro app/cadastro carregar nessa língua */
   }
 
-  /* candles de fundo */
+  /* candles maiores + duas médias móveis por cima (canal de médias) */
   (function(){
     var g=document.getElementById('candleset');if(!g)return;
-    var x=10,base=230,n=64,html='';
+    var cw=27, gap=13, pitch=cw+gap, n=Math.ceil(1440/pitch)+1;
+    var html='', closes=[], y=360, x=4;
     for(var i=0;i<n;i++){
-      var up=Math.random()>.42, h=12+Math.random()*60, wick=h+10+Math.random()*22;
-      base-=(Math.random()*3.2-0.6);
-      var col=up?'#00d886':'#ff5c5c', cx=x+5;
-      html+='<line x1="'+cx+'" y1="'+(base-wick)+'" x2="'+cx+'" y2="'+(base+10)+'" stroke="'+col+'" stroke-width="1" opacity=".5"/>';
-      html+='<rect x="'+x+'" y="'+(base-h)+'" width="11" height="'+h+'" rx="1.5" fill="'+col+'" opacity=".75"/>';
-      x+=22;
+      var dir=Math.random()>0.45?-1:1;
+      var body=18+Math.random()*58;
+      var openY=y, closeY=y+dir*body;
+      var topY=Math.min(openY,closeY), botY=Math.max(openY,closeY);
+      var wickTop=topY-(8+Math.random()*30), wickBot=botY+(8+Math.random()*30);
+      var up=closeY<openY, col=up?'#00d886':'#ff5c5c', cx=x+cw/2;
+      html+='<line x1="'+cx.toFixed(1)+'" y1="'+wickTop.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+wickBot.toFixed(1)+'" stroke="'+col+'" stroke-width="1.4" opacity=".5"/>';
+      html+='<rect x="'+x.toFixed(1)+'" y="'+topY.toFixed(1)+'" width="'+cw+'" height="'+(botY-topY).toFixed(1)+'" rx="2" fill="'+col+'" opacity=".72"/>';
+      closes.push({x:cx, y:closeY});
+      y=closeY-2.6;                       // tendência de alta suave
+      if(y<95)y=95; if(y>400)y=400;
+      x+=pitch;
     }
-    g.innerHTML=html;
+    function ma(period,color){
+      var pts=[];
+      for(var i=period-1;i<closes.length;i++){
+        var s=0; for(var j=i-period+1;j<=i;j++) s+=closes[j].y;
+        pts.push(closes[i].x.toFixed(1)+','+(s/period).toFixed(1));
+      }
+      return '<polyline class="ma" stroke="'+color+'" points="'+pts.join(' ')+'"/>';
+    }
+    g.innerHTML = html + ma(4,'#ffb830') + ma(10,'#00d886');  // média rápida (âmbar) + lenta (verde)
   })();
 
   function setView(which){
-    var vit=which==='vit';
-    document.getElementById('p-vit').style.display=vit?'block':'none';
-    document.getElementById('p-rx').style.display =vit?'none':'block';
-    document.querySelector('.t-vit').setAttribute('aria-pressed',vit);
-    document.querySelector('.t-rx').setAttribute('aria-pressed',!vit);
-    var v=document.getElementById(vit?'v-vit':'v-rx');
+    var app=which==='app';
+    document.getElementById('p-app').style.display=app?'block':'none';
+    document.getElementById('p-rej').style.display =app?'none':'block';
+    document.querySelector('.t-rx').setAttribute('aria-pressed',app);
+    document.querySelector('.t-vit').setAttribute('aria-pressed',!app);
+    var v=document.getElementById(app?'v-app':'v-rej');
     v.style.animation='none';void v.offsetWidth;v.style.animation='';
   }
 
   var interacted=false;
   document.querySelectorAll('.toggle button').forEach(function(b){b.addEventListener('click',function(){interacted=true;});});
   if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-    setTimeout(function(){ if(!interacted){setView('rx');setTimeout(function(){if(!interacted)setView('vit');},1800);} },2800);
+    // mostra a "reprovada" rapidinho pra ensinar o contraste, e volta pra "aprovada" (entrada positiva)
+    setTimeout(function(){ if(!interacted){setView('rej');setTimeout(function(){if(!interacted)setView('app');},1700);} },3000);
   }
 
   /* inicializa no idioma detectado (automático na primeira visita) */
