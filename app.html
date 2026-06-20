@@ -718,7 +718,7 @@ select option{background:#141920}
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')" data-i18n="nav.editor">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')" data-i18n="nav.otimizar">⚙ Otimização</button>
-  <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')"><span data-i18n="nav.estudo">🧪 Estudo</span> <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">PRO+</span></button>
+  <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')" style="display:none"><span data-i18n="nav.estudo">🧪 Estudo</span> <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">ADMIN</span></button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')" data-i18n="nav.templates">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')" data-i18n="nav.rank">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')" data-i18n="nav.planos">💳 Planos</button>
@@ -1360,7 +1360,7 @@ select option{background:#141920}
                     <option value="5 anos" data-i18n="per.5a">5 anos</option>
                   </select>
                 </div>
-                <div>
+                <div style="min-width:120px;display:none">
                   <div class="pli">Timeframes</div>
                   <div id="estudo-tfs" style="display:flex;gap:8px;flex-wrap:wrap">
                     <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="1d" checked><span class="ind-label">1D</span></label>
@@ -1370,7 +1370,7 @@ select option{background:#141920}
                     <label class="ind-check" style="background:var(--field);border:1px solid var(--field-border);border-radius:5px;padding:5px 8px"><input type="checkbox" value="15m" checked><span class="ind-label">15m</span></label>
                   </div>
                 </div>
-                <button class="btn-primary" id="estudo-rodar" style="max-width:260px" onclick="rodarEstudo()" data-i18n="estudo.rodar">🧪 Rodar estudo (1–2 min)</button>
+                <button class="btn-primary" id="estudo-rodar" style="max-width:260px" onclick="rodarEstudo()">📂 Abrir da biblioteca</button>
               </div>
               <div id="estudo-loading" style="display:none;text-align:center;padding:34px 0">
                 <div style="font-size:30px;animation:radarpulse 1.6s infinite">🧪</div>
@@ -1668,6 +1668,13 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let usuarioAtual = null;
+// ── PAINEL ADMIN (Biblioteca de Estudo) — só este user vê a aba Estudo ──
+const BIB_ADMIN_USER_ID = 'cd99b5b0-d97e-484a-900e-30a267a01f12';
+function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID; }
+function atualizarVisibilidadeAdmin(){
+  const b = document.getElementById('tab-estudo-btn');
+  if(b) b.style.display = ehAdmin() ? '' : 'none';
+}
 // BabyMachine: id de sessao agrupa os testes da mesma rodada de ajustes (a "jornada" do trader)
 const BB_SESSAO_ID = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
 let perfilAtual = null;
@@ -1719,6 +1726,7 @@ async function onLogin(user) {
   const idiomaUser = (perfil && perfil.idioma) || user?.user_metadata?.idioma;
   if (idiomaUser && I18N[idiomaUser] && idiomaUser !== LANG) setLang(idiomaUser);
   atualizarUI();
+  atualizarVisibilidadeAdmin();
   onbVerificar();
   destravarApp();
 }
@@ -1726,6 +1734,7 @@ async function onLogin(user) {
 function onLogout() {
   usuarioAtual = null;
   perfilAtual = null;
+  atualizarVisibilidadeAdmin();
   document.getElementById('btn-login').style.display = 'flex';
   document.getElementById('btn-user').style.display = 'none';
   document.getElementById('limit-banner').classList.remove('show');
@@ -2472,17 +2481,28 @@ const ESTUDO_PLANOS = ['trader_pro', 'elite']; // no lançamento do Elite: ['eli
 let _estudoPreparada = false;
 
 function prepararAbaEstudo() {
-  const plano = perfilAtual?.plano || 'free';
-  const ok = ESTUDO_PLANOS.includes(plano);
+  const ok = ehAdmin();
   document.getElementById('estudo-gate').style.display = ok ? 'none' : '';
   document.getElementById('estudo-ferramenta').style.display = ok ? '' : 'none';
   if (ok && !_estudoPreparada) {
-    // catálogo completo: clona as opções do seletor principal de ativo
-    const orig = document.getElementById('ativo');
-    const dest = document.getElementById('estudo-ativo');
-    if (orig && dest) { dest.innerHTML = orig.innerHTML; dest.value = orig.value; }
+    carregarAtivosBiblioteca();
     _estudoPreparada = true;
   }
+}
+
+// Carrega ativos+períodos disponíveis na biblioteca e popula o seletor
+async function carregarAtivosBiblioteca() {
+  if (!ehAdmin()) return;
+  try {
+    const r = await fetch(API + '/admin/biblioteca/ativos?user_id=' + encodeURIComponent(usuarioAtual.id));
+    const d = await r.json();
+    const dest = document.getElementById('estudo-ativo');
+    if (dest && d.ativos) {
+      dest.innerHTML = d.ativos.map(a => `<option value="${a.ativo}">${a.ativo}</option>`).join('');
+      window._bibAtivos = {};
+      d.ativos.forEach(a => window._bibAtivos[a.ativo] = a);
+    }
+  } catch(e) { console.log('carregarAtivosBiblioteca', e); }
 }
 
 const ESTUDO_FRASES = [
@@ -2494,35 +2514,39 @@ const ESTUDO_FRASES = [
 let _estudoFraseTimer = null;
 
 async function rodarEstudo() {
+  // PAINEL ADMIN: lê da biblioteca pré-calculada (instantâneo) em vez de recalcular
+  if (!ehAdmin()) return;
   const ativo = document.getElementById('estudo-ativo').value;
   const periodo = document.getElementById('estudo-periodo')?.value || '2 anos';
-  const tfs = Array.from(document.querySelectorAll('#estudo-tfs input:checked')).map(c => c.value);
-  if (!tfs.length) { alert('Escolha ao menos 1 timeframe'); return; }
   const btn = document.getElementById('estudo-rodar');
   const load = document.getElementById('estudo-loading');
   const res = document.getElementById('estudo-resultado');
   btn.disabled = true; btn.style.opacity = .5; res.innerHTML = ''; load.style.display = '';
-  let fi = 0;
-  document.getElementById('estudo-loading-frase').textContent = ESTUDO_FRASES[0];
-  _estudoFraseTimer = setInterval(() => {
-    fi = (fi + 1) % ESTUDO_FRASES.length;
-    document.getElementById('estudo-loading-frase').textContent = ESTUDO_FRASES[fi];
-  }, 3200);
+  document.getElementById('estudo-loading-frase').textContent = 'Lendo a biblioteca…';
   try {
-    const r = await fetch(API + '/offmind/matriz-dados', { method: 'POST',
+    const r = await fetch(API + '/admin/biblioteca/ler', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ativo, periodo, idioma: (typeof LANG!=='undefined'?LANG:'pt'), tfs: tfs.join(','), user_id: usuarioAtual?.id || '' }) });
+      body: JSON.stringify({ user_id: usuarioAtual?.id || '', ativo, periodo }) });
     const d = await r.json();
     if (!r.ok) {
-      res.innerHTML = `<div style="color:var(--amber);font-size:13px;padding:14px">🔒 ${d.erro || 'Sem acesso.'}</div>`;
-      if (d.upgrade) prepararAbaEstudo();
+      res.innerHTML = `<div style="color:var(--amber);font-size:13px;padding:14px">🔒 ${d.detail || 'Sem acesso.'}</div>`;
       return;
     }
-    res.innerHTML = renderEstudo(d);
+    if (d.vazio || !d.linhas || !d.linhas.length) {
+      res.innerHTML = `<div style="color:var(--muted2);font-size:13px;padding:14px">📭 Nenhum dado na biblioteca para <b>${ativo}</b> · ${periodo}. (Talvez esse período não exista para este ativo, ou a biblioteca ainda não rodou.)</div>`;
+      return;
+    }
+    // injeta a data da medição para a renderização mostrar
+    if (d.medido_em) {
+      const dt = new Date(d.medido_em);
+      d.duracao_s = 0;
+      window._bibMedidoEm = dt.toLocaleDateString('pt-BR');
+    }
+    res.innerHTML = renderEstudo(d) +
+      (window._bibMedidoEm ? `<div style="font-size:11px;color:var(--muted);margin-top:10px">📅 Biblioteca medida em ${window._bibMedidoEm}</div>` : '');
   } catch (e) {
-    res.innerHTML = `<div style="color:var(--red);font-size:13px;padding:14px">Erro ao rodar o estudo: ${e.message}</div>`;
+    res.innerHTML = `<div style="color:var(--red);font-size:13px;padding:14px">Erro ao ler a biblioteca: ${e.message}</div>`;
   } finally {
-    clearInterval(_estudoFraseTimer);
     load.style.display = 'none'; btn.disabled = false; btn.style.opacity = 1;
   }
 }
