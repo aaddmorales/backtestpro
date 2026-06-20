@@ -1698,6 +1698,43 @@ def _radar_cache_set(chave: str, msgs: list):
 
 _IDIOMA_NOME = {"pt": "português brasileiro", "en": "English (US)", "es": "español"}
 
+# ── REDE DE SEGURANÇA DO RADAR ──────────────────────────────────────────
+# A Opção B deixa a Haiku redigir livre. Esta rede varre o texto ANTES de sair
+# atrás de linguagem de PROMESSA (lucro futuro / garantia / certeza). Se acender,
+# a resposta da IA é descartada e o Radar usa os templates de regra (seguros por
+# construção). Conservador de propósito: NÃO barra estatística histórica
+# (PF, win rate medidos são permitidos) — só promessa de retorno futuro e certeza.
+import re as _re_radar
+_RADAR_PROMESSA_PADROES = [
+    # PT — promessa de lucro/retorno futuro e garantias
+    r"\b(vai|ir[áa]|vais)\s+(te\s+)?(dar|gerar|render|trazer)\s+(lucro|dinheiro|ganho)",
+    r"\bvoc[êe]\s+(vai|ir[áa])\s+(lucrar|ganhar|faturar|enriquecer)",
+    r"\b(lucro|retorno|ganho|resultado)\s+(garantido|garantida|certo|certa|assegurado)",
+    r"\bgarant(e|ia|ido|ida|imos|o)\b[^.]{0,40}\b(lucro|retorno|ganho|resultado|sucesso)",
+    r"\b(com\s+certeza|certamente|sem\s+d[úu]vida\s+nenhuma)\s+(vai|ir[áa]|voc[êe])",
+    r"\b100\s*%\s+de\s+(acerto|acertos|sucesso|ganho|lucro)",
+    r"\bn[ãa]o\s+tem\s+como\s+(perder|dar\s+errado|errar)",
+    r"\b(dinheiro|lucro)\s+(f[áa]cil|garantido|certo)",
+    # EN
+    r"\bguaranteed\s+(profit|return|gains?|money|win|success)",
+    r"\byou\s*('| wi)ll\s+(profit|make\s+money|win|earn|get\s+rich)",
+    r"\b100\s*%\s+(win|accuracy|success|profit)",
+    r"\bcan\s*('| ?no)t\s+lose",
+    r"\bsure\s+(thing|profit|win|bet)",
+    # ES
+    r"\bganancia\s+(garantizada|segura|asegurada)",
+    r"\bvas\s+a\s+(ganar|lucrar|enriquecer)",
+    r"\b100\s*%\s+de\s+(acierto|aciertos|[ée]xito)",
+    r"\b(beneficio|retorno)\s+garantizado",
+]
+_RADAR_PROMESSA_RE = [_re_radar.compile(p, _re_radar.IGNORECASE) for p in _RADAR_PROMESSA_PADROES]
+
+def _radar_tem_promessa(msgs):
+    """True se QUALQUER mensagem contém linguagem de promessa/garantia de retorno."""
+    texto = " ".join(m for m in msgs if isinstance(m, str))
+    return any(rx.search(texto) for rx in _RADAR_PROMESSA_RE)
+
+
 def _radar_ia(ctx: dict) -> Optional[list]:
     """Radar IA: entrega os numeros calculados pelas regras a um LLM que escreve
     a analise em linguagem natural, unica a cada teste. Regras rigidas no prompt:
@@ -1712,7 +1749,9 @@ def _radar_ia(ctx: dict) -> Optional[list]:
         sistema = (
             "Você é o Radar, copiloto de validação do BotBacktest (backtesting de estratégias de trading). "
             "Sua função: explicar o resultado do backtest do usuário usando EXCLUSIVAMENTE os números do contexto JSON. "
-            "REGRAS INVIOLÁVEIS: (1) nunca preveja o mercado nem prometa lucro futuro — você fala de histórico medido e disciplina; "
+            "REGRAS INVIOLÁVEIS: (1) nunca preveja o mercado nem prometa lucro futuro — você fala de histórico medido e disciplina. "
+            "Ao sugerir uma alternativa, seja COMEDIDO: aponte a evidência ('o histórico medido deste ativo aponta para X', 'vale comparar') "
+            "e devolva a decisão ao usuário — NUNCA empurre ('use isto', 'é melhor', 'funciona', 'recomendo'); "
             "(2) use apenas os números fornecidos, jamais invente valores; "
             f"(3) ESCREVA INTEIRAMENTE NO IDIOMA: {_IDIOMA_NOME.get(ctx.get('idioma','pt'),'português brasileiro')}. Tom de mentor experiente: claro, criativo, por vezes bem-humorado, sempre honesto; "
             "(4) cada análise deve soar DIFERENTE: varie aberturas, metáforas e estrutura; "
@@ -1753,6 +1792,11 @@ def _radar_ia(ctx: dict) -> Optional[list]:
                 texto = texto[4:]
         msgs = json.loads(texto)
         if isinstance(msgs, list) and 1 <= len(msgs) <= 5 and all(isinstance(m, str) and m.strip() for m in msgs):
+            # REDE DE SEGURANÇA: se a IA escorregou pra promessa, descarta e usa templates.
+            if _radar_tem_promessa(msgs):
+                print("RADAR IA: resposta BARRADA pela rede de segurança (linguagem de promessa) — "
+                      "usando templates seguros. idioma=" + str(ctx.get("idioma", "pt")), file=sys.stderr)
+                return None
             return ["✨ " + m if i == 0 else m for i, m in enumerate(msgs)]
         return None
     except Exception as e:
