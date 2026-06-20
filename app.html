@@ -3921,13 +3921,15 @@ async function radarAnalisarAtivo(d){
     radarLoadingEsconder();
     // LEITURA: a IA já vem no idioma certo; sem IA (Free 2º teste/fallback) usa regras localizadas
     if(resp.ia_usada){
+      // A IA (Opção B) escreve a análise COMPLETA — já cobre amostra/PF/drawdown.
+      // NÃO disparar avisos de regra aqui, senão o mesmo ponto aparece duplicado.
       (resp.mensagens || []).forEach(msg => radarFala(msg));
     } else {
       radarLeituraRegras(d);
       (resp.mensagens || []).forEach(msg => radarFala(msg));
+      radarAvisos(d);          // avisos de regra (amostra/PF/drawdown) — só no modo regras
     }
-    radarAvisos(d);            // avisos de regra (amostra/PF/drawdown), localizados
-    radarFeedbackSugestao(d);  // feedback se uma sugestão foi aplicada, localizado
+    radarFeedbackSugestao(d);  // feedback se uma sugestão foi aplicada (não duplica a análise)
     if(resp.aplicar && resp.aplicar.indicador){
       radarSugestaoBox(resp.aplicar);
     }
