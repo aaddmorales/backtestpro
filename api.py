@@ -4119,3 +4119,132 @@ def _bib_iniciar_cron():
 
 # inicia o cron quando a API sobe
 _bib_iniciar_cron()
+
+
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║  BIBLIOTECA DE ESTUDO — PASSO 3a (backend do painel admin)         ║
+# ║  Endpoint que LÊ da biblioteca e devolve no formato que o          ║
+# ║  renderEstudo() do frontend já entende.                            ║
+# ║                                                                    ║
+# ║  COLE este bloco no FINAL do api.py (depois do bloco do Passo 2).  ║
+# ╚════════════════════════════════════════════════════════════════════╝
+
+# user_id do dono (admin). Só este usuário acessa o painel.
+_BIB_ADMIN_USER_ID = "cd99b5b0-d97e-484a-900e-30a267a01f12"
+
+# Ordem fixa dos timeframes para montar as colunas da matriz
+_BIB_TF_ORDEM = ["5m", "15m", "30m", "1h", "4h", "1d"]
+
+
+class BibLerReq(BaseModel):
+    user_id: str
+    ativo: str
+    periodo: str = "2 anos"
+
+
+@app.post("/admin/biblioteca/ler")
+def admin_biblioteca_ler(req: BibLerReq):
+    """Lê da biblioteca (instantâneo) e monta a matriz no formato do renderEstudo.
+    Só responde para o user_id admin. Senão, 403."""
+    if req.user_id != _BIB_ADMIN_USER_ID:
+        raise HTTPException(status_code=403, detail="Acesso restrito")
+
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+
+    # busca todas as linhas desse ativo+período
+    resp = (sb.table("estudo_biblioteca")
+            .select("*")
+            .eq("ativo", req.ativo)
+            .eq("periodo", req.periodo)
+            .execute())
+    rows = resp.data or []
+
+    if not rows:
+        return {"ativo": req.ativo, "periodo": req.periodo, "tfs": [],
+                "linhas": [], "tops": [], "duracao_s": 0, "vazio": True}
+
+    # quais timeframes existem para esse ativo+período (na ordem fixa)
+    tfs_presentes = [tf for tf in _BIB_TF_ORDEM
+                     if any(r["timeframe"] == tf for r in rows)]
+
+    # indexa: estrategia_id -> { tf -> celula }
+    por_est = {}
+    medido_em = None
+    for r in rows:
+        eid = r["estrategia_id"]
+        if eid not in por_est:
+            por_est[eid] = {"id": eid, "nome": r["estrategia_nome"], "cels": {}}
+        por_est[eid]["cels"][r["timeframe"]] = {
+            "retorno": r.get("retorno") or 0.0,
+            "pf": r.get("profit_factor") or 0.0,
+            "wr": r.get("win_rate") or 0.0,
+            "sharpe": r.get("sharpe") or 0.0,
+            "trades": r.get("trades") or 0,
+            "forca": r.get("forca") or "fraca",
+        }
+        if not medido_em:
+            medido_em = r.get("medido_em")
+
+    # mantém a ordem das estratégias igual à do app (ESTRATEGIAS_PRONTAS)
+    ordem_ids = [e["id"] for e in ESTRATEGIAS_PRONTAS]
+    linhas = []
+    for eid in ordem_ids:
+        if eid in por_est:
+            e = por_est[eid]
+            # acha emoji/casa na lista original
+            orig = next((x for x in ESTRATEGIAS_PRONTAS if x["id"] == eid), {})
+            linhas.append({
+                "id": eid, "nome": e["nome"],
+                "emoji": orig.get("emoji", ""),
+                "casa": bool(orig.get("casa")),
+                "cels": e["cels"],
+            })
+
+    # ranking (tops por sharpe, mínimo 20 trades e PF > 1)
+    ranking = []
+    for l in linhas:
+        orig = next((x for x in ESTRATEGIAS_PRONTAS if x["id"] == l["id"]), {})
+        for tf, c in l["cels"].items():
+            if c["trades"] >= 20 and c["pf"] > 1:
+                ranking.append({"estrategia": l["nome"], "id": l["id"],
+                                "emoji": orig.get("emoji", ""), "tf": tf, **c})
+    ranking.sort(key=lambda x: x["sharpe"], reverse=True)
+
+    return {
+        "ativo": req.ativo,
+        "periodo": req.periodo,
+        "tfs": tfs_presentes,
+        "linhas": linhas,
+        "tops": ranking[:10],
+        "duracao_s": 0,
+        "medido_em": medido_em,
+        "vazio": False,
+    }
+
+
+@app.get("/admin/biblioteca/ativos")
+def admin_biblioteca_ativos(user_id: str = ""):
+    """Lista os ativos+períodos disponíveis na biblioteca (pra montar os seletores
+    do painel admin). Só responde para o admin."""
+    if user_id != _BIB_ADMIN_USER_ID:
+        raise HTTPException(status_code=403, detail="Acesso restrito")
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    resp = (sb.table("estudo_biblioteca")
+            .select("ativo,periodo,medido_em").execute())
+    rows = resp.data or []
+    ativos = {}
+    for r in rows:
+        a = r["ativo"]
+        if a not in ativos:
+            ativos[a] = {"periodos": set(), "medido_em": r.get("medido_em")}
+        ativos[a]["periodos"].add(r["periodo"])
+    # serializa
+    out = []
+    for a, info in sorted(ativos.items()):
+        out.append({"ativo": a, "periodos": sorted(info["periodos"]),
+                    "medido_em": info["medido_em"]})
+    return {"ativos": out, "total": len(out)}
