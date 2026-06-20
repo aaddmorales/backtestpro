@@ -3855,3 +3855,267 @@ def agente_sugestao_lida(req: SugestaoLida):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro: {e}")
     return {"ok": True}
+
+
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║  BIBLIOTECA DE ESTUDO — PASSO 2 de 7                                ║
+# ║  Popular a tabela estudo_biblioteca (motor invisível)              ║
+# ║                                                                    ║
+# ║  COMO INSTALAR:                                                     ║
+# ║  1. Cole TODO este bloco no FINAL do seu api.py                    ║
+# ║  2. Garanta a variável de ambiente BIBLIOTECA_ADMIN_TOKEN no       ║
+# ║     Railway (uma senha secreta sua — ex: um texto aleatório longo) ║
+# ║  3. Deploy. O cron semanal começa sozinho.                         ║
+# ║                                                                    ║
+# ║  Reusa: _matriz_calcular(), _sb_admin(), CATALOGO_ATIVOS           ║
+# ║  (tudo que já existe no seu api.py — nada reescrito)               ║
+# ╚════════════════════════════════════════════════════════════════════╝
+
+import threading as _bib_threading
+import time as _bib_time
+from datetime import datetime as _bib_dt, timezone as _bib_tz
+
+# ── Combinações VÁLIDAS (período × timeframe) — sem desperdício ──
+# Respeita o que o yfinance realmente fornece. Timeframe curto = período curto.
+_BIB_COMBOS = {
+    "5m":  ["6 meses"],
+    "15m": ["6 meses", "1 ano"],
+    "30m": ["6 meses", "1 ano"],
+    "1h":  ["1 ano", "2 anos"],
+    "4h":  ["1 ano", "2 anos"],
+    "1d":  ["2 anos", "3 anos", "5 anos"],
+}
+
+# Estado global do processamento (pra você acompanhar o progresso ao vivo)
+_BIB_ESTADO = {
+    "rodando": False,
+    "inicio": None,
+    "ativo_atual": None,
+    "ativos_feitos": 0,
+    "ativos_total": 0,
+    "linhas_gravadas": 0,
+    "erros": [],
+    "ultima_conclusao": None,
+}
+
+
+def _bib_lista_todos_ativos():
+    """Todos os 40 ativos do catálogo (nomes que o motor de backtest entende)."""
+    nomes = []
+    for _cat, itens in CATALOGO_ATIVOS.items():
+        for a in itens:
+            nomes.append(a["nome"])
+    return nomes
+
+
+def _bib_gravar_ativo(sb, ativo, periodo, resultado):
+    """Converte o retorno de _matriz_calcular em linhas e faz upsert na tabela."""
+    linhas = []
+    medido = _bib_dt.now(_bib_tz.utc).isoformat()
+    for linha in resultado.get("linhas", []):
+        est_id = linha.get("id")
+        est_nome = linha.get("nome")
+        for tf, cel in (linha.get("cels") or {}).items():
+            if not cel:
+                continue
+            linhas.append({
+                "ativo": ativo,
+                "periodo": periodo,
+                "timeframe": tf,
+                "estrategia_id": est_id,
+                "estrategia_nome": est_nome,
+                "retorno": cel.get("retorno"),
+                "profit_factor": cel.get("pf"),
+                "win_rate": cel.get("wr"),
+                "sharpe": cel.get("sharpe"),
+                "trades": cel.get("trades"),
+                "forca": cel.get("forca"),
+                "medido_em": medido,
+            })
+    if not linhas:
+        return 0
+    # upsert na constraint única (ativo,periodo,timeframe,estrategia_id)
+    sb.table("estudo_biblioteca").upsert(
+        linhas, on_conflict="ativo,periodo,timeframe,estrategia_id"
+    ).execute()
+    return len(linhas)
+
+
+def _bib_processar_tudo():
+    """Roda os 40 ativos em lotes, com retomada e resiliência. Bloqueante —
+    sempre chamada dentro de uma thread separada (ver _bib_disparar)."""
+    import sys
+    if _BIB_ESTADO["rodando"]:
+        return
+    sb = _sb_admin()
+    if sb is None:
+        print("BIBLIOTECA: Supabase indisponível", file=sys.stderr)
+        return
+
+    ativos = _bib_lista_todos_ativos()
+    _BIB_ESTADO.update({
+        "rodando": True, "inicio": _bib_time.time(), "ativo_atual": None,
+        "ativos_feitos": 0, "ativos_total": len(ativos),
+        "linhas_gravadas": 0, "erros": [],
+    })
+    print(f"BIBLIOTECA: iniciando — {len(ativos)} ativos", file=sys.stderr)
+
+    # Quais períodos cada ativo precisa (união de todos os períodos dos combos)
+    periodos_necessarios = sorted({p for ps in _BIB_COMBOS.values() for p in ps})
+
+    for ativo in ativos:
+        _BIB_ESTADO["ativo_atual"] = ativo
+        t0 = _bib_time.time()
+        linhas_ativo = 0
+        try:
+            # para cada período, calcula a matriz só com os TFs válidos daquele período
+            for periodo in periodos_necessarios:
+                tfs_do_periodo = [tf for tf, ps in _BIB_COMBOS.items() if periodo in ps]
+                if not tfs_do_periodo:
+                    continue
+                try:
+                    res = _matriz_calcular(ativo, tfs_do_periodo, periodo, "pt")
+                    linhas_ativo += _bib_gravar_ativo(sb, ativo, periodo, res)
+                except Exception as e:
+                    _BIB_ESTADO["erros"].append(f"{ativo}/{periodo}: {e}")
+                    print(f"BIBLIOTECA erro {ativo}/{periodo}: {e}", file=sys.stderr)
+                _bib_time.sleep(1.0)  # respiro entre períodos (rate-limit yfinance)
+        except Exception as e:
+            _BIB_ESTADO["erros"].append(f"{ativo}: {e}")
+
+        _BIB_ESTADO["ativos_feitos"] += 1
+        _BIB_ESTADO["linhas_gravadas"] += linhas_ativo
+        dur = round(_bib_time.time() - t0)
+        print(f"BIBLIOTECA: {ativo} ✓ ({linhas_ativo} linhas, {dur}s) "
+              f"[{_BIB_ESTADO['ativos_feitos']}/{len(ativos)}]", file=sys.stderr)
+        _bib_time.sleep(2.0)  # respiro entre ativos (alivia o servidor)
+
+    _BIB_ESTADO["rodando"] = False
+    _BIB_ESTADO["ultima_conclusao"] = _bib_dt.now(_bib_tz.utc).isoformat()
+    total_dur = round(_bib_time.time() - _BIB_ESTADO["inicio"])
+    print(f"BIBLIOTECA: CONCLUÍDO — {_BIB_ESTADO['linhas_gravadas']} linhas, "
+          f"{len(_BIB_ESTADO['erros'])} erros, {total_dur}s", file=sys.stderr)
+
+
+def _bib_disparar():
+    """Dispara o processamento numa thread (não trava a API)."""
+    if _BIB_ESTADO["rodando"]:
+        return False
+    th = _bib_threading.Thread(target=_bib_processar_tudo, daemon=True)
+    th.start()
+    return True
+
+
+# ── ENDPOINT ADMIN: disparar manualmente + ver progresso ──
+class BibDispararReq(BaseModel):
+    token: str
+
+@app.post("/admin/biblioteca/rodar")
+def admin_biblioteca_rodar(req: BibDispararReq):
+    """Dispara uma rodada completa. Protegido por token secreto."""
+    token_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not token_certo or req.token != token_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    if _BIB_ESTADO["rodando"]:
+        return {"ok": False, "msg": "Já está rodando", "estado": _bib_estado_publico()}
+    _bib_disparar()
+    return {"ok": True, "msg": "Rodada iniciada em background", "estado": _bib_estado_publico()}
+
+
+@app.get("/admin/biblioteca/status")
+def admin_biblioteca_status(token: str = ""):
+    """Ver progresso ao vivo. Protegido por token."""
+    token_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not token_certo or token != token_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    return _bib_estado_publico()
+
+
+def _bib_estado_publico():
+    e = dict(_BIB_ESTADO)
+    if e.get("inicio") and e.get("rodando"):
+        e["decorrido_s"] = round(_bib_time.time() - e["inicio"])
+    e["erros"] = e.get("erros", [])[:20]  # limita o tamanho da resposta
+    return e
+
+
+# ── ENDPOINT DE TESTE: roda só 1 ativo (validação rápida antes da rodada completa) ──
+class BibTesteReq(BaseModel):
+    token: str
+    ativo: str = "S&P500"   # padrão: S&P500 (rápido e confiável)
+
+@app.post("/admin/biblioteca/testar")
+def admin_biblioteca_testar(req: BibTesteReq):
+    """TESTE: processa UM único ativo, de forma síncrona (espera terminar),
+    e retorna quantas linhas gravou. Use isto ANTES da rodada completa.
+    Protegido por token secreto."""
+    import sys
+    token_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not token_certo or req.token != token_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    if _BIB_ESTADO["rodando"]:
+        return {"ok": False, "msg": "Uma rodada completa está em andamento — aguarde."}
+
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+
+    # valida que o ativo existe no catálogo
+    todos = _bib_lista_todos_ativos()
+    if req.ativo not in todos:
+        return {"ok": False, "msg": f"Ativo '{req.ativo}' não está no catálogo.",
+                "ativos_validos": todos}
+
+    t0 = _bib_time.time()
+    periodos_necessarios = sorted({p for ps in _BIB_COMBOS.values() for p in ps})
+    total_linhas = 0
+    detalhes = []
+    erros = []
+    for periodo in periodos_necessarios:
+        tfs_do_periodo = [tf for tf, ps in _BIB_COMBOS.items() if periodo in ps]
+        try:
+            res = _matriz_calcular(req.ativo, tfs_do_periodo, periodo, "pt")
+            n = _bib_gravar_ativo(sb, req.ativo, periodo, res)
+            total_linhas += n
+            detalhes.append({"periodo": periodo, "tfs": tfs_do_periodo, "linhas": n})
+        except Exception as e:
+            erros.append(f"{periodo}: {e}")
+            print(f"BIBLIOTECA teste erro {req.ativo}/{periodo}: {e}", file=sys.stderr)
+        _bib_time.sleep(1.0)
+
+    dur = round(_bib_time.time() - t0)
+    return {
+        "ok": True,
+        "ativo": req.ativo,
+        "linhas_gravadas": total_linhas,
+        "duracao_s": dur,
+        "detalhes": detalhes,
+        "erros": erros,
+        "msg": f"{req.ativo}: {total_linhas} linhas gravadas em {dur}s. "
+               f"Confira na tabela estudo_biblioteca.",
+    }
+
+
+# ── CRON SEMANAL: roda sozinho 1x por semana ──
+def _bib_cron_loop():
+    """Thread que dispara o processamento a cada 7 dias.
+    Espera 10 min após o boot (deixa a API estabilizar) e depois roda semanalmente."""
+    import sys
+    _bib_time.sleep(600)  # 10 min após boot
+    SETE_DIAS = 7 * 24 * 60 * 60
+    while True:
+        try:
+            if not _BIB_ESTADO["rodando"]:
+                print("BIBLIOTECA: disparo automático (cron semanal)", file=sys.stderr)
+                _bib_processar_tudo()
+        except Exception as e:
+            print(f"BIBLIOTECA cron erro: {e}", file=sys.stderr)
+        _bib_time.sleep(SETE_DIAS)
+
+
+def _bib_iniciar_cron():
+    th = _bib_threading.Thread(target=_bib_cron_loop, daemon=True)
+    th.start()
+
+# inicia o cron quando a API sobe
+_bib_iniciar_cron()
