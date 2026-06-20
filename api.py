@@ -3941,9 +3941,52 @@ def _bib_gravar_ativo(sb, ativo, periodo, resultado):
     return len(linhas)
 
 
-def _bib_processar_tudo():
-    """Roda os 40 ativos em lotes, com retomada e resiliência. Bloqueante —
-    sempre chamada dentro de uma thread separada (ver _bib_disparar)."""
+def _bib_ativos_pendentes(sb, dias_validade=7):
+    """Retorna só os ativos que PRECISAM ser (re)processados:
+    - faltando (nenhuma linha na biblioteca)
+    - incompletos (não têm todos os períodos exigidos)
+    - velhos (medido_em mais recente é mais antigo que dias_validade)
+    Ativos completos e frescos são pulados. Ordena por prioridade:
+    faltando/incompletos primeiro, velhos depois."""
+    from datetime import timedelta as _td
+    todos = _bib_lista_todos_ativos()
+    periodos_necessarios = set(p for ps in _BIB_COMBOS.values() for p in ps)
+    limite = _bib_dt.now(_bib_tz.utc) - _td(days=dias_validade)
+
+    resp = (sb.table("estudo_biblioteca")
+            .select("ativo,periodo,medido_em").execute())
+    rows = resp.data or []
+    estado = {}  # ativo -> {periodos:set, mais_novo:datetime|None}
+    for r in rows:
+        a = r["ativo"]
+        st = estado.setdefault(a, {"periodos": set(), "mais_novo": None})
+        st["periodos"].add(r["periodo"])
+        m = r.get("medido_em")
+        if m:
+            try:
+                dt = _bib_dt.fromisoformat(str(m).replace("Z", "+00:00"))
+                if st["mais_novo"] is None or dt > st["mais_novo"]:
+                    st["mais_novo"] = dt
+            except Exception:
+                pass
+
+    urgentes, velhos = [], []
+    for ativo in todos:
+        st = estado.get(ativo)
+        if st is None or not periodos_necessarios.issubset(st["periodos"]):
+            urgentes.append(ativo)            # faltando ou incompleto
+        elif st["mais_novo"] is None or st["mais_novo"] < limite:
+            velhos.append(ativo)              # completo mas velho
+    return urgentes + velhos
+
+
+def _bib_processar_tudo(dias_validade=None, max_por_rodada=None):
+    """Processa a biblioteca. Bloqueante — sempre chamada dentro de uma thread.
+    - dias_validade=None: rodada COMPLETA (todos os 40, refaz tudo).
+    - dias_validade=N: rodada INTELIGENTE — só ativos faltando/incompletos/velhos
+      (mais de N dias). Pula o que está fresco. Usada pelo cron automático.
+    - max_por_rodada=N: processa no máximo N ativos por chamada (lotes pequenos,
+      pra nenhuma rodada ficar pesada o bastante pra cair no meio)."""
     import sys
     if _BIB_ESTADO["rodando"]:
         return
@@ -3952,7 +3995,15 @@ def _bib_processar_tudo():
         print("BIBLIOTECA: Supabase indisponível", file=sys.stderr)
         return
 
-    ativos = _bib_lista_todos_ativos()
+    if dias_validade is None:
+        ativos = _bib_lista_todos_ativos()
+    else:
+        ativos = _bib_ativos_pendentes(sb, dias_validade)
+        if not ativos:
+            print("BIBLIOTECA: nada pendente — tudo fresco e completo.", file=sys.stderr)
+            return
+    if max_por_rodada:
+        ativos = ativos[:max_por_rodada]
     _BIB_ESTADO.update({
         "rodando": True, "inicio": _bib_time.time(), "ativo_atual": None,
         "ativos_feitos": 0, "ativos_total": len(ativos),
@@ -3997,11 +4048,15 @@ def _bib_processar_tudo():
           f"{len(_BIB_ESTADO['erros'])} erros, {total_dur}s", file=sys.stderr)
 
 
-def _bib_disparar():
-    """Dispara o processamento numa thread (não trava a API)."""
+def _bib_disparar(dias_validade=None, max_por_rodada=None):
+    """Dispara o processamento numa thread (não trava a API).
+    Sem argumentos = rodada completa (todos os 40)."""
     if _BIB_ESTADO["rodando"]:
         return False
-    th = _bib_threading.Thread(target=_bib_processar_tudo, daemon=True)
+    th = _bib_threading.Thread(
+        target=_bib_processar_tudo,
+        kwargs={"dias_validade": dias_validade, "max_por_rodada": max_por_rodada},
+        daemon=True)
     th.start()
     return True
 
@@ -4009,17 +4064,25 @@ def _bib_disparar():
 # ── ENDPOINT ADMIN: disparar manualmente + ver progresso ──
 class BibDispararReq(BaseModel):
     token: str
+    # opcional: se informado, roda SÓ o que está pendente (faltando/incompleto/
+    # mais velho que N dias) em vez de refazer os 40. Ex: dias_validade=7.
+    dias_validade: Optional[int] = None
+    max_por_rodada: Optional[int] = None
 
 @app.post("/admin/biblioteca/rodar")
 def admin_biblioteca_rodar(req: BibDispararReq):
-    """Dispara uma rodada completa. Protegido por token secreto."""
+    """Dispara uma rodada. Sem dias_validade = completa (40 ativos).
+    Com dias_validade=N = só pendentes (faltando/incompletos/velhos).
+    Protegido por token secreto."""
     token_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
     if not token_certo or req.token != token_certo:
         raise HTTPException(status_code=403, detail="Token inválido")
     if _BIB_ESTADO["rodando"]:
         return {"ok": False, "msg": "Já está rodando", "estado": _bib_estado_publico()}
-    _bib_disparar()
-    return {"ok": True, "msg": "Rodada iniciada em background", "estado": _bib_estado_publico()}
+    _bib_disparar(dias_validade=req.dias_validade, max_por_rodada=req.max_por_rodada)
+    modo = "só pendentes" if req.dias_validade is not None else "completa (40)"
+    return {"ok": True, "msg": f"Rodada iniciada em background ({modo})",
+            "estado": _bib_estado_publico()}
 
 
 @app.get("/admin/biblioteca/status")
@@ -4096,21 +4159,29 @@ def admin_biblioteca_testar(req: BibTesteReq):
     }
 
 
-# ── CRON SEMANAL: roda sozinho 1x por semana ──
+# ── CRON AUTOMÁTICO: mantém a biblioteca fresca sozinho, sem rodada pesada ──
 def _bib_cron_loop():
-    """Thread que dispara o processamento a cada 7 dias.
-    Espera 10 min após o boot (deixa a API estabilizar) e depois roda semanalmente."""
+    """Thread que mantém a biblioteca fresca de forma resiliente.
+    Em vez de uma rodada pesada semanal (que pode cair no meio), ele:
+      - acorda a cada 24h
+      - processa SÓ o que está pendente (faltando, incompleto ou >7 dias)
+      - no máximo 8 ativos por vez (lote leve, nunca cai por peso)
+    Se cair no meio, o que ficou pendente é retomado na próxima checagem —
+    a biblioteca se auto-cura sem intervenção."""
     import sys
-    _bib_time.sleep(600)  # 10 min após boot
-    SETE_DIAS = 7 * 24 * 60 * 60
+    _bib_time.sleep(600)  # 10 min após boot (deixa a API estabilizar)
+    UM_DIA = 24 * 60 * 60
+    DIAS_VALIDADE = 7        # ativo é "fresco" se medido nos últimos 7 dias
+    MAX_POR_RODADA = 8       # processa no máximo 8 pendentes por checagem
     while True:
         try:
             if not _BIB_ESTADO["rodando"]:
-                print("BIBLIOTECA: disparo automático (cron semanal)", file=sys.stderr)
-                _bib_processar_tudo()
+                print("BIBLIOTECA: checagem automática (mantém fresco)", file=sys.stderr)
+                _bib_processar_tudo(dias_validade=DIAS_VALIDADE,
+                                    max_por_rodada=MAX_POR_RODADA)
         except Exception as e:
             print(f"BIBLIOTECA cron erro: {e}", file=sys.stderr)
-        _bib_time.sleep(SETE_DIAS)
+        _bib_time.sleep(UM_DIA)
 
 
 def _bib_iniciar_cron():
