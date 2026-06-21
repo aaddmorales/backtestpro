@@ -169,7 +169,9 @@ body::after{
 .rhud-ia-head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(47,230,168,.14)}
 .rhud-pct{font-size:22px;font-weight:700;line-height:1;text-shadow:0 0 10px rgba(47,230,168,.3)}
 .rhud-ia-tag{margin-left:auto;font-size:10px;letter-spacing:1px;color:#2bd6ff;text-align:right}
-.rhud-ia-txt{margin:0;padding:11px 12px;font-family:var(--sans,system-ui,sans-serif);font-size:12.5px;line-height:1.6;color:#bcc6cf}
+.rhud-ia-txt{margin:0;padding:12px 13px;font-family:var(--sans,system-ui,sans-serif);font-size:14.5px;line-height:1.65;color:#cdd6df}
+.rhud-ia-txt b{color:#ffb830;font-weight:700}
+.rhud-ia-txt .rhud-num{color:#2bd6ff;font-weight:700}
 .rhud-journey{border-top:1px solid var(--border);padding-top:10px}
 .rhud-jrow{display:flex;justify-content:space-between;margin-bottom:7px;font-size:10px;letter-spacing:1px;color:var(--muted2)}
 .rhud-jseg{display:flex;gap:4px}
@@ -3979,6 +3981,9 @@ function _rhudMoney(n){
   catch(e){ return '$'+(Math.round(Number(n)*100)/100); }
 }
 function _rhudPct(n){ const v=Math.round(Number(n)*100)/100; return (v>0?'+':'')+String(v).replace('.',',')+'%'; }
+function _rhudColorNums(html){
+  return String(html).replace(/(R\$\s?\d[\d.,]*|\$\s?\d[\d.,]*|[+\-\u2212]?\d+(?:[.,]\d+)?\s?%|\d+:\d+(?:[.,]\d+)?|\b\d+[.,]\d+\b)/g, '<span class="rhud-num">$1</span>');
+}
 function radarValidarOOSAtual(){
   try{
     const cm = document.getElementById('comissao');
@@ -4011,6 +4016,7 @@ function radarRenderHUD(d, resp){
   const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   let ia=(resp&&resp.mensagens&&resp.mensagens.length)?resp.mensagens.map(s=>String(s).replace(/^\u2728\s*/,'')).join('<br><br>'):'';
   if(!ia) ia='Cruzando seu resultado com o histórico medido deste ativo...';
+  ia=_rhudColorNums(ia);
   const clamp=(x)=>Math.max(4,Math.min(100,x));
   const barPf=clamp((isNaN(pf)?0:pf)/2.5*100), barWr=clamp(isNaN(wr)?0:wr), barDd=clamp(isNaN(dd)?0:dd/30*100), barNt=clamp(nt);
   const retCor=(isNaN(ret)?'var(--muted2)':(ret>0?'#2fe6a8':(ret<0?'#ff5a5a':'var(--muted2)')));
