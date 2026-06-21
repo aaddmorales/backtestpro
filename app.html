@@ -3982,7 +3982,7 @@ function _rhudMoney(n){
 }
 function _rhudPct(n){ const v=Math.round(Number(n)*100)/100; return (v>0?'+':'')+String(v).replace('.',',')+'%'; }
 function _rhudColorNums(html){
-  return String(html).replace(/(R\$\s?\d[\d.,]*|\$\s?\d[\d.,]*|[+\-\u2212]?\d+(?:[.,]\d+)?\s?%|\d+:\d+(?:[.,]\d+)?|\b\d+[.,]\d+\b)/g, '<span class="rhud-num">$1</span>');
+  return String(html).replace(/(R\$\s?\d[\d.,]*|\$\s?\d[\d.,]*|[+\-\u2212]?\d+(?:[.,]\d+)?\s?%|\d+:\d+(?:[.,]\d+)?|\b\d+[.,]\d+\b|\b\d+\b)/g, '<span class="rhud-num">$1</span>');
 }
 function radarValidarOOSAtual(){
   try{
@@ -4042,8 +4042,9 @@ function radarRenderHUD(d, resp){
     <div class="rhud-cta rhud-cta-oos">&gt;&gt; VALIDAR OUT-OF-SAMPLE<span style="margin-left:auto">\u25b8</span></div>
     ${(resp&&resp.aplicar&&resp.aplicar.indicador)?`<div class="rhud-cta2 rhud-cta-aplicar">aplicar sugest\u00e3o + testar \u00b7 ${resp.aplicar.indicador}</div>`:''}
   </div>`;
-  const b1=body.querySelector('.rhud-cta-oos'); if(b1) b1.addEventListener('click', radarValidarOOSAtual);
-  const b2=body.querySelector('.rhud-cta-aplicar'); if(b2&&resp&&resp.aplicar) b2.addEventListener('click', ()=>aplicarEValidarOOS(resp.aplicar));
+  const _once=(btn,fn)=>{ if(!btn) return; btn.addEventListener('click', function(){ if(btn.dataset.done) return; btn.dataset.done='1'; btn.style.opacity='0.5'; btn.style.pointerEvents='none'; fn(); }); };
+  _once(body.querySelector('.rhud-cta-oos'), radarValidarOOSAtual);
+  if(resp&&resp.aplicar){ _once(body.querySelector('.rhud-cta-aplicar'), ()=>aplicarEValidarOOS(resp.aplicar)); }
   body.scrollTop=0;
 }
 
