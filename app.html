@@ -181,6 +181,13 @@ body::after{
 .rhud-cta:hover{background:rgba(47,230,168,.16)}
 .rhud-cta2{cursor:pointer;background:var(--bg3);border:1px solid var(--border2);padding:9px 13px;color:var(--muted2);font-size:11px;letter-spacing:.5px;text-align:center}
 .rhud-cta2:hover{border-color:rgba(47,230,168,.4);color:var(--text)}
+.rhud-oos-tbl{width:100%;border-collapse:collapse;font-family:var(--mono)}
+.rhud-oos-tbl th{font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:0 0 7px;text-align:right}
+.rhud-oos-tbl th:first-child{text-align:left}
+.rhud-oos-tbl td{font-size:13px;padding:6px 0;border-top:1px solid var(--border)}
+.rhud-oos-tbl td:first-child{color:var(--muted2);font-size:11px;letter-spacing:.5px}
+.rhud-oos-tbl td.ct{text-align:right;color:var(--muted)}
+.rhud-oos-tbl td.ce{text-align:right;font-weight:700;font-size:14px}
 
 /* Contador de backtests — pílula verde com pulso */
 .bt-counter{
@@ -4215,34 +4222,34 @@ function radarMostrarOOS(data){
   const body = document.getElementById('radar-body');
   if(!body) return;
   const tr = data.treino || {}, te = data.teste || {}, v = data.veredito || {};
-  const cor = v.nivel === 'baixo' ? '#00d084' : (v.nivel === 'alto' ? '#ff5c5c' : '#ffb830');
-  const tit = v.nivel === 'baixo' ? t('radar.oosTitBaixo') : (v.nivel === 'alto' ? t('radar.oosTitAlto') : t('radar.oosTitMedio'));
-  const res = v.nivel === 'baixo' ? t('radar.oosResBaixo') : (v.nivel === 'alto' ? t('radar.oosResAlto') : t('radar.oosResMedio'));
-  const f = (x,suf)=> (x===undefined||x===null||isNaN(x)) ? '—' : (Number(x).toFixed(2) + (suf||''));
-  const linha = (rotulo, vt, vte, suf)=>
-    `<tr><td style="padding:3px 8px 3px 0;color:var(--muted2)">${rotulo}</td>`+
-    `<td style="padding:3px 10px;text-align:right">${f(vt,suf)}</td>`+
-    `<td style="padding:3px 0;text-align:right;font-weight:700">${f(vte,suf)}</td></tr>`;
-  const linhaTrades = ()=>
-    `<tr><td style="padding:3px 8px 3px 0;color:var(--muted2)">${t('radar.oosTrades')}</td>`+
-    `<td style="padding:3px 10px;text-align:right">${tr.total_trades==null?'—':tr.total_trades}</td>`+
-    `<td style="padding:3px 0;text-align:right;font-weight:700">${te.total_trades==null?'—':te.total_trades}</td></tr>`;
+  let V;
+  if(v.nivel==='baixo') V={c:'#2fe6a8',mk:'\u2713',bg:'rgba(47,230,168,.05)',bd:'rgba(47,230,168,.3)'};
+  else if(v.nivel==='alto') V={c:'#ff5a5a',mk:'!',bg:'rgba(255,90,90,.05)',bd:'rgba(255,90,90,.3)'};
+  else V={c:'#ffb830',mk:'~',bg:'rgba(255,184,48,.05)',bd:'rgba(255,184,48,.3)'};
+  const tit = v.nivel==='baixo'?t('radar.oosTitBaixo'):(v.nivel==='alto'?t('radar.oosTitAlto'):t('radar.oosTitMedio'));
+  const res = v.nivel==='baixo'?t('radar.oosResBaixo'):(v.nivel==='alto'?t('radar.oosResAlto'):t('radar.oosResMedio'));
+  const f=(x,suf)=>(x===undefined||x===null||isNaN(x))?'\u2014':(Number(x).toFixed(2)+(suf||''));
+  const tecor=(x)=>(x==null||isNaN(x))?'var(--muted)':(Number(x)>0?'#2fe6a8':(Number(x)<0?'#ff5a5a':'var(--text)'));
+  const row=(rot,vt,vte,suf)=>`<tr><td>${rot}</td><td class="ct">${f(vt,suf)}</td><td class="ce" style="color:${tecor(vte)}">${f(vte,suf)}</td></tr>`;
+  const rowTrades=()=>`<tr><td>${t('radar.oosTrades')}</td><td class="ct">${tr.total_trades==null?'\u2014':tr.total_trades}</td><td class="ce" style="color:var(--text)">${te.total_trades==null?'\u2014':te.total_trades}</td></tr>`;
   const div = document.createElement('div');
-  div.className = 'radar-msg';
-  div.style.borderLeft = '3px solid ' + cor;
-  div.innerHTML =
-    `<b>🔬 ${t('radar.oosTitulo')}</b>`+
-    `<table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 6px">`+
-      `<tr style="color:var(--muted2);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">`+
-        `<td></td><td style="text-align:right;padding:0 10px">${t('radar.oosTreino')}</td>`+
-        `<td style="text-align:right">${t('radar.oosTeste')}</td></tr>`+
-      linha(t('radar.oosRet'), tr.retorno, te.retorno, '%')+
-      linha('Sharpe', tr.sharpe, te.sharpe, '')+
-      linha('PF', tr.profit_factor, te.profit_factor, '')+
-      linhaTrades()+
-    `</table>`+
-    `<div style="font-weight:700;color:${cor};margin-bottom:3px">${tit}</div>`+
-    `<div style="font-size:12px;line-height:1.5">${res}</div>`;
+  div.className = 'rhud rhud-oos';
+  div.style.cssText='margin-top:2px';
+  div.innerHTML=`
+    <div class="rhud-head"><div><div class="rhud-title" style="font-size:13px">VALIDA\u00c7\u00c3O OUT-OF-SAMPLE</div>
+      <div class="rhud-sub">TREINO 70% \u00b7 TESTE 30% NUNCA VISTO</div></div>
+      <div class="rhud-tick"><span class="rhud-dot" style="background:${V.c};box-shadow:0 0 6px ${V.c}"></span>OOS</div></div>
+    <div class="rhud-verdict" style="color:${V.c};background:${V.bg};border:1px solid ${V.bd}">
+      <div style="display:flex;align-items:center;gap:11px"><div class="rhud-diamond"><span>${V.mk}</span></div>
+      <div><div class="rhud-vlabel">VEREDITO</div><div class="rhud-vname" style="font-size:13px">${tit}</div></div></div>
+      <div class="rhud-disc">TREINO vs TESTE<br>N\u00c3O \u00c9 PROMESSA</div></div>
+    <table class="rhud-oos-tbl"><tr><th></th><th>${t('radar.oosTreino')}</th><th>${t('radar.oosTeste')}</th></tr>
+      ${row(t('radar.oosRet'),tr.retorno,te.retorno,'%')}
+      ${row('Sharpe',tr.sharpe,te.sharpe,'')}
+      ${row('PF',tr.profit_factor,te.profit_factor,'')}
+      ${rowTrades()}
+    </table>
+    <div class="rhud-ia" style="border-color:${V.bd};background:${V.bg}"><p class="rhud-ia-txt">${_rhudColorNums(res)}</p></div>`;
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;
   if(!_radarAberto){
