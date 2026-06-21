@@ -1755,6 +1755,9 @@ def _radar_ia(ctx: dict) -> Optional[list]:
             "e sugira aplicar e testar agora. O objetivo é AJUDAR o usuário a melhorar o resultado. "
             "Proibido apenas PROMETER retorno futuro (nada de 'vai lucrar', 'garante', 'com certeza', '100%'); "
             "ser direto sobre o que o histórico mostra e sugerir testar é permitido e desejável; "
+            "se 'estrategia_mais_forte_medida_neste_ativo' vier preenchida, NUNCA diga que o usuário já está na "
+            "melhor — destaque essa estratégia pelo nome, com Sharpe/retorno/PF/trades medidos, como o caminho mais "
+            "forte deste ativo, e sugira gerar e testar (✨ Gerar estratégia / 📋 Estratégias prontas); "
             "(2) use apenas os números fornecidos, jamais invente valores; "
             "(2b) SEJA HONESTO sobre resultados fracos ou de baixa relevância: NÃO transforme pouca atividade, amostra pequena "
             "ou resultado morno em elogio. Ex.: não chame 'poucos trades em muito tempo' (tipo ~1 por mês) de 'paciência operacional' "
@@ -1946,6 +1949,46 @@ def radar_analisar(p: RadarAnalisarParams):
         # comparação do resultado DESTE teste com o melhor do coletivo
         pf_u = _num(p.profit_factor); wr_u = _num(p.win_rate); nt_u = p.total_trades or 0
 
+        # ── 2b) BIBLIOTECA DE ESTUDO (tabela persistente): varredura sistemática de
+        # estratégias × timeframes. Fonte autoritativa de "estratégia mais forte neste
+        # ativo" — SEMPRE disponível, não depende do cache em memória. Corrige o caso em
+        # que o Radar dizia "você já está na melhor" ignorando estratégias superiores.
+        biblioteca = None
+        biblioteca_melhor = None
+        try:
+            if pode_recomendar:
+                _sbb = _sb_admin()
+                if _sbb is not None:
+                    _rb = (_sbb.table("estudo_biblioteca")
+                           .select("estrategia_nome,timeframe,periodo,retorno,profit_factor,win_rate,sharpe,trades")
+                           .eq("ativo", p.ativo).gte("trades", 20)
+                           .order("sharpe", desc=True).limit(80).execute())
+                    _lin = [r for r in (_rb.data or []) if r.get("sharpe") is not None]
+                    if _lin:
+                        def _nb(r):
+                            return {"estrategia": r.get("estrategia_nome"), "tf": r.get("timeframe"),
+                                    "periodo": r.get("periodo"),
+                                    "retorno": _num(r.get("retorno")), "pf": _num(r.get("profit_factor")),
+                                    "wr": _num(r.get("win_rate")), "sharpe": _num(r.get("sharpe")),
+                                    "trades": r.get("trades")}
+                        _lin.sort(key=lambda r: (r.get("sharpe") or -999), reverse=True)
+                        _tops = [_nb(r) for r in _lin]
+                        _tfu = str(p.timeframe or "").strip().lower()
+                        _mesmo = [t for t in _tops if str(t["tf"]).strip().lower() == _tfu]
+                        _mesmo_per = [t for t in _mesmo if str(t.get("periodo") or "") == str(p.periodo or "")]
+                        _top_tf = (_mesmo_per[0] if _mesmo_per else (_mesmo[0] if _mesmo else None))
+                        biblioteca = {"top1": _tops[0], "top_mesmo_tf": _top_tf, "lista": _tops[:6]}
+                        # estratégia DIFERENTE e claramente mais forte no MESMO timeframe = sugestão honesta
+                        _cand = _top_tf
+                        if (_cand and _cand.get("pf") and _cand.get("trades") and _cand["trades"] >= 20
+                                and str(_cand.get("estrategia") or "").strip().lower()
+                                    != str(p.indicador_atual or "").strip().lower()
+                                and float(_cand["pf"]) > max(1.15, (pf_u or 1.0) * 1.10)):
+                            biblioteca_melhor = _cand
+                            ja_esta_na_melhor = False   # há estratégia superior medida — não diga que está na melhor
+        except Exception as e:
+            print(f"RADAR biblioteca: {e}", file=sys.stderr)
+
         if ja_esta_na_melhor:
             # não repete a sugestão da mesma config: evolui a conversa
             txt = random.choice([
@@ -2020,6 +2063,19 @@ def radar_analisar(p: RadarAnalisarParams):
                     f"amostra decente (30+ trades). Config de outro timeframe não entra — comparação justa ou nenhuma.",
                 ])
             mensagens.append(texto)
+
+        # Estratégia SUPERIOR medida na biblioteca (cross-estratégia): aviso DIRETO e honesto.
+        # Não há apply de 1 clique (estratégia diferente), então aponta como gerar/testar.
+        if biblioteca_melhor:
+            bm = biblioteca_melhor
+            mensagens.append(
+                f"🎯 <b>Existe um caminho mais forte pra {p.ativo} no {p.timeframe.upper()}:</b> "
+                f"no histórico medido deste ativo, <b>{bm['estrategia']}</b> entregou "
+                f"Sharpe <b>{bm['sharpe']}</b>, retorno <b>{bm['retorno']}%</b> e PF <b>{bm['pf']}</b> "
+                f"em <b>{bm['trades']} trades</b> — acima do seu PF {pf_u} atual. "
+                f"Não é promessa de futuro, é o que o passado mediu. Vale gerar essa estratégia "
+                f"(✨ Gerar estratégia ou 📋 Estratégias prontas) e testar pra comparar de verdade."
+            )
 
         # ── 4) Combinações de parâmetros: medidas nas bibliotecas, não opinião ──
         lab_info = None
@@ -2107,6 +2163,8 @@ def radar_analisar(p: RadarAnalisarParams):
                 "config_historica_mais_forte_neste_ativo": melhor_cfg,
                 "usuario_ja_esta_na_melhor_config": ja_esta_na_melhor,
                 "ha_sugestao_aplicavel": aplicar is not None,
+                "melhores_estrategias_medidas_neste_ativo": (biblioteca or {}).get("lista"),
+                "estrategia_mais_forte_medida_neste_ativo": biblioteca_melhor,
             }
             # ── ESTUDO (matriz estrategia x timeframe) como 4a fonte do Radar ──
             import time as _t2
@@ -2137,7 +2195,7 @@ def radar_analisar(p: RadarAnalisarParams):
                                        if melhor_tf_da_minha else None),
                                   "configs_do_estudo_a_frente_do_usuario_em_pf": a_frente}
                     import random as _rd
-                    if (top1["estrategia"] != (p.indicador_atual or "")) or (top1["tf"] != p.timeframe):
+                    if biblioteca is None and ((top1["estrategia"] != (p.indicador_atual or "")) or (top1["tf"] != p.timeframe)):
                         mensagens.append(_rd.choice([
                             f"🧪 <b>Cruzando com o Estudo deste ativo:</b> a combinação mais consistente "
                             f"foi <b>{top1['estrategia']} no {top1['tf'].upper()}</b> (PF {top1['pf']:.2f}, "
@@ -2169,7 +2227,9 @@ def radar_analisar(p: RadarAnalisarParams):
                 # Free: IA descreve o resultado, mas NÃO entrega o mapa de melhoria (isso é Pro)
                 for _k in ("config_historica_mais_forte_neste_ativo",
                            "usuario_ja_esta_na_melhor_config",
-                           "ha_sugestao_aplicavel", "estudo_matriz", "laboratorio_relacoes"):
+                           "ha_sugestao_aplicavel", "estudo_matriz", "laboratorio_relacoes",
+                           "melhores_estrategias_medidas_neste_ativo",
+                           "estrategia_mais_forte_medida_neste_ativo"):
                     ctx.pop(_k, None)
                 aplicar = None
             # chave do cache: config + métricas + resumo do coletivo
