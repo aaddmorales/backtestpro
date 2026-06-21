@@ -4040,6 +4040,8 @@ function _rhudColorNums(html){
 function radarValidarOOSAtual(){
   try{
     const cm = document.getElementById('comissao');
+    const ed = document.getElementById('code-editor');
+    const codigo = (ed && ed.value || '').trim();   // valida o CÓDIGO real se o usuário está em modo estratégia
     const payload={
       ativo:document.getElementById('ativo').value, periodo:document.getElementById('periodo').value,
       timeframe:document.getElementById('timeframe').value, indicador:document.getElementById('indicador').value,
@@ -4048,7 +4050,8 @@ function radarValidarOOSAtual(){
       take_profit:parseFloat(document.getElementById('take_profit').value)||100,
       capital:parseFloat(document.getElementById('capital').value)||10000,
       max_ops:parseInt(document.getElementById('max_ops').value)||5,
-      comissao:parseFloat(cm?cm.value:0.0002)||0.0002, split:0.70
+      comissao:parseFloat(cm?cm.value:0.0002)||0.0002, split:0.70,
+      codigo: codigo
     };
     _oosFetchRender(payload);
   }catch(e){ console.log('oosAtual', e); }
@@ -4087,11 +4090,16 @@ function radarRenderHUD(d, resp){
   let ia=(resp&&resp.mensagens&&resp.mensagens.length)?resp.mensagens.map(s=>String(s).replace(/^\u2728\s*/,'')).join('<br><br>'):'';
   if(!ia) ia='Cruzando seu resultado com o histórico medido deste ativo...';
   ia=_rhudColorNums(ia);
-  // CTAs: se há estratégia recomendada, ela vira a ação principal; OOS fica secundário
+  // CTAs: se há estratégia(s) recomendada(s), viram ações de teste; OOS fica secundário
   const _te = resp && resp.testar_estrategia;
+  const _ops = (resp && resp.testar_opcoes && resp.testar_opcoes.length) ? resp.testar_opcoes
+             : (_te && _te.id ? [_te] : null);
   let ctas='';
-  if(_te && _te.id){
-    ctas += `<div class="rhud-cta rhud-cta-testar">&gt;&gt; TESTAR ${String(_te.nome||'').toUpperCase()}<span style="margin-left:auto">\u25b8</span></div>`;
+  if(_ops){
+    ctas += `<div class="rhud-cta rhud-cta-testar" data-i="0">&gt;&gt; TESTAR ${String(_ops[0].nome||'').toUpperCase()}<span style="margin-left:auto">\u25b8</span></div>`;
+    for(let i=1;i<_ops.length;i++){
+      ctas += `<div class="rhud-cta2 rhud-cta-testar" data-i="${i}">testar tamb\u00e9m \u00b7 ${_ops[i].nome}</div>`;
+    }
     ctas += `<div class="rhud-cta2 rhud-cta-oos">validar out-of-sample (config atual)</div>`;
   } else {
     ctas += `<div class="rhud-cta rhud-cta-oos">&gt;&gt; VALIDAR OUT-OF-SAMPLE<span style="margin-left:auto">\u25b8</span></div>`;
@@ -4135,7 +4143,7 @@ function radarRenderHUD(d, resp){
   const _once=(btn,fn)=>{ if(!btn) return; btn.addEventListener('click', function(){ if(btn.dataset.done) return; btn.dataset.done='1'; btn.style.opacity='0.5'; btn.style.pointerEvents='none'; fn(); }); };
   _once(body.querySelector('.rhud-cta-oos'), radarValidarOOSAtual);
   if(resp&&resp.aplicar){ _once(body.querySelector('.rhud-cta-aplicar'), ()=>aplicarEValidarOOS(resp.aplicar)); }
-  if(_te&&_te.id){ _once(body.querySelector('.rhud-cta-testar'), ()=>radarTestarEstrategia(_te)); }
+  if(_ops){ body.querySelectorAll('.rhud-cta-testar').forEach(el=>{ const op=_ops[parseInt(el.dataset.i||'0')]; if(op) _once(el, ()=>radarTestarEstrategia(op)); }); }
   body.scrollTop=0;
 }
 
