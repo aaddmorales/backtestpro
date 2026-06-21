@@ -181,6 +181,9 @@ body::after{
 .rhud-cta:hover{background:rgba(47,230,168,.16)}
 .rhud-cta2{cursor:pointer;background:var(--bg3);border:1px solid var(--border2);padding:9px 13px;color:var(--muted2);font-size:11px;letter-spacing:.5px;text-align:center}
 .rhud-cta2:hover{border-color:rgba(47,230,168,.4);color:var(--text)}
+.rhud-warn{border:1px solid rgba(255,184,48,.4);background:rgba(255,184,48,.06);clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px);padding:10px 12px}
+.rhud-warn-h{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:#ffb830}
+.rhud-warn-b{font-family:var(--sans,system-ui,sans-serif);font-size:13px;line-height:1.55;color:#cdd6df;margin-top:5px}
 .rhud-oos-tbl{width:100%;border-collapse:collapse;font-family:var(--mono)}
 .rhud-oos-tbl th{font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:0 0 7px;text-align:right}
 .rhud-oos-tbl th:first-child{text-align:left}
@@ -3956,6 +3959,13 @@ async function radarAnalisarAtivo(d){
       sessao_id: BB_SESSAO_ID,
       indicador_atual: document.getElementById('indicador').value,
       ema_period_atual: parseInt(document.getElementById('ema_period').value) || null,
+      estrategia_id_atual: (window._estrategiaAtiva && window._estrategiaAtiva.id) || null,
+      estrategia_nome_atual: (window._estrategiaAtiva && window._estrategiaAtiva.nome) || null,
+      esperado: (window._radarEsperado
+                 && window._estrategiaAtiva
+                 && window._radarEsperado.id === window._estrategiaAtiva.id)
+                 ? {sharpe: window._radarEsperado.sharpe, pf: window._radarEsperado.pf, retorno: window._radarEsperado.retorno}
+                 : null,
       stop_loss: parseFloat(document.getElementById('stop_loss').value) || null,
       take_profit: parseFloat(document.getElementById('take_profit').value) || null,
       win_rate: parseFloat(m.win_rate) || null,
@@ -3969,6 +3979,7 @@ async function radarAnalisarAtivo(d){
     };
     const r = await fetch(API + '/radar/analisar', {method:'POST',
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    window._radarEsperado = null;   // o esperado vale só para a análise imediata do teste recém-rodado
     const resp = await r.json();
     // overlay fica visível no mínimo 1.4s — análise séria merece presença
     const falta = Math.max(0, 1400 - (Date.now() - inicio));
@@ -4007,6 +4018,23 @@ function radarValidarOOSAtual(){
     _oosFetchRender(payload);
   }catch(e){ console.log('oosAtual', e); }
 }
+// Testa a estratégia recomendada pela biblioteca (carrega o código pronto e roda)
+async function radarTestarEstrategia(te){
+  const id = (te && te.id) || te;   // aceita o objeto da sugestão ou só o id
+  try{
+    if(!window._galeria || !window._galeria[id]){ try{ await carregarGaleria(); }catch(_e){} }
+    if(!window._galeria || !window._galeria[id]){
+      radarFala('Não consegui carregar essa estratégia agora. Abra 📋 Estratégias prontas no topo.', 'atencao');
+      return;
+    }
+    // guarda o que foi INDICADO, pra comparar com o resultado real do próximo teste
+    if(te && typeof te==='object'){
+      window._radarEsperado = {id: te.id, nome: te.nome, sharpe: te.sharpe, pf: te.pf, retorno: te.retorno};
+    }
+    if(_radarAberto) toggleRadar();        // fecha o painel pra ver o gráfico rodando
+    await usarEstrategiaHero(id);
+  }catch(e){ console.log('radarTestarEstrategia', e); }
+}
 function radarRenderHUD(d, resp){
   const body=document.getElementById('radar-body'); if(!body) return;
   const m=d.metricas||d;
@@ -4024,7 +4052,27 @@ function radarRenderHUD(d, resp){
   let ia=(resp&&resp.mensagens&&resp.mensagens.length)?resp.mensagens.map(s=>String(s).replace(/^\u2728\s*/,'')).join('<br><br>'):'';
   if(!ia) ia='Cruzando seu resultado com o histórico medido deste ativo...';
   ia=_rhudColorNums(ia);
+  // CTAs: se há estratégia recomendada, ela vira a ação principal; OOS fica secundário
+  const _te = resp && resp.testar_estrategia;
+  let ctas='';
+  if(_te && _te.id){
+    ctas += `<div class="rhud-cta rhud-cta-testar">&gt;&gt; TESTAR ${String(_te.nome||'').toUpperCase()}<span style="margin-left:auto">\u25b8</span></div>`;
+    ctas += `<div class="rhud-cta2 rhud-cta-oos">validar out-of-sample (config atual)</div>`;
+  } else {
+    ctas += `<div class="rhud-cta rhud-cta-oos">&gt;&gt; VALIDAR OUT-OF-SAMPLE<span style="margin-left:auto">\u25b8</span></div>`;
+    if(resp && resp.aplicar && resp.aplicar.indicador){
+      ctas += `<div class="rhud-cta2 rhud-cta-aplicar">aplicar sugest\u00e3o + testar \u00b7 ${resp.aplicar.indicador}</div>`;
+    }
+  }
   const clamp=(x)=>Math.max(4,Math.min(100,x));
+  const _ap = resp && resp.ajustar_parametros;
+  let ajuste='';
+  if(_ap){
+    const _sr = (_ap.seu_retorno!=null) ? _rhudPct(_ap.seu_retorno) : '\u2014';
+    const _mr = (_ap.medido_retorno!=null) ? _rhudPct(_ap.medido_retorno) : '\u2014';
+    ajuste = `<div class="rhud-warn"><div class="rhud-warn-h">\u26a0 D\u00c1 PRA MELHORAR \u00b7 AJUSTE OS PAR\u00c2METROS</div>`+
+      `<div class="rhud-warn-b">Seu teste saiu em <b>${_sr}</b>, abaixo do medido (<b>${_mr}</b>) para ${_ap.estrategia||'esta estrat\u00e9gia'} no ${String(_ap.tf||'').toUpperCase()}. Rode no per\u00edodo medido e ajuste stop/take/per\u00edodo pra perseguir o n\u00famero mais forte \u2014 veja a leitura acima.</div></div>`;
+  }
   const barPf=clamp((isNaN(pf)?0:pf)/2.5*100), barWr=clamp(isNaN(wr)?0:wr), barDd=clamp(isNaN(dd)?0:dd/30*100), barNt=clamp(nt);
   const retCor=(isNaN(ret)?'var(--muted2)':(ret>0?'#2fe6a8':(ret<0?'#ff5a5a':'var(--muted2)')));
   const lucroCor=lucro>=0?'#2fe6a8':'#ff5a5a';
@@ -4043,15 +4091,16 @@ function radarRenderHUD(d, resp){
       <div style="font-size:10px;color:var(--muted2);letter-spacing:.5px;line-height:1.3">GANHO<br>NO PER\u00cdODO</div>
       <div class="rhud-ia-tag">\u25e2 RADAR \u00b7 CONSULTA \u00c0 BASE</div></div>
       <p class="rhud-ia-txt">${ia}</p></div>
+    ${ajuste}
     <div class="rhud-journey"><div class="rhud-jrow"><span>MISS\u00c3O \u00b7 VALIDA\u00c7\u00c3O</span><span style="color:#2fe6a8">1/4</span></div>
       <div class="rhud-jseg"><div style="background:#2fe6a8;box-shadow:0 0 6px rgba(47,230,168,.5)"></div><div></div><div></div><div></div></div>
       <div class="rhud-jlab"><span style="color:#2fe6a8">TESTADO</span><span style="color:var(--amber)">VALIDAR</span><span style="color:var(--muted)">OTIMIZAR</span><span style="color:var(--muted)">MT5</span></div></div>
-    <div class="rhud-cta rhud-cta-oos">&gt;&gt; VALIDAR OUT-OF-SAMPLE<span style="margin-left:auto">\u25b8</span></div>
-    ${(resp&&resp.aplicar&&resp.aplicar.indicador)?`<div class="rhud-cta2 rhud-cta-aplicar">aplicar sugest\u00e3o + testar \u00b7 ${resp.aplicar.indicador}</div>`:''}
+    ${ctas}
   </div>`;
   const _once=(btn,fn)=>{ if(!btn) return; btn.addEventListener('click', function(){ if(btn.dataset.done) return; btn.dataset.done='1'; btn.style.opacity='0.5'; btn.style.pointerEvents='none'; fn(); }); };
   _once(body.querySelector('.rhud-cta-oos'), radarValidarOOSAtual);
   if(resp&&resp.aplicar){ _once(body.querySelector('.rhud-cta-aplicar'), ()=>aplicarEValidarOOS(resp.aplicar)); }
+  if(_te&&_te.id){ _once(body.querySelector('.rhud-cta-testar'), ()=>radarTestarEstrategia(_te)); }
   body.scrollTop=0;
 }
 
@@ -4657,6 +4706,7 @@ function indicadorMudou(){
   if(sel && sel.value!=='__custom__'){
     const ed=document.getElementById('code-editor'); if(ed) ed.value='';
     lastIACode = null;
+    window._estrategiaAtiva = null;   // voltou ao modo INDICADOR (dropdown), não estratégia
     limparModoCustom();
   }
 }
@@ -4749,6 +4799,7 @@ function renderHeroLista(){
 }
 async function usarEstrategiaHero(id){
   const e = (window._galeria||{})[id]; if(!e) return;
+  window._estrategiaAtiva = {id: e.id, nome: e.nome};   // estamos no modo ESTRATÉGIA (não indicador)
   document.getElementById('hero-lista').style.display='none';
   document.getElementById('ia-hero-desc').value = e.nome;
   document.getElementById('code-editor').value = e.codigo;
@@ -4786,6 +4837,7 @@ async function carregarGaleria(){
 }
 function usarEstrategiaPronta(id){
   const e = (window._galeria||{})[id]; if(!e) return;
+  window._estrategiaAtiva = {id: e.id, nome: e.nome};   // modo ESTRATÉGIA
   document.getElementById('code-editor').value = e.codigo;
   lastIACode = e.codigo;
   marcarCodigoPersonalizado();
