@@ -2310,6 +2310,46 @@ def radar_analisar(p: RadarAnalisarParams):
         return {"mensagens": [], "aplicar": None, "ia_usada": False}
 
 
+class ParamSugeridosReq(BaseModel):
+    ativo: str
+    timeframe: str = "1d"
+    user_id: Optional[str] = None
+
+
+@app.post("/radar/parametros-sugeridos")
+def radar_parametros_sugeridos(req: ParamSugeridosReq):
+    """Sugere stop/take para preencher antes de rodar: usa a config mais forte
+    MEDIDA neste ativo+timeframe (histórico coletivo) quando existe; senão devolve
+    um ponto de partida equilibrado. Nunca promete retorno — é ponto de partida medido."""
+    stop, take, motivo, fonte = 50, 100, None, "padrao"
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            resp = (sb.table("backtests_historico")
+                    .select("parametros,profit_factor,total_trades,timeframe")
+                    .eq("ativo", req.ativo).eq("timeframe", req.timeframe)
+                    .gte("total_trades", 20).order("profit_factor", desc=True).limit(20).execute())
+            best = None; best_score = 0.0
+            for row in (resp.data or []):
+                pf = row.get("profit_factor"); n = row.get("total_trades") or 0
+                pr = row.get("parametros") or {}
+                sl = pr.get("stop_loss"); tp = pr.get("take_profit")
+                if pf and float(pf) > 1.0 and sl and tp:
+                    score = 1.0 + (float(pf) - 1.0) * (n / (n + 50.0))
+                    if score > best_score:
+                        best_score = score
+                        best = (round(float(sl)), round(float(tp)), round(float(pf), 2), n)
+            if best:
+                stop, take, _pf, _n = best
+                motivo = f"config mais forte medida neste ativo no {req.timeframe.upper()}: PF {_pf} em {_n} trades"
+                fonte = "historico"
+    except Exception as e:
+        print(f"PARAM SUGERIDOS: {e}", file=sys.stderr)
+    if fonte == "padrao":
+        motivo = "ponto de partida equilibrado (relação 1:2) — ajuste e compare"
+    return {"stop": stop, "take": take, "motivo": motivo, "fonte": fonte}
+
+
 @app.post("/backtest/visual")
 def backtest_visual(params: BacktestParams):
     import sys
