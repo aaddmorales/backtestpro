@@ -184,6 +184,7 @@ body::after{
 .rhud-warn{border:1px solid rgba(255,184,48,.4);background:rgba(255,184,48,.06);clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px);padding:10px 12px}
 .rhud-warn-h{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:#ffb830}
 .rhud-warn-b{font-family:var(--sans,system-ui,sans-serif);font-size:13px;line-height:1.55;color:#cdd6df;margin-top:5px}
+#risco-aviso::before{content:'';position:absolute;top:-7px;left:20px;width:12px;height:12px;background:rgba(255,184,48,0.12);border-left:1px solid rgba(255,184,48,0.55);border-top:1px solid rgba(255,184,48,0.55);transform:rotate(45deg)}
 .rhud-oos-tbl{width:100%;border-collapse:collapse;font-family:var(--mono)}
 .rhud-oos-tbl th{font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:0 0 7px;text-align:right}
 .rhud-oos-tbl th:first-child{text-align:left}
@@ -990,6 +991,7 @@ select option{background:#141920}
         <div><div class="pli" data-i18n="lbl.stop">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
         <div><div class="pli" data-i18n="lbl.take">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
       </div>
+      <div id="risco-aviso" data-i18n="param.naoIdent" style="display:none;position:relative;margin-top:9px;padding:9px 11px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.55);border-radius:8px;color:var(--text);font-size:12px;line-height:1.45"></div>
       <div class="pr" style="margin-top:6px">
         <div><div class="pli" data-i18n="lbl.capital">Capital (USD)</div><input type="number" id="capital" value="10000"></div>
         <div><div class="pli" data-i18n="lbl.maxops">Máx. Ops</div><input type="number" id="max_ops" value="5"></div>
@@ -2923,14 +2925,47 @@ function zerarEPiscarParams(){
   if(tp){ tp.value=''; tp.classList.add('campo-piscando'); }
   const aviso = document.getElementById('param-aviso');
   if(aviso){ aviso.textContent = t('param.naoIdent'); aviso.style.display='block'; }
-  try{ radarFala('⚠️ ' + t('param.naoIdent'), 'alerta'); }catch(e){}
+  // aviso colado nos campos stop/take na barra esquerda (em vez de jogar no Radar, longe deles)
+  const avisoRisco = document.getElementById('risco-aviso');
+  if(avisoRisco){ avisoRisco.textContent = t('param.naoIdent'); avisoRisco.style.display='block'; sugerirParametrosRisco(); }
   if(sl){ try{ sl.focus(); sl.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }
+}
+// A IA/histórico sugere valores medidos de stop/take pra começar — com botão pra aplicar e rodar
+async function sugerirParametrosRisco(){
+  const box = document.getElementById('risco-aviso'); if(!box) return;
+  try{
+    const r = await fetch(API + '/radar/parametros-sugeridos', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ativo: document.getElementById('ativo').value,
+                            timeframe: document.getElementById('timeframe').value,
+                            user_id: (usuarioAtual && usuarioAtual.id) || null})
+    });
+    const d = await r.json();
+    if(!d || !d.stop) return;
+    const old = box.querySelector('.risco-sug'); if(old) old.remove();
+    const extra = document.createElement('div');
+    extra.className = 'risco-sug';
+    extra.style.cssText = 'margin-top:9px;display:flex;flex-direction:column;gap:7px;border-top:1px solid rgba(255,184,48,0.3);padding-top:9px';
+    extra.innerHTML =
+      `<div style="font-size:12px;color:var(--text)">\ud83d\udca1 Sugest\u00e3o: Stop <b style="color:var(--amber)">${d.stop}</b> \u00b7 Take <b style="color:var(--amber)">${d.take}</b>`+
+      `<div style="color:var(--muted2);font-size:11px;margin-top:2px">${d.motivo||''}</div></div>`+
+      `<button class="risco-usar" style="padding:7px 10px;border-radius:7px;border:1px solid rgba(255,184,48,0.6);background:rgba(255,184,48,0.16);color:var(--amber);font-size:12px;font-weight:700;cursor:pointer">Usar ${d.stop} / ${d.take} e rodar \u25b6</button>`;
+    box.appendChild(extra);
+    const btn = extra.querySelector('.risco-usar');
+    if(btn) btn.addEventListener('click', ()=>{
+      document.getElementById('stop_loss').value = d.stop;
+      document.getElementById('take_profit').value = d.take;
+      pararPiscarParams();
+      rodarBacktest();
+    });
+  }catch(e){ console.log('sugerirParametrosRisco', e); }
 }
 function pararPiscarParams(){
   ['stop_loss','take_profit'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.classList.remove('campo-piscando');
   });
   const aviso=document.getElementById('param-aviso'); if(aviso) aviso.style.display='none';
+  const avisoRisco=document.getElementById('risco-aviso'); if(avisoRisco) avisoRisco.style.display='none';
 }
 
 async function rodarBacktest() {
