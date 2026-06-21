@@ -144,6 +144,42 @@ body::after{
   border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:13px 16px;font-size:14px;
   color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
 
+/* ── Radar HUD gamer ── */
+.rhud{font-family:var(--mono);color:var(--text);display:flex;flex-direction:column;gap:10px}
+.rhud-head{display:flex;align-items:flex-start;justify-content:space-between}
+.rhud-title{font-size:15px;font-weight:700;letter-spacing:2px;color:#eafff6;text-shadow:0 0 8px rgba(47,230,168,.4)}
+.rhud-sub{font-size:10px;color:var(--muted2);letter-spacing:1px;margin-top:2px}
+.rhud-tick{text-align:right;font-size:10px;letter-spacing:1px;color:#2bd6ff}
+.rhud-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2bd6ff;margin-right:4px;box-shadow:0 0 6px #2bd6ff}
+.rhud-verdict{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)}
+.rhud-diamond{width:38px;height:38px;border:1.5px solid currentColor;transform:rotate(45deg);display:flex;align-items:center;justify-content:center}
+.rhud-diamond span{transform:rotate(-45deg);font-size:16px;font-weight:700}
+.rhud-vlabel{font-size:9px;color:var(--muted2);letter-spacing:2px}
+.rhud-vname{font-size:15px;font-weight:700;letter-spacing:1px}
+.rhud-disc{text-align:right;font-size:9px;color:var(--muted);letter-spacing:.5px;line-height:1.4}
+.rhud-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.rhud-cap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.rhud-stat{background:var(--bg3);border:1px solid var(--border);padding:7px 9px}
+.rhud-stat-top{display:flex;justify-content:space-between;align-items:baseline}
+.rhud-stat-lab{font-size:10px;color:var(--muted2);letter-spacing:1px}
+.rhud-stat-val{font-size:14px}
+.rhud-bar{height:3px;background:var(--bg4);margin-top:6px}
+.rhud-sec{font-size:10px;letter-spacing:2px;color:var(--muted2);margin-bottom:6px}
+.rhud-ia{border:1px solid rgba(47,230,168,.3);background:rgba(47,230,168,.04);clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px)}
+.rhud-ia-head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(47,230,168,.14)}
+.rhud-pct{font-size:22px;font-weight:700;line-height:1;text-shadow:0 0 10px rgba(47,230,168,.3)}
+.rhud-ia-tag{margin-left:auto;font-size:10px;letter-spacing:1px;color:#2bd6ff;text-align:right}
+.rhud-ia-txt{margin:0;padding:11px 12px;font-family:var(--sans,system-ui,sans-serif);font-size:12.5px;line-height:1.6;color:#bcc6cf}
+.rhud-journey{border-top:1px solid var(--border);padding-top:10px}
+.rhud-jrow{display:flex;justify-content:space-between;margin-bottom:7px;font-size:10px;letter-spacing:1px;color:var(--muted2)}
+.rhud-jseg{display:flex;gap:4px}
+.rhud-jseg div{flex:1;height:6px;background:var(--bg4)}
+.rhud-jlab{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;letter-spacing:.3px}
+.rhud-cta{cursor:pointer;background:rgba(47,230,168,.08);border:1px solid #2fe6a8;clip-path:polygon(0 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));display:flex;align-items:center;padding:11px 13px;box-shadow:0 0 10px rgba(47,230,168,.15);color:#2fe6a8;font-size:11.5px;letter-spacing:1.5px;text-shadow:0 0 6px rgba(47,230,168,.4)}
+.rhud-cta:hover{background:rgba(47,230,168,.16)}
+.rhud-cta2{cursor:pointer;background:var(--bg3);border:1px solid var(--border2);padding:9px 13px;color:var(--muted2);font-size:11px;letter-spacing:.5px;text-align:center}
+.rhud-cta2:hover{border-color:rgba(47,230,168,.4);color:var(--text)}
+
 /* Contador de backtests — pílula verde com pulso */
 .bt-counter{
   display:inline-flex;align-items:center;gap:7px;
@@ -3929,22 +3965,80 @@ async function radarAnalisarAtivo(d){
     const falta = Math.max(0, 1400 - (Date.now() - inicio));
     await new Promise(res => setTimeout(res, falta));
     radarLoadingEsconder();
-    // LEITURA: a IA já vem no idioma certo; sem IA (Free 2º teste/fallback) usa regras localizadas
-    if(resp.ia_usada){
-      // A IA (Opção B) escreve a análise COMPLETA — já cobre amostra/PF/drawdown.
-      // NÃO disparar avisos de regra aqui, senão o mesmo ponto aparece duplicado.
-      (resp.mensagens || []).forEach(msg => radarFala(msg));
-    } else {
-      radarLeituraRegras(d);
-      (resp.mensagens || []).forEach(msg => radarFala(msg));
-      radarAvisos(d);          // avisos de regra (amostra/PF/drawdown) — só no modo regras
-    }
-    radarFeedbackSugestao(d);  // feedback se uma sugestão foi aplicada (não duplica a análise)
-    if(resp.aplicar && resp.aplicar.indicador){
-      radarSugestaoBox(resp.aplicar);
-    }
+    // HUD gamer: um cartão único (veredito + stats + capital + IA sobre o % + missão + CTA).
+    // A IA (Opção B) já vem no idioma certo; sem IA usa as mensagens de regra do backend.
+    radarRenderHUD(d, resp);
+    radarFeedbackSugestao(d);  // confete/feedback se uma sugestão acabou de ser aplicada
   }catch(e){ radarLoadingEsconder(); console.log('radarAnalisar', e); }
   _radarAnalisando = false;
+}
+
+// ── HUD do Radar: cartão único estilo painel de instrumento ──
+function _rhudMoney(n){
+  try{ return '$'+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  catch(e){ return '$'+(Math.round(Number(n)*100)/100); }
+}
+function _rhudPct(n){ const v=Math.round(Number(n)*100)/100; return (v>0?'+':'')+String(v).replace('.',',')+'%'; }
+function radarValidarOOSAtual(){
+  try{
+    const cm = document.getElementById('comissao');
+    const payload={
+      ativo:document.getElementById('ativo').value, periodo:document.getElementById('periodo').value,
+      timeframe:document.getElementById('timeframe').value, indicador:document.getElementById('indicador').value,
+      ema_period:parseInt(document.getElementById('ema_period').value)||20,
+      stop_loss:parseFloat(document.getElementById('stop_loss').value)||50,
+      take_profit:parseFloat(document.getElementById('take_profit').value)||100,
+      capital:parseFloat(document.getElementById('capital').value)||10000,
+      max_ops:parseInt(document.getElementById('max_ops').value)||5,
+      comissao:parseFloat(cm?cm.value:0.0002)||0.0002, split:0.70
+    };
+    _oosFetchRender(payload);
+  }catch(e){ console.log('oosAtual', e); }
+}
+function radarRenderHUD(d, resp){
+  const body=document.getElementById('radar-body'); if(!body) return;
+  const m=d.metricas||d;
+  const ativo=document.getElementById('ativo').value, tf=document.getElementById('timeframe').value;
+  const cap=parseFloat(document.getElementById('capital').value)||10000;
+  const pf=parseFloat(m.profit_factor), wr=parseFloat(m.win_rate), dd=Math.abs(parseFloat(m.max_drawdown));
+  const nt=parseInt(m.total_trades ?? (d.trades||[]).length ?? 0)||0;
+  const ret=parseFloat(m.retorno);
+  const capFinal=cap*(1+(isNaN(ret)?0:ret)/100), lucro=capFinal-cap;
+  let V;
+  if(!isNaN(ret)&&ret>0&&!isNaN(pf)&&pf>=1.3&&(isNaN(dd)||dd<25)) V={n:'ROBUSTO',c:'#2fe6a8',mk:'\u2713',bg:'rgba(47,230,168,.05)',bd:'rgba(47,230,168,.3)'};
+  else if(!isNaN(ret)&&ret>0&&!isNaN(pf)&&pf>=1.0) V={n:'MISTO',c:'#ffb830',mk:'~',bg:'rgba(255,184,48,.05)',bd:'rgba(255,184,48,.3)'};
+  else V={n:'FRACO',c:'#ff5a5a',mk:'!',bg:'rgba(255,90,90,.05)',bd:'rgba(255,90,90,.3)'};
+  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  let ia=(resp&&resp.mensagens&&resp.mensagens.length)?resp.mensagens.map(s=>String(s).replace(/^\u2728\s*/,'')).join('<br><br>'):'';
+  if(!ia) ia='Cruzando seu resultado com o histórico medido deste ativo...';
+  const clamp=(x)=>Math.max(4,Math.min(100,x));
+  const barPf=clamp((isNaN(pf)?0:pf)/2.5*100), barWr=clamp(isNaN(wr)?0:wr), barDd=clamp(isNaN(dd)?0:dd/30*100), barNt=clamp(nt);
+  const retCor=(isNaN(ret)?'var(--muted2)':(ret>0?'#2fe6a8':(ret<0?'#ff5a5a':'var(--muted2)')));
+  const lucroCor=lucro>=0?'#2fe6a8':'#ff5a5a';
+  const stat=(lab,val,bar,col)=>`<div class="rhud-stat"><div class="rhud-stat-top"><span class="rhud-stat-lab">${lab}</span><span class="rhud-stat-val">${val}</span></div><div class="rhud-bar"><div style="height:3px;width:${bar}%;background:${col}"></div></div></div>`;
+  const capt=(lab,val,col)=>`<div class="rhud-stat"><span class="rhud-stat-lab">${lab}</span><span class="rhud-stat-val" style="color:${col};display:block;margin-top:4px;font-size:12.5px">${val}</span></div>`;
+  body.innerHTML=`<div class="rhud">
+    <div class="rhud-head"><div><div class="rhud-title">RADAR</div><div class="rhud-sub">COPILOTO \u00b7 NUNCA PREV\u00ca O MERCADO</div></div>
+      <div class="rhud-tick"><span class="rhud-dot"></span>ONLINE<div style="color:var(--muted2);margin-top:3px">${ativo}\u00b7${String(tf).toUpperCase()}\u00b7${hora}</div></div></div>
+    <div class="rhud-verdict" style="color:${V.c};background:${V.bg};border:1px solid ${V.bd}">
+      <div style="display:flex;align-items:center;gap:11px"><div class="rhud-diamond"><span>${V.mk}</span></div>
+      <div><div class="rhud-vlabel">VEREDITO</div><div class="rhud-vname">${V.n}</div></div></div>
+      <div class="rhud-disc">HIST\u00d3RICO MEDIDO<br>N\u00c3O \u00c9 PROMESSA</div></div>
+    <div class="rhud-stats">${stat('P.FACTOR',isNaN(pf)?'\u2014':pf.toFixed(2),barPf,'#2bd6ff')}${stat('ACERTO',isNaN(wr)?'\u2014':Math.round(wr)+'%',barWr,'#2bd6ff')}${stat('DRAWDOWN',isNaN(dd)?'\u2014':dd.toFixed(2)+'%',barDd,'#2fe6a8')}${stat('OPERA\u00c7\u00d5ES',nt,barNt,'#2bd6ff')}</div>
+    <div><div class="rhud-sec">\u25b8 RESULTADO FINANCEIRO</div><div class="rhud-cap">${capt('CAP. INICIAL',_rhudMoney(cap),'var(--text)')}${capt('CAP. FINAL',_rhudMoney(capFinal),'var(--text)')}${capt('LUCRO/PERDA',(lucro>=0?'+':'-')+_rhudMoney(Math.abs(lucro)),lucroCor)}</div></div>
+    <div class="rhud-ia"><div class="rhud-ia-head"><div class="rhud-pct" style="color:${retCor}">${isNaN(ret)?'\u2014':_rhudPct(ret)}</div>
+      <div style="font-size:10px;color:var(--muted2);letter-spacing:.5px;line-height:1.3">GANHO<br>NO PER\u00cdODO</div>
+      <div class="rhud-ia-tag">\u25e2 RADAR \u00b7 CONSULTA \u00c0 BASE</div></div>
+      <p class="rhud-ia-txt">${ia}</p></div>
+    <div class="rhud-journey"><div class="rhud-jrow"><span>MISS\u00c3O \u00b7 VALIDA\u00c7\u00c3O</span><span style="color:#2fe6a8">1/4</span></div>
+      <div class="rhud-jseg"><div style="background:#2fe6a8;box-shadow:0 0 6px rgba(47,230,168,.5)"></div><div></div><div></div><div></div></div>
+      <div class="rhud-jlab"><span style="color:#2fe6a8">TESTADO</span><span style="color:var(--amber)">VALIDAR</span><span style="color:var(--muted)">OTIMIZAR</span><span style="color:var(--muted)">MT5</span></div></div>
+    <div class="rhud-cta rhud-cta-oos">&gt;&gt; VALIDAR OUT-OF-SAMPLE<span style="margin-left:auto">\u25b8</span></div>
+    ${(resp&&resp.aplicar&&resp.aplicar.indicador)?`<div class="rhud-cta2 rhud-cta-aplicar">aplicar sugest\u00e3o + testar \u00b7 ${resp.aplicar.indicador}</div>`:''}
+  </div>`;
+  const b1=body.querySelector('.rhud-cta-oos'); if(b1) b1.addEventListener('click', radarValidarOOSAtual);
+  const b2=body.querySelector('.rhud-cta-aplicar'); if(b2&&resp&&resp.aplicar) b2.addEventListener('click', ()=>aplicarEValidarOOS(resp.aplicar));
+  body.scrollTop=0;
 }
 
 // Bolha com a sugestão + botões de ação
