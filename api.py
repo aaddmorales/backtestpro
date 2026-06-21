@@ -1617,6 +1617,9 @@ class RadarAnalisarParams(BaseModel):
     sessao_id: Optional[str] = None
     indicador_atual: Optional[str] = None
     ema_period_atual: Optional[int] = None
+    estrategia_id_atual: Optional[str] = None     # id da estratégia pronta em execução (modo código)
+    estrategia_nome_atual: Optional[str] = None
+    esperado: Optional[dict] = None               # números indicados quando o usuário clicou "Testar X"
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
     win_rate: Optional[float] = None
@@ -1758,6 +1761,10 @@ def _radar_ia(ctx: dict) -> Optional[list]:
             "se 'estrategia_mais_forte_medida_neste_ativo' vier preenchida, NUNCA diga que o usuário já está na "
             "melhor — destaque essa estratégia pelo nome, com Sharpe/retorno/PF/trades medidos, como o caminho mais "
             "forte deste ativo, e sugira gerar e testar (✨ Gerar estratégia / 📋 Estratégias prontas); "
+            "se 'resultado_abaixo_do_medido' vier preenchido, o usuário JÁ está rodando essa estratégia mas o "
+            "resultado ficou abaixo do que foi medido — explique de forma honesta que com parâmetros padrão (e/ou "
+            "período/janela diferente) o número sai menor, e sugira AJUSTES CONCRETOS para perseguir o resultado mais "
+            "forte: testar o período medido, mexer no stop/take e no período do indicador, rodar de novo e comparar; "
             "(2) use apenas os números fornecidos, jamais invente valores; "
             "(2b) SEJA HONESTO sobre resultados fracos ou de baixa relevância: NÃO transforme pouca atividade, amostra pequena "
             "ou resultado morno em elogio. Ex.: não chame 'poucos trades em muito tempo' (tipo ~1 por mês) de 'paciência operacional' "
@@ -1955,37 +1962,66 @@ def radar_analisar(p: RadarAnalisarParams):
         # que o Radar dizia "você já está na melhor" ignorando estratégias superiores.
         biblioteca = None
         biblioteca_melhor = None
+        ajustar_parametros = None
         try:
             if pode_recomendar:
                 _sbb = _sb_admin()
                 if _sbb is not None:
                     _rb = (_sbb.table("estudo_biblioteca")
-                           .select("estrategia_nome,timeframe,periodo,retorno,profit_factor,win_rate,sharpe,trades")
+                           .select("estrategia_id,estrategia_nome,timeframe,periodo,retorno,profit_factor,win_rate,sharpe,trades")
                            .eq("ativo", p.ativo).gte("trades", 20)
                            .order("sharpe", desc=True).limit(80).execute())
                     _lin = [r for r in (_rb.data or []) if r.get("sharpe") is not None]
                     if _lin:
                         def _nb(r):
-                            return {"estrategia": r.get("estrategia_nome"), "tf": r.get("timeframe"),
-                                    "periodo": r.get("periodo"),
+                            return {"estrategia": r.get("estrategia_nome"), "id": r.get("estrategia_id"),
+                                    "tf": r.get("timeframe"), "periodo": r.get("periodo"),
                                     "retorno": _num(r.get("retorno")), "pf": _num(r.get("profit_factor")),
                                     "wr": _num(r.get("win_rate")), "sharpe": _num(r.get("sharpe")),
                                     "trades": r.get("trades")}
                         _lin.sort(key=lambda r: (r.get("sharpe") or -999), reverse=True)
                         _tops = [_nb(r) for r in _lin]
                         _tfu = str(p.timeframe or "").strip().lower()
+                        _rodando_id = str(p.estrategia_id_atual or "").strip()   # estratégia REALMENTE em execução
                         _mesmo = [t for t in _tops if str(t["tf"]).strip().lower() == _tfu]
                         _mesmo_per = [t for t in _mesmo if str(t.get("periodo") or "") == str(p.periodo or "")]
                         _top_tf = (_mesmo_per[0] if _mesmo_per else (_mesmo[0] if _mesmo else None))
                         biblioteca = {"top1": _tops[0], "top_mesmo_tf": _top_tf, "lista": _tops[:6]}
-                        # estratégia DIFERENTE e claramente mais forte no MESMO timeframe = sugestão honesta
+                        # (Ponto 1) estratégia DIFERENTE (por id) e mais forte no MESMO timeframe = sugestão honesta.
+                        # Indicador do dropdown nunca tem id de biblioteca -> sempre "diferente" (sugere a estratégia).
                         _cand = _top_tf
                         if (_cand and _cand.get("pf") and _cand.get("trades") and _cand["trades"] >= 20
-                                and str(_cand.get("estrategia") or "").strip().lower()
-                                    != str(p.indicador_atual or "").strip().lower()
+                                and ((str(_cand.get("id") or "").strip() != _rodando_id) if _rodando_id else True)
                                 and float(_cand["pf"]) > max(1.15, (pf_u or 1.0) * 1.10)):
                             biblioteca_melhor = _cand
                             ja_esta_na_melhor = False   # há estratégia superior medida — não diga que está na melhor
+                        # (Ponto 2) usuário JÁ está rodando uma estratégia da biblioteca, mas o resultado
+                        # ficou abaixo do indicado/medido -> sugerir ajuste de parâmetros (a IA analisa).
+                        if _rodando_id:
+                            _mesma = [t for t in _tops if str(t.get("id") or "").strip() == _rodando_id]
+                            _mesma_tf = [t for t in _mesma if str(t.get("tf")).strip().lower() == _tfu]
+                            _mesma_tf_per = [t for t in _mesma_tf if str(t.get("periodo") or "") == str(p.periodo or "")]
+                            _med = (_mesma_tf_per[0] if _mesma_tf_per else
+                                    (_mesma_tf[0] if _mesma_tf else (_mesma[0] if _mesma else None)))
+                            _ret_u = _num(p.retorno)
+                            _alvo_ret = _alvo_pf = None
+                            if p.esperado and isinstance(p.esperado, dict):
+                                _alvo_ret = _num(p.esperado.get("retorno")); _alvo_pf = _num(p.esperado.get("pf"))
+                            if _alvo_ret is None and _med:
+                                _alvo_ret = _med.get("retorno"); _alvo_pf = _med.get("pf")
+                            _abaixo = False
+                            if _alvo_ret is not None and _ret_u is not None and _alvo_ret > 0:
+                                _abaixo = _ret_u < _alvo_ret * 0.7
+                            elif _alvo_pf is not None and pf_u is not None:
+                                _abaixo = pf_u < max(1.0, _alvo_pf * 0.85)
+                            if _abaixo and _med:
+                                ajustar_parametros = {
+                                    "estrategia": _med.get("estrategia"), "tf": _med.get("tf"),
+                                    "periodo": _med.get("periodo"),
+                                    "medido_retorno": _med.get("retorno"), "medido_pf": _med.get("pf"),
+                                    "medido_sharpe": _med.get("sharpe"), "medido_trades": _med.get("trades"),
+                                    "seu_retorno": _ret_u, "seu_pf": pf_u,
+                                }
         except Exception as e:
             print(f"RADAR biblioteca: {e}", file=sys.stderr)
 
@@ -2165,6 +2201,7 @@ def radar_analisar(p: RadarAnalisarParams):
                 "ha_sugestao_aplicavel": aplicar is not None,
                 "melhores_estrategias_medidas_neste_ativo": (biblioteca or {}).get("lista"),
                 "estrategia_mais_forte_medida_neste_ativo": biblioteca_melhor,
+                "resultado_abaixo_do_medido": ajustar_parametros,
             }
             # ── ESTUDO (matriz estrategia x timeframe) como 4a fonte do Radar ──
             import time as _t2
@@ -2229,7 +2266,8 @@ def radar_analisar(p: RadarAnalisarParams):
                            "usuario_ja_esta_na_melhor_config",
                            "ha_sugestao_aplicavel", "estudo_matriz", "laboratorio_relacoes",
                            "melhores_estrategias_medidas_neste_ativo",
-                           "estrategia_mais_forte_medida_neste_ativo"):
+                           "estrategia_mais_forte_medida_neste_ativo",
+                           "resultado_abaixo_do_medido"):
                     ctx.pop(_k, None)
                 aplicar = None
             # chave do cache: config + métricas + resumo do coletivo
@@ -2256,7 +2294,17 @@ def radar_analisar(p: RadarAnalisarParams):
         except Exception as e:
             print(f"RADAR IA contexto: {e}", file=sys.stderr)
 
-        return converter_para_python({"mensagens": mensagens, "aplicar": aplicar, "ia_usada": ia_usada})
+        testar_estrategia = None
+        if biblioteca_melhor and biblioteca_melhor.get("id"):
+            testar_estrategia = {
+                "id": biblioteca_melhor.get("id"), "nome": biblioteca_melhor.get("estrategia"),
+                "tf": biblioteca_melhor.get("tf"), "sharpe": biblioteca_melhor.get("sharpe"),
+                "pf": biblioteca_melhor.get("pf"), "retorno": biblioteca_melhor.get("retorno"),
+                "trades": biblioteca_melhor.get("trades"),
+            }
+        return converter_para_python({"mensagens": mensagens, "aplicar": aplicar, "ia_usada": ia_usada,
+                                      "testar_estrategia": testar_estrategia,
+                                      "ajustar_parametros": ajustar_parametros})
     except Exception as e:
         print(f"ERRO RADAR ANALISAR: {e}", file=sys.stderr)
         return {"mensagens": [], "aplicar": None, "ia_usada": False}
