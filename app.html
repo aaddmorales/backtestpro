@@ -184,6 +184,8 @@ body::after{
 .rhud-warn{border:1px solid rgba(255,184,48,.4);background:rgba(255,184,48,.06);clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px);padding:10px 12px}
 .rhud-warn-h{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:#ffb830}
 .rhud-warn-b{font-family:var(--sans,system-ui,sans-serif);font-size:13px;line-height:1.55;color:#cdd6df;margin-top:5px}
+.rhud-warn-btn{margin-top:10px;width:100%;padding:9px 12px;border-radius:7px;border:1px solid rgba(255,184,48,0.6);background:rgba(255,184,48,0.16);color:#ffb830;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer}
+.rhud-warn-btn:hover{background:rgba(255,184,48,0.26)}
 #risco-aviso::before{content:'';position:absolute;top:-7px;left:20px;width:12px;height:12px;background:rgba(255,184,48,0.12);border-left:1px solid rgba(255,184,48,0.55);border-top:1px solid rgba(255,184,48,0.55);transform:rotate(45deg)}
 .rhud-oos-tbl{width:100%;border-collapse:collapse;font-family:var(--mono)}
 .rhud-oos-tbl th{font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:0 0 7px;text-align:right}
@@ -4056,6 +4058,24 @@ function radarValidarOOSAtual(){
     _oosFetchRender(payload);
   }catch(e){ console.log('oosAtual', e); }
 }
+// "Sim, melhorar": alinha às condições em que o número mais forte foi medido.
+// Se o ganho veio de período diferente -> roda a mesma estratégia no período medido.
+// Se o período já é o mesmo -> o ganho vem dos parâmetros -> abre a Otimização.
+function radarMelhorarEstrategia(ap){
+  try{
+    const per = document.getElementById('periodo');
+    const atual = per ? per.value : '';
+    if(per && ap && ap.periodo && ap.periodo !== atual && [...per.options].some(o=>o.value===ap.periodo)){
+      per.value = ap.periodo;
+      if(_radarAberto) toggleRadar();
+      rodarBacktest();                         // mesma estratégia, agora no período medido
+      return;
+    }
+    if(_radarAberto) toggleRadar();            // mesmo período: ganho vem dos parâmetros
+    if(typeof switchTab==='function') switchTab('otimizar');
+    try{ if(typeof abrirOtimizar==='function') abrirOtimizar(); }catch(_e){}
+  }catch(e){ console.log('radarMelhorarEstrategia', e); }
+}
 // Testa a estratégia recomendada pela biblioteca (carrega o código pronto e roda)
 async function radarTestarEstrategia(te){
   const id = (te && te.id) || te;   // aceita o objeto da sugestão ou só o id
@@ -4113,8 +4133,10 @@ function radarRenderHUD(d, resp){
   if(_ap){
     const _sr = (_ap.seu_retorno!=null) ? _rhudPct(_ap.seu_retorno) : '\u2014';
     const _mr = (_ap.medido_retorno!=null) ? _rhudPct(_ap.medido_retorno) : '\u2014';
-    ajuste = `<div class="rhud-warn"><div class="rhud-warn-h">\u26a0 D\u00c1 PRA MELHORAR \u00b7 AJUSTE OS PAR\u00c2METROS</div>`+
-      `<div class="rhud-warn-b">Seu teste saiu em <b>${_sr}</b>, abaixo do medido (<b>${_mr}</b>) para ${_ap.estrategia||'esta estrat\u00e9gia'} no ${String(_ap.tf||'').toUpperCase()}. Rode no per\u00edodo medido e ajuste stop/take/per\u00edodo pra perseguir o n\u00famero mais forte \u2014 veja a leitura acima.</div></div>`;
+    const _perTxt = _ap.periodo ? ` (per\u00edodo medido: ${_ap.periodo})` : '';
+    ajuste = `<div class="rhud-warn"><div class="rhud-warn-h">\u26a0 D\u00c1 PRA MELHORAR</div>`+
+      `<div class="rhud-warn-b">Seu teste saiu em <b>${_sr}</b>, abaixo do medido (<b>${_mr}</b>) para ${_ap.estrategia||'esta estrat\u00e9gia'} no ${String(_ap.tf||'').toUpperCase()}. Quer que eu rode nas condi\u00e7\u00f5es em que o n\u00famero mais forte foi medido${_perTxt}?</div>`+
+      `<button class="rhud-warn-btn">\u2728 Sim, melhorar esta estrat\u00e9gia</button></div>`;
   }
   const barPf=clamp((isNaN(pf)?0:pf)/2.5*100), barWr=clamp(isNaN(wr)?0:wr), barDd=clamp(isNaN(dd)?0:dd/30*100), barNt=clamp(nt);
   const retCor=(isNaN(ret)?'var(--muted2)':(ret>0?'#2fe6a8':(ret<0?'#ff5a5a':'var(--muted2)')));
@@ -4144,6 +4166,7 @@ function radarRenderHUD(d, resp){
   _once(body.querySelector('.rhud-cta-oos'), radarValidarOOSAtual);
   if(resp&&resp.aplicar){ _once(body.querySelector('.rhud-cta-aplicar'), ()=>aplicarEValidarOOS(resp.aplicar)); }
   if(_ops){ body.querySelectorAll('.rhud-cta-testar').forEach(el=>{ const op=_ops[parseInt(el.dataset.i||'0')]; if(op) _once(el, ()=>radarTestarEstrategia(op)); }); }
+  if(_ap){ _once(body.querySelector('.rhud-warn-btn'), ()=>radarMelhorarEstrategia(_ap)); }
   body.scrollTop=0;
 }
 
