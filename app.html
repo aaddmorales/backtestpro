@@ -747,15 +747,24 @@ body.modo-vitrine #metrics-bar, body.modo-vitrine #ov-sample, body.modo-vitrine 
 body.modo-vitrine #hero-limpar-btn{display:none}
 #vitrine{display:none}
 body.modo-vitrine #vitrine{display:block}
-.vit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;margin-top:14px}
-.vit-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:16px;cursor:pointer;transition:border-color .14s,transform .14s,box-shadow .14s;display:flex;flex-direction:column;gap:11px}
-.vit-card:hover{border-color:var(--green);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,0.35)}
+.vit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-top:14px}
+.vit-card{height:316px;perspective:1200px;cursor:pointer;background:transparent;border:none;padding:0}
+.vit-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d}
+.vit-card:hover .vit-inner{transform:rotateY(180deg)}
+.vit-face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;border:1px solid var(--border2);border-radius:16px;background:var(--bg2);padding:18px;display:flex;flex-direction:column;overflow:hidden}
+.vit-front{align-items:center;justify-content:space-between;text-align:center}
+.vit-card:hover .vit-front{border-color:var(--green)}
+.vit-back{transform:rotateY(180deg);gap:8px}
+.vit-hero-num{font-size:44px;font-weight:800;line-height:1;letter-spacing:-1.5px}
+.vit-hero-lbl{font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-top:5px}
 .vit-tag{font-size:9px;font-weight:800;letter-spacing:.4px;color:var(--muted2);background:var(--bg4);border-radius:4px;padding:2px 6px}
 .vit-bar-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
 .vit-bar-fill{height:100%;border-radius:3px}
 .vit-chip{font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px}
-.vit-testar{margin-top:2px;text-align:center;font-size:12px;font-weight:700;color:var(--green);background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;padding:8px}
-.vit-card:hover .vit-testar{background:var(--green);color:#04140d}
+.vit-testar{margin-top:auto;text-align:center;font-size:12px;font-weight:700;color:#04140d;background:var(--green);border-radius:8px;padding:9px;transition:filter .12s}
+.vit-back:hover .vit-testar{filter:brightness(1.08)}
+.vit-flip-hint{font-size:9px;color:var(--muted);letter-spacing:.5px;opacity:.65}
+.vit-robo{filter:drop-shadow(0 0 12px var(--robo-glow,rgba(0,208,132,0.35)))}
 </style>
 </head>
 <body>
@@ -2437,7 +2446,7 @@ const I18N = {
   pt: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
+    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
@@ -2469,7 +2478,7 @@ const I18N = {
   en: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
+    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
@@ -2501,7 +2510,7 @@ const I18N = {
   es: {
     'nav.overview':'Resumen','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
-    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
+    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
@@ -5109,6 +5118,46 @@ function sairVitrineParaTeste(){
   document.body.classList.remove('modo-vitrine');
   const vb=document.getElementById('voltar-vitrine-bar'); if(vb) vb.style.display='block';
 }
+const _VIT_CAT = {
+  tendencia:{cor:'#00d084',glow:'rgba(0,208,132,.45)'},
+  reversao:{cor:'#ffb830',glow:'rgba(255,184,48,.45)'},
+  rompimento:{cor:'#2bd6ff',glow:'rgba(43,214,255,.45)'},
+  priceaction:{cor:'#9d6fff',glow:'rgba(157,111,255,.45)'},
+  impulso:{cor:'#ff5a5a',glow:'rgba(255,90,90,.45)'},
+  ima:{cor:'#00d0c0',glow:'rgba(0,208,192,.45)'},
+  outro:{cor:'#00d084',glow:'rgba(0,208,132,.45)'}
+};
+function _vitGlyph(cat,cor){
+  switch(cat){
+    case 'tendencia': return '<path d="M44 84 l6 -10 6 10 z" fill="'+cor+'"/>';
+    case 'reversao': return '<path d="M45 80 a6 6 0 1 1 1.5 4.2" fill="none" stroke="'+cor+'" stroke-width="2.4" stroke-linecap="round"/><path d="M44 86 l1.5 -4.5 4 1.5 z" fill="'+cor+'"/>';
+    case 'rompimento': return '<path d="M50 73 l1.8 5.4 5.6 .3 -4.4 3.5 1.6 5.5 -4.6 -3.2 -4.6 3.2 1.6 -5.5 -4.4 -3.5 5.6 -.3 z" fill="'+cor+'"/>';
+    case 'priceaction': return '<rect x="48" y="76" width="4" height="10" rx="1.5" fill="'+cor+'"/><line x1="50" y1="73" x2="50" y2="89" stroke="'+cor+'" stroke-width="1.6"/>';
+    case 'impulso': return '<path d="M53 73 l-8 10 5 0 -2.5 7 8 -10 -5 0 z" fill="'+cor+'"/>';
+    default: return '<circle cx="50" cy="80" r="4.5" fill="'+cor+'"/>';
+  }
+}
+function _vitRobo(cat){
+  const c=(_VIT_CAT[cat]||_VIT_CAT.outro), cor=c.cor;
+  return '<svg viewBox="0 0 100 100" width="86" height="86" class="vit-robo" style="--robo-glow:'+c.glow+'">'
+    +'<line x1="50" y1="13" x2="50" y2="24" stroke="'+cor+'" stroke-width="3" stroke-linecap="round"/>'
+    +'<circle cx="50" cy="10" r="3.6" fill="'+cor+'"/>'
+    +'<rect x="26" y="24" width="48" height="40" rx="13" fill="var(--bg4)" stroke="'+cor+'" stroke-width="2.5"/>'
+    +'<circle cx="40" cy="43" r="5" fill="'+cor+'"/><circle cx="60" cy="43" r="5" fill="'+cor+'"/>'
+    +'<rect x="39" y="53" width="22" height="3.5" rx="1.75" fill="'+cor+'" opacity="0.45"/>'
+    +'<rect x="33" y="68" width="34" height="22" rx="8" fill="var(--bg4)" stroke="'+cor+'" stroke-width="2.5"/>'
+    +'<rect x="19" y="71" width="10" height="6" rx="3" fill="'+cor+'" opacity="0.7"/>'
+    +'<rect x="71" y="71" width="10" height="6" rx="3" fill="'+cor+'" opacity="0.7"/>'
+    +_vitGlyph(cat,cor)
+    +'</svg>';
+}
+function _vitQualDot(e){
+  const sh=e.sharpe_medio, pf=e.pf_medio;
+  if(sh==null) return '#7d8aa0';
+  if(sh>=0.5 && (pf==null||pf>=1.1)) return 'var(--green)';
+  if(sh>0 && (pf==null||pf>=1.0)) return 'var(--amber)';
+  return 'var(--red)';
+}
 
 async function carregarVitrine(){
   const grid=document.getElementById('vitrine-grid'); if(!grid) return;
@@ -5122,28 +5171,41 @@ async function carregarVitrine(){
     grid.innerHTML = ests.map(function(e){
       const temMedia=(e.sharpe_medio!=null);
       const corSh=_vitCorQual(e.sharpe_medio);
-      const tags=(e.tags||[]).slice(0,3).map(function(t){return '<span class="vit-tag">'+t+'</span>';}).join(' ');
+      const tagsFront=(e.tags||[]).slice(0,2).map(function(tg){return '<span class="vit-tag">'+tg+'</span>';}).join(' ');
       const mercados=(e.mercados||[]).slice(0,3).map(function(m){return '<span class="vit-chip">'+m+'</span>';}).join(' ');
-      const casa=e.casa?'<span style="font-size:9px;font-weight:800;color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 5px;margin-left:6px">CASA</span>':'';
+      const casa=e.casa?'<span style="font-size:8px;font-weight:800;color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 4px;margin-left:5px">CASA</span>':'';
+      const wr=(e.winrate_medio!=null?e.winrate_medio+'%':'—');
+
+      // FRENTE: robô + nome + Win Rate herói + pontinho de qualidade
+      const frente='<div class="vit-face vit-front">'
+        +'<div style="width:100%"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+'</div>'
+          +'<div style="margin-top:5px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap">'+tagsFront+'</div></div>'
+        +_vitRobo(e.categoria)
+        +'<div><div class="vit-hero-num" style="color:var(--text)">'+wr+'</div>'
+          +'<div class="vit-hero-lbl"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_vitQualDot(e)+';margin-right:5px;vertical-align:middle" title="Qualidade real medida (Sharpe/PF)"></span>'+t('vit.winrate')+'</div></div>'
+        +'<div class="vit-flip-hint">'+t('vit.flip')+'</div>'
+      +'</div>';
+
+      // VERSO: métricas + descrição + mercados + testar
       let metricas;
       if(temMedia){
-        metricas='<div style="display:flex;flex-direction:column;gap:7px">'
+        metricas='<div style="display:flex;flex-direction:column;gap:6px">'
           +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.sharpe')+'</span><span style="color:var(--text);font-weight:700">'+e.sharpe_medio+'</span></div>'+_vitBar(e.sharpe_medio,2.5,corSh)+'</div>'
           +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.pf')+'</span><span style="color:var(--text);font-weight:700">'+(e.pf_medio!=null?e.pf_medio:'—')+'</span></div>'+_vitBar((e.pf_medio||0)-0.8,1.2,'#2bd6ff')+'</div>'
-          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.winrate')+'</span><span style="color:var(--text);font-weight:700">'+(e.winrate_medio!=null?e.winrate_medio+'%':'—')+'</span></div>'+_vitBar(e.winrate_medio,100,'var(--amber)')+'</div>'
+          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.winrate')+'</span><span style="color:var(--text);font-weight:700">'+wr+'</span></div>'+_vitBar(e.winrate_medio,100,'var(--amber)')+'</div>'
           +'</div>';
       } else {
-        metricas='<div style="font-size:11px;color:var(--muted);padding:8px 0">'+t('vit.semmedia')+'</div>';
+        metricas='<div style="font-size:11px;color:var(--muted);padding:6px 0">'+t('vit.semmedia')+'</div>';
       }
-      return '<div class="vit-card" onclick="escolherEstrategiaVitrine(\''+e.id+'\')">'
-        +'<div style="display:flex;align-items:center;gap:9px"><span style="font-size:22px">'+(e.emoji||'📈')+'</span>'
-          +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+'</div>'
-          +'<div style="margin-top:3px">'+tags+'</div></div></div>'
-        +'<div style="font-size:11.5px;color:var(--muted2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+e.desc+'</div>'
+      const verso='<div class="vit-face vit-back">'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+'</div>'
         +metricas
+        +'<div style="font-size:10.5px;color:var(--muted2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+e.desc+'</div>'
         +(mercados?('<div style="display:flex;gap:5px;flex-wrap:wrap">'+mercados+'</div>'):'')
         +'<div class="vit-testar">'+t('vit.testar')+'</div>'
       +'</div>';
+
+      return '<div class="vit-card" onclick="escolherEstrategiaVitrine(\''+e.id+'\')"><div class="vit-inner">'+frente+verso+'</div></div>';
     }).join('');
   }catch(err){
     grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">'+t('vit.erro')+'</div>';
