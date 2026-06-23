@@ -4802,3 +4802,79 @@ def calendario_semana(de_dias: int = 7, ate_dias: int = 10):
             .lte("data_evento", ate.isoformat())
             .order("data_evento", desc=False).limit(3000).execute().data or [])
     return {"agora_utc": agora.isoformat(), "total": len(rows), "eventos": rows}
+
+
+# ── VITRINE: estratégias prontas + desempenho MÉDIO histórico (público) ──
+# Regra de marca: nunca revelar a existência da biblioteca interna. Aqui
+# devolvemos apenas uma MÉDIA de desempenho histórico por estratégia,
+# apresentada como "média histórica" — sem expor linhas nem a fonte.
+_VITRINE_CACHE = {"t": 0.0, "dados": None}
+
+@app.get("/estrategias/vitrine")
+def estrategias_vitrine(lang: str = "pt"):
+    import time as _t
+    # cache de 1h (cálculo de média é estável; evita varrer a tabela a cada visita)
+    if _VITRINE_CACHE["dados"] is not None and (_t.time() - _VITRINE_CACHE["t"] < 3600):
+        return _VITRINE_CACHE["dados"]
+
+    # agrega média por estrategia_id (server-side; nunca devolve linha individual)
+    medias = {}
+    sb = _sb_admin()
+    if sb is not None:
+        try:
+            rows = (sb.table("estudo_biblioteca")
+                    .select("estrategia_id,sharpe,profit_factor,retorno,win_rate,trades,forca")
+                    .limit(8000).execute().data or [])
+            acc = {}
+            for r in rows:
+                eid = r.get("estrategia_id")
+                if not eid:
+                    continue
+                a = acc.setdefault(eid, {"sh": [], "pf": [], "ret": [], "wr": [], "n": 0, "forte": 0})
+                a["sh"].append(float(r.get("sharpe") or 0))
+                a["pf"].append(float(r.get("profit_factor") or 0))
+                a["ret"].append(float(r.get("retorno") or 0))
+                a["wr"].append(float(r.get("win_rate") or 0))
+                a["n"] += 1
+                if r.get("forca") == "forte":
+                    a["forte"] += 1
+            def _med(xs):
+                xs = [x for x in xs if x is not None]
+                return round(sum(xs) / len(xs), 2) if xs else None
+            for eid, a in acc.items():
+                medias[eid] = {
+                    "sharpe_medio": _med(a["sh"]),
+                    "pf_medio": _med(a["pf"]),
+                    "retorno_medio": _med(a["ret"]),
+                    "winrate_medio": _med(a["wr"]),
+                    "combos": a["n"],
+                    "forte_pct": round(100 * a["forte"] / a["n"]) if a["n"] else 0,
+                }
+        except Exception as e:
+            print(f"[vitrine] erro ao agregar: {e}")
+
+    itens = []
+    for est in ESTRATEGIAS_PRONTAS:
+        eid = est["id"]
+        m = medias.get(eid, {})
+        itens.append({
+            "id": eid,
+            "nome": _estrat_loc(est, lang, "nome"),
+            "desc": _estrat_loc(est, lang, "desc"),
+            "emoji": est.get("emoji", "📈"),
+            "tags": est.get("tags", []),
+            "nivel": est.get("nivel", ""),
+            "mercados": est.get("mercados", []),
+            "casa": bool(est.get("casa")),
+            "codigo": est.get("codigo", ""),
+            "sharpe_medio": m.get("sharpe_medio"),
+            "pf_medio": m.get("pf_medio"),
+            "retorno_medio": m.get("retorno_medio"),
+            "winrate_medio": m.get("winrate_medio"),
+            "combos": m.get("combos", 0),
+            "forte_pct": m.get("forte_pct", 0),
+        })
+    out = {"total": len(itens), "estrategias": itens}
+    _VITRINE_CACHE["t"] = _t.time()
+    _VITRINE_CACHE["dados"] = out
+    return out
