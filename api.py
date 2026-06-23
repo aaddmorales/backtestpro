@@ -4779,3 +4779,26 @@ def calendario_csv(dias: int = 14, impacto_min: str = "medio"):
         titulo = (r.get("titulo", "") or "").replace(",", " ").replace("\n", " ")
         linhas.append(f'{r.get("data_evento","")},{r.get("moeda","")},{imp},{titulo}')
     return PlainTextResponse("\n".join(linhas), media_type="text/csv")
+
+
+# ── PÁGINA COMPLETA (estilo ForexFactory): todos os eventos, todos os impactos ──
+@app.get("/calendario/semana")
+def calendario_semana(de_dias: int = 7, ate_dias: int = 10):
+    """Todos os eventos numa janela (todas as moedas, todos os impactos).
+    Inclui dias passados da semana (que já têm 'actual') como o ForexFactory.
+      - de_dias: dias para trás (default 7 = semana corrente)
+      - ate_dias: dias para frente (default 10)
+    """
+    from datetime import datetime, timezone, timedelta
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    agora = datetime.now(timezone.utc)
+    de = agora - timedelta(days=max(0, min(int(de_dias or 7), 60)))
+    ate = agora + timedelta(days=max(1, min(int(ate_dias or 10), 60)))
+    rows = (sb.table("calendario_economico")
+            .select("titulo,moeda,impacto,data_evento,forecast,previous,actual")
+            .gte("data_evento", de.isoformat())
+            .lte("data_evento", ate.isoformat())
+            .order("data_evento", desc=False).limit(3000).execute().data or [])
+    return {"agora_utc": agora.isoformat(), "total": len(rows), "eventos": rows}
