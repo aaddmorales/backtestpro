@@ -3786,6 +3786,17 @@ def _nivel_loc(nivel, lang):
         return _NIVEL_I18N.get(nivel, {}).get(lang, nivel)
     return nivel
 
+# Categoria language-independent (derivada da tag PT original) p/ escolher o robô no front
+def _categoria_de(tags):
+    s = set(t.upper() for t in (tags or []))
+    if "TENDÊNCIA" in s: return "tendencia"
+    if "REVERSÃO" in s: return "reversao"
+    if "ROMPIMENTO" in s: return "rompimento"
+    if "PRICE ACTION" in s: return "priceaction"
+    if "IMPULSO" in s: return "impulso"
+    if "ÍMÃ" in s: return "ima"
+    return "outro"
+
 
 @app.get("/estrategias/prontas")
 def estrategias_prontas(lang: str = "pt"):
@@ -4886,6 +4897,7 @@ def estrategias_vitrine(lang: str = "pt"):
             "desc": _estrat_loc(est, lang, "desc"),
             "emoji": est.get("emoji", "📈"),
             "tags": [_tag_loc(t, lang) for t in est.get("tags", [])],
+            "categoria": _categoria_de(est.get("tags", [])),
             "nivel": _nivel_loc(est.get("nivel", ""), lang),
             "mercados": est.get("mercados", []),
             "casa": bool(est.get("casa")),
