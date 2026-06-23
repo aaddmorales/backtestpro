@@ -105,6 +105,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── ARQUIVOS ESTÁTICOS (imagens dos robôs da vitrine, etc.) ──
+# Coloque os PNGs em /assets no repositório. Ficam acessíveis em /assets/<arquivo>.
+try:
+    from fastapi.staticfiles import StaticFiles
+    os.makedirs("assets", exist_ok=True)
+    app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+except Exception as _e:
+    print(f"[assets] não foi possível montar /assets: {_e}")
+
 # ── MAPA DE ATIVOS ──────────────────────────────────────────
 ATIVOS_MAP = {
     "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
