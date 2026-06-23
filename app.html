@@ -1119,8 +1119,8 @@ body.modo-vitrine #vitrine{display:block}
             <div id="vitrine" style="padding:6px 16px 28px">
               <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:6px">
                 <div>
-                  <div style="font-size:16px;font-weight:800;color:var(--text)">Estratégias prontas pra testar</div>
-                  <div style="font-size:11.5px;color:var(--muted2);margin-top:2px">Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--text)" data-i18n="vit.titulo">Estratégias prontas pra testar</div>
+                  <div style="font-size:11.5px;color:var(--muted2);margin-top:2px" data-i18n="vit.sub">Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.</div>
                 </div>
               </div>
               <div class="vit-grid" id="vitrine-grid">
@@ -1129,7 +1129,7 @@ body.modo-vitrine #vitrine{display:block}
             </div>
             <!-- barra "voltar à vitrine" (só no modo teste) -->
             <div id="voltar-vitrine-bar" style="display:none;margin:12px 16px 0">
-              <button onclick="voltarVitrine()" style="background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer">◂ Voltar à vitrine</button>
+              <button onclick="voltarVitrine()" style="background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer" data-i18n="vit.voltar">◂ Voltar à vitrine</button>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
@@ -1587,28 +1587,26 @@ body.modo-vitrine #vitrine{display:block}
               <div>
                 <div style="display:flex;align-items:center;gap:10px">
                   <span style="font-size:22px">📅</span>
-                  <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0">Calendário Econômico</h2>
+                  <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0" data-i18n="cal.titulo">Calendário Econômico</h2>
                 </div>
-                <div style="font-size:12px;color:var(--muted2);margin-top:4px">Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão</div>
+                <div style="font-size:12px;color:var(--muted2);margin-top:4px" data-i18n="cal.sub">Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão</div>
               </div>
-              <button id="cal-full-refresh" onclick="carregarCalendarioFull(true)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">↻ Atualizar</button>
+              <button id="cal-full-refresh" onclick="carregarCalendarioFull(true)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer" data-i18n="cal.atualizar">↻ Atualizar</button>
             </div>
 
             <!-- filtros de impacto -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-              <span style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px">IMPACTO:</span>
-              <button class="cal-filtro cal-filtro-on" data-imp="alto"  onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:6px;vertical-align:middle"></span>Alto</button>
-              <button class="cal-filtro cal-filtro-on" data-imp="medio" onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:6px;vertical-align:middle"></span>Médio</button>
-              <button class="cal-filtro cal-filtro-on" data-imp="baixo" onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7d8aa0;margin-right:6px;vertical-align:middle"></span>Baixo</button>
+              <span style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px" data-i18n="cal.impacto">IMPACTO:</span>
+              <button class="cal-filtro cal-filtro-on" data-imp="alto"  onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:6px;vertical-align:middle"></span><span data-i18n="cal.alto">Alto</span></button>
+              <button class="cal-filtro cal-filtro-on" data-imp="medio" onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:6px;vertical-align:middle"></span><span data-i18n="cal.medio">Médio</span></button>
+              <button class="cal-filtro cal-filtro-on" data-imp="baixo" onclick="calToggleFiltro(this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7d8aa0;margin-right:6px;vertical-align:middle"></span><span data-i18n="cal.baixo">Baixo</span></button>
             </div>
 
             <div id="cal-full-body">
               <div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Carregando calendário…</div>
             </div>
 
-            <div style="margin-top:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:11px;color:var(--muted);line-height:1.6">
-              ⓘ Calendário informativo, relevante para <b style="color:var(--muted2)">operação ao vivo</b> (seus bots pausam em torno de notícias de alto impacto). <b style="color:var(--muted2)">Não afeta seus backtests</b> — o teste mede a estratégia no histórico real, sem pular dias. Cobertura forte das economias principais; horários convertidos para o seu fuso.
-            </div>
+            <div style="margin-top:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:11px;color:var(--muted);line-height:1.6" data-i18n="cal.disclaimer">ⓘ Calendário informativo, relevante para operação ao vivo. Não afeta seus backtests.</div>
           </div>
         </div><!-- /tab-calendario -->
 
@@ -2439,7 +2437,7 @@ const I18N = {
   pt: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','nav.apionline':'API Online',
+    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
@@ -2471,7 +2469,7 @@ const I18N = {
   en: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','nav.apionline':'API Online',
+    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
@@ -2503,7 +2501,7 @@ const I18N = {
   es: {
     'nav.overview':'Resumen','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
-    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','nav.apionline':'API en línea',
+    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
@@ -2575,6 +2573,14 @@ function setLang(lang) {
   LANG = lang;
   localStorage.setItem('bb_lang', lang);
   aplicarIdioma();
+  // re-renderiza áreas construídas via JS (não têm data-i18n)
+  try{ if(typeof carregarVitrine==='function' && document.getElementById('vitrine-grid')) carregarVitrine(); }catch(e){}
+  try{ if(typeof _calRenderFull==='function' && window._calDados && window._calDados.length) _calRenderFull(); }catch(e){}
+  // botão do hero conforme o estado (vitrine x teste)
+  try{
+    const run=document.getElementById('ia-run-btn');
+    if(run){ run.textContent = (typeof _vitrineMode!=='undefined' && !_vitrineMode && window._estrategiaAtiva) ? t('vit.iniciar') : t('vit.rodar'); }
+  }catch(e){}
 }
 
 
@@ -5112,7 +5118,7 @@ async function carregarVitrine(){
     const ests=(d&&d.estrategias)||[];
     window._vitrineDados={};
     ests.forEach(function(e){ window._vitrineDados[e.id]=e; });
-    if(!ests.length){ grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">Nenhuma estratégia disponível.</div>'; return; }
+    if(!ests.length){ grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">'+t('vit.vazio')+'</div>'; return; }
     grid.innerHTML = ests.map(function(e){
       const temMedia=(e.sharpe_medio!=null);
       const corSh=_vitCorQual(e.sharpe_medio);
@@ -5122,12 +5128,12 @@ async function carregarVitrine(){
       let metricas;
       if(temMedia){
         metricas='<div style="display:flex;flex-direction:column;gap:7px">'
-          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>Sharpe médio</span><span style="color:var(--text);font-weight:700">'+e.sharpe_medio+'</span></div>'+_vitBar(e.sharpe_medio,2.5,corSh)+'</div>'
-          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>Profit Factor</span><span style="color:var(--text);font-weight:700">'+(e.pf_medio!=null?e.pf_medio:'—')+'</span></div>'+_vitBar((e.pf_medio||0)-0.8,1.2,'#2bd6ff')+'</div>'
-          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>Win Rate médio</span><span style="color:var(--text);font-weight:700">'+(e.winrate_medio!=null?e.winrate_medio+'%':'—')+'</span></div>'+_vitBar(e.winrate_medio,100,'var(--amber)')+'</div>'
+          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.sharpe')+'</span><span style="color:var(--text);font-weight:700">'+e.sharpe_medio+'</span></div>'+_vitBar(e.sharpe_medio,2.5,corSh)+'</div>'
+          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.pf')+'</span><span style="color:var(--text);font-weight:700">'+(e.pf_medio!=null?e.pf_medio:'—')+'</span></div>'+_vitBar((e.pf_medio||0)-0.8,1.2,'#2bd6ff')+'</div>'
+          +'<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px"><span>'+t('vit.winrate')+'</span><span style="color:var(--text);font-weight:700">'+(e.winrate_medio!=null?e.winrate_medio+'%':'—')+'</span></div>'+_vitBar(e.winrate_medio,100,'var(--amber)')+'</div>'
           +'</div>';
       } else {
-        metricas='<div style="font-size:11px;color:var(--muted);padding:8px 0">Sem média histórica ainda — teste e descubra.</div>';
+        metricas='<div style="font-size:11px;color:var(--muted);padding:8px 0">'+t('vit.semmedia')+'</div>';
       }
       return '<div class="vit-card" onclick="escolherEstrategiaVitrine(\''+e.id+'\')">'
         +'<div style="display:flex;align-items:center;gap:9px"><span style="font-size:22px">'+(e.emoji||'📈')+'</span>'
@@ -5136,11 +5142,11 @@ async function carregarVitrine(){
         +'<div style="font-size:11.5px;color:var(--muted2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+e.desc+'</div>'
         +metricas
         +(mercados?('<div style="display:flex;gap:5px;flex-wrap:wrap">'+mercados+'</div>'):'')
-        +'<div class="vit-testar">▶ Testar estratégia</div>'
+        +'<div class="vit-testar">'+t('vit.testar')+'</div>'
       +'</div>';
     }).join('');
   }catch(err){
-    grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">Não foi possível carregar as estratégias agora.</div>';
+    grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">'+t('vit.erro')+'</div>';
   }
 }
 
@@ -5201,16 +5207,17 @@ function _calTagImpacto(imp){
   if(imp==='feriado') return 'FERIADO';
   return 'BAIXO';
 }
+function _localeApp(){ return (typeof LANG!=='undefined'&&LANG==='en')?'en-US':((typeof LANG!=='undefined'&&LANG==='es')?'es-ES':'pt-BR'); }
 function _calHoraLocal(iso){
-  try{ return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+  try{ return new Date(iso).toLocaleTimeString(_localeApp(),{hour:'2-digit',minute:'2-digit'}); }
   catch(e){ return ''; }
 }
 function _calCabecalhoDia(iso){
   try{
     const d=new Date(iso), hoje=new Date(), amanha=new Date(); amanha.setDate(hoje.getDate()+1);
     const same=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
-    let pre=''; if(same(d,hoje)) pre='Hoje · '; else if(same(d,amanha)) pre='Amanhã · ';
-    return pre + d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+    let pre=''; if(same(d,hoje)) pre=t('cal.hoje')+' · '; else if(same(d,amanha)) pre=t('cal.amanha')+' · ';
+    return pre + d.toLocaleDateString(_localeApp(),{weekday:'long',day:'2-digit',month:'long'});
   }catch(e){ return iso; }
 }
 function _calDiaChave(iso){
@@ -5233,7 +5240,7 @@ async function carregarCalendarioFull(forcar){
   const body=document.getElementById('cal-full-body'); if(!body) return;
   if(_calFullCarregando) return; _calFullCarregando=true;
   if(forcar || !_calDados.length){
-    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Carregando calendário…</div>';
+    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">'+t('cal.carregando')+'</div>';
   }
   try{
     const r=await fetch(`${API}/calendario/semana?de_dias=7&ate_dias=12`);
@@ -5241,7 +5248,7 @@ async function carregarCalendarioFull(forcar){
     _calDados=(d&&d.eventos)||[];
     _calRenderFull();
   }catch(e){
-    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Não foi possível carregar o calendário agora.</div>';
+    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">'+t('cal.erro')+'</div>';
   }
   _calFullCarregando=false;
 }
@@ -5250,7 +5257,7 @@ function _calRenderFull(){
   const body=document.getElementById('cal-full-body'); if(!body) return;
   const evs=_calDados.filter(function(ev){ return _calFiltros[ev.impacto||'baixo'] !== false; });
   if(!evs.length){
-    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Nenhum evento para os filtros selecionados.</div>';
+    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">'+t('cal.vazio')+'</div>';
     return;
   }
   const grupos=[], idx={};
@@ -5274,9 +5281,9 @@ function _calRenderFull(){
         +'<div style="flex:none;width:74px"><span style="display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.5px;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:2px 7px">'+tag+'</span></div>'
         +'<div style="flex:1;min-width:0;font-size:14px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ev.titulo+'</div>'
         +'<div style="flex:none;width:240px;display:flex;gap:16px;justify-content:flex-end;text-align:right">'
-          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">ATUAL</div><div style="font-size:13.5px">'+actual+'</div></div>'
-          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">PREV.</div><div style="font-size:13.5px;color:var(--text);font-weight:600">'+(ev.forecast||'—')+'</div></div>'
-          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">ANT.</div><div style="font-size:13.5px;color:var(--text);font-weight:600">'+(ev.previous||'—')+'</div></div>'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">'+t('cal.atual')+'</div><div style="font-size:13.5px">'+actual+'</div></div>'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">'+t('cal.prev')+'</div><div style="font-size:13.5px;color:var(--text);font-weight:600">'+(ev.forecast||'—')+'</div></div>'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:2px">'+t('cal.ant')+'</div><div style="font-size:13.5px;color:var(--text);font-weight:600">'+(ev.previous||'—')+'</div></div>'
         +'</div>'
       +'</div>';
     });
