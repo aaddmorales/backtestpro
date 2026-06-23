@@ -1552,7 +1552,7 @@ select option{background:#141920}
         </div><!-- /tab-planos -->
 
         <div id="tab-calendario" style="display:none;padding:20px 18px;overflow-y:auto">
-          <div style="max-width:1000px;margin:0 auto">
+          <div style="max-width:1040px;margin:0 auto;background:#0b0f15;border:1px solid var(--border2);border-radius:14px;padding:22px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
               <div>
                 <div style="display:flex;align-items:center;gap:10px">
@@ -5050,13 +5050,17 @@ function copiarToken(){
 // Todos os países, todos os impactos, bandeira + agrupado por dia.
 // Informativo: NÃO afeta backtests.
 // ══════════════════════════════════════════════════════════════════
-const _CAL_FLAG = {
-  USD:'🇺🇸', EUR:'🇪🇺', GBP:'🇬🇧', JPY:'🇯🇵', AUD:'🇦🇺', CAD:'🇨🇦',
-  CHF:'🇨🇭', NZD:'🇳🇿', CNY:'🇨🇳', BRL:'🇧🇷', SEK:'🇸🇪', NOK:'🇳🇴',
-  SGD:'🇸🇬', HKD:'🇭🇰', MXN:'🇲🇽', ZAR:'🇿🇦', INR:'🇮🇳', KRW:'🇰🇷',
-  TRY:'🇹🇷', RUB:'🇷🇺', PLN:'🇵🇱', DKK:'🇩🇰', CZK:'🇨🇿', HUF:'🇭🇺'
+const _CAL_CC = {
+  USD:'us', EUR:'eu', GBP:'gb', JPY:'jp', AUD:'au', CAD:'ca',
+  CHF:'ch', NZD:'nz', CNY:'cn', BRL:'br', SEK:'se', NOK:'no',
+  SGD:'sg', HKD:'hk', MXN:'mx', ZAR:'za', INR:'in', KRW:'kr',
+  TRY:'tr', RUB:'ru', PLN:'pl', DKK:'dk', CZK:'cz', HUF:'hu'
 };
-function _calFlag(m){ return _CAL_FLAG[(m||'').toUpperCase()] || '🏳️'; }
+function _calFlag(m){
+  const cc=_CAL_CC[(m||'').toUpperCase()];
+  if(!cc) return '<span style="display:inline-block;width:24px;height:18px;border-radius:3px;background:var(--bg4)"></span>';
+  return '<img src="https://flagcdn.com/48x36/'+cc+'.png" width="24" height="18" alt="'+m+'" loading="lazy" style="border-radius:3px;display:block;object-fit:cover" onerror="this.style.display=\'none\'">';
+}
 function _calCorImpacto(imp){
   if(imp==='alto') return 'var(--red)';
   if(imp==='medio') return 'var(--amber)';
@@ -5129,20 +5133,20 @@ function _calRenderFull(){
   const agora=new Date();
   let html='';
   grupos.forEach(function(g){
-    html+='<div style="margin-top:18px;margin-bottom:6px;font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize;letter-spacing:.3px;border-bottom:2px solid var(--border2);padding-bottom:6px">'+_calCabecalhoDia(g.iso)+'</div>';
+    html+='<div style="margin-top:20px;margin-bottom:8px;font-size:14px;font-weight:800;color:var(--text);text-transform:capitalize;letter-spacing:.3px;border-bottom:2px solid var(--border2);padding-bottom:7px">'+_calCabecalhoDia(g.iso)+'</div>';
     g.itens.forEach(function(ev){
       const cor=_calCorImpacto(ev.impacto), tag=_calTagImpacto(ev.impacto);
-      const op=(new Date(ev.data_evento) < agora) ? 'opacity:.55;' : '';
-      const actual = ev.actual ? '<span style="color:'+cor+';font-weight:700">'+ev.actual+'</span>' : '<span style="color:var(--muted)">—</span>';
-      html+='<div style="display:flex;align-items:center;gap:12px;padding:10px 6px;border-bottom:1px solid var(--border);'+op+'">'
-        +'<div style="flex:none;width:50px;font-size:12px;color:var(--muted2);font-weight:600;font-variant-numeric:tabular-nums">'+_calHoraLocal(ev.data_evento)+'</div>'
-        +'<div style="flex:none;width:62px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">'+_calFlag(ev.moeda)+'</span><span style="font-size:11px;color:var(--muted2);font-weight:700">'+ev.moeda+'</span></div>'
-        +'<div style="flex:none;width:70px"><span style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.4px;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:2px 6px">'+tag+'</span></div>'
-        +'<div style="flex:1;min-width:0;font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ev.titulo+'</div>'
-        +'<div style="flex:none;width:215px;display:flex;gap:14px;justify-content:flex-end;text-align:right">'
-          +'<div><div style="color:var(--muted);font-size:9px;letter-spacing:.3px">ATUAL</div><div style="font-size:11px">'+actual+'</div></div>'
-          +'<div><div style="color:var(--muted);font-size:9px;letter-spacing:.3px">PREV.</div><div style="font-size:11px;color:var(--muted2)">'+(ev.forecast||'—')+'</div></div>'
-          +'<div><div style="color:var(--muted);font-size:9px;letter-spacing:.3px">ANT.</div><div style="font-size:11px;color:var(--muted2)">'+(ev.previous||'—')+'</div></div>'
+      const op=(new Date(ev.data_evento) < agora) ? 'opacity:.6;' : '';
+      const actual = ev.actual ? '<span style="color:'+cor+';font-weight:800">'+ev.actual+'</span>' : '<span style="color:var(--muted2)">—</span>';
+      html+='<div style="display:flex;align-items:center;gap:14px;padding:11px 6px;border-bottom:1px solid var(--border);'+op+'">'
+        +'<div style="flex:none;width:52px;font-size:13.5px;color:var(--muted2);font-weight:700;font-variant-numeric:tabular-nums">'+_calHoraLocal(ev.data_evento)+'</div>'
+        +'<div style="flex:none;width:66px;display:flex;align-items:center;gap:7px">'+_calFlag(ev.moeda)+'<span style="font-size:12px;color:var(--text);font-weight:700">'+ev.moeda+'</span></div>'
+        +'<div style="flex:none;width:74px"><span style="display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.5px;color:'+cor+';border:1px solid '+cor+';border-radius:4px;padding:2px 7px">'+tag+'</span></div>'
+        +'<div style="flex:1;min-width:0;font-size:14px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ev.titulo+'</div>'
+        +'<div style="flex:none;width:240px;display:flex;gap:16px;justify-content:flex-end;text-align:right">'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:1px">ATUAL</div><div style="font-size:13px">'+actual+'</div></div>'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:1px">PREV.</div><div style="font-size:13px;color:var(--text)">'+(ev.forecast||'—')+'</div></div>'
+          +'<div><div style="color:var(--muted);font-size:9.5px;letter-spacing:.4px;margin-bottom:1px">ANT.</div><div style="font-size:13px;color:var(--muted2)">'+(ev.previous||'—')+'</div></div>'
         +'</div>'
       +'</div>';
     });
