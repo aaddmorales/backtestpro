@@ -4536,3 +4536,246 @@ def admin_biblioteca_ativos(user_id: str = ""):
         out.append({"ativo": a, "periodos": sorted(info["periodos"]),
                     "medido_em": info["medido_em"]})
     return {"ativos": out, "total": len(out)}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ║  CALENDÁRIO ECONÔMICO — coletor do feed semanal (ForexFactory/Fair Eco) ║
+# ║                                                                          ║
+# ║  Objetivo: alimentar (1) a feature "Calendário Econômico" no produto e   ║
+# ║  (2) o fallback CSV do filtro de notícias dos bots no Strategy Tester.   ║
+# ║                                                                          ║
+# ║  Fonte: feed semanal público nfs.faireconomy.media (json).               ║
+# ║  REGRA DE OURO: baixar no MÁXIMO 1x/semana (cron). O feed limita a       ║
+# ║  2 downloads / 5min por IP em QUALQUER formato — por isso só o cron      ║
+# ║  bate nele. Nunca chamar /calendario/atualizar a cada request.           ║
+# ║                                                                          ║
+# ║  TABELA (rodar no Supabase SQL editor):                                  ║
+# ║    create table if not exists public.calendario_economico (             ║
+# ║      id bigint generated always as identity primary key,                 ║
+# ║      titulo text not null,                                               ║
+# ║      moeda text not null,                                                ║
+# ║      impacto text not null,            -- alto|medio|baixo|feriado        ║
+# ║      data_evento timestamptz not null, -- sempre em UTC                   ║
+# ║      forecast text, previous text, actual text,                          ║
+# ║      fonte text default 'forexfactory',                                  ║
+# ║      atualizado_em timestamptz default now(),                            ║
+# ║      unique (moeda, data_evento, titulo)                                  ║
+# ║    );                                                                     ║
+# ║    create index if not exists idx_calecon_data                           ║
+# ║      on public.calendario_economico (data_evento);                       ║
+# ║    alter table public.calendario_economico enable row level security;    ║
+# ║    create policy "leitura publica calendario"                            ║
+# ║      on public.calendario_economico for select using (true);             ║
+# ══════════════════════════════════════════════════════════════════════════
+
+_CAL_FEEDS = [
+    "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+    "https://nfs.faireconomy.media/ff_calendar_nextweek.json",
+]
+
+# normaliza o nível de impacto do feed -> nosso padrão interno
+def _cal_normaliza_impacto(v: str) -> str:
+    s = (v or "").strip().lower()
+    if s.startswith("high"):
+        return "alto"
+    if s.startswith("medium") or s.startswith("med"):
+        return "medio"
+    if s.startswith("low"):
+        return "baixo"
+    if "holiday" in s or "bank" in s:
+        return "feriado"
+    return "baixo"
+
+_CAL_RANK = {"alto": 3, "medio": 2, "baixo": 1, "feriado": 0}
+
+
+def _cal_baixar_feed():
+    """Baixa o(s) feed(s) semanal(is) e devolve lista de eventos normalizados.
+    Não levanta exceção: em erro/rate-limit devolve o que conseguiu (pode ser []).
+    """
+    import httpx
+    from datetime import datetime, timezone
+    eventos = []
+    vistos = set()  # dedupe (moeda|data|titulo)
+    for i, url in enumerate(_CAL_FEEDS):
+        try:
+            if i > 0:
+                import time as _t
+                _t.sleep(2)  # respeita o limite (2 req / 5min no mesmo IP)
+            r = httpx.get(url, timeout=20.0,
+                          headers={"User-Agent": "BotTested/1.0 (calendario)"})
+            if r.status_code != 200:
+                print(f"[calendario] {url} -> HTTP {r.status_code}")
+                continue
+            ctype = r.headers.get("content-type", "")
+            # quando bate no rate-limit, vem HTML "Request Denied" em vez de JSON
+            if "json" not in ctype and not r.text.strip().startswith("["):
+                print(f"[calendario] {url} -> resposta não-JSON (rate-limit?). Pulando.")
+                continue
+            dados = r.json()
+        except Exception as e:
+            print(f"[calendario] falha ao baixar {url}: {e}")
+            continue
+
+        for ev in (dados or []):
+            try:
+                titulo = (ev.get("title") or "").strip()
+                moeda = (ev.get("country") or "").strip().upper()
+                if not titulo or not moeda:
+                    continue
+                # data vem em ISO 8601 com offset (ex.: 2026-06-23T08:30:00-04:00)
+                bruta = ev.get("date") or ev.get("datetime") or ""
+                if not bruta:
+                    continue
+                dt = datetime.fromisoformat(bruta.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                dt_utc = dt.astimezone(timezone.utc)
+                data_iso = dt_utc.isoformat()
+
+                chave = f"{moeda}|{data_iso}|{titulo}"
+                if chave in vistos:
+                    continue
+                vistos.add(chave)
+
+                def _txt(x):
+                    x = ev.get(x)
+                    if x is None:
+                        return None
+                    x = str(x).strip()
+                    return x or None
+
+                eventos.append({
+                    "titulo": titulo,
+                    "moeda": moeda,
+                    "impacto": _cal_normaliza_impacto(ev.get("impact")),
+                    "data_evento": data_iso,
+                    "forecast": _txt("forecast"),
+                    "previous": _txt("previous"),
+                    "actual": _txt("actual"),
+                    "fonte": "forexfactory",
+                })
+            except Exception as e:
+                print(f"[calendario] evento ignorado: {e}")
+                continue
+    return eventos
+
+
+def _cal_gravar(eventos):
+    """Upsert não-destrutivo na calendario_economico. Devolve nº de linhas enviadas."""
+    if not eventos:
+        return 0
+    sb = _sb_admin()
+    if sb is None:
+        raise RuntimeError("Supabase indisponível (SUPABASE_URL/SERVICE_KEY ausentes)")
+    enviados = 0
+    # envia em lotes para não estourar payload
+    for j in range(0, len(eventos), 200):
+        lote = eventos[j:j + 200]
+        sb.table("calendario_economico").upsert(
+            lote, on_conflict="moeda,data_evento,titulo"
+        ).execute()
+        enviados += len(lote)
+    return enviados
+
+
+# ── CRON (1x/semana): baixa o feed e atualiza a tabela. Protegido por token. ──
+class CalAtualizarReq(BaseModel):
+    token: str
+
+@app.post("/calendario/atualizar")
+def calendario_atualizar(req: CalAtualizarReq):
+    token_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not token_certo or req.token != token_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    eventos = _cal_baixar_feed()
+    if not eventos:
+        return {"ok": False, "msg": "Feed vazio ou indisponível (rate-limit?). "
+                                    "Nada foi alterado.", "gravados": 0}
+    try:
+        n = _cal_gravar(eventos)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gravar: {e}")
+    return {"ok": True, "msg": f"{n} evento(s) atualizado(s).", "gravados": n}
+
+
+# ── FEATURE: próximos eventos (para o app e para o Radar). Público. ──
+@app.get("/calendario/proximos")
+def calendario_proximos(dias: int = 7, impacto_min: str = "medio",
+                        moedas: str = "", incluir_feriado: bool = False,
+                        limite: int = 200):
+    """Eventos a partir de agora (UTC), ordenados por data.
+      - dias: janela à frente (1..30)
+      - impacto_min: 'alto' | 'medio' | 'baixo'
+      - moedas: filtro opcional, ex.: 'USD,EUR' (vazio = todas)
+      - incluir_feriado: inclui feriados bancários
+    """
+    from datetime import datetime, timezone, timedelta
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    dias = max(1, min(int(dias or 7), 30))
+    agora = datetime.now(timezone.utc)
+    ate = agora + timedelta(days=dias)
+    corte = _CAL_RANK.get((impacto_min or "medio").lower(), 2)
+
+    q = (sb.table("calendario_economico")
+         .select("titulo,moeda,impacto,data_evento,forecast,previous,actual")
+         .gte("data_evento", agora.isoformat())
+         .lte("data_evento", ate.isoformat())
+         .order("data_evento", desc=False)
+         .limit(1000))
+    rows = q.execute().data or []
+
+    filtro_moedas = set(m.strip().upper() for m in (moedas or "").split(",") if m.strip())
+    out = []
+    for r in rows:
+        imp = r.get("impacto", "baixo")
+        if imp == "feriado":
+            if not incluir_feriado:
+                continue
+        elif _CAL_RANK.get(imp, 1) < corte:
+            continue
+        if filtro_moedas and r.get("moeda", "") not in filtro_moedas:
+            continue
+        try:
+            dt = datetime.fromisoformat(r["data_evento"].replace("Z", "+00:00"))
+            horas = round((dt - agora).total_seconds() / 3600, 1)
+        except Exception:
+            horas = None
+        r["em_horas"] = horas
+        out.append(r)
+        if len(out) >= max(1, min(int(limite or 200), 500)):
+            break
+    return {"agora_utc": agora.isoformat(), "dias": dias,
+            "impacto_min": impacto_min, "total": len(out), "eventos": out}
+
+
+# ── FALLBACK CSV: para o Strategy Tester do robô (calendário não roda no tester). ──
+@app.get("/calendario/csv")
+def calendario_csv(dias: int = 14, impacto_min: str = "medio"):
+    """CSV simples para o NewsFilter no modo backtest.
+    Colunas: data_utc,moeda,impacto,titulo  (data em ISO 8601 UTC)."""
+    from datetime import datetime, timezone, timedelta
+    from fastapi.responses import PlainTextResponse
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    dias = max(1, min(int(dias or 14), 90))
+    agora = datetime.now(timezone.utc)
+    de = agora - timedelta(days=2)
+    ate = agora + timedelta(days=dias)
+    corte = _CAL_RANK.get((impacto_min or "medio").lower(), 2)
+    rows = (sb.table("calendario_economico")
+            .select("titulo,moeda,impacto,data_evento")
+            .gte("data_evento", de.isoformat())
+            .lte("data_evento", ate.isoformat())
+            .order("data_evento", desc=False).limit(2000).execute().data or [])
+    linhas = ["data_utc,moeda,impacto,titulo"]
+    for r in rows:
+        imp = r.get("impacto", "baixo")
+        if imp == "feriado" or _CAL_RANK.get(imp, 1) < corte:
+            continue
+        titulo = (r.get("titulo", "") or "").replace(",", " ").replace("\n", " ")
+        linhas.append(f'{r.get("data_evento","")},{r.get("moeda","")},{imp},{titulo}')
+    return PlainTextResponse("\n".join(linhas), media_type="text/csv")
