@@ -110,6 +110,14 @@ app.add_middleware(
 try:
     from fastapi.staticfiles import StaticFiles
     os.makedirs("assets", exist_ok=True)
+    # Serve o robô da vitrine mesmo que o PNG esteja na RAIZ do repo (não só em /assets).
+    # Registrado ANTES do mount para ter prioridade nesse caminho específico.
+    @app.get("/assets/robo_default.png", include_in_schema=False)
+    def _serve_robo_default():
+        for _p in ("assets/robo_default.png", "robo_default.png"):
+            if os.path.exists(_p):
+                return FileResponse(_p, media_type="image/png")
+        raise HTTPException(404, "robo_default.png nao encontrado")
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 except Exception as _e:
     print(f"[assets] não foi possível montar /assets: {_e}")
