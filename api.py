@@ -3763,6 +3763,29 @@ def _estrat_loc(est, lang, campo):
             return tr[campo]
     return est.get(campo, "")
 
+# Tradução de TAGS e NÍVEL (PT é o original). Tags universais (EMA/RSI/MACD…) ficam iguais.
+_TAG_I18N = {
+    "TENDÊNCIA":   {"en": "TREND",    "es": "TENDENCIA"},
+    "PIRÂMIDE":    {"en": "PYRAMID",  "es": "PIRÁMIDE"},
+    "REVERSÃO":    {"en": "REVERSAL", "es": "REVERSIÓN"},
+    "ROMPIMENTO":  {"en": "BREAKOUT", "es": "RUPTURA"},
+    "IMPULSO":     {"en": "MOMENTUM", "es": "IMPULSO"},
+    "ÍMÃ":         {"en": "MAGNET",   "es": "IMÁN"},
+}
+_NIVEL_I18N = {
+    "iniciante":     {"en": "beginner",     "es": "principiante"},
+    "intermediário": {"en": "intermediate", "es": "intermedio"},
+    "avançado":      {"en": "advanced",     "es": "avanzado"},
+}
+def _tag_loc(tag, lang):
+    if lang and lang != "pt":
+        return _TAG_I18N.get(tag, {}).get(lang, tag)
+    return tag
+def _nivel_loc(nivel, lang):
+    if lang and lang != "pt":
+        return _NIVEL_I18N.get(nivel, {}).get(lang, nivel)
+    return nivel
+
 
 @app.get("/estrategias/prontas")
 def estrategias_prontas(lang: str = "pt"):
@@ -4862,8 +4885,8 @@ def estrategias_vitrine(lang: str = "pt"):
             "nome": _estrat_loc(est, lang, "nome"),
             "desc": _estrat_loc(est, lang, "desc"),
             "emoji": est.get("emoji", "📈"),
-            "tags": est.get("tags", []),
-            "nivel": est.get("nivel", ""),
+            "tags": [_tag_loc(t, lang) for t in est.get("tags", [])],
+            "nivel": _nivel_loc(est.get("nivel", ""), lang),
             "mercados": est.get("mercados", []),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
