@@ -115,6 +115,8 @@ body::after{
 .radar-sep::before,.radar-sep::after{content:'';flex:1;height:1px;background:var(--border)}
 .radar-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
   font-weight:700;min-width:17px;height:17px;border-radius:9px;line-height:17px;text-align:center;display:none}
+.radar-fab-img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.55))}
+.radar-head-img{width:42px;height:42px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));animation:roboFlutua 3.4s ease-in-out infinite}
 .radar-panel{position:fixed;bottom:86px;right:22px;width:460px;max-width:95vw;max-height:640px;
   background:var(--bg2);border:1px solid rgba(0,208,132,0.3);border-radius:14px;z-index:300;
   display:none;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.6)}
@@ -755,7 +757,7 @@ body.modo-vitrine #vitrine{display:block}
 .vit-front{align-items:center;justify-content:space-between;text-align:center}
 .vit-card:hover .vit-front{border-color:var(--green)}
 .vit-back{transform:rotateY(180deg);gap:8px}
-.vit-hero-num{font-size:44px;font-weight:800;line-height:1;letter-spacing:-1.5px}
+.vit-hero-num{font-size:34px;font-weight:800;line-height:1;letter-spacing:-1px}
 .vit-hero-lbl{font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-top:5px}
 .vit-tag{font-size:9px;font-weight:800;letter-spacing:.4px;color:var(--muted2);background:var(--bg4);border-radius:4px;padding:2px 6px}
 .vit-bar-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
@@ -5449,11 +5451,11 @@ function _calRenderFull(){
     <div class="radar-loading-bar"><div></div></div>
   </div>
 </div>
-<div class="radar-fab" id="radar-fab" onclick="toggleRadar()" title="Radar — seu copiloto">📡<span class="radar-badge" id="radar-badge">0</span></div>
+<div class="radar-fab" id="radar-fab" onclick="toggleRadar()" title="Radar — seu copiloto"><img class="radar-fab-img" src="/assets/robo_default.png" alt="Radar"><span class="radar-badge" id="radar-badge">0</span></div>
 <div class="radar-toast" id="radar-toast" onclick="toggleRadar();this.style.display='none'"></div>
 <div class="radar-panel" id="radar-panel">
   <div class="radar-head">
-    <span style="font-size:20px">📡</span>
+    <img class="radar-head-img" src="/assets/robo_default.png" alt="Radar">
     <div>
       <div style="font-size:15px;font-weight:800;color:var(--text)" id="radar-titulo">Radar</div>
       <div style="font-size:11.5px;color:var(--muted2)" data-i18n="radar.sub">Seu copiloto de validação — fala de disciplina, nunca prevê mercado</div>
