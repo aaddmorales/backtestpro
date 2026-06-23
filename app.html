@@ -1097,6 +1097,25 @@ select option{background:#141920}
               <div id="param-aviso" data-i18n="param.naoIdent" style="display:none;margin-top:9px;padding:10px 13px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12.5px;line-height:1.45"></div>
               <div id="free-contador" style="display:none;margin-top:8px;font-size:12px;font-weight:600;color:var(--muted2)"></div>
             </div>
+            <!-- CALENDÁRIO ECONÔMICO (card informativo) -->
+            <div id="cal-eco" style="margin:14px 16px 0;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="font-size:15px">📅</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text)">Calendário Econômico</div>
+                    <div id="cal-eco-sub" style="font-size:10.5px;color:var(--muted)">Próximos eventos que movem o mercado</div>
+                  </div>
+                </div>
+                <button id="cal-eco-refresh" onclick="carregarCalendario(true)" title="Atualizar" style="background:transparent;border:1px solid var(--border2);border-radius:7px;color:var(--muted2);font-size:13px;padding:4px 10px;cursor:pointer">↻</button>
+              </div>
+              <div id="cal-eco-body" style="padding:6px 10px;max-height:300px;overflow-y:auto">
+                <div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">Carregando…</div>
+              </div>
+              <div style="padding:9px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);line-height:1.5">
+                ⓘ Informativo · relevante para <b style="color:var(--muted2)">operação ao vivo</b>. Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.
+              </div>
+            </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
       <div class="mb-card">
@@ -5008,6 +5027,90 @@ function copiarToken(){
   const t = document.getElementById('novo-bot-token').textContent;
   navigator.clipboard.writeText(t).then(()=>alert('Token copiado!'));
 }
+
+// ══════════════════════════════════════════════════════════════════
+// CALENDÁRIO ECONÔMICO — card informativo (NÃO afeta backtests)
+// Mostra próximos eventos de alto+médio impacto nas moedas do ativo.
+// ══════════════════════════════════════════════════════════════════
+const _CAL_MOEDA_MAP = {
+  // índices
+  'S&P500':['USD'],'NASDAQ':['USD'],'US30':['USD'],
+  'DAX40':['EUR'],'FTSE100':['GBP'],'NIKKEI225':['JPY'],'IBOVESPA':['BRL','USD'],
+  // commodities
+  'XAU/USD (Ouro)':['USD'],'XAG/USD (Prata)':['USD'],'Petróleo WTI':['USD'],'Gás Natural':['USD'],
+  // cripto (macro USD move tudo)
+  'BTC/USD':['USD'],'ETH/USD':['USD'],'SOL/USD':['USD'],'BNB/USD':['USD'],
+  // ações US
+  'Apple':['USD'],'NVIDIA':['USD'],'Microsoft':['USD'],'Google':['USD'],'Amazon':['USD'],'Meta':['USD'],'Tesla':['USD'],
+  'JPMorgan':['USD'],'Visa':['USD'],'Coca-Cola':['USD'],'Disney':['USD'],'Netflix':['USD'],'AMD':['USD'],
+  // ações BR
+  'Petrobras PN':['BRL','USD'],'Vale ON':['BRL','USD'],'Itaú PN':['BRL','USD'],'Bradesco PN':['BRL','USD'],'WEG ON':['BRL','USD'],'Magazine Luiza':['BRL','USD']
+};
+function _calMoedasDoAtivo(nome){
+  if(!nome) return ['USD'];
+  if(_CAL_MOEDA_MAP[nome]) return _CAL_MOEDA_MAP[nome];
+  const m = nome.toUpperCase().match(/([A-Z]{3})\s*\/\s*([A-Z]{3})/);  // forex "XXX/YYY"
+  if(m) return [m[1], m[2]];
+  return ['USD'];
+}
+function _calRotuloTempo(horas){
+  if(horas==null) return '';
+  if(horas < 0) return 'agora';
+  if(horas < 1) return 'em ' + Math.max(1,Math.round(horas*60)) + ' min';
+  if(horas < 24) return 'em ' + Math.round(horas) + 'h';
+  const d = Math.round(horas/24);
+  return d <= 1 ? 'amanhã' : 'em ' + d + ' dias';
+}
+function _calHora(iso){
+  try{ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return ''; }
+}
+let _calCarregando=false;
+async function carregarCalendario(forcar){
+  const body=document.getElementById('cal-eco-body'); if(!body) return;
+  if(_calCarregando) return; _calCarregando=true;
+  const ativo=(document.getElementById('ativo')||{}).value||'';
+  const moedas=_calMoedasDoAtivo(ativo);
+  const sub=document.getElementById('cal-eco-sub');
+  if(sub) sub.textContent = (ativo ? ('Eventos que movem '+ativo) : 'Próximos eventos') + ' · ' + moedas.join(', ');
+  try{
+    const url=`${API}/calendario/proximos?dias=7&impacto_min=medio&moedas=${encodeURIComponent(moedas.join(','))}`;
+    const r=await fetch(url);
+    const d=await r.json();
+    const evs=(d&&d.eventos)||[];
+    if(!evs.length){
+      body.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">Sem eventos de alto/médio impacto nos próximos 7 dias para '+moedas.join(', ')+'.</div>';
+      _calCarregando=false; return;
+    }
+    body.innerHTML = evs.map(function(ev){
+      const alto = ev.impacto==='alto';
+      const cor  = alto ? 'var(--red)' : 'var(--amber)';
+      const tag  = alto ? 'ALTO' : 'MÉDIO';
+      const tempo=_calRotuloTempo(ev.em_horas);
+      const det  = (ev.forecast||ev.previous)
+        ? ('Prev.: '+(ev.forecast||'—')+'  ·  Ant.: '+(ev.previous||'—')) : '';
+      return '<div style="display:flex;align-items:center;gap:11px;padding:9px 8px;border-bottom:1px solid var(--border)">'
+        +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:'+cor+'"></span>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:12.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ev.titulo+'</div>'
+          +'<div style="font-size:10.5px;color:var(--muted)">'+_calHora(ev.data_evento)+(det?(' · '+det):'')+'</div>'
+        +'</div>'
+        +'<div style="flex:none;text-align:right">'
+          +'<div style="font-size:9.5px;font-weight:700;color:'+cor+';letter-spacing:.4px">'+ev.moeda+' · '+tag+'</div>'
+          +'<div style="font-size:10.5px;color:var(--muted2);font-weight:600">'+tempo+'</div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center">Não foi possível carregar o calendário agora.</div>';
+  }
+  _calCarregando=false;
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const sel=document.getElementById('ativo');
+  if(sel) sel.addEventListener('change', function(){ carregarCalendario(); });
+  setTimeout(function(){ try{ carregarCalendario(); }catch(e){} }, 900);
+});
 </script>
 <!-- MODAL OTIMIZACAO -->
 <div class="otim-modal-bg" id="otim-modal-bg">
