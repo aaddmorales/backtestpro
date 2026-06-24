@@ -121,8 +121,23 @@ body::after{
 .radar-chat-row input:focus{border-color:var(--green)}
 .radar-chat-row button{background:var(--green);color:#04140d;border:none;border-radius:9px;width:42px;font-size:15px;cursor:pointer;font-weight:700}
 .radar-chat-row button:disabled{opacity:.5;cursor:default}
-.radar-fab-img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.55))}
-.radar-head-img{width:42px;height:42px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));animation:roboFlutua 3.4s ease-in-out infinite}
+.radar-fab-img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.55));animation:roboVivo 4.6s ease-in-out infinite}
+.radar-head-img{width:42px;height:42px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));animation:roboVivo 4.2s ease-in-out infinite;transform-origin:50% 80%}
+@keyframes roboVivo{
+  0%   {transform:translateY(0) rotate(0deg) scale(1)}
+  20%  {transform:translateY(-4px) rotate(-2.5deg) scale(1.02)}
+  45%  {transform:translateY(0) rotate(0deg) scale(1)}
+  55%  {transform:translateY(-2px) rotate(0deg) scale(1.01)}
+  72%  {transform:translateY(-4px) rotate(2.5deg) scale(1.02)}
+  100% {transform:translateY(0) rotate(0deg) scale(1)}
+}
+/* estado "pensando": mexe mais e brilha enquanto a IA processa */
+.radar-pensando{animation:roboPensa 0.7s ease-in-out infinite !important}
+@keyframes roboPensa{
+  0%,100%{transform:translateY(0) rotate(-5deg) scale(1.03);filter:drop-shadow(0 0 7px rgba(255,90,90,0.55)) drop-shadow(0 2px 5px rgba(0,0,0,0.5))}
+  50%    {transform:translateY(-5px) rotate(5deg) scale(1.06);filter:drop-shadow(0 0 14px rgba(255,90,90,0.85)) drop-shadow(0 2px 5px rgba(0,0,0,0.5))}
+}
+@media (prefers-reduced-motion:reduce){.radar-fab-img,.radar-head-img,.radar-pensando{animation:none !important}}
 .radar-panel{position:fixed;bottom:86px;right:22px;width:460px;max-width:95vw;max-height:640px;
   background:var(--bg2);border:1px solid rgba(0,208,132,0.3);border-radius:14px;z-index:300;
   display:none;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.6)}
@@ -141,8 +156,21 @@ body::after{
   background:rgba(4,9,7,0.6);backdrop-filter:blur(4px);z-index:290}
 .radar-loading-card{background:var(--bg2);border:1px solid rgba(0,208,132,0.4);border-radius:16px;
   padding:26px 34px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);max-width:420px}
-.radar-loading-icon{font-size:38px;animation:radarscan 1.6s ease-in-out infinite}
-@keyframes radarscan{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}
+.radar-loading-icon{display:flex;align-items:center;justify-content:center}
+.radar-loading-img{width:90px;height:90px;object-fit:contain;
+  animation:roboTrabalha 1.15s ease-in-out infinite, roboGlowPulse 1.6s ease-in-out infinite}
+@keyframes roboTrabalha{
+  0%   {transform:translateY(0) rotate(-6deg) scale(1)}
+  25%  {transform:translateY(-8px) rotate(6deg) scale(1.05)}
+  50%  {transform:translateY(0) rotate(-6deg) scale(1)}
+  75%  {transform:translateY(-5px) rotate(4deg) scale(1.04)}
+  100% {transform:translateY(0) rotate(-6deg) scale(1)}
+}
+@keyframes roboGlowPulse{
+  0%,100%{filter:drop-shadow(0 0 8px rgba(255,90,90,0.45)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))}
+  50%    {filter:drop-shadow(0 0 18px rgba(255,90,90,0.85)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))}
+}
+@media (prefers-reduced-motion:reduce){.radar-loading-img{animation:none !important}}
 .radar-loading-txt{margin-top:12px;font-size:13px;color:var(--text);font-weight:600;min-height:20px}
 .radar-loading-sub{margin-top:5px;font-size:11px;color:var(--muted2)}
 .radar-loading-bar{margin-top:14px;height:3px;border-radius:2px;background:var(--bg4);overflow:hidden}
@@ -5159,6 +5187,8 @@ async function radarChatEnviar(){
   inp.value='';
   _radarChatBusy=true;
   const send=document.getElementById('radar-chat-send'); if(send) send.disabled=true;
+  const _bots=document.querySelectorAll('.radar-head-img,.radar-fab-img');
+  _bots.forEach(function(b){ b.classList.add('radar-pensando'); });
   const pensando=_radarChatBolha(t('radar.chatPensando'),'pensando');
   try{
     const code=((document.getElementById('code-editor')||{}).value)||'';
@@ -5198,6 +5228,7 @@ async function radarChatEnviar(){
     _radarChatBolha(t('radar.chatErro'),'ia');
   }finally{
     _radarChatBusy=false; if(send) send.disabled=false;
+    document.querySelectorAll('.radar-head-img,.radar-fab-img').forEach(function(b){ b.classList.remove('radar-pensando'); });
     const i=document.getElementById('radar-chat-text'); if(i) i.focus();
   }
 }
@@ -5538,7 +5569,7 @@ function _calRenderFull(){
 <!-- ── RADAR: bot flutuante ── -->
 <div class="radar-loading" id="radar-loading">
   <div class="radar-loading-card">
-    <div class="radar-loading-icon">📡</div>
+    <div class="radar-loading-icon"><img class="radar-loading-img" src="/assets/robo_default.png" alt="Radar"></div>
     <div class="radar-loading-txt" id="radar-loading-txt">Analisando seu teste minuciosamente...</div>
     <div class="radar-loading-sub">OffMind analisando os padrões do ativo nos seus parâmetros</div>
     <div class="radar-loading-bar"><div></div></div>
