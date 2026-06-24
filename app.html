@@ -1074,8 +1074,8 @@ body.modo-vitrine #vitrine{display:block}
     <div class="ps">
       <div class="pl" data-i18n="sec.risco">Gestão de Risco</div>
       <div class="pr">
-        <div><div class="pli" data-i18n="lbl.stop">Stop Loss (pts)</div><input type="number" id="stop_loss" value="50"></div>
-        <div><div class="pli" data-i18n="lbl.take">Take Profit (pts)</div><input type="number" id="take_profit" value="100"></div>
+        <div><div class="pli" data-i18n="lbl.stop">Stop Loss (pts)</div><input type="number" id="stop_loss" value="60"></div>
+        <div><div class="pli" data-i18n="lbl.take">Take Profit (pts)</div><input type="number" id="take_profit" value="120"></div>
       </div>
       <div id="risco-aviso" data-i18n="param.naoIdent" style="display:none;position:relative;margin-top:9px;padding:9px 11px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.55);border-radius:8px;color:var(--text);font-size:12px;line-height:1.45"></div>
       <div class="pr" style="margin-top:6px">
@@ -5204,11 +5204,20 @@ async function radarChatEnviar(){
         };
       }
     }catch(_e){}
+    let config={};
+    try{
+      const gv=function(id){ const e=document.getElementById(id); return e?e.value:''; };
+      config={
+        ativo:gv('ativo'), timeframe:gv('timeframe'), periodo:gv('periodo'),
+        stop_loss:gv('stop_loss')||'60', take_profit:gv('take_profit')||'120',
+        capital:gv('capital'), max_ops:gv('max_ops'), spread:gv('comissao'), indicador:gv('indicador')
+      };
+    }catch(_e){}
     const r=await fetch(API+'/radar/chat',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         user_id:(typeof usuarioAtual!=='undefined'&&usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:'',
         mensagem:txt, historico:_radarChatHist.slice(-10),
-        idioma:(typeof LANG!=='undefined'?LANG:'pt'), codigo:code, resultado:resultado
+        idioma:(typeof LANG!=='undefined'?LANG:'pt'), codigo:code, resultado:resultado, config:config
       })});
     const d=await r.json();
     if(pensando) pensando.remove();
