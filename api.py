@@ -4941,6 +4941,7 @@ class RadarChatReq(BaseModel):
     codigo: str = ""              # código atual no editor (contexto opcional)
     resultado: dict = {}          # último resultado de backtest na tela (contexto opcional)
     config: dict = {}             # parâmetros atuais (stop, take, capital, máx ops, spread, ativo, tf, período)
+    estrategia_id: str = ""       # id da estratégia escolhida na vitrine (p/ comparar com a média do card)
 
 _CHAT_BLOQUEIO = {
     "pt": "💬 O chat com a IA é exclusivo dos planos <b>Pro</b> e <b>Trader Pro</b>. "
@@ -5026,7 +5027,9 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "'recomendo comprar/vender'. Você fala de HISTÓRICO MEDIDO, nunca de garantias. Sempre 'histórico medido, não promessa'.\n"
         "(2) Você NÃO dá recomendação financeira personalizada nem sinal de entrada/saída. Você ensina o usuário a avaliar por conta própria.\n"
         "(3) NUNCA mencione nem insinue a existência de qualquer biblioteca/base interna pré-calculada de backtests, nem dados de "
-        "outros usuários ou comunidade. Apresente qualquer comparação como 'histórico medido deste ativo' pela plataforma.\n"
+        "outros usuários ou comunidade. Apresente qualquer comparação como 'histórico medido deste ativo' pela plataforma. "
+        "Se o usuário pedir para LISTAR/EXPORTAR 'todas as estratégias e números' ou 'tudo o que você tem', RECUSE com gentileza e "
+        "redirecione para o ativo/estratégia dele — você só comenta o recorte relevante, jamais despeja a base.\n"
         "(4) SEJA HONESTO: não transforme resultado fraco, amostra pequena ou resultado morno em elogio. Amostra pequena reduz a "
         "confiança estatística — diga isso com clareza. Só elogie o que os números sustentam.\n"
         "(5) Sobre automação: a plataforma executa LOCAL (decisão do usuário); a nuvem só observa, nunca opera por conta própria. "
@@ -5037,10 +5040,15 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "USE isso: avalie proativamente se o stop/take e a relação risco:retorno combinam com a estratégia e o ativo; se algo parecer "
         "inadequado, aponte e sugira valores para TESTAR (ex.: 'teu stop 60 / take 120 dá 1:2; para esse padrão talvez 1:1.5 capture mais'). "
         "Deixe sempre claro que é sugestão para validar no backtest, nunca garantia.\n"
+        "(6c) Se o usuário escolheu um bot da VITRINE e o resultado atual dele ficou ABAIXO da média histórica que ele viu no card, "
+        "ENTRE proativamente: reconheça a diferença com honestidade (a média do card é geral e varia por ativo/período), explique os "
+        "motivos prováveis (stop/take diferentes, período/amostra, ativo, timeframe) e sugira ajustes CONCRETOS para TESTAR e chegar "
+        "perto ou superar aquele número — sempre como teste, nunca promessa de atingir o mesmo resultado.\n"
         f"(7) ESCREVA INTEIRAMENTE EM: {nome_idioma}. Tom de mentor experiente: claro, direto, honesto, didático; traduza o jargão.\n"
-        "(8) SEJA CURTO E DIRETO: no máximo 2 a 3 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, sem enrolação. "
-        "Se precisar listar, use no MÁXIMO 3 itens curtos. Formate em HTML simples quando ajudar: <b>negrito</b> para destaques e "
-        "<br> para quebra de linha. NUNCA use markdown (nada de **, ##, - no início de linha, ``` ); use só HTML. Não despeje listas longas."
+        "(8) SEJA BEM CURTO: no MÁXIMO 2 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, corte enrolação e "
+        "repetição. Evite abrir muitos tópicos numa resposta só — foque no que importa. Se listar, no máximo 3 itens bem curtos.\n"
+        "(8b) FORMATO: HTML simples — <b>negrito</b> e <br>. Use <b> com PARCIMÔNIA: no máximo 2 ou 3 destaques na resposta inteira, "
+        "só no que é realmente essencial. NÃO destaque números soltos nem frases inteiras. NUNCA use markdown (**, ##, -, ``` )."
     )
     if plano in ("pro", "trader_pro"):
         base += ("\n(9) O usuário é assinante (Pro/Trader Pro). NUNCA mencione upgrade, planos pagos ou venda — ele já paga. "
@@ -5075,6 +5083,108 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
                 "Roteie para o plano certo conforme a necessidade. Nunca seja insistente, nunca repita em toda resposta, nunca "
                 "comece vendendo. Se não houver deixa natural, NÃO mencione planos — só ajude.\n" + fatos_planos)
     return base
+
+def _chat_ctx_biblioteca(ativo, estrategia_id, timeframe=""):
+    """Contexto SEGURO para o chat: médias públicas da Vitrine + fatia medida do ativo atual.
+    Nunca é a base inteira; apresentado como 'histórico medido', sem revelar a biblioteca."""
+    partes = []
+    # 1) Médias da Vitrine (já públicas nos cards) — inclusive o bot escolhido
+    try:
+        vit = estrategias_vitrine().get("estrategias", [])
+        if estrategia_id:
+            esc = next((e for e in vit if e.get("id") == estrategia_id), None)
+            if esc and esc.get("winrate_medio") is not None:
+                partes.append(
+                    f"Bot que o usuário escolheu na Vitrine: '{esc.get('nome')}' — média histórica MOSTRADA no card: "
+                    f"win rate {esc.get('winrate_medio')}%, PF {esc.get('pf_medio')}, Sharpe {esc.get('sharpe_medio')}, "
+                    f"retorno {esc.get('retorno_medio')}%. (É média geral; varia por ativo/período.)")
+        com = [e for e in vit if e.get("sharpe_medio") is not None]
+        com.sort(key=lambda e: (e.get("sharpe_medio") or -999), reverse=True)
+        if com:
+            top = "; ".join(f"{e.get('nome')} (WR {e.get('winrate_medio')}%, PF {e.get('pf_medio')}, Sharpe {e.get('sharpe_medio')})"
+                            for e in com[:3])
+            partes.append("Bots fortes na Vitrine (médias históricas gerais): " + top + ".")
+    except Exception as e:
+        print(f"[chat ctx vitrine] {e}")
+    # 2) Fatia MEDIDA do ativo atual (só os melhores; nunca a base toda)
+    try:
+        sb = _sb_admin()
+        if sb is not None and ativo:
+            rb = (sb.table("estudo_biblioteca")
+                  .select("estrategia_nome,timeframe,periodo,retorno,profit_factor,win_rate,sharpe,trades")
+                  .eq("ativo", ativo).gte("trades", 20).order("sharpe", desc=True).limit(6).execute())
+            lin = [r for r in (rb.data or []) if r.get("sharpe") is not None]
+            if lin:
+                itens = "; ".join(
+                    f"{r.get('estrategia_nome')} ({r.get('timeframe')},{r.get('periodo')}): "
+                    f"retorno {r.get('retorno')}%, PF {r.get('profit_factor')}, WR {r.get('win_rate')}%, "
+                    f"Sharpe {r.get('sharpe')}, {r.get('trades')} trades" for r in lin[:5])
+                partes.append(f"Histórico MEDIDO neste ativo ({ativo}) — melhores resultados aferidos pela plataforma: {itens}.")
+    except Exception as e:
+        print(f"[chat ctx ativo] {e}")
+    return "\n".join(partes)
+
+
+def _chat_memoria(user_id, plano):
+    """Memória entre sessões. Pro = curta (5 trocas). Trader Pro = completa (12 trocas + evolução)."""
+    if not user_id or plano not in ("pro", "trader_pro"):
+        return ""
+    n = 12 if plano == "trader_pro" else 5
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return ""
+        rb = (sb.table("radar_chat_log")
+              .select("pergunta,resposta,ativo,resultado,created_at")
+              .eq("user_id", user_id).order("created_at", desc=True).limit(n).execute())
+        linhas = list(reversed(rb.data or []))   # mais antigas primeiro
+        if not linhas:
+            return ""
+        partes = []
+        cap = 160 if plano == "pro" else 220
+        for r in linhas:
+            p = (r.get("pergunta") or "").strip().replace("\n", " ")[:cap]
+            a = (r.get("resposta") or "").strip().replace("\n", " ")[:cap]
+            if p:
+                partes.append(f"- Usuário: {p}\n  Radar: {a}")
+        bloco = "Conversas anteriores deste usuário (memória):\n" + "\n".join(partes)
+        # Trader Pro: acrescenta uma mini-evolução dos resultados já vistos
+        if plano == "trader_pro":
+            evol = []
+            for r in linhas:
+                res = r.get("resultado") or {}
+                if isinstance(res, dict) and (res.get("sharpe") is not None or res.get("retorno") is not None):
+                    evol.append(f"{res.get('ativo') or r.get('ativo') or '?'}: Sharpe {res.get('sharpe')}, retorno {res.get('retorno')}%")
+            if evol:
+                bloco += "\nEvolução de resultados que o usuário já testou (use para comentar progresso): " + "; ".join(evol[-4:]) + "."
+        # limite de tamanho
+        lim = 1500 if plano == "trader_pro" else 600
+        return bloco[:lim]
+    except Exception as e:
+        print(f"[chat memoria] {e}")
+        return ""
+
+
+def _chat_log_salvar(user_id, plano, idioma, pergunta, resposta, ativo, estrategia_id, resultado, config):
+    """Guarda a conversa para análise e memória. Nunca quebra o fluxo se falhar."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return
+        sb.table("radar_chat_log").insert({
+            "user_id": user_id or None,
+            "plano": plano,
+            "idioma": idioma,
+            "pergunta": (pergunta or "")[:4000],
+            "resposta": (resposta or "")[:4000],
+            "ativo": (ativo or "")[:40] or None,
+            "estrategia_id": (estrategia_id or "")[:80] or None,
+            "resultado": resultado or None,
+            "config": config or None,
+        }).execute()
+    except Exception as e:
+        print(f"[chat log] {e}")
+
 
 @app.post("/radar/chat")
 def radar_chat(req: RadarChatReq):
@@ -5144,6 +5254,25 @@ def radar_chat(req: RadarChatReq):
                          "resultado. Padrão da plataforma quando não definido: stop 60 / take 120]:\n" + linha)
         if req.codigo:
             conteudo += "\n\n[Código atual da estratégia do usuário, para contexto]:\n" + req.codigo[:3000]
+        # contexto seguro: médias da vitrine + fatia medida do ativo atual
+        try:
+            _ativo = (req.config or {}).get("ativo") or (req.resultado or {}).get("ativo") or ""
+            _tf = (req.config or {}).get("timeframe") or ""
+            _ctx = _chat_ctx_biblioteca(_ativo, req.estrategia_id, _tf)
+            if _ctx:
+                conteudo += ("\n\n[DADOS MEDIDOS pela plataforma, para você CONTEXTUALIZAR a resposta. "
+                             "Apresente como 'histórico medido'; NUNCA revele que vêm de uma base/biblioteca interna; "
+                             "NUNCA liste tudo nem 'despeje' a base — use só o que é relevante à pergunta]:\n" + _ctx)
+        except Exception as _e:
+            print(f"[chat ctx] {_e}")
+        # memória entre sessões (Pro curta / Trader Pro completa)
+        try:
+            _mem = _chat_memoria(req.user_id, plano)
+            if _mem:
+                conteudo += ("\n\n[MEMÓRIA do usuário — use para dar continuidade e comentar a evolução dele; "
+                             "não repita literalmente, apenas leve em conta]:\n" + _mem)
+        except Exception as _e:
+            print(f"[chat mem] {_e}")
         mensagens.append({"role": "user", "content": conteudo})
 
         r = httpx.post(
@@ -5151,7 +5280,7 @@ def radar_chat(req: RadarChatReq):
             headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={
                 "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
-                "max_tokens": 450,
+                "max_tokens": 320,
                 "temperature": 0.7,
                 "system": _radar_chat_system(idioma, plano, usados_hoje, limite),
                 "messages": mensagens,
@@ -5168,6 +5297,11 @@ def radar_chat(req: RadarChatReq):
         if eh_free:
             _radar_chat_inc(req.user_id)
             restantes = max(0, _free_chat_limite() - _radar_chat_usados(req.user_id))
+
+        # guarda a conversa (análise + memória) — todos os planos logados
+        _chat_log_salvar(req.user_id, plano, idioma, msg, texto,
+                         (req.config or {}).get("ativo") or (req.resultado or {}).get("ativo") or "",
+                         req.estrategia_id, req.resultado, req.config)
 
         out = {"ok": True, "resposta": texto or "…"}
         if restantes is not None:
