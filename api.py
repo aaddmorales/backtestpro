@@ -4939,6 +4939,7 @@ class RadarChatReq(BaseModel):
     historico: list = []          # [{role:'user'|'assistant', content:str}, ...]
     idioma: str = "pt"
     codigo: str = ""              # código atual no editor (contexto opcional)
+    resultado: dict = {}          # último resultado de backtest na tela (contexto opcional)
 
 _CHAT_BLOQUEIO = {
     "pt": "💬 O chat com a IA é exclusivo dos planos <b>Pro</b> e <b>Trader Pro</b>. "
@@ -5032,7 +5033,9 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "(6) Se o usuário colar código de estratégia, você pode explicar e sugerir melhorias CONCEITUAIS, mas NUNCA invente números de backtest — "
         "oriente o usuário a rodar o teste para ver os números reais.\n"
         f"(7) ESCREVA INTEIRAMENTE EM: {nome_idioma}. Tom de mentor experiente: claro, direto, honesto, didático; traduza o jargão.\n"
-        "(8) Seja conciso: no máximo uns 3 parágrafos curtos. Pode usar <b>negrito</b>. Responda em TEXTO (não use JSON nem markdown de código longo)."
+        "(8) SEJA CURTO E DIRETO: no máximo 2 a 3 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, sem enrolação. "
+        "Se precisar listar, use no MÁXIMO 3 itens curtos. Formate em HTML simples quando ajudar: <b>negrito</b> para destaques e "
+        "<br> para quebra de linha. NUNCA use markdown (nada de **, ##, - no início de linha, ``` ); use só HTML. Não despeje listas longas."
     )
     if plano in ("pro", "trader_pro"):
         base += ("\n(9) O usuário é assinante (Pro/Trader Pro). NUNCA mencione upgrade, planos pagos ou venda — ele já paga. "
@@ -5102,6 +5105,27 @@ def radar_chat(req: RadarChatReq):
             if cont:
                 mensagens.append({"role": papel, "content": cont})
         conteudo = msg[:2000]
+        if req.resultado:
+            r0 = req.resultado
+            def _g(*ks):
+                for k in ks:
+                    if k in r0 and r0[k] not in (None, ""):
+                        return r0[k]
+                return None
+            partes = []
+            for rotulo, chaves in [
+                ("ativo", ["ativo", "symbol"]), ("timeframe", ["timeframe", "tf"]),
+                ("periodo", ["periodo", "period"]), ("trades", ["trades", "n_trades", "total_trades"]),
+                ("win_rate", ["win_rate", "winrate"]), ("profit_factor", ["profit_factor", "pf"]),
+                ("sharpe", ["sharpe"]), ("retorno_total", ["retorno", "retorno_total", "return_total"]),
+                ("retorno_anual", ["cagr", "retorno_anual"]), ("max_drawdown", ["max_drawdown", "drawdown", "dd"]),
+            ]:
+                v = _g(*chaves)
+                if v is not None:
+                    partes.append(f"{rotulo}={v}")
+            if partes:
+                conteudo += ("\n\n[Resultado do ÚLTIMO backtest que o usuário VÊ na tela agora — "
+                             "use estes números reais, não peça que ele os repita]:\n" + "; ".join(partes))
         if req.codigo:
             conteudo += "\n\n[Código atual da estratégia do usuário, para contexto]:\n" + req.codigo[:3000]
         mensagens.append({"role": "user", "content": conteudo})
@@ -5111,7 +5135,7 @@ def radar_chat(req: RadarChatReq):
             headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={
                 "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
-                "max_tokens": 700,
+                "max_tokens": 450,
                 "temperature": 0.7,
                 "system": _radar_chat_system(idioma, plano, usados_hoje, limite),
                 "messages": mensagens,
