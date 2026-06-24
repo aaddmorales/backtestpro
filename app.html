@@ -5132,6 +5132,16 @@ function copiarToken(){
 // ══════════════════════════════════════════════════════════════════
 let _radarChatHist=[];
 let _radarChatBusy=false;
+function _mdParaHtml(s){
+  if(!s) return '';
+  let h=String(s);
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');         // **negrito** -> <b>
+  h=h.replace(/(^|\n)\s*#{1,4}\s*/g,'$1');             // remove ## títulos
+  h=h.replace(/(^|\n)\s*[-•*]\s+/g,'$1• ');            // normaliza marcadores
+  h=h.replace(/```[\s\S]*?```/g, m=>m.replace(/```/g,''));// tira cercas de código
+  h=h.replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>'); // quebras de linha
+  return h;
+}
 function _radarChatBolha(html, tipo){
   const body=document.getElementById('radar-body'); if(!body) return null;
   const div=document.createElement('div');
@@ -5152,16 +5162,28 @@ async function radarChatEnviar(){
   const pensando=_radarChatBolha(t('radar.chatPensando'),'pensando');
   try{
     const code=((document.getElementById('code-editor')||{}).value)||'';
+    let resultado={};
+    try{
+      if(typeof lastResult!=='undefined' && lastResult){
+        const dd=lastResult, p=(window._ultimoResultado&&window._ultimoResultado.params)||{};
+        resultado={
+          ativo:dd.ativo||p.ativo||p.symbol||'', timeframe:dd.timeframe||p.timeframe||p.tf||'',
+          periodo:dd.periodo||p.periodo||'', trades:dd.trades||dd.n_trades||'',
+          win_rate:dd.win_rate, profit_factor:dd.profit_factor, sharpe:dd.sharpe,
+          retorno:dd.retorno, cagr:dd.cagr, max_drawdown:dd.max_drawdown
+        };
+      }
+    }catch(_e){}
     const r=await fetch(API+'/radar/chat',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         user_id:(typeof usuarioAtual!=='undefined'&&usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:'',
         mensagem:txt, historico:_radarChatHist.slice(-10),
-        idioma:(typeof LANG!=='undefined'?LANG:'pt'), codigo:code
+        idioma:(typeof LANG!=='undefined'?LANG:'pt'), codigo:code, resultado:resultado
       })});
     const d=await r.json();
     if(pensando) pensando.remove();
     const resp=(d&&d.resposta)||t('radar.chatErro');
-    _radarChatBolha(resp,'ia');
+    _radarChatBolha(_mdParaHtml(resp),'ia');
     if(d && d.ok){
       _radarChatHist.push({role:'user',content:txt});
       _radarChatHist.push({role:'assistant',content:resp.replace(/<[^>]*>/g,'')});
