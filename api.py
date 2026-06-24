@@ -4940,6 +4940,7 @@ class RadarChatReq(BaseModel):
     idioma: str = "pt"
     codigo: str = ""              # código atual no editor (contexto opcional)
     resultado: dict = {}          # último resultado de backtest na tela (contexto opcional)
+    config: dict = {}             # parâmetros atuais (stop, take, capital, máx ops, spread, ativo, tf, período)
 
 _CHAT_BLOQUEIO = {
     "pt": "💬 O chat com a IA é exclusivo dos planos <b>Pro</b> e <b>Trader Pro</b>. "
@@ -5032,6 +5033,10 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "Você não acessa contas reais nem envia ordens.\n"
         "(6) Se o usuário colar código de estratégia, você pode explicar e sugerir melhorias CONCEITUAIS, mas NUNCA invente números de backtest — "
         "oriente o usuário a rodar o teste para ver os números reais.\n"
+        "(6b) Você RECEBE a configuração atual do usuário (ativo, timeframe, período, stop, take, capital, máx ops, spread, indicador). "
+        "USE isso: avalie proativamente se o stop/take e a relação risco:retorno combinam com a estratégia e o ativo; se algo parecer "
+        "inadequado, aponte e sugira valores para TESTAR (ex.: 'teu stop 60 / take 120 dá 1:2; para esse padrão talvez 1:1.5 capture mais'). "
+        "Deixe sempre claro que é sugestão para validar no backtest, nunca garantia.\n"
         f"(7) ESCREVA INTEIRAMENTE EM: {nome_idioma}. Tom de mentor experiente: claro, direto, honesto, didático; traduza o jargão.\n"
         "(8) SEJA CURTO E DIRETO: no máximo 2 a 3 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, sem enrolação. "
         "Se precisar listar, use no MÁXIMO 3 itens curtos. Formate em HTML simples quando ajudar: <b>negrito</b> para destaques e "
@@ -5126,6 +5131,17 @@ def radar_chat(req: RadarChatReq):
             if partes:
                 conteudo += ("\n\n[Resultado do ÚLTIMO backtest que o usuário VÊ na tela agora — "
                              "use estes números reais, não peça que ele os repita]:\n" + "; ".join(partes))
+        if req.config:
+            cfg = req.config
+            sl = str(cfg.get("stop_loss") or "").strip() or "60"
+            tp = str(cfg.get("take_profit") or "").strip() or "120"
+            linha = (f"ativo={cfg.get('ativo','?')}; timeframe={cfg.get('timeframe','?')}; "
+                     f"periodo={cfg.get('periodo','?')}; stop_loss={sl} pts; take_profit={tp} pts; "
+                     f"capital={cfg.get('capital','?')}; max_ops={cfg.get('max_ops','?')}; "
+                     f"spread_custo={cfg.get('spread','?')}; indicador={cfg.get('indicador','?')}")
+            conteudo += ("\n\n[Configuração ATUAL que o usuário está usando na plataforma — você PODE ver e avaliar; "
+                         "se stop/take não fizerem sentido para a estratégia, sugira ajustes para TESTAR, sem prometer "
+                         "resultado. Padrão da plataforma quando não definido: stop 60 / take 120]:\n" + linha)
         if req.codigo:
             conteudo += "\n\n[Código atual da estratégia do usuário, para contexto]:\n" + req.codigo[:3000]
         mensagens.append({"role": "user", "content": conteudo})
