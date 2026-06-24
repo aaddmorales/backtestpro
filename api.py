@@ -4930,3 +4930,183 @@ def estrategias_vitrine(lang: str = "pt"):
     _VITRINE_CACHE["t"] = _t.time()
     _VITRINE_CACHE["dados"] = out
     return out
+
+
+# ── RADAR CHAT: conversa com IA (focada em trading/plataforma; Pro/Trader Pro) ──
+class RadarChatReq(BaseModel):
+    user_id: str = ""
+    mensagem: str = ""
+    historico: list = []          # [{role:'user'|'assistant', content:str}, ...]
+    idioma: str = "pt"
+    codigo: str = ""              # código atual no editor (contexto opcional)
+
+_CHAT_BLOQUEIO = {
+    "pt": "💬 O chat com a IA é exclusivo dos planos <b>Pro</b> e <b>Trader Pro</b>. "
+          "Faça upgrade em 💳 Planos para conversar comigo sobre suas estratégias, métricas e a plataforma.",
+    "en": "💬 AI chat is exclusive to the <b>Pro</b> and <b>Trader Pro</b> plans. "
+          "Upgrade in 💳 Plans to chat with me about your strategies, metrics and the platform.",
+    "es": "💬 El chat con la IA es exclusivo de los planes <b>Pro</b> y <b>Trader Pro</b>. "
+          "Mejora tu plan en 💳 Planes para conversar conmigo sobre tus estrategias, métricas y la plataforma.",
+}
+
+# limite semanal do Free (configurável por env)
+def _free_chat_limite():
+    try:
+        return int(os.environ.get("RADAR_FREE_CHAT_SEMANA", "5"))
+    except Exception:
+        return 5
+
+def _semana_iso():
+    import datetime as _dt
+    a, s, _ = _dt.datetime.utcnow().isocalendar()
+    return f"{a}-W{s:02d}"
+
+def _radar_chat_usados(user_id: str) -> int:
+    """Quantas mensagens o Free já usou nesta semana ISO."""
+    try:
+        sb = _sb_admin()
+        if sb is None or not user_id:
+            return 0
+        sem = _semana_iso()
+        r = (sb.table("radar_chat_uso").select("usados")
+             .eq("user_id", user_id).eq("semana", sem).limit(1).execute())
+        if r.data:
+            return int(r.data[0].get("usados") or 0)
+        return 0
+    except Exception as e:
+        print(f"[radar_chat_usados] {e}")
+        return 0
+
+def _radar_chat_inc(user_id: str):
+    """Incrementa o contador semanal do Free (upsert)."""
+    try:
+        sb = _sb_admin()
+        if sb is None or not user_id:
+            return
+        sem = _semana_iso()
+        atual = _radar_chat_usados(user_id)
+        sb.table("radar_chat_uso").upsert(
+            {"user_id": user_id, "semana": sem, "usados": atual + 1,
+             "updated_at": "now()"},
+            on_conflict="user_id,semana").execute()
+    except Exception as e:
+        print(f"[radar_chat_inc] {e}")
+
+def _msg_limite(idioma, limite):
+    m = {
+        "pt": (f"💬 Você usou suas <b>{limite} conversas grátis</b> desta semana comigo. "
+               "Os planos <b>Pro</b> e <b>Trader Pro</b> têm conversa <b>ilimitada</b> — além de validação out-of-sample, "
+               "todos os mercados, exportação de robô e packs verificados. Volte semana que vem ou faça upgrade em 💳 Planos."),
+        "en": (f"💬 You've used your <b>{limite} free chats</b> with me this week. "
+               "The <b>Pro</b> and <b>Trader Pro</b> plans include <b>unlimited</b> chat — plus out-of-sample validation, "
+               "all markets, bot export and verified packs. Come back next week or upgrade in 💳 Plans."),
+        "es": (f"💬 Usaste tus <b>{limite} conversaciones gratis</b> de esta semana conmigo. "
+               "Los planes <b>Pro</b> y <b>Trader Pro</b> tienen chat <b>ilimitado</b> — además de validación out-of-sample, "
+               "todos los mercados, exportación de robot y packs verificados. Vuelve la próxima semana o mejora tu plan en 💳 Planes."),
+    }
+    return m.get(idioma, m["pt"])
+
+def _radar_chat_system(idioma: str, plano: str = "free") -> str:
+    nome_idioma = _IDIOMA_NOME.get(idioma, "português brasileiro")
+    base = (
+        "Você é o Radar, o assistente do BotTested (plataforma de backtesting e validação de estratégias de trading). "
+        "Você conversa com o usuário para AJUDÁ-LO a entender e melhorar o uso da plataforma.\n"
+        "ESCOPO (responda SOMENTE sobre isto): trading, backtesting, estratégias, gestão de risco, disciplina operacional, "
+        "interpretação de métricas (Sharpe, Profit Factor, drawdown, win rate, expectância), automação de bots MT5, "
+        "e como usar os recursos do BotTested (Vitrine, Editor, Otimização, Robustez/out-of-sample, Estudo, Calendário, Monitor, Planos). "
+        "Se a pergunta for FORA desse escopo (política, conhecimento geral, programação não relacionada a trading, conselhos pessoais, "
+        "qualquer outro assunto), recuse com gentileza em uma frase e traga de volta para trading/plataforma. Não responda off-topic.\n"
+        "REGRAS INVIOLÁVEIS:\n"
+        "(1) NUNCA preveja o mercado nem prometa lucro/retorno futuro. Proibido 'vai lucrar', 'garante', 'com certeza', '100%', "
+        "'recomendo comprar/vender'. Você fala de HISTÓRICO MEDIDO, nunca de garantias. Sempre 'histórico medido, não promessa'.\n"
+        "(2) Você NÃO dá recomendação financeira personalizada nem sinal de entrada/saída. Você ensina o usuário a avaliar por conta própria.\n"
+        "(3) NUNCA mencione nem insinue a existência de qualquer biblioteca/base interna pré-calculada de backtests, nem dados de "
+        "outros usuários ou comunidade. Apresente qualquer comparação como 'histórico medido deste ativo' pela plataforma.\n"
+        "(4) SEJA HONESTO: não transforme resultado fraco, amostra pequena ou resultado morno em elogio. Amostra pequena reduz a "
+        "confiança estatística — diga isso com clareza. Só elogie o que os números sustentam.\n"
+        "(5) Sobre automação: a plataforma executa LOCAL (decisão do usuário); a nuvem só observa, nunca opera por conta própria. "
+        "Você não acessa contas reais nem envia ordens.\n"
+        "(6) Se o usuário colar código de estratégia, você pode explicar e sugerir melhorias CONCEITUAIS, mas NUNCA invente números de backtest — "
+        "oriente o usuário a rodar o teste para ver os números reais.\n"
+        f"(7) ESCREVA INTEIRAMENTE EM: {nome_idioma}. Tom de mentor experiente: claro, direto, honesto, didático; traduza o jargão.\n"
+        "(8) Seja conciso: no máximo uns 3 parágrafos curtos. Pode usar <b>negrito</b>. Responda em TEXTO (não use JSON nem markdown de código longo)."
+    )
+    if plano in ("pro", "trader_pro"):
+        base += ("\n(9) O usuário é assinante (Pro/Trader Pro). NUNCA mencione upgrade, planos pagos ou venda — ele já paga. "
+                 "Apenas ajude com excelência.")
+    else:
+        base += ("\n(9) O usuário está no plano GRATUITO. Você PODE mencionar UMA única vez, de forma natural e leve, "
+                 "que os planos Pro e Trader Pro destravam mais — MAS SOMENTE quando o próprio assunto abrir a deixa "
+                 "(ex.: ele pede validação out-of-sample aprofundada, todos os mercados, exportação de robô, packs verificados, "
+                 "ou conversa ilimitada com você). Nunca seja insistente, nunca repita o convite em toda resposta, "
+                 "nunca comece a resposta vendendo. Se não houver deixa natural, NÃO mencione planos — só ajude. "
+                 "O convite deve soar como uma dica útil, jamais como propaganda.")
+    return base
+
+@app.post("/radar/chat")
+def radar_chat(req: RadarChatReq):
+    idioma = req.idioma if req.idioma in ("pt", "en", "es") else "pt"
+    plano = _plano_usuario(req.user_id) if req.user_id else "free"
+
+    # Free entra, mas com cota semanal. Sem user_id (não logado) -> pede login/upgrade.
+    eh_free = plano not in ("pro", "trader_pro")
+    if eh_free:
+        if not req.user_id:
+            return {"ok": False, "bloqueado": True, "resposta": _CHAT_BLOQUEIO.get(idioma, _CHAT_BLOQUEIO["pt"])}
+        limite = _free_chat_limite()
+        usados = _radar_chat_usados(req.user_id)
+        if usados >= limite:
+            return {"ok": False, "bloqueado": True, "limite": True,
+                    "resposta": _msg_limite(idioma, limite)}
+
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave:
+        return {"ok": False, "resposta": "IA indisponível no momento."}
+
+    msg = (req.mensagem or "").strip()
+    if not msg:
+        return {"ok": False, "resposta": ""}
+
+    try:
+        import httpx, sys
+        mensagens = []
+        for m in (req.historico or [])[-10:]:
+            papel = "assistant" if m.get("role") == "assistant" else "user"
+            cont = str(m.get("content", ""))[:2000]
+            if cont:
+                mensagens.append({"role": papel, "content": cont})
+        conteudo = msg[:2000]
+        if req.codigo:
+            conteudo += "\n\n[Código atual da estratégia do usuário, para contexto]:\n" + req.codigo[:3000]
+        mensagens.append({"role": "user", "content": conteudo})
+
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={
+                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
+                "max_tokens": 700,
+                "temperature": 0.7,
+                "system": _radar_chat_system(idioma, plano),
+                "messages": mensagens,
+            },
+            timeout=20.0,
+        )
+        if r.status_code != 200:
+            print(f"RADAR CHAT status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes."}
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+
+        # só conta o uso do Free quando a resposta deu certo
+        restantes = None
+        if eh_free:
+            _radar_chat_inc(req.user_id)
+            restantes = max(0, _free_chat_limite() - _radar_chat_usados(req.user_id))
+
+        out = {"ok": True, "resposta": texto or "…"}
+        if restantes is not None:
+            out["restantes"] = restantes
+        return out
+    except Exception as e:
+        print(f"RADAR CHAT erro: {e}")
+        return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes."}
