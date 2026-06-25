@@ -3066,10 +3066,12 @@ function atualizarMetricsBar(d) {
 // cliente preencher e rodar de novo. Honesto > adivinhar errado.
 let _codigoAvisado = '';
 function zerarEPiscarParams(){
+  // Req 1: nunca esvaziar — repõe o padrão 60/120 (função mantida por segurança;
+  // o portão de rodarBacktest já não a chama).
   const sl = document.getElementById('stop_loss');
   const tp = document.getElementById('take_profit');
-  if(sl){ sl.value=''; sl.classList.add('campo-piscando'); }
-  if(tp){ tp.value=''; tp.classList.add('campo-piscando'); }
+  if(sl && (sl.value==='' || parseFloat(sl.value)<=0)){ sl.value='60'; }
+  if(tp && (tp.value==='' || parseFloat(tp.value)<=0)){ tp.value='120'; }
   const aviso = document.getElementById('param-aviso');
   if(aviso){ aviso.textContent = t('param.naoIdent'); aviso.style.display='block'; }
   // aviso colado nos campos stop/take na barra esquerda (em vez de jogar no Radar, longe deles)
@@ -3122,25 +3124,16 @@ async function rodarBacktest() {
   console.log('liberado:', liberado);
   if (!liberado) return;
 
-  // ── PORTÃO: parâmetros de risco não identificados no código custom ──
+  // ── GARANTIA (req 1): Stop/Take NUNCA vazios — repõe o padrão 60/120 ──
+  // Estratégias que não usam SL_PTS/TP_PTS (ex.: as da Vitrine) não reagem a
+  // stop/take; então não faz sentido abortar nem esvaziar os campos. Apenas
+  // garantimos o padrão preenchido e seguimos o teste.
   {
-    const _cod = document.getElementById('code-editor').value.trim();
-    const _ehCustom = _cod && _cod.length > 10 && !_cod.startsWith('#');
-    if (_ehCustom && !/SL_PTS|TP_PTS/.test(_cod)) {
-      const _sl = parseFloat(document.getElementById('stop_loss').value);
-      if (_codigoAvisado !== _cod) {        // 1ª vez vendo este código: avisa e para
-        _codigoAvisado = _cod;
-        zerarEPiscarParams();
-        return;
-      }
-      if (!_sl || _sl <= 0) {               // já avisou, mas ainda está zerado
-        zerarEPiscarParams();
-        return;
-      }
-      pararPiscarParams();                  // preencheu: segue o jogo
-    } else {
-      pararPiscarParams();
-    }
+    const _slEl = document.getElementById('stop_loss');
+    const _tpEl = document.getElementById('take_profit');
+    if (_slEl && (_slEl.value === '' || isNaN(parseFloat(_slEl.value)) || parseFloat(_slEl.value) <= 0)) _slEl.value = '60';
+    if (_tpEl && (_tpEl.value === '' || isNaN(parseFloat(_tpEl.value)) || parseFloat(_tpEl.value) <= 0)) _tpEl.value = '120';
+    pararPiscarParams();
   }
 
   const btn = document.getElementById('run-btn');

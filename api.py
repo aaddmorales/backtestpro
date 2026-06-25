@@ -595,7 +595,7 @@ async def _redirecionar_navegador(request: Request, call_next):
 
 API_VERSAO = "4.0 — Radar IA multilíngue (PT/EN/ES) + Estudo como fonte"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-25d-marcadores-adaptativos"
+BUILD_TAG = "2026-06-25e-radar-stoptake-verificado"
 
 @app.get("/versao")
 def versao():
@@ -5164,26 +5164,28 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "Você não acessa contas reais nem envia ordens.\n"
         "(6) Se o usuário colar código de estratégia, você pode explicar e sugerir melhorias CONCEITUAIS, mas NUNCA invente números de backtest — "
         "oriente o usuário a rodar o teste para ver os números reais.\n"
-        "(6b) Você RECEBE a configuração atual do usuário (ativo, timeframe, período, stop, take, capital, máx ops, spread, indicador). "
-        "USE isso: avalie proativamente se o stop/take e a relação risco:retorno combinam com a estratégia e o ativo; se algo parecer "
-        "inadequado, aponte e sugira valores para TESTAR (ex.: 'teu stop 60 / take 120 dá 1:2; para esse padrão talvez 1:1.5 capture mais'). "
-        "Deixe sempre claro que é sugestão para validar no backtest, nunca garantia.\n"
-        "(6c) Se o usuário escolheu um bot da VITRINE e o resultado atual dele ficou ABAIXO da média histórica que ele viu no card, "
-        "ENTRE proativamente: reconheça a diferença com honestidade (a média do card é geral e varia por ativo/período), explique os "
-        "motivos prováveis (stop/take diferentes, período/amostra, ativo, timeframe) e sugira ajustes CONCRETOS para TESTAR e chegar "
-        "perto ou superar aquele número — sempre como teste, nunca promessa de atingir o mesmo resultado.\n"
+        "(6b) Você RECEBE a configuração atual (ativo, timeframe, período, stop, take, capital, máx ops, spread, indicador) — use "
+        "apenas como CONTEXTO. NÃO proponha mudar stop/take por achismo nem 'só para testar'. O padrão da plataforma (stop 60 / "
+        "take 120) é a referência: só fale em mudar stop/take se o usuário PEDIR ou se houver motivo concreto — e, nesse caso, a "
+        "plataforma VERIFICA a sugestão rodando backtest real e só mostra o botão se ela superar mesmo o 60/120 (ver regra 10). "
+        "Nunca prometa resultado.\n"
+        "(6c) Se o usuário escolheu um bot da VITRINE e o resultado ficou ABAIXO da média do card, seja honesto: a média do card é "
+        "geral e varia por ativo/período/timeframe; explique os motivos prováveis. Para melhorar, oriente ajustes nos PARÂMETROS DA "
+        "PRÓPRIA ESTRATÉGIA (ex.: período da média) ou no ativo/período — NÃO em stop/take (as estratégias prontas nem usam stop/take "
+        "fixo). Sempre como teste, nunca promessa de atingir o mesmo número.\n"
         f"(7) ESCREVA INTEIRAMENTE EM: {nome_idioma}. Tom de mentor experiente: claro, direto, honesto, didático; traduza o jargão.\n"
         "(8) SEJA BEM CURTO: no MÁXIMO 2 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, corte enrolação e "
         "repetição. Evite abrir muitos tópicos numa resposta só — foque no que importa. Se listar, no máximo 3 itens bem curtos.\n"
         "(8b) FORMATO: HTML simples — <b>negrito</b> e <br>. Use <b> com PARCIMÔNIA: no máximo 2 ou 3 destaques na resposta inteira, "
         "só no que é realmente essencial. NÃO destaque números soltos nem frases inteiras. NUNCA use markdown (**, ##, -, ``` ).\n"
-        "(10) SUGESTÃO ESTRUTURADA DE STOP/TAKE: SEMPRE que (e SOMENTE quando) você recomendar ao usuário mudar o stop loss e/ou o "
-        "take profit para valores diferentes dos atuais, ACRESCENTE na ÚLTIMA linha da resposta, sozinha, uma tag EXATAMENTE neste "
-        "formato: [[SUGESTAO stop=NN take=NN]] — onde NN são os valores em PONTOS, números inteiros (ex.: [[SUGESTAO stop=40 take=120]]). "
-        "Regras da tag: (a) inclua SEMPRE os dois valores (stop e take), mesmo que só mude um — repita o valor atual no que não muda; "
-        "(b) os valores devem ser coerentes com o que você escreveu no texto; (c) NÃO comente, explique nem mencione a tag na prosa — "
-        "ela é lida pela plataforma para montar um botão 'Aplicar e testar' e some da tela; (d) no MÁXIMO uma tag por resposta; "
-        "(e) se você NÃO está recomendando mudar stop/take, NÃO inclua a tag. Isto é uma sugestão para TESTAR no backtest, nunca promessa."
+        "(10) SUGESTÃO ESTRUTURADA DE STOP/TAKE (use com PARCIMÔNIA, NÃO em toda resposta): só faz sentido para estratégias que "
+        "REAGEM a stop/take (por indicador, ou código custom que usa SL_PTS/TP_PTS). Se — e SOMENTE se — você tiver motivo concreto "
+        "para crer que um stop/take específico supera o padrão 60/120 NESTE caso, ACRESCENTE na ÚLTIMA linha, sozinha, a tag "
+        "[[SUGESTAO stop=NN take=NN]] (NN em PONTOS, inteiros; inclua SEMPRE os dois valores). A plataforma RODA backtest real e só "
+        "mostra o botão 'Aplicar e testar' se a sugestão realmente bater o 60/120 (retorno maior e Profit Factor não pior) — então "
+        "não invente: se não bater, o usuário não verá botão nenhum. NÃO comente a tag na prosa (ela some da tela); no MÁXIMO uma por "
+        "resposta. Se a estratégia NÃO usa stop/take, ou você não tem motivo concreto, NÃO inclua a tag — oriente em texto outros "
+        "ajustes (parâmetros da estratégia, período, ativo)."
     )
     if plano in ("pro", "trader_pro"):
         base += ("\n(9) O usuário é assinante (Pro/Trader Pro). NUNCA mencione upgrade, planos pagos ou venda — ele já paga. "
@@ -5218,6 +5220,82 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
                 "Roteie para o plano certo conforme a necessidade. Nunca seja insistente, nunca repita em toda resposta, nunca "
                 "comece vendendo. Se não houver deixa natural, NÃO mencione planos — só ajude.\n" + fatos_planos)
     return base
+
+
+# ── Verificação de sugestão de stop/take (Radar) ─────────────────────────────
+# O Radar só pode propor mudar stop/take quando isso for COMPROVADAMENTE melhor
+# que o padrão 60/120 — com base em backtest real, não em achismo.
+STOPTAKE_PADRAO = (60, 120)
+
+def _stoptake_tem_efeito(codigo: str) -> bool:
+    """stop/take só alteram o backtest se: (a) é estratégia por INDICADOR (engine
+    aplica stop/take), ou (b) é código custom que referencia SL_PTS/TP_PTS.
+    As estratégias da Vitrine NÃO usam SL_PTS/TP_PTS -> stop/take é inerte nelas."""
+    cod = (codigo or "").strip()
+    eh_custom = bool(cod) and len(cod) > 10 and not cod.startswith("#")
+    if not eh_custom:
+        return True  # indicador: engine usa stop/take
+    return ("SL_PTS" in cod) or ("TP_PTS" in cod)
+
+def _metricas_stoptake(codigo: str, cfg: dict, sl: float, tp: float):
+    """Roda 1 backtest com (sl, tp) na config atual e devolve (retorno, profit_factor).
+    Devolve None em qualquer falha (o chamador trata como 'sem prova')."""
+    try:
+        ativo = (cfg or {}).get("ativo"); periodo = (cfg or {}).get("periodo")
+        tf = (cfg or {}).get("timeframe")
+        if not ativo or not periodo or not tf:
+            return None
+        df = baixar_dados(ativo, periodo, tf)
+        def _f(v, d):
+            try: return float(v)
+            except Exception: return d
+        params = BacktestCustom(
+            ativo=ativo, periodo=periodo, timeframe=tf,
+            indicador=(cfg or {}).get("indicador") or "EMA Channel High/Low",
+            stop_loss=float(sl), take_profit=float(tp),
+            capital=_f((cfg or {}).get("capital"), 10000),
+            max_ops=int(_f((cfg or {}).get("max_ops"), 5)),
+            comissao=_f((cfg or {}).get("spread"), 0.0002),
+            codigo=codigo or "",
+        )
+        cod = (codigo or "").strip()
+        if cod and len(cod) > 10 and not cod.startswith("#"):
+            resultado = rodar_codigo_custom(df, params)
+        else:
+            resultado = rodar_estrategia(df, params)
+        m = calcular_metricas_completas(resultado, params, df)
+        return (float(m.get("retorno") or 0.0), float(m.get("profit_factor") or 0.0),
+                int(m.get("total_trades") or 0))
+    except Exception as e:
+        print(f"[radar verif stoptake] {e}")
+        return None
+
+def _sugestao_stoptake_comprovada(codigo: str, cfg: dict, sl_sug, tp_sug) -> bool:
+    """True só se (sl_sug, tp_sug) bater o padrão 60/120 na métrica COMPOSTA:
+    retorno MAIOR e Profit Factor NÃO menor. Backtest real dos dois lados."""
+    try:
+        if sl_sug is None or tp_sug is None:
+            return False
+        # sem efeito (ex.: Vitrine não usa stop/take) -> nunca comprova
+        if not _stoptake_tem_efeito(codigo):
+            return False
+        # mesmo valor do padrão -> não é mudança
+        if abs(float(sl_sug) - STOPTAKE_PADRAO[0]) < 1e-9 and abs(float(tp_sug) - STOPTAKE_PADRAO[1]) < 1e-9:
+            return False
+        base = _metricas_stoptake(codigo, cfg, STOPTAKE_PADRAO[0], STOPTAKE_PADRAO[1])
+        nova = _metricas_stoptake(codigo, cfg, sl_sug, tp_sug)
+        if not base or not nova:
+            return False
+        ret_b, pf_b, _ = base
+        ret_n, pf_n, nt_n = nova
+        if nt_n < 1:
+            return False  # proposta sem operações não prova nada
+        # composto: retorno maior E PF não pior (margem mínima p/ evitar empate por ruído)
+        return (ret_n > ret_b + 0.01) and (pf_n >= pf_b - 1e-9)
+    except Exception as e:
+        print(f"[radar verif comprova] {e}")
+        return False
+
 
 def _chat_ctx_biblioteca(ativo, estrategia_id, timeframe=""):
     """Contexto SEGURO para o chat: médias públicas da Vitrine + fatia medida do ativo atual.
@@ -5384,9 +5462,13 @@ def radar_chat(req: RadarChatReq):
                      f"periodo={cfg.get('periodo','?')}; stop_loss={sl} pts; take_profit={tp} pts; "
                      f"capital={cfg.get('capital','?')}; max_ops={cfg.get('max_ops','?')}; "
                      f"spread_custo={cfg.get('spread','?')}; indicador={cfg.get('indicador','?')}")
-            conteudo += ("\n\n[Configuração ATUAL que o usuário está usando na plataforma — você PODE ver e avaliar; "
-                         "se stop/take não fizerem sentido para a estratégia, sugira ajustes para TESTAR, sem prometer "
-                         "resultado. Padrão da plataforma quando não definido: stop 60 / take 120]:\n" + linha)
+            conteudo += ("\n\n[Configuração ATUAL do usuário — use como contexto. Padrão da plataforma: stop 60 / take 120. "
+                         "NÃO proponha mudar stop/take por achismo; só com motivo concreto, e a plataforma verifica por backtest]:\n" + linha)
+            # Diz à IA se stop/take têm efeito nesta estratégia (req 2/3).
+            if not _stoptake_tem_efeito(req.codigo):
+                conteudo += ("\n[IMPORTANTE: a estratégia ATUAL NÃO reage a stop/take fixos (ela gere as próprias saídas). "
+                             "Mudar stop/take NÃO altera o backtest dela. NÃO sugira mudar stop/take nem emita a tag SUGESTAO; "
+                             "se for melhorar, oriente em texto ajustes nos parâmetros da própria estratégia, no período ou no ativo.]")
         if req.codigo:
             conteudo += "\n\n[Código atual da estratégia do usuário, para contexto]:\n" + req.codigo[:3000]
         # contexto seguro: médias da vitrine + fatia medida do ativo atual
@@ -5448,6 +5530,14 @@ def radar_chat(req: RadarChatReq):
                 sugestao_stop = sugestao_take = None
         # remove QUALQUER tag [[SUGESTAO ...]] do texto visível (mesmo malformada)
         texto = _re.sub(r"\[\[\s*SUGESTAO[^\]]*\]\]", "", texto, flags=_re.IGNORECASE).strip()
+
+        # ── GATE (req 2/3): só mantém a sugestão se for COMPROVADAMENTE melhor que
+        # o padrão 60/120 — backtest real dos dois lados, métrica composta
+        # (retorno maior E Profit Factor não pior). Senão, descarta: sem botão,
+        # o texto da IA segue normal.
+        if sugestao_stop is not None and sugestao_take is not None:
+            if not _sugestao_stoptake_comprovada(req.codigo, req.config or {}, sugestao_stop, sugestao_take):
+                sugestao_stop = sugestao_take = None
 
         # só conta o uso do Free quando a resposta deu certo
         restantes = None
