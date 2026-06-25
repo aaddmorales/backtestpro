@@ -3579,16 +3579,30 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
     if(markers && markers.length > 0) {
       const validTimes = new Set(candleFormatted.map(c=>c.time));
       const tempoDoMarker = m => (typeof m.t === 'number') ? m.t : m.data?.substring(0,10);
-      const mks = markers
-        .filter(m => validTimes.has(tempoDoMarker(m)))
-        .map(m => ({
-          time: tempoDoMarker(m),
-          position: m.tipo === 'BUY' ? 'belowBar' : 'aboveBar',
-          color: m.tipo === 'BUY' ? '#00d084' : '#ff4d6a',
-          shape: m.tipo === 'BUY' ? 'arrowUp' : 'arrowDown',
-          text: m.tipo === 'BUY' ? 'B' : 'S',
-          size: 1,
-        }))
+      const mksRaw = markers.filter(m => validTimes.has(tempoDoMarker(m)));
+      // ── Marcadores adaptativos (estilo TradingView) ──────────────────────
+      // 1 marcador por ponto real (entrada/saída). O rótulo B/S é o que mais
+      // polui, então some à medida que cresce o nº de operações, mantendo o
+      // gráfico legível sem esconder nenhuma operação.
+      //   ≤ 80 marc. (~40 trades): seta cheia + letra B/S
+      //   ≤ 300 marc. (~150 trades): seta discreta, sem texto
+      //   > 300 marc.: ponto minúsculo, sem texto
+      const N = mksRaw.length;
+      const comTexto = N <= 80;
+      const usaSeta  = N <= 300;
+      const tam      = N <= 80 ? 2 : 1;
+      const mks = mksRaw
+        .map(m => {
+          const buy = m.tipo === 'BUY';
+          return {
+            time: tempoDoMarker(m),
+            position: buy ? 'belowBar' : 'aboveBar',
+            color: buy ? '#00d084' : '#ff4d6a',
+            shape: usaSeta ? (buy ? 'arrowUp' : 'arrowDown') : 'circle',
+            text: comTexto ? (buy ? 'B' : 'S') : '',
+            size: tam,
+          };
+        })
         .sort((a,b) => a.time > b.time ? 1 : -1);
       if(mks.length > 0) candleSeries.setMarkers(mks);
     }

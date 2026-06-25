@@ -595,7 +595,7 @@ async def _redirecionar_navegador(request: Request, call_next):
 
 API_VERSAO = "4.0 — Radar IA multilíngue (PT/EN/ES) + Estudo como fonte"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-25c-autorun-vitrine+sandbox-import"
+BUILD_TAG = "2026-06-25d-marcadores-adaptativos"
 
 @app.get("/versao")
 def versao():
