@@ -5424,6 +5424,12 @@ async function escolherEstrategiaVitrine(id){
   const run=document.getElementById('ia-run-btn');
   if(run){ run.textContent='▶ Iniciar teste'; run.onclick=function(){ rodarBacktest(); }; }
   const cc=document.getElementById('col-center'); if(cc) cc.scrollTop=0;
+  // As estratégias da Vitrine são curadas e gerem as próprias saídas (não usam
+  // SL_PTS/TP_PTS). Sem isto, o "portão" de rodarBacktest abortaria o 1º run
+  // (zerando stop/take e pedindo para preencher). Marcamos o código como já
+  // avisado (valor TRIMADO, p/ casar com a comparação interna) e paramos o
+  // piscar — assim o auto-run roda direto.
+  try{ _codigoAvisado = (e.codigo||'').trim(); pararPiscarParams(); }catch(_){}
   // Req 1 (AUTO-RUN): o utilizador clicou no card uma única vez — já roda o
   // backtest com os valores padrão, sem exigir um segundo clique no botão.
   try{ await rodarBacktest(); }catch(err){ console.log('auto-run vitrine', err); }

@@ -594,11 +594,14 @@ async def _redirecionar_navegador(request: Request, call_next):
 
 
 API_VERSAO = "4.0 — Radar IA multilíngue (PT/EN/ES) + Estudo como fonte"
+# Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
+BUILD_TAG = "2026-06-25c-autorun-vitrine+sandbox-import"
 
 @app.get("/versao")
 def versao():
     tem_chave = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
     diag = {"api": API_VERSAO,
+            "build": BUILD_TAG,
             "radar_ia_chave": "configurada" if tem_chave else "AUSENTE — adicione ANTHROPIC_API_KEY no Railway",
             "radar_ia_modelo": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
             "cache_analises_memoria": len(_RADAR_IA_CACHE)}
