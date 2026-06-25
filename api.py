@@ -2410,6 +2410,11 @@ def backtest_custom(params: BacktestCustom):
         _credito = _consumir_credito_backtest(params.user_id, params.ativo)
         df = baixar_dados(params.ativo, params.periodo, params.timeframe)
         if params.codigo and len(params.codigo.strip()) > 20:
+            # SEGURANÇA: rejeita código inseguro com erro claro (400) em vez de
+            # silenciosamente cair na estratégia padrão.
+            ok, motivo = verificar_codigo_seguro(params.codigo)
+            if not ok:
+                raise HTTPException(status_code=400, detail=f"Código bloqueado: {motivo}")
             try:
                 resultado = rodar_codigo_custom(df, params)
             except Exception:
@@ -2427,23 +2432,128 @@ def backtest_custom(params: BacktestCustom):
         print(f"ERRO CUSTOM: {str(e)}\n{tb}", file=sys.stderr)
         raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{tb}")
 
+# ════════════════════════════════════════════════════════════
+# SEGURANÇA: sandbox do código custom do utilizador
+# O editor de código e a geração por IA executam Python do cliente.
+# Sem estas duas camadas, exec() = execução remota arbitrária no servidor
+# (leitura de SUPABASE_SERVICE_KEY, STRIPE_SECRET_KEY, sockets, etc.).
+#   Camada 1: verificar_codigo_seguro() — validação AST (denylist).
+#   Camada 2: SAFE_BUILTINS — conjunto mínimo de builtins no exec.
+# ════════════════════════════════════════════════════════════
+import builtins as _builtins
+
+# Builtins permitidos dentro do código do utilizador. Inclui __build_class__
+# (necessário para a instrução `class`) mas NÃO open/eval/exec/compile/
+# __import__/input/globals/locals/vars/getattr/setattr/delattr/exit.
+_NOMES_BUILTINS_SEGUROS = [
+    "abs", "all", "any", "bool", "bytes", "dict", "divmod", "enumerate",
+    "filter", "float", "format", "frozenset", "hasattr", "hash", "int",
+    "isinstance", "issubclass", "len", "list", "map", "max", "min", "next",
+    "object", "pow", "print", "range", "repr", "reversed", "round", "set",
+    "slice", "sorted", "str", "sum", "tuple", "zip",
+    "True", "False", "None",
+    "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
+    "AttributeError", "ZeroDivisionError", "ArithmeticError", "RuntimeError",
+    "StopIteration", "NotImplementedError",
+    "super", "property", "staticmethod", "classmethod",
+    "__build_class__",
+]
+SAFE_BUILTINS = {
+    n: getattr(_builtins, n)
+    for n in _NOMES_BUILTINS_SEGUROS
+    if hasattr(_builtins, n)
+}
+SAFE_BUILTINS["__name__"] = "strategy_sandbox"
+
+# Módulos cujo import é proibido no código do utilizador.
+_IMPORTS_BLOQUEADOS = {
+    "os", "sys", "subprocess", "shutil", "pathlib", "socket", "http",
+    "urllib", "requests", "httpx", "importlib", "ctypes", "multiprocessing",
+    "threading", "asyncio", "pickle", "marshal", "builtins", "code", "pty",
+    "signal", "resource", "gc", "inspect", "platform", "tempfile", "glob",
+    "fileinput", "webbrowser", "smtplib", "ftplib", "telnetlib", "io",
+}
+
+# Funções cuja chamada é proibida (fuga de sandbox ou I/O).
+_CHAMADAS_BLOQUEADAS = {
+    "eval", "exec", "compile", "__import__", "open", "input", "globals",
+    "locals", "vars", "getattr", "setattr", "delattr", "exit", "quit",
+    "memoryview", "breakpoint", "help",
+}
+
+
+def verificar_codigo_seguro(codigo: str):
+    """Valida (AST) o código custom ANTES do exec. Defesa em profundidade
+    junto com SAFE_BUILTINS. Retorna (True, 'ok') ou (False, motivo).
+    Bloqueia: imports perigosos, chamadas perigosas, acesso a atributos/nomes
+    dunder (ex: __globals__, __subclasses__, __builtins__) e código que não
+    defina uma classe herdando de Strategy."""
+    import ast
+    if not codigo or not codigo.strip():
+        return False, "Código vazio"
+    try:
+        tree = ast.parse(codigo)
+    except SyntaxError as e:
+        return False, f"Erro de sintaxe: {e}"
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.name.split(".")[0] in _IMPORTS_BLOQUEADOS:
+                    return False, f"Import bloqueado: '{a.name}'"
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] in _IMPORTS_BLOQUEADOS:
+                return False, f"Import bloqueado: '{node.module}'"
+        elif isinstance(node, ast.Attribute):
+            # ().__class__.__subclasses__() e afins
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                return False, f"Acesso a atributo interno bloqueado: '{node.attr}'"
+        elif isinstance(node, ast.Name):
+            if (node.id.startswith("__") and node.id.endswith("__")
+                    and node.id != "__name__"):
+                return False, f"Nome interno bloqueado: '{node.id}'"
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in _CHAMADAS_BLOQUEADAS:
+                return False, f"Função bloqueada: '{node.func.id}'"
+
+    tem_strategy = any(
+        isinstance(n, ast.ClassDef) and any(
+            (isinstance(b, ast.Name) and b.id == "Strategy")
+            or (isinstance(b, ast.Attribute) and b.attr == "Strategy")
+            for b in n.bases
+        )
+        for n in ast.walk(tree)
+    )
+    if not tem_strategy:
+        return False, "O código deve definir uma classe que herda de Strategy"
+    return True, "ok"
+
+
 def rodar_codigo_custom(df: pd.DataFrame, params: BacktestCustom) -> dict:
     """
     v3.1 - Executa de VERDADE a estrategia Python do usuario com o motor
     backtesting.py. Aceita classes Strategy (com ou sem imports no codigo).
     Se falhar, levanta excecao - o chamador cai no motor padrao.
+    v3.6 - Sandbox: valida o codigo (AST) e restringe builtins antes do exec.
     """
     from backtesting import Backtest, Strategy as _Strategy
     from backtesting.lib import crossover as _crossover
 
-    # Namespace com tudo que os codigos gerados/colados costumam usar
+    # SEGURANÇA (camada 1): valida o código antes de executar qualquer coisa.
+    ok, motivo = verificar_codigo_seguro(params.codigo)
+    if not ok:
+        raise ValueError(f"Código bloqueado: {motivo}")
+
+    # Namespace com tudo que os codigos gerados/colados costumam usar.
+    # SEGURANÇA (camada 2): __builtins__ restrito a SAFE_BUILTINS (sem open/
+    # eval/exec/__import__/getattr/etc.).
     ns = {
         "pd": pd, "np": np,
         "Strategy": _Strategy, "crossover": _crossover,
         # Valores da barra lateral disponíveis pro código colado (em pontos/USD)
         "SL_PTS": float(params.stop_loss), "TP_PTS": float(params.take_profit),
         "MAX_OPS": int(params.max_ops), "CAPITAL": float(params.capital),
-        "__builtins__": __builtins__,
+        "__builtins__": SAFE_BUILTINS,
     }
     exec(params.codigo, ns)  # erro no codigo -> excecao sobe -> fallback
 
