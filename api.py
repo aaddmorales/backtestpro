@@ -5048,7 +5048,14 @@ def _radar_chat_system(idioma: str, plano: str = "free", usados: int = 0, limite
         "(8) SEJA BEM CURTO: no MÁXIMO 2 parágrafos curtos (a janela do chat é estreita). Vá direto ao ponto, corte enrolação e "
         "repetição. Evite abrir muitos tópicos numa resposta só — foque no que importa. Se listar, no máximo 3 itens bem curtos.\n"
         "(8b) FORMATO: HTML simples — <b>negrito</b> e <br>. Use <b> com PARCIMÔNIA: no máximo 2 ou 3 destaques na resposta inteira, "
-        "só no que é realmente essencial. NÃO destaque números soltos nem frases inteiras. NUNCA use markdown (**, ##, -, ``` )."
+        "só no que é realmente essencial. NÃO destaque números soltos nem frases inteiras. NUNCA use markdown (**, ##, -, ``` ).\n"
+        "(10) SUGESTÃO ESTRUTURADA DE STOP/TAKE: SEMPRE que (e SOMENTE quando) você recomendar ao usuário mudar o stop loss e/ou o "
+        "take profit para valores diferentes dos atuais, ACRESCENTE na ÚLTIMA linha da resposta, sozinha, uma tag EXATAMENTE neste "
+        "formato: [[SUGESTAO stop=NN take=NN]] — onde NN são os valores em PONTOS, números inteiros (ex.: [[SUGESTAO stop=40 take=120]]). "
+        "Regras da tag: (a) inclua SEMPRE os dois valores (stop e take), mesmo que só mude um — repita o valor atual no que não muda; "
+        "(b) os valores devem ser coerentes com o que você escreveu no texto; (c) NÃO comente, explique nem mencione a tag na prosa — "
+        "ela é lida pela plataforma para montar um botão 'Aplicar e testar' e some da tela; (d) no MÁXIMO uma tag por resposta; "
+        "(e) se você NÃO está recomendando mudar stop/take, NÃO inclua a tag. Isto é uma sugestão para TESTAR no backtest, nunca promessa."
     )
     if plano in ("pro", "trader_pro"):
         base += ("\n(9) O usuário é assinante (Pro/Trader Pro). NUNCA mencione upgrade, planos pagos ou venda — ele já paga. "
@@ -5292,6 +5299,28 @@ def radar_chat(req: RadarChatReq):
             return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes."}
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
 
+        # ── Req 3a: extrai a tag estruturada [[SUGESTAO stop=NN take=NN]] ──
+        # O usuário NUNCA vê a tag: ela é removida do texto e os valores voltam
+        # estruturados (sugestao_stop / sugestao_take) para o front montar o
+        # botão "Aplicar e testar". Robusto: aceita inteiro ou decimal.
+        import re as _re
+        sugestao_stop = None
+        sugestao_take = None
+        _m = _re.search(
+            r"\[\[\s*SUGESTAO\s+stop\s*=\s*(\d+(?:\.\d+)?)\s+take\s*=\s*(\d+(?:\.\d+)?)\s*\]\]",
+            texto, _re.IGNORECASE)
+        if _m:
+            try:
+                _s = float(_m.group(1)); _t = float(_m.group(2))
+                # valores plausíveis em pontos; descarta lixo
+                if 0 < _s <= 100000 and 0 < _t <= 100000:
+                    sugestao_stop = int(_s) if _s == int(_s) else _s
+                    sugestao_take = int(_t) if _t == int(_t) else _t
+            except Exception:
+                sugestao_stop = sugestao_take = None
+        # remove QUALQUER tag [[SUGESTAO ...]] do texto visível (mesmo malformada)
+        texto = _re.sub(r"\[\[\s*SUGESTAO[^\]]*\]\]", "", texto, flags=_re.IGNORECASE).strip()
+
         # só conta o uso do Free quando a resposta deu certo
         restantes = None
         if eh_free:
@@ -5306,6 +5335,10 @@ def radar_chat(req: RadarChatReq):
         out = {"ok": True, "resposta": texto or "…"}
         if restantes is not None:
             out["restantes"] = restantes
+        # Req 3a: valores sugeridos para o botão "Aplicar e testar" (se houver)
+        if sugestao_stop is not None and sugestao_take is not None:
+            out["sugestao_stop"] = sugestao_stop
+            out["sugestao_take"] = sugestao_take
         return out
     except Exception as e:
         print(f"RADAR CHAT erro: {e}")
