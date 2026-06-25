@@ -2482,6 +2482,21 @@ _CHAMADAS_BLOQUEADAS = {
 }
 
 
+# O código do utilizador quase sempre tem `import pandas as pd` /
+# `from backtesting import Strategy`. Sem __import__, o exec falha com
+# "ImportError: __import__ not found". Em vez de devolver o __import__ real
+# (que reabriria QUALQUER módulo), injetamos um __import__ SEGURO que respeita
+# a mesma denylist do validador AST — restaura imports legítimos e mantém os
+# perigosos bloqueados (defesa em profundidade: runtime + AST).
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    base = (name or "").split(".")[0]
+    if base in _IMPORTS_BLOQUEADOS:
+        raise ImportError(f"Import bloqueado: '{name}'")
+    return _builtins.__import__(name, globals, locals, fromlist, level)
+
+SAFE_BUILTINS["__import__"] = _safe_import
+
+
 def verificar_codigo_seguro(codigo: str):
     """Valida (AST) o código custom ANTES do exec. Defesa em profundidade
     junto com SAFE_BUILTINS. Retorna (True, 'ok') ou (False, motivo).
