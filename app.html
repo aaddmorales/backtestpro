@@ -796,7 +796,7 @@ body.modo-vitrine #vitrine{display:block}
 .vit-tag{font-size:9px;font-weight:800;letter-spacing:.4px;color:var(--muted2);background:var(--bg4);border-radius:4px;padding:2px 6px}
 .vit-bar-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
 .vit-bar-fill{height:100%;border-radius:3px}
-.vit-chip{font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px}
+.vit-chip{font-size:10.5px;font-weight:600;color:#2fe6a8;background:rgba(47,230,168,.1);border:1px solid rgba(47,230,168,.35);border-radius:5px;padding:3px 9px;letter-spacing:.2px}
 .vit-testar{margin-top:auto;text-align:center;font-size:12px;font-weight:700;color:#04140d;background:var(--green);border-radius:8px;padding:9px;transition:filter .12s}
 .vit-back:hover .vit-testar{filter:brightness(1.08)}
 .vit-flip-hint{font-size:9px;color:var(--muted);letter-spacing:.5px;opacity:.65}
@@ -5386,7 +5386,7 @@ async function carregarVitrine(){
         +'<div style="width:100%"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+'</div>'
           +'<div style="margin-top:5px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap">'+tagsFront+'</div></div>'
         +_roboImg(e.categoria, _i)
-        +(mercadosFront?('<div style="font-size:9.5px;color:var(--muted2);text-align:center;margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;letter-spacing:.2px">'+mercadosFront+'</div>'):'')
+        +(mercadosFront?('<div style="font-size:11px;color:var(--text);font-weight:600;text-align:center;margin:4px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;letter-spacing:.3px;opacity:.85">'+mercadosFront+'</div>'):'')
         +'<div><div class="vit-hero-num" style="color:var(--text)">'+wr+'</div>'
           +'<div class="vit-hero-lbl"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_vitQualDot(e)+';margin-right:5px;vertical-align:middle" title="Qualidade real medida (Sharpe/PF)"></span>'+t('vit.winrate')+'</div></div>'
         +'<div class="vit-flip-hint">'+t('vit.flip')+'</div>'
