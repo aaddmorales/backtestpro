@@ -1,5 +1,5 @@
 # ============================================================
-#  BotBacktest API — v3.5 (Radar IA + cache)
+#  BotTested API — v3.5 (Radar IA + cache)
 #  Data: 2026-06-07 | Deploy: Railway
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -95,7 +95,7 @@ import uuid as _uuid
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-app = FastAPI(title="BotBacktest API", version="3.0.0")
+app = FastAPI(title="BotTested API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -669,7 +669,7 @@ def root():
     return {
         "status": "online",
         "version": "3.0.0",
-        "name": "BotBacktest API",
+        "name": "BotTested API",
         "endpoints": ["/app", "/backtest/visual", "/backtest/custom", "/gerar-bot-ia",
                       "/exportar/ntsl", "/historico", "/ranking", "/stats"]
     }
@@ -1770,7 +1770,7 @@ def _radar_ia(ctx: dict) -> Optional[list]:
     try:
         import httpx
         sistema = (
-            "Você é o Radar, copiloto de validação do BotBacktest (backtesting de estratégias de trading). "
+            "Você é o Radar, copiloto de validação do BotTested (backtesting de estratégias de trading). "
             "Sua função: explicar o resultado do backtest do usuário usando EXCLUSIVAMENTE os números do contexto JSON. "
             "REGRAS INVIOLÁVEIS: (1) nunca preveja o mercado nem prometa lucro futuro — você fala de histórico medido, não de garantias. "
             "Quando o histórico medido deste ativo mostrar uma configuração com resultado MELHOR que a do usuário, seja DIRETO e útil: "
@@ -2852,7 +2852,7 @@ void OnTick() {
             OrderSend(Symbol(), OP_BUY, Lotes, Ask, 3,
                       Ask - StopLoss * Point,
                       Ask + TakeProfit * Point,
-                      "BotBacktest EMA Channel", 0, 0, clrGreen);
+                      "BotTested EMA Channel", 0, 0, clrGreen);
         }
     } else {
         // Verifica saída
@@ -3345,7 +3345,7 @@ ESTRATEGIAS_PRONTAS = [
     {
         "id": "canal_ema20_hl", "casa": False, "emoji": "🛤️",
         "nome": "Canal EMA 20 High/Low",
-        "desc": "Assinatura BotBacktest: canal entre EMA20 das máximas e EMA20 das mínimas. Rompe pra cima = compra; rompe pra baixo = venda; dentro do canal = lateral, não opera.",
+        "desc": "Assinatura BotTested: canal entre EMA20 das máximas e EMA20 das mínimas. Rompe pra cima = compra; rompe pra baixo = venda; dentro do canal = lateral, não opera.",
         "tags": ["TENDÊNCIA", "EMA"], "nivel": "intermediário",
         "mercados": ["XAU/USD (Ouro)", "NAS100", "BTC/USD"],
         "codigo": '''from backtesting import Strategy
@@ -3410,7 +3410,7 @@ class TendenciaDiariaPiramide(Strategy):
     {
         "id": "topo_fundo_duplo", "casa": False, "emoji": "⛰️",
         "nome": "Topo Duplo / Fundo Duplo",
-        "desc": "Assinatura BotBacktest: dois topos na mesma altura + rompimento da linha do pescoço (o fundo entre eles) = venda. Mesma família do Ombro-Cabeça-Ombro: quando a cabeça não se forma, vira Topo Duplo — a entrada é a mesma. Espelhado no Fundo Duplo / OCO invertido = compra (mais difícil de ver a olho; o detector acha pra você). Alvo pela altura do padrão, stop atrás dos topos/fundos.",
+        "desc": "Assinatura BotTested: dois topos na mesma altura + rompimento da linha do pescoço (o fundo entre eles) = venda. Mesma família do Ombro-Cabeça-Ombro: quando a cabeça não se forma, vira Topo Duplo — a entrada é a mesma. Espelhado no Fundo Duplo / OCO invertido = compra (mais difícil de ver a olho; o detector acha pra você). Alvo pela altura do padrão, stop atrás dos topos/fundos.",
         "tags": ["PRICE ACTION", "REVERSÃO"], "nivel": "avançado",
         "mercados": ["XAU/USD (Ouro)", "BTC/USD", "NASDAQ"],
         "codigo": '''from backtesting import Strategy
@@ -5002,9 +5002,10 @@ def estrategias_vitrine(lang: str = "pt"):
     if sb is not None:
         try:
             rows = (sb.table("estudo_biblioteca")
-                    .select("estrategia_id,sharpe,profit_factor,retorno,win_rate,trades,forca")
+                    .select("estrategia_id,ativo,sharpe,profit_factor,retorno,win_rate,trades,forca")
                     .limit(8000).execute().data or [])
             acc = {}
+            por_ativo = {}   # estrategia_id -> {ativo -> {sh:[], n:int}}  (p/ ranking de ativos)
             for r in rows:
                 eid = r.get("estrategia_id")
                 if not eid:
@@ -5017,9 +5018,26 @@ def estrategias_vitrine(lang: str = "pt"):
                 a["n"] += 1
                 if r.get("forca") == "forte":
                     a["forte"] += 1
+                # acumula sharpe por ativo (p/ descobrir os ativos onde a estratégia mais funciona)
+                ativo_nome = r.get("ativo")
+                if ativo_nome:
+                    pa = por_ativo.setdefault(eid, {}).setdefault(ativo_nome, {"sh": [], "n": 0})
+                    pa["sh"].append(float(r.get("sharpe") or 0))
+                    pa["n"] += 1
             def _med(xs):
                 xs = [x for x in xs if x is not None]
                 return round(sum(xs) / len(xs), 2) if xs else None
+            # top 3 ativos por estratégia (maior sharpe médio; mínimo de dados p/ não ser ruído)
+            top_ativos_por_est = {}
+            for eid, ativos in por_ativo.items():
+                ranking = []
+                for ativo_nome, d in ativos.items():
+                    sh_med = _med(d["sh"])
+                    if sh_med is None:
+                        continue
+                    ranking.append((ativo_nome, sh_med, d["n"]))
+                ranking.sort(key=lambda x: x[1], reverse=True)
+                top_ativos_por_est[eid] = [nome for (nome, _sh, _n) in ranking[:3]]
             for eid, a in acc.items():
                 medias[eid] = {
                     "sharpe_medio": _med(a["sh"]),
@@ -5028,6 +5046,7 @@ def estrategias_vitrine(lang: str = "pt"):
                     "winrate_medio": _med(a["wr"]),
                     "combos": a["n"],
                     "forte_pct": round(100 * a["forte"] / a["n"]) if a["n"] else 0,
+                    "top_ativos": top_ativos_por_est.get(eid, []),
                 }
         except Exception as e:
             print(f"[vitrine] erro ao agregar: {e}")
@@ -5045,6 +5064,7 @@ def estrategias_vitrine(lang: str = "pt"):
             "categoria": _categoria_de(est.get("tags", [])),
             "nivel": _nivel_loc(est.get("nivel", ""), lang),
             "mercados": est.get("mercados", []),
+            "top_ativos": (m.get("top_ativos") or est.get("mercados", [])),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
             "sharpe_medio": m.get("sharpe_medio"),
