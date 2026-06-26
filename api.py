@@ -5028,12 +5028,26 @@ def estrategias_vitrine(lang: str = "pt"):
                 xs = [x for x in xs if x is not None]
                 return round(sum(xs) / len(xs), 2) if xs else None
             # top 3 ativos por estratégia (maior sharpe médio; mínimo de dados p/ não ser ruído)
+            # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
+            # Um ativo só entra no "top" se tiver evidência decente — senão é
+            # ruído estatístico (banco ainda parcialmente populado). Critérios:
+            #   • mínimo de backtests medidos para aquele ativo (não 1 só)
+            #   • sharpe médio acima de um piso (mesmo critério de "robusta")
+            # Se a estratégia não tem ativos robustos suficientes, top fica vazio
+            # e o card cai no fallback do "mercados" curado manualmente.
+            _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo
+            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
                 ranking = []
                 for ativo_nome, d in ativos.items():
                     sh_med = _med(d["sh"])
                     if sh_med is None:
+                        continue
+                    # só entra se tiver dados suficientes E qualidade mínima
+                    if d["n"] < _MIN_BACKTESTS_ATIVO:
+                        continue
+                    if sh_med < _PISO_SHARPE_ATIVO:
                         continue
                     ranking.append((ativo_nome, sh_med, d["n"]))
                 ranking.sort(key=lambda x: x[1], reverse=True)
