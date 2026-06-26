@@ -1,5 +1,5 @@
 <!--
-  BotBacktest Frontend — v5.7 (cadastro: mensagem de sucesso avisa para confirmar o email; limpa erro antigo ao reenviar — fim do "senhas não conferem" pendurado)
+  BotTested Frontend — v5.8 (rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada)
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
   v5.4: auth direto (modal abre na aba certa conforme intenção da landing #criar/#entrar, sem passo intermediário)
@@ -40,7 +40,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
-<title>BotBacktest v1.4 — Algo Trading Platform</title>
+<title>BotTested — Algo Trading Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -830,7 +830,7 @@ body.modo-vitrine #vitrine{display:block}
   <svg width="220" height="38" viewBox="0 0 320 38" xmlns="http://www.w3.org/2000/svg">
     <rect x="2" y="6" width="30" height="30" rx="7" fill="#00d084"/>
     <polyline points="9,27 15,18 21,22 28,12" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="42" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="#fff">Backtest</tspan></text>
+    <text x="42" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="#fff">Tested</tspan></text>
   </svg>
   <div style="color:var(--muted2);font-size:14px;max-width:420px;line-height:1.55" data-i18n="lock.msg">Entre ou crie sua conta gratuita para acessar a plataforma.</div>
   <button class="tbtn" onclick="abrirAuth('login')" style="padding:11px 28px;font-weight:700;background:#063524;border:1px solid rgba(0,208,132,0.4);color:#00d084" data-i18n="lock.btn">🔐 Entrar / Criar conta</button>
@@ -845,8 +845,8 @@ body.modo-vitrine #vitrine{display:block}
         <circle cx="20" cy="5" r="3" fill="#ffb830"/>
       </svg>
     </div>
-    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Backtest</span></span>
-    <span class="vtag">v5.7</span>
+    <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
+    <span class="vtag">v5.8</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1551,7 +1551,7 @@ body.modo-vitrine #vitrine{display:block}
                 <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">🔌 Conectar meu MT5 — 4 passos</div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:15px">
                   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 1</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Dê um nome ao bot e gere o token abaixo</div></div>
-                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 2</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Baixe o <b>BotBacktest Conector</b> (Windows) e abra</div></div>
+                  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 2</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Baixe o <b>BotTested Conector</b> (Windows) e abra</div></div>
                   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 3</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Cole o token no conector — ele acha seu MT5 sozinho. <b>Nunca pedimos senha de corretora</b></div></div>
                   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px">PASSO 4</div><div style="font-size:11.5px;color:var(--muted2);line-height:1.5">Pronto: o card do bot aparece aqui em até 1 min, de qualquer dispositivo</div></div>
                 </div>
@@ -1691,7 +1691,7 @@ body.modo-vitrine #vitrine{display:block}
         <rect width="34" height="34" x="0" y="1" rx="9" fill="#00d084"/>
         <polyline points="7,27 13,18 19,22 27,11" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="27" cy="11" r="3.2" fill="#ffb830"/>
-        <text x="44" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="var(--text)">Backtest</tspan></text>
+        <text x="44" y="26" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5"><tspan fill="#ffb830">Bot</tspan><tspan fill="var(--text)">Tested</tspan></text>
       </svg>
     </div>
     <div class="auth-tabs">
@@ -1746,7 +1746,7 @@ body.modo-vitrine #vitrine{display:block}
       </div>
       <button class="auth-submit" id="signup-btn" onclick="fazerCadastro()" data-i18n="auth.criar">Criar conta grátis</button>
       <div class="auth-error" id="signup-error"></div>
-      <div class="auth-success" id="signup-success" style="display:none" data-i18n="auth.sucesso">✅ Conta criada! Bem-vindo ao BotBacktest.</div>
+      <div class="auth-success" id="signup-success" style="display:none" data-i18n="auth.sucesso">✅ Conta criada! Bem-vindo ao BotTested.</div>
     </div>
 
     <!-- RECUPERAÇÃO DE SENHA -->
@@ -1807,7 +1807,7 @@ body.modo-vitrine #vitrine{display:block}
 
   <!-- VIEW 1: seleção de nível -->
   <div class="onb-card" id="onb-select">
-    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
+    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Tested</span></div>
     <p class="onb-title">Bem-vindo! Qual seu nível?</p>
     <p class="onb-sub">Escolha para personalizarmos sua experiência</p>
 
@@ -1829,7 +1829,7 @@ body.modo-vitrine #vitrine{display:block}
 
   <!-- VIEW 2: tutorial / vídeos -->
   <div class="onb-card" id="onb-tutorial" style="display:none">
-    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Backtest</span></div>
+    <div class="onb-logo"><span style="color:var(--amber)">Bot</span><span style="color:#fff">Tested</span></div>
     <p class="onb-title" id="onb-tut-title">Tutorial</p>
     <p class="onb-sub" id="onb-tut-sub">Assista para aprender a usar a plataforma</p>
     <div class="onb-tut-body" id="onb-tut-body"></div>
@@ -5376,6 +5376,8 @@ async function carregarVitrine(){
       const corSh=_vitCorQual(e.sharpe_medio);
       const tagsFront=(e.tags||[]).slice(0,2).map(function(tg){return '<span class="vit-tag">'+tg+'</span>';}).join(' ');
       const mercados=(e.mercados||[]).slice(0,3).map(function(m){return '<span class="vit-chip">'+m+'</span>';}).join(' ');
+      // Versão compacta dos ativos para a FRENTE do card (sem parênteses, separada por ·)
+      const mercadosFront=(e.mercados||[]).slice(0,3).map(function(m){return String(m).replace(/\s*\([^)]*\)/,'').trim();}).join(' · ');
       const casa=e.casa?'<span style="font-size:8px;font-weight:800;color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 4px;margin-left:5px">CASA</span>':'';
       const wr=(e.winrate_medio!=null?e.winrate_medio+'%':'—');
 
@@ -5384,6 +5386,7 @@ async function carregarVitrine(){
         +'<div style="width:100%"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+'</div>'
           +'<div style="margin-top:5px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap">'+tagsFront+'</div></div>'
         +_roboImg(e.categoria, _i)
+        +(mercadosFront?('<div style="font-size:9.5px;color:var(--muted2);text-align:center;margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;letter-spacing:.2px">'+mercadosFront+'</div>'):'')
         +'<div><div class="vit-hero-num" style="color:var(--text)">'+wr+'</div>'
           +'<div class="vit-hero-lbl"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_vitQualDot(e)+';margin-right:5px;vertical-align:middle" title="Qualidade real medida (Sharpe/PF)"></span>'+t('vit.winrate')+'</div></div>'
         +'<div class="vit-flip-hint">'+t('vit.flip')+'</div>'
