@@ -3373,9 +3373,9 @@ class CanalEMA20HL(Strategy):
     },
     {
         "id": "tendencia_diaria_piramide", "casa": False, "emoji": "🔺",
-        "nome": "Tendência Diária com Pirâmide",
-        "desc": "Assinatura BotBacktest: lê a direção do D1 pela manhã, entra SEMPRE a favor (nunca contra), pirâmide na mesma direção, trailing protege o lucro. Valide por ativo antes de automatizar.",
-        "tags": ["TENDÊNCIA", "PIRÂMIDE"], "nivel": "avançado",
+        "nome": "Tendência Diária Escalonada",
+        "desc": "Assinatura BotTested: lê a direção do D1 pela manhã, entra SEMPRE a favor (nunca contra), escalona na mesma direção, trailing protege o lucro. Valide por ativo antes de automatizar.",
+        "tags": ["TENDÊNCIA", "ESCALONADO"], "nivel": "avançado",
         "mercados": ["XAU/USD (Ouro)", "US30", "S&P500"],
         "codigo": '''from backtesting import Strategy
 import pandas as pd
@@ -3860,8 +3860,8 @@ ESTRATEGIAS_I18N = {
     "en": {"nome": "EMA 20 High/Low Channel", "desc": "Channel between the EMA20 of the highs and the EMA20 of the lows. Breaks above = buy; breaks below = sell; inside the channel = ranging, no trade."},
     "es": {"nome": "Canal EMA 20 High/Low", "desc": "Canal entre la EMA20 de los máximos y la EMA20 de los mínimos. Rompe hacia arriba = compra; rompe hacia abajo = venta; dentro del canal = lateral, no opera."}},
   "tendencia_diaria_piramide": {
-    "en": {"nome": "Daily Trend with Pyramiding", "desc": "Reads the D1 direction in the morning, ALWAYS enters with the trend (never against), pyramids in the same direction, trailing protects profit. Validate per asset before automating."},
-    "es": {"nome": "Tendencia Diaria con Pirámide", "desc": "Lee la dirección del D1 por la mañana, entra SIEMPRE a favor (nunca en contra), pirámide en la misma dirección, trailing protege la ganancia. Valida por activo antes de automatizar."}},
+    "en": {"nome": "Daily Trend Scaling", "desc": "Reads the D1 direction in the morning, ALWAYS enters with the trend (never against), scales in the same direction, trailing protects profit. Validate per asset before automating."},
+    "es": {"nome": "Tendencia Diaria Escalonada", "desc": "Lee la dirección del D1 por la mañana, entra SIEMPRE a favor (nunca en contra), escalona en la misma dirección, trailing protege la ganancia. Valida por activo antes de automatizar."}},
   "topo_fundo_duplo": {
     "en": {"nome": "Double Top / Double Bottom", "desc": "Two tops at the same height + a break of the neckline (the low between them) = sell. Same family as Head & Shoulders: when the head does not form, it becomes a Double Top — the entry is the same. Mirrored in the Double Bottom / inverted H&S = buy (harder to spot by eye; the detector finds it for you). Target by the pattern height, stop behind the tops/bottoms."},
     "es": {"nome": "Doble Techo / Doble Suelo", "desc": "Dos techos a la misma altura + ruptura de la línea del cuello (el suelo entre ellos) = venta. Misma familia que el Hombro-Cabeza-Hombro: cuando la cabeza no se forma, se vuelve Doble Techo — la entrada es la misma. Reflejado en el Doble Suelo / HCH invertido = compra (más difícil de ver a simple vista; el detector lo encuentra por ti). Objetivo por la altura del patrón, stop detrás de los techos/suelos."}},
@@ -3911,7 +3911,7 @@ def _estrat_loc(est, lang, campo):
 # Tradução de TAGS e NÍVEL (PT é o original). Tags universais (EMA/RSI/MACD…) ficam iguais.
 _TAG_I18N = {
     "TENDÊNCIA":   {"en": "TREND",    "es": "TENDENCIA"},
-    "PIRÂMIDE":    {"en": "PYRAMID",  "es": "PIRÁMIDE"},
+    "ESCALONADO":  {"en": "SCALING",  "es": "ESCALONADA"},
     "REVERSÃO":    {"en": "REVERSAL", "es": "REVERSIÓN"},
     "ROMPIMENTO":  {"en": "BREAKOUT", "es": "RUPTURA"},
     "IMPULSO":     {"en": "MOMENTUM", "es": "IMPULSO"},
