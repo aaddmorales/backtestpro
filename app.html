@@ -2538,6 +2538,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar e rodar','radar.pfHist':'PF histórico','radar.vsSeu':'vs seu teste','radar.emTrades':'em {n} trades',
     'radar.aplicarValidar':'▶ Aplicar e validar (out-of-sample)','radar.oosRodando':'Aplicando e validando out-of-sample…','radar.oosTitulo':'Validação out-of-sample','radar.oosTreino':'Treino','radar.oosTeste':'Teste (nunca visto)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'Não consegui validar: ','radar.oosTitAlto':'Sinais de overfitting','radar.oosResAlto':'Foi bem no histórico conhecido, mas tropeçou nos dados que nunca viu — pode estar ajustada demais ao passado.','radar.oosTitMedio':'Resultado misto','radar.oosResMedio':'Há sinais de fragilidade entre treino e teste. Investigue em mais períodos antes de confiar.','radar.oosTitBaixo':'Mais robusta','radar.oosResBaixo':'Manteve desempenho positivo nos dados que nunca viu. Bom sinal — mas backtest nunca garante o futuro.','oos.validarMeu':'Validar meu código (out-of-sample)','oos.ofertaTit':'Seu código é robusto?','oos.ofertaDesc':'Posso testar o código que você rodou em dados que ele nunca viu (treino/teste) e dizer se ele aguenta — ou se foi sorte de janela.','radar.oosSemCodigo':'Rode um código personalizado primeiro — não há código para validar.',
     'met.qBom':'Bom','met.qMed':'Médio','met.qFraco':'Fraco','ov.lucro':'LUCRO','ov.prej':'PREJUÍZO',
+    'edge.titulo':'Por que deu lucro com Win Rate baixo?','edge.ganhaMais':'Você ganha mais do que perde','edge.ganhoMedio':'Ganho médio','edge.perdaMedia':'Perda média','edge.cada':'Cada vitória vale','edge.maisQue':'× mais que cada derrota','edge.explica':'Acertar pouco não é problema quando se ganha grande e se perde pequeno. A estratégia corta a perda rápido e deixa o lucro correr — por isso fecha no positivo mesmo perdendo mais vezes.','edge.pf':'Profit Factor','edge.pfDesc':'ganho por cada $1 perdido',
     'hero.ph':'Descreva em português ("canal EMA 20 high/low") ou cole seu código Python aqui',
     'hero.prontas':'Estratégias prontas','hero.rodar':'▶ Rodar sua estratégia','side.customCode':'Código personalizado','hero.limpar':'Limpar','param.naoIdent':'Não identificamos os parâmetros de risco (stop/take) no seu código. Preencha os campos destacados na barra à esquerda e clique em ▶ Rodar teste novamente.','gate.testesGratis':'testes grátis','gate.de':'de','gate.ilimitado':'Backtests ilimitados','gate.modalTit':'Você usou seus 3 testes grátis','gate.modalDesc':'Para continuar testando sem limite — todos os ativos, IA e validação out-of-sample — faça upgrade para o Pro.','gate.modalBtn':'⚡ Fazer upgrade para Pro','gate.modalDepois':'Talvez depois','gate.ativoBloq':'Esse ativo faz parte de um plano superior. Faça upgrade para acessá-lo.','gate.emailNaoConf':'Confirme seu email para liberar seus 3 backtests grátis. Verifique sua caixa de entrada (e o spam).','gate.reenviar':'Reenviar email de confirmação','gate.reenviado':'✅ Email reenviado. Confira sua caixa de entrada.','lock.msg':'Entre ou crie sua conta gratuita para acessar a plataforma.','lock.btn':'🔐 Entrar / Criar conta',
     'ov.emptyTitle':'Pronto pra testar sua estratégia',
@@ -2570,6 +2571,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Apply & run','radar.pfHist':'Historical PF','radar.vsSeu':'vs your test','radar.emTrades':'over {n} trades',
     'radar.aplicarValidar':'▶ Apply & validate (out-of-sample)','radar.oosRodando':'Applying & validating out-of-sample…','radar.oosTitulo':'Out-of-sample validation','radar.oosTreino':'Train','radar.oosTeste':'Test (unseen)','radar.oosRet':'Return','radar.oosTrades':'Trades','radar.oosErro':"Couldn't validate: ",'radar.oosTitAlto':'Overfitting signals','radar.oosResAlto':'It did well on the known history but stumbled on data it never saw — it may be overfitted to the past.','radar.oosTitMedio':'Mixed result','radar.oosResMedio':'There are signs of fragility between train and test. Investigate across more periods before trusting it.','radar.oosTitBaixo':'More robust','radar.oosResBaixo':'It held positive performance on data it never saw. Good sign — but a backtest never guarantees the future.','oos.validarMeu':'Validate my code (out-of-sample)','oos.ofertaTit':'Is your code robust?','oos.ofertaDesc':'I can test the code you ran on data it never saw (train/test) and tell you whether it holds up — or whether it was just luck of the window.','radar.oosSemCodigo':'Run a custom code first — there is no code to validate.',
     'met.qBom':'Good','met.qMed':'Medium','met.qFraco':'Weak','ov.lucro':'PROFIT','ov.prej':'LOSS',
+    'edge.titulo':'Why is it profitable with a low Win Rate?','edge.ganhaMais':'You win more than you lose','edge.ganhoMedio':'Avg win','edge.perdaMedia':'Avg loss','edge.cada':'Each win is worth','edge.maisQue':'× more than each loss','edge.explica':'Winning rarely is not a problem when you win big and lose small. The strategy cuts losses fast and lets profits run — that is why it ends positive even losing more often.','edge.pf':'Profit Factor','edge.pfDesc':'gained per $1 lost',
     'hero.ph':'Describe it ("EMA 20 high/low channel") or paste your Python code here',
     'hero.prontas':'Ready strategies','hero.rodar':'▶ Run your strategy','side.customCode':'Custom code','hero.limpar':'Clear','param.naoIdent':"We couldn't identify the risk parameters (stop/take) in your code. Fill in the highlighted fields in the left sidebar and click ▶ Run test again.",'gate.testesGratis':'free tests','gate.de':'of','gate.ilimitado':'Unlimited backtests','gate.modalTit':"You've used your 3 free tests",'gate.modalDesc':'To keep testing without limits — every asset, AI and out-of-sample validation — upgrade to Pro.','gate.modalBtn':'⚡ Upgrade to Pro','gate.modalDepois':'Maybe later','gate.ativoBloq':'This asset belongs to a higher plan. Upgrade to access it.','gate.emailNaoConf':'Confirm your email to unlock your 3 free backtests. Check your inbox (and spam).','gate.reenviar':'Resend confirmation email','gate.reenviado':'✅ Email resent. Check your inbox.','lock.msg':'Sign in or create your free account to access the platform.','lock.btn':'🔐 Sign in / Create account',
     'ov.emptyTitle':'Ready to test your strategy',
@@ -2602,6 +2604,7 @@ const I18N = {
     'radar.aplicarRodar':'▶ Aplicar y ejecutar','radar.pfHist':'PF histórico','radar.vsSeu':'vs tu prueba','radar.emTrades':'en {n} trades',
     'radar.aplicarValidar':'▶ Aplicar y validar (out-of-sample)','radar.oosRodando':'Aplicando y validando out-of-sample…','radar.oosTitulo':'Validación out-of-sample','radar.oosTreino':'Entrenamiento','radar.oosTeste':'Prueba (no vista)','radar.oosRet':'Retorno','radar.oosTrades':'Trades','radar.oosErro':'No pude validar: ','radar.oosTitAlto':'Señales de overfitting','radar.oosResAlto':'Le fue bien en el histórico conocido, pero tropezó en los datos que nunca vio — puede estar sobreajustada al pasado.','radar.oosTitMedio':'Resultado mixto','radar.oosResMedio':'Hay señales de fragilidad entre entrenamiento y prueba. Investiga en más períodos antes de confiar.','radar.oosTitBaixo':'Más robusta','radar.oosResBaixo':'Mantuvo desempeño positivo en los datos que nunca vio. Buena señal — pero un backtest nunca garantiza el futuro.','oos.validarMeu':'Validar mi código (out-of-sample)','oos.ofertaTit':'¿Tu código es robusto?','oos.ofertaDesc':'Puedo probar el código que ejecutaste en datos que nunca vio (entrenamiento/prueba) y decirte si aguanta — o si fue suerte de ventana.','radar.oosSemCodigo':'Ejecuta un código personalizado primero — no hay código para validar.',
     'met.qBom':'Bueno','met.qMed':'Medio','met.qFraco':'Débil','ov.lucro':'GANANCIA','ov.prej':'PÉRDIDA',
+    'edge.titulo':'¿Por qué da ganancia con Win Rate bajo?','edge.ganhaMais':'Ganas más de lo que pierdes','edge.ganhoMedio':'Ganancia media','edge.perdaMedia':'Pérdida media','edge.cada':'Cada victoria vale','edge.maisQue':'× más que cada derrota','edge.explica':'Acertar poco no es problema cuando ganas grande y pierdes pequeño. La estrategia corta la pérdida rápido y deja correr la ganancia — por eso cierra en positivo aun perdiendo más veces.','edge.pf':'Profit Factor','edge.pfDesc':'ganado por cada $1 perdido',
     'hero.ph':'Descríbela ("canal EMA 20 high/low") o pega tu código Python aquí',
     'hero.prontas':'Estrategias listas','hero.rodar':'▶ Ejecutar tu estrategia','side.customCode':'Código personalizado','hero.limpar':'Limpiar','param.naoIdent':'No identificamos los parámetros de riesgo (stop/take) en tu código. Completa los campos destacados en la barra izquierda y haz clic en ▶ Ejecutar prueba de nuevo.','gate.testesGratis':'pruebas gratis','gate.de':'de','gate.ilimitado':'Backtests ilimitados','gate.modalTit':'Usaste tus 3 pruebas gratis','gate.modalDesc':'Para seguir probando sin límite — todos los activos, IA y validación out-of-sample — pasa a Pro.','gate.modalBtn':'⚡ Pasar a Pro','gate.modalDepois':'Quizás después','gate.ativoBloq':'Este activo pertenece a un plan superior. Pasa a Pro para acceder.','gate.emailNaoConf':'Confirma tu email para desbloquear tus 3 backtests gratis. Revisa tu bandeja (y el spam).','gate.reenviar':'Reenviar email de confirmación','gate.reenviado':'✅ Email reenviado. Revisa tu bandeja.','lock.msg':'Entra o crea tu cuenta gratis para acceder a la plataforma.','lock.btn':'🔐 Entrar / Crear cuenta',
     'ov.emptyTitle':'Listo para probar tu estrategia',
@@ -3787,6 +3790,49 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
   }
 }
 
+// ── CARD EDUCATIVO: "por que deu lucro com Win Rate baixo?" ──────────────
+// Aparece em DESTAQUE no topo do resultado APENAS no caso contraintuitivo
+// (win rate < 50% E lucrativo) — exatamente quando o cliente se assusta ao ver
+// "Win Rate 37% · Fraco" mas a estratégia fechou no positivo. Usa os números
+// REAIS do backtest (ganho médio × perda média) e mostra a razão entre eles.
+function _cardEdgeWinRate(wr, pos, avgRunup, avgDdTrade, pf){
+  // só mostra quando: lucrativo + win rate abaixo de 50% + temos as médias
+  const gMed = Math.abs(avgRunup||0);
+  const pMed = Math.abs(avgDdTrade||0);
+  if(!pos || wr>=50 || gMed<=0 || pMed<=0) return '';
+  const razao = (gMed/pMed);
+  // só faz sentido destacar quando a vitória vale mais que a derrota
+  if(razao<=1) return '';
+  const pfTxt = (pf && isFinite(pf)) ? pf.toFixed(2) : '—';
+  return `
+  <div style="margin:12px 16px 4px;padding:14px 16px;background:linear-gradient(135deg,rgba(0,208,132,0.10),rgba(157,111,255,0.06)),var(--bg2);border:1px solid rgba(0,208,132,0.32);border-radius:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">
+      <span style="font-size:18px">💡</span>
+      <span style="font-size:13.5px;font-weight:700;color:var(--text)">${t('edge.titulo')}</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:stretch">
+      <div style="flex:1;min-width:120px;background:rgba(0,208,132,0.08);border:1px solid rgba(0,208,132,0.22);border-radius:9px;padding:9px 12px">
+        <div style="font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">${t('edge.ganhoMedio')}</div>
+        <div style="font-size:19px;font-weight:800;font-family:var(--mono);color:var(--green)">+${gMed.toFixed(2)}%</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:rgba(255,77,79,0.07);border:1px solid rgba(255,77,79,0.20);border-radius:9px;padding:9px 12px">
+        <div style="font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">${t('edge.perdaMedia')}</div>
+        <div style="font-size:19px;font-weight:800;font-family:var(--mono);color:var(--red)">−${pMed.toFixed(2)}%</div>
+      </div>
+      <div style="flex:1.2;min-width:140px;background:rgba(157,111,255,0.09);border:1px solid rgba(157,111,255,0.26);border-radius:9px;padding:9px 12px;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:11px;color:var(--text);line-height:1.35"><b>${t('edge.cada')}</b></div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:#b89dff;line-height:1.1">${razao.toFixed(1)}${t('edge.maisQue')}</div>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted2);line-height:1.55;margin-top:11px">${t('edge.explica')}</div>
+    <div style="display:flex;align-items:center;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)">
+      <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${t('edge.pf')}</span>
+      <span style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--green)">${pfTxt}</span>
+      <span style="font-size:11px;color:var(--muted)">${t('edge.pfDesc')}</span>
+    </div>
+  </div>`;
+}
+
 function renderOverview(d, params, relang) {
   window._ultimoResultado = {d: d, params: params};   // guarda pra re-render em troca de idioma
   document.getElementById('ov-empty').style.display = 'none';
@@ -3844,6 +3890,7 @@ function renderOverview(d, params, relang) {
     <div><div class="ov-cap-label">${t('cap.lucro')}</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div><div class="ov-cap-label">${t('cap.cagr')}</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
   </div>
+  ${_cardEdgeWinRate(wr, pos, avgRunup, avgDdTrade, pf)}
   ${window._ultimoRunCustom ? `<div style="padding:8px 16px 0"><button onclick="validarCodigoOOS()" title="${t('oos.ofertaDesc')}" style="background:transparent;border:1px solid rgba(0,208,132,0.5);color:var(--green);font-size:12px;font-weight:700;padding:9px 14px;border-radius:8px;cursor:pointer">🔬 ${t('oos.validarMeu')}</button></div>` : ''}
 
   <!-- CANDLE CHART -->
