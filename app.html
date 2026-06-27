@@ -4501,6 +4501,14 @@ function aplicarSugestaoRadar(ap, rodar){
     if(ap.indicador){
       const sel = document.getElementById('indicador');
       if([...sel.options].some(o => o.value === ap.indicador)) sel.value = ap.indicador;
+      // o Radar trocou o indicador/estratégia: atualiza o cabeçalho ("Estratégia
+      // em teste: …") p/ refletir o que está realmente rodando — senão o nome
+      // ficaria preso na estratégia anterior.
+      try{
+        const nomeInd = (typeof _labelIndicador==='function') ? _labelIndicador(ap.indicador) : ap.indicador;
+        window._estrategiaAtiva = {id:'radar_'+ap.indicador, nome:nomeInd, tags:['AJUSTE RADAR'], emoji:'🎯', overlays:(window._estrategiaAtiva&&window._estrategiaAtiva.overlays)||[]};
+        atualizarCabecalhoEstrategia(window._estrategiaAtiva);
+      }catch(_h){}
     }
     if(ap.ema_period)  document.getElementById('ema_period').value = ap.ema_period;
     if(ap.stop_loss)   document.getElementById('stop_loss').value = ap.stop_loss;
@@ -5150,7 +5158,14 @@ function renderHeroLista(){
 }
 async function usarEstrategiaHero(id){
   const e = (window._galeria||{})[id]; if(!e) return;
-  window._estrategiaAtiva = {id: e.id, nome: e.nome};   // estamos no modo ESTRATÉGIA (não indicador)
+  // estamos no modo ESTRATÉGIA — guarda os campos completos (igual escolher pela
+  // vitrine) p/ o cabeçalho, overlays e auto-switch refletirem a nova estratégia.
+  window._estrategiaAtiva = {id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||''), overlays:(e.overlays||[]), mercados:(e.mercados||[]), top_ativos:(e.top_ativos||[])};
+  // ATUALIZA O CABEÇALHO ("Estratégia em teste: …") — sem isto o nome ficava
+  // preso na estratégia anterior quando o Radar troca de estratégia.
+  try{ atualizarCabecalhoEstrategia(e); }catch(_){}
+  // mostra a barra de contexto da estratégia (caso ainda esteja escondida)
+  try{ const vb=document.getElementById('voltar-vitrine-bar'); if(vb) vb.style.display=''; }catch(_){}
   document.getElementById('hero-lista').style.display='none';
   document.getElementById('ia-hero-desc').value = e.nome;
   document.getElementById('code-editor').value = e.codigo;
