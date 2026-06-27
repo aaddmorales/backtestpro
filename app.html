@@ -3358,6 +3358,19 @@ document.addEventListener('change', (e) => {
 
 // Indicador da ESTRATÉGIA PRINCIPAL desenhado automaticamente no gráfico
 function overlaysDaEstrategia() {
+  // Se entrou por um CARD da vitrine (modo custom), o indicador vira "__custom__"
+  // e o dropdown não sabe quais linhas desenhar. Usamos então os overlays que a
+  // estratégia declara no backend (EMA20 High/Low, EMA9/21, etc.) — assim o
+  // gráfico mostra a "cara" visual da estratégia escolhida.
+  if (window._estrategiaAtiva && Array.isArray(window._estrategiaAtiva.overlays) && window._estrategiaAtiva.overlays.length) {
+    return window._estrategiaAtiva.overlays.map(function(o){
+      return {
+        tipo: o.tipo, period: o.period, source: o.source || 'close',
+        color: o.color || '#ffb830', titulo: o.titulo || (o.tipo + (o.period||'')),
+        k: o.k,
+      };
+    });
+  }
   const ind = document.getElementById('indicador')?.value || '';
   const p = parseInt(document.getElementById('ema_period')?.value || 20);
   if (ind === 'EMA Channel High/Low') {
@@ -5475,7 +5488,7 @@ async function carregarVitrine(){
 
 async function escolherEstrategiaVitrine(id){
   const e=window._vitrineDados[id]; if(!e) return;
-  window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||'')};
+  window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||''), overlays:(e.overlays||[])};
   try{ atualizarCabecalhoEstrategia(e); }catch(_){}
   const ed=document.getElementById('code-editor'); if(ed) ed.value=e.codigo;
   if(typeof lastIACode!=='undefined') lastIACode=e.codigo;
