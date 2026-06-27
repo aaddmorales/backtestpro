@@ -5580,15 +5580,17 @@ function _matchAtivoNoSelect(nomeCard){
 // pinta de dourado (no dropdown) os ativos recomendados por ela.
 function aplicarAtivosDaEstrategia(e){
   const sel=document.getElementById('ativo'); if(!sel||!e) return;
-  // lista de ativos recomendados: prioriza top_ativos (ranking real por Sharpe);
-  // se vazio, usa mercados (curadoria manual mostrada no card).
-  const lista = (Array.isArray(e.top_ativos)&&e.top_ativos.length) ? e.top_ativos : (e.mercados||[]);
+  // FONTE DA VERDADE = os ativos do CARD (e.mercados), exatamente os que o
+  // usuário vê. Assim não há surpresa: card mostra XAU/USD · NAS100 · BTC/USD →
+  // roda no 1º (XAU/USD) e destaca os 3 no seletor. (NÃO usamos top_ativos do
+  // banco aqui, senão o auto-switch iria para um ativo que não está no card.)
+  const lista = (e.mercados||[]);
   // conjunto normalizado dos recomendados (p/ destacar no dropdown)
   const recomendados = new Set(lista.map(_normAtivo));
   window._ativosRecomendados = recomendados;   // usado ao repintar o dropdown
   // 1) destaque visual: pinta as options recomendadas de dourado
   destacarAtivosRecomendados();
-  // 2) auto-switch: seleciona o 1º recomendado que exista e esteja liberado
+  // 2) auto-switch: seleciona o 1º do card que exista e esteja liberado
   for(const nome of lista){
     const val=_matchAtivoNoSelect(nome);
     if(val){ sel.value=val; break; }
