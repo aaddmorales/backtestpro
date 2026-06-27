@@ -181,8 +181,8 @@ body::after{
   color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
 
 /* ── Balão de CONVITE do Radar (chama o usuário pra conversar) ── */
-.radar-convite{position:fixed;bottom:82px;right:84px;max-width:240px;background:var(--bg2);
-  border:1px solid rgba(0,208,132,0.45);border-radius:14px 14px 3px 14px;padding:12px 14px 12px;
+.radar-convite{position:fixed;bottom:88px;right:18px;max-width:230px;background:var(--bg2);
+  border:1px solid rgba(0,208,132,0.45);border-radius:14px 14px 14px 3px;padding:12px 14px 12px;
   font-size:13px;color:var(--text);line-height:1.45;z-index:298;display:none;cursor:pointer;
   box-shadow:0 12px 34px rgba(0,0,0,0.55);animation:radarConvIn .45s cubic-bezier(.34,1.56,.64,1)}
 .radar-convite:hover{border-color:rgba(0,208,132,0.75)}
@@ -191,7 +191,7 @@ body::after{
 .radar-convite .rc-close:hover{color:var(--text)}
 .radar-convite .rc-head{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:var(--green);margin-bottom:3px}
 .radar-convite .rc-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 7px rgba(0,208,132,0.8);flex-shrink:0}
-.radar-convite .rc-arrow{position:absolute;bottom:-7px;right:16px;width:14px;height:14px;background:var(--bg2);
+.radar-convite .rc-arrow{position:absolute;bottom:-7px;right:23px;width:14px;height:14px;background:var(--bg2);
   border-right:1px solid rgba(0,208,132,0.45);border-bottom:1px solid rgba(0,208,132,0.45);transform:rotate(45deg)}
 @keyframes radarConvIn{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media (prefers-reduced-motion:reduce){.radar-convite{animation:none}}
