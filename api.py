@@ -4983,6 +4983,43 @@ def calendario_semana(de_dias: int = 7, ate_dias: int = 10):
     return {"agora_utc": agora.isoformat(), "total": len(rows), "eventos": rows}
 
 
+# ── OVERLAYS VISUAIS por estratégia (linhas EMA/SMA/BB desenhadas no gráfico) ──
+# O frontend não tem como adivinhar quais linhas desenhar a partir do código
+# Python. Aqui declaramos, por id de estratégia, os overlays que representam
+# visualmente cada uma. 'source' high/low/close indica sobre qual preço calcular.
+_OVERLAYS_ESTRATEGIA = {
+    "canal_ema20_hl": [
+        {"tipo": "EMA", "period": 20, "source": "high", "color": "#ffb830", "titulo": "EMA20 High"},
+        {"tipo": "EMA", "period": 20, "source": "low",  "color": "#ff8a3d", "titulo": "EMA20 Low"},
+    ],
+    "tendencia_diaria_piramide": [
+        {"tipo": "EMA", "period": 20, "source": "high", "color": "#ffb830", "titulo": "EMA20 High"},
+        {"tipo": "EMA", "period": 20, "source": "low",  "color": "#ff8a3d", "titulo": "EMA20 Low"},
+    ],
+    "cruzamento_ema_9_21": [
+        {"tipo": "EMA", "period": 9,  "source": "close", "color": "#2bd6ff", "titulo": "EMA9"},
+        {"tipo": "EMA", "period": 21, "source": "close", "color": "#9d6fff", "titulo": "EMA21"},
+    ],
+    "bollinger_reversao": [
+        {"tipo": "BB", "period": 20, "k": 2, "source": "close", "color": "#9d6fff", "titulo": "Bollinger 20"},
+    ],
+    "engolfo_tendencia": [
+        {"tipo": "EMA", "period": 50, "source": "close", "color": "#ffb830", "titulo": "EMA50"},
+    ],
+    "media_atr_trailing": [
+        {"tipo": "SMA", "period": 50, "source": "close", "color": "#ffb830", "titulo": "SMA50"},
+    ],
+    "microcanal": [
+        {"tipo": "EMA", "period": 9, "source": "close", "color": "#ffb830", "titulo": "EMA9"},
+    ],
+    # topo_fundo_duplo, rsi_reversao, rompimento_donchian, macd_tendencia,
+    # abertura_gap, sr_dia_anterior: sem overlay de linha (price action / osciladores
+    # em painel separado / níveis dinâmicos que não viram linha contínua).
+}
+def _overlays_da_estrategia(eid):
+    return _OVERLAYS_ESTRATEGIA.get(eid, [])
+
+
 # ── VITRINE: estratégias prontas + desempenho MÉDIO histórico (público) ──
 # Regra de marca: nunca revelar a existência da biblioteca interna. Aqui
 # devolvemos apenas uma MÉDIA de desempenho histórico por estratégia,
@@ -5088,6 +5125,7 @@ def estrategias_vitrine(lang: str = "pt"):
             "top_ativos": (m.get("top_ativos") or est.get("mercados", [])),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
+            "overlays": _overlays_da_estrategia(eid),
             "sharpe_medio": m.get("sharpe_medio"),
             "pf_medio": m.get("pf_medio"),
             "retorno_medio": m.get("retorno_medio"),
