@@ -3731,6 +3731,10 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
 
 function renderOverview(d, params, relang) {
   window._ultimoResultado = {d: d, params: params};   // guarda pra re-render em troca de idioma
+  // BOT ANTES DO RESULTADO: o overlay de processamento do Radar aparece já,
+  // cobrindo a tela enquanto o resultado é desenhado por baixo. Some quando a
+  // análise termina (radarAnalisarAtivo), revelando o resultado pronto.
+  if(!relang){ try{ radarLoadingMostrar(); }catch(_){} }
   document.getElementById('ov-empty').style.display = 'none';
   const sampleEl = document.getElementById('ov-sample');
   if(sampleEl) sampleEl.style.display = 'none';
@@ -3758,7 +3762,7 @@ function renderOverview(d, params, relang) {
   const roiDist = d.roi_distribution||[];
   const iaSug = '';  // sugestão migrou para o Radar flutuante
   if(!relang){
-    setTimeout(()=>radarCoach(d), 700);
+    radarCoach(d);
     if(window._ultimoRunCustom){ setTimeout(()=>radarOfertaValidarCodigo(), 1500); }
   }
   const avgPnl = parseFloat(d.avg_pnl||0);
@@ -4133,7 +4137,7 @@ function radarLoadingEsconder(){
 }
 
 async function radarAnalisarAtivo(d){
-  if(_radarAnalisando) return;
+  if(_radarAnalisando){ try{ radarLoadingEsconder(); }catch(_){} return; }
   _radarAnalisando = true;
   const inicio = Date.now();
   radarLoadingMostrar();
@@ -4741,8 +4745,10 @@ function radarCoach(d){
     radarSeparador(`${ativo}${tf ? ' · '+tf : ''} · ${hora}`.trim());
     // A leitura (IA ou regras), os avisos e o feedback são renderizados em radarAnalisarAtivo,
     // em ordem e SEMPRE no idioma certo — sem mistura PT/EN/ES.
-    setTimeout(()=>radarAnalisarAtivo(d), 900);
-  }catch(e){ console.log('radarCoach', e); }
+    // Sem delay: o overlay do bot já está visível desde o renderOverview, e o
+    // próprio radarAnalisarAtivo mantém o bot no mínimo 1.4s antes de revelar o resultado.
+    radarAnalisarAtivo(d);
+  }catch(e){ try{ radarLoadingEsconder(); }catch(_){} console.log('radarCoach', e); }
 }
 function _radarCoachLegadoDesativado(d){
   try{
