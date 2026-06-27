@@ -5071,16 +5071,22 @@ def estrategias_vitrine(lang: str = "pt"):
             def _med(xs):
                 xs = [x for x in xs if x is not None]
                 return round(sum(xs) / len(xs), 2) if xs else None
-            # top 3 ativos por estratégia (maior sharpe médio; mínimo de dados p/ não ser ruído)
+            # top 3 ativos POR ESTRATÉGIA (maior sharpe médio; mínimo de dados p/ não ser ruído)
             # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
-            # Um ativo só entra no "top" se tiver evidência decente — senão é
-            # ruído estatístico (banco ainda parcialmente populado). Critérios:
-            #   • mínimo de backtests medidos para aquele ativo (não 1 só)
-            #   • sharpe médio acima de um piso (mesmo critério de "robusta")
-            # Se a estratégia não tem ativos robustos suficientes, top fica vazio
-            # e o card cai no fallback do "mercados" curado manualmente.
-            _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo
-            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível
+            # IMPORTANTE: o ranking é ISOLADO por estratégia. Um ativo pode ser
+            # negativo numa estratégia (ex: NASDAQ no Canal EMA) e lucrativo em
+            # outra (ex: NASDAQ no Cruzamento 9/21). Aqui não existe "ativo bom"
+            # ou "ativo ruim" em absoluto — existe a RELAÇÃO ativo↔estratégia.
+            # Por isso 'por_ativo' é indexado por estrategia_id: cada estratégia
+            # ranqueia seus próprios ativos.
+            # Um ativo só entra no "top" daquela estratégia se tiver evidência
+            # decente — senão é ruído (banco parcialmente populado). Critérios:
+            #   • mínimo de backtests medidos para aquele ativo NAQUELA estratégia
+            #   • sharpe médio acima de um piso (conservador; Radar refina depois)
+            # Se a estratégia não tem ativos robustos, top fica vazio e o card
+            # mostra a categoria (NÃO promete ativo — regra de marca).
+            _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo (nesta estratégia)
+            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível (conservador)
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
                 ranking = []
