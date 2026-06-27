@@ -180,6 +180,22 @@ body::after{
   border:1px solid rgba(0,208,132,0.4);border-radius:12px 12px 2px 12px;padding:13px 16px;font-size:14px;
   color:var(--text);line-height:1.5;z-index:299;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer}
 
+/* ── Balão de CONVITE do Radar (chama o usuário pra conversar) ── */
+.radar-convite{position:fixed;bottom:82px;right:84px;max-width:240px;background:var(--bg2);
+  border:1px solid rgba(0,208,132,0.45);border-radius:14px 14px 3px 14px;padding:12px 14px 12px;
+  font-size:13px;color:var(--text);line-height:1.45;z-index:298;display:none;cursor:pointer;
+  box-shadow:0 12px 34px rgba(0,0,0,0.55);animation:radarConvIn .45s cubic-bezier(.34,1.56,.64,1)}
+.radar-convite:hover{border-color:rgba(0,208,132,0.75)}
+.radar-convite .rc-close{position:absolute;top:6px;right:9px;font-size:14px;color:var(--muted);
+  line-height:1;padding:2px;cursor:pointer}
+.radar-convite .rc-close:hover{color:var(--text)}
+.radar-convite .rc-head{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:var(--green);margin-bottom:3px}
+.radar-convite .rc-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 7px rgba(0,208,132,0.8);flex-shrink:0}
+.radar-convite .rc-arrow{position:absolute;bottom:-7px;right:16px;width:14px;height:14px;background:var(--bg2);
+  border-right:1px solid rgba(0,208,132,0.45);border-bottom:1px solid rgba(0,208,132,0.45);transform:rotate(45deg)}
+@keyframes radarConvIn{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media (prefers-reduced-motion:reduce){.radar-convite{animation:none}}
+
 /* ── Radar HUD gamer ── */
 .rhud{font-family:var(--mono);color:var(--text);display:flex;flex-direction:column;gap:10px}
 .rhud-head{display:flex;align-items:flex-start;justify-content:space-between}
@@ -3231,6 +3247,9 @@ async function rodarBacktest() {
     renderOverview(d, params);
     switchTab('overview');
     await incrementarBacktest();
+    // Convite proativo: depois que o resultado aparece, o Radar oferece ajuda
+    // (some sozinho; não insiste se o usuário fechar).
+    try{ setTimeout(function(){ mostrarConviteRadar(); }, 2200); }catch(_){}
   } catch(e) {
     if(e.name==='AbortError') {
       try{ radarLoadingEsconder(); }catch(_){}
@@ -4190,6 +4209,7 @@ function toggleRadar(){
   _radarAberto = !_radarAberto;
   document.getElementById('radar-panel').style.display = _radarAberto ? 'flex' : 'none';
   document.getElementById('radar-toast').style.display = 'none';
+  try{ const c=document.getElementById('radar-convite'); if(c) c.style.display='none'; }catch(_){}
   if(_radarAberto){
     _radarNaoLidas = 0;
     const b = document.getElementById('radar-badge');
@@ -4239,7 +4259,43 @@ function radarFala(msg, sev){
     window._radarToastTimer = setTimeout(()=>{ t.style.display='none'; }, 9000);
   }
 }
-// ── ANÁLISE DO RADAR: OffMind (padrões) + histórico coletivo -> sugestão aplicável ──
+
+// ── CONVITE PROATIVO DO RADAR ──────────────────────────────────────────
+// Um balãozinho ao lado do mascote que convida o usuário a conversar. Aparece
+// depois de rodar um backtest (momento natural pra oferecer ajuda), some sozinho
+// e respeita quem fecha (não insiste na mesma sessão).
+window._conviteRadarFechado = false;   // usuário fechou de propósito → não insiste
+window._conviteRadarTimer = null;
+function _conviteTxt(){
+  const L = (typeof LANG!=='undefined'?LANG:'pt');
+  if(L==='en') return {tit:'Radar', msg:'Want help understanding this result? Talk to me!'};
+  if(L==='es') return {tit:'Radar', msg:'¿Quieres ayuda para entender este resultado? ¡Háblame!'};
+  return {tit:'Radar', msg:'Quer ajuda pra entender esse resultado? Fala comigo!'};
+}
+function mostrarConviteRadar(msgCustom){
+  // não mostra se: já fechado, Radar aberto, ou elemento ausente
+  if(window._conviteRadarFechado) return;
+  if(typeof _radarAberto!=='undefined' && _radarAberto) return;
+  const el = document.getElementById('radar-convite'); if(!el) return;
+  const txt = _conviteTxt();
+  const tit = document.getElementById('rc-titulo'); if(tit) tit.textContent = txt.tit;
+  const msg = document.getElementById('rc-msg'); if(msg) msg.textContent = msgCustom || txt.msg;
+  el.style.display = 'block';
+  // chama atenção no mascote junto
+  try{ document.getElementById('radar-fab').classList.add('pulsando'); }catch(_){}
+  // some sozinho depois de 12s (sem fechar de vez — pode reaparecer noutro teste)
+  clearTimeout(window._conviteRadarTimer);
+  window._conviteRadarTimer = setTimeout(function(){ el.style.display='none'; }, 12000);
+}
+function fecharConviteRadar(definitivo){
+  const el = document.getElementById('radar-convite'); if(el) el.style.display='none';
+  clearTimeout(window._conviteRadarTimer);
+  if(definitivo) window._conviteRadarFechado = true;   // não insiste mais nesta sessão
+}
+function abrirRadarDoConvite(){
+  fecharConviteRadar(false);
+  try{ if(typeof _radarAberto!=='undefined' && !_radarAberto) toggleRadar(); }catch(_){}
+}
 let _radarAnalisando = false;
 const _radarFrases = [
   'Analisando seu teste minuciosamente...',
@@ -5894,6 +5950,12 @@ function _calRenderFull(){
 </div>
 <div class="radar-fab" id="radar-fab" onclick="toggleRadar()" title="Radar — seu copiloto"><img class="radar-fab-img" src="/assets/robo_default.png" alt="Radar"><span class="radar-badge" id="radar-badge">0</span></div>
 <div class="radar-toast" id="radar-toast" onclick="toggleRadar();this.style.display='none'"></div>
+<div class="radar-convite" id="radar-convite" onclick="if(event.target.classList.contains('rc-close'))return; abrirRadarDoConvite()">
+  <span class="rc-close" onclick="fecharConviteRadar(true)" title="Fechar">×</span>
+  <div class="rc-head"><span class="rc-dot"></span><span id="rc-titulo">Radar</span></div>
+  <div id="rc-msg">Quer ajuda pra entender esse resultado? Fala comigo!</div>
+  <div class="rc-arrow"></div>
+</div>
 <div class="radar-panel" id="radar-panel">
   <div class="radar-head">
     <img class="radar-head-img" src="/assets/robo_default.png" alt="Radar">
