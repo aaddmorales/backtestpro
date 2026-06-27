@@ -2650,6 +2650,8 @@ function setLang(lang) {
   // re-renderiza áreas construídas via JS (não têm data-i18n)
   try{ if(typeof carregarVitrine==='function' && document.getElementById('vitrine-grid')) carregarVitrine(); }catch(e){}
   try{ if(typeof _calRenderFull==='function' && window._calDados && window._calDados.length) _calRenderFull(); }catch(e){}
+  // (o cabeçalho da estratégia em teste é re-traduzido dentro de carregarVitrine,
+  // assim que os dados traduzidos chegam — sem depender de timing aqui.)
   // botão do hero conforme o estado (vitrine x teste)
   try{
     const run=document.getElementById('ia-run-btn');
@@ -5431,6 +5433,18 @@ async function carregarVitrine(){
 
       return '<div class="vit-card" onclick="escolherEstrategiaVitrine(\''+e.id+'\')"><div class="vit-inner">'+frente+verso+'</div></div>';
     }).join('');
+    // Se estamos no modo TESTE com uma estratégia ativa, atualiza o cabeçalho
+    // (nome + tags) com os dados recém-carregados — garante que troca de idioma
+    // reflita no cabeçalho sem depender de timing.
+    try{
+      if(window._estrategiaAtiva && window._estrategiaAtiva.id){
+        const _e2 = window._vitrineDados[window._estrategiaAtiva.id];
+        if(_e2){
+          window._estrategiaAtiva={id:_e2.id, nome:_e2.nome, tags:(_e2.tags||[]), categoria:(_e2.categoria||''), emoji:(_e2.emoji||'')};
+          atualizarCabecalhoEstrategia(_e2);
+        }
+      }
+    }catch(_){}
   }catch(err){
     grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">'+t('vit.erro')+'</div>';
   }
