@@ -3951,6 +3951,11 @@ def estrategias_prontas(lang: str = "pt"):
         e = dict(est)
         e["nome"] = _estrat_loc(est, lang, "nome")
         e["desc"] = _estrat_loc(est, lang, "desc")
+        # mesmos campos visuais da vitrine, p/ quando o Radar troca de estratégia
+        # o cabeçalho, as tags e os overlays do gráfico ficarem corretos.
+        e["tags"] = [_tag_loc(t, lang) for t in est.get("tags", [])]
+        e["categoria"] = _categoria_de(est.get("tags", []))
+        e["overlays"] = _overlays_da_estrategia(est["id"])
         out.append(e)
     return {"estrategias": out, "total": len(out)}
 
