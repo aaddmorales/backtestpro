@@ -438,6 +438,7 @@ select option{background:#141920}
 .sem-bom{background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.2)}
 .sem-med{background:rgba(255,184,48,0.12);color:var(--amber);border:1px solid rgba(255,184,48,0.2)}
 .sem-fra{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.2)}
+.sem-neutro{background:transparent;color:transparent;border:none;padding:0}
 
 /* ── CENTER — TABS CONTENT ── */
 .col-center-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -3024,13 +3025,21 @@ function focusIA() {
 }
 
 function semCls(m, v) {
-  if (m==='wr') return v>=55?'sem-bom':v>=45?'sem-med':'sem-fra';
+  // Win Rate é uma métrica INFORMATIVA, não um julgamento de qualidade. Um win
+  // rate baixo (ex: 39%) pode ser ótimo se as vitórias forem grandes — quem
+  // julga a estratégia é o Sharpe, o Profit Factor e o resultado. Por isso o
+  // win rate é sempre NEUTRO (sem "Fraco", sem vermelho), evitando contradizer
+  // a realidade (estratégia lucrativa com win rate baixo).
+  if (m==='wr') return 'sem-neutro';
   if (m==='sh') return v>=1.5?'sem-bom':v>=0.5?'sem-med':'sem-fra';
   if (m==='dd') return Math.abs(v)<=10?'sem-bom':Math.abs(v)<=20?'sem-med':'sem-fra';
   if (m==='pf') return v>=1.5?'sem-bom':v>=1?'sem-med':'sem-fra';
   return 'sem-med';
 }
-function semLbl(c) { return c==='sem-bom'?t('met.qBom'):c==='sem-med'?t('met.qMed'):t('met.qFraco') }
+function semLbl(c) {
+  if(c==='sem-neutro') return '';   // win rate não recebe rótulo de qualidade
+  return c==='sem-bom'?t('met.qBom'):c==='sem-med'?t('met.qMed'):t('met.qFraco');
+}
 
 function atualizarMetricsBar(d) {
   const wr = parseFloat(d.win_rate||0);
@@ -3044,9 +3053,10 @@ function atualizarMetricsBar(d) {
   document.getElementById('m-dd').textContent = dd.toFixed(2)+'%';
   document.getElementById('m-pf').textContent = pf.toFixed(2);
 
-  // Cores dos valores: verde se bom, vermelho se fraco, âmbar se médio
+  // Cores dos valores: verde se bom, vermelho se fraco, âmbar se médio.
+  // Win Rate é neutro (cinza) — não entra no jogo de cores de qualidade.
   const wrC = semCls('wr',wr), shC = semCls('sh',sh), ddC = semCls('dd',dd), pfC = semCls('pf',pf);
-  const colorMap = {'sem-bom':'','sem-med':'is-neutral','sem-fra':'is-neg'};
+  const colorMap = {'sem-bom':'','sem-med':'is-neutral','sem-fra':'is-neg','sem-neutro':'is-neutral'};
 
   ['wr','sh','dd','pf'].forEach((k,i)=>{
     const el = document.getElementById('m-'+k);
@@ -3057,7 +3067,7 @@ function atualizarMetricsBar(d) {
   // Drawdown sempre vermelho se negativo
   if(dd < 0) document.getElementById('m-dd').className = 'mb-val is-neg';
 
-  const colors = {'sem-bom':'var(--green)','sem-med':'var(--amber)','sem-fra':'var(--red)'};
+  const colors = {'sem-bom':'var(--green)','sem-med':'var(--amber)','sem-fra':'var(--red)','sem-neutro':'var(--muted)'};
 
   document.getElementById('m-wr-bar').style.width = Math.min(wr,100)+'%';
   document.getElementById('m-wr-bar').style.background = colors[wrC];
@@ -3833,6 +3843,22 @@ function _cardEdgeWinRate(wr, pos, avgRunup, avgDdTrade, pf){
   </div>`;
 }
 
+// ── CARD DE CAPITAL colorido SÓLIDO (estilo dos quadrados azul/verde/vermelho) ──
+// cor: 'azul' (neutro/ponto de partida), 'verde' (positivo) ou 'vermelho' (negativo).
+// Fundo cheio e forte, número grande em branco — alto destaque visual.
+function _capCard(label, valor, cor){
+  const paleta = {
+    azul:    {bg:'#0e4b7a', bd:'#1769ad'},
+    verde:   {bg:'#0f5a32', bd:'#16864a'},
+    vermelho:{bg:'#7a1f1f', bd:'#a83232'},
+  };
+  const p = paleta[cor] || paleta.azul;
+  return `<div style="flex:1;min-width:130px;background:${p.bg};border:1px solid ${p.bd};border-radius:11px;padding:11px 14px">
+    <div style="font-size:10.5px;color:rgba(255,255,255,0.72);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">${label}</div>
+    <div style="font-size:21px;font-weight:800;font-family:var(--mono);color:#fff;line-height:1.05">${valor}</div>
+  </div>`;
+}
+
 function renderOverview(d, params, relang) {
   window._ultimoResultado = {d: d, params: params};   // guarda pra re-render em troca de idioma
   document.getElementById('ov-empty').style.display = 'none';
@@ -3884,11 +3910,11 @@ function renderOverview(d, params, relang) {
     <span class="ov-meta">${d.data_backtest||new Date().toLocaleDateString(_dateLoc())}</span>
   </div>
   <div class="${pos?'retorno-pos':'retorno-neg'} ov-retorno" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':''}${ret.toFixed(2)}%</div>
-  <div class="ov-cap-row">
-    <div><div class="ov-cap-label">${t('cap.inicial')}</div><div class="ov-cap-val">$${cap.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">${t('cap.final')}</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">${t('cap.lucro')}</div><div class="ov-cap-val" style="color:${pos?'var(--green)':'var(--red)'}">$${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div><div class="ov-cap-label">${t('cap.cagr')}</div><div class="ov-cap-val" style="color:${cagr>=0?'var(--green)':'var(--red)'}">${cagr>=0?'+':''}${cagr.toFixed(2)}%</div></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;padding:4px 16px 2px">
+    ${_capCard(t('cap.inicial'), '$'+cap.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'azul')}
+    ${_capCard(t('cap.final'), '$'+capFinal.toLocaleString('pt-BR',{minimumFractionDigits:2}), pos?'verde':'vermelho')}
+    ${_capCard(t('cap.lucro'), '$'+lucro.toLocaleString('pt-BR',{minimumFractionDigits:2}), pos?'verde':'vermelho')}
+    ${_capCard(t('cap.cagr'), (cagr>=0?'+':'')+cagr.toFixed(2)+'%', cagr>=0?'verde':'vermelho')}
   </div>
   ${_cardEdgeWinRate(wr, pos, avgRunup, avgDdTrade, pf)}
   ${window._ultimoRunCustom ? `<div style="padding:8px 16px 0"><button onclick="validarCodigoOOS()" title="${t('oos.ofertaDesc')}" style="background:transparent;border:1px solid rgba(0,208,132,0.5);color:var(--green);font-size:12px;font-weight:700;padding:9px 14px;border-radius:8px;cursor:pointer">🔬 ${t('oos.validarMeu')}</button></div>` : ''}
@@ -3926,7 +3952,7 @@ function renderOverview(d, params, relang) {
     </div>
     <div style="padding:10px 14px;border-right:1px solid var(--border)">
       <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Profitable Trades</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${wr>=50?'var(--green)':'var(--red)'}">${wr.toFixed(2)}% ${winners}/${total}</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text)">${wr.toFixed(2)}% ${winners}/${total}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:1px">Winners: ${winners} · Losers: ${losers}</div>
     </div>
     <div style="padding:10px 14px">
