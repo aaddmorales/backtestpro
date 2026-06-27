@@ -4987,14 +4987,21 @@ def calendario_semana(de_dias: int = 7, ate_dias: int = 10):
 # Regra de marca: nunca revelar a existência da biblioteca interna. Aqui
 # devolvemos apenas uma MÉDIA de desempenho histórico por estratégia,
 # apresentada como "média histórica" — sem expor linhas nem a fonte.
-_VITRINE_CACHE = {"t": 0.0, "dados": None}
+_VITRINE_CACHE = {}   # chave = lang ('pt'/'en'/'es') → {"t": float, "dados": {...}}
 
 @app.get("/estrategias/vitrine")
 def estrategias_vitrine(lang: str = "pt"):
     import time as _t
-    # cache de 1h (cálculo de média é estável; evita varrer a tabela a cada visita)
-    if _VITRINE_CACHE["dados"] is not None and (_t.time() - _VITRINE_CACHE["t"] < 3600):
-        return _VITRINE_CACHE["dados"]
+    # normaliza idioma (só pt/en/es; qualquer outro cai em pt)
+    lang = (lang or "pt").lower()
+    if lang not in ("pt", "en", "es"):
+        lang = "pt"
+    # cache de 1h POR IDIOMA (cada lang tem seu próprio resultado traduzido).
+    # Antes o cache era único e "fixava" o primeiro idioma carregado — por isso
+    # os cards não trocavam de idioma. Agora cada idioma tem sua entrada.
+    _c = _VITRINE_CACHE.get(lang)
+    if _c is not None and (_t.time() - _c["t"] < 3600):
+        return _c["dados"]
 
     # agrega média por estrategia_id (server-side; nunca devolve linha individual)
     medias = {}
@@ -5089,8 +5096,7 @@ def estrategias_vitrine(lang: str = "pt"):
             "forte_pct": m.get("forte_pct", 0),
         })
     out = {"total": len(itens), "estrategias": itens}
-    _VITRINE_CACHE["t"] = _t.time()
-    _VITRINE_CACHE["dados"] = out
+    _VITRINE_CACHE[lang] = {"t": _t.time(), "dados": out}
     return out
 
 
