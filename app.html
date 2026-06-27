@@ -2110,6 +2110,9 @@ async function carregarCatalogoAtivos(plano){
       sel.innerHTML = html;
       const ok = [...sel.options].find(o => o.value === atual && !o.disabled);
       sel.value = ok ? atual : primeiroLivre;
+      // re-aplica o destaque dourado dos ativos recomendados (o innerHTML acima
+      // reescreve as options e apagaria o destaque).
+      try{ destacarAtivosRecomendados(); }catch(_){}
     }
   }catch(e){ /* se a API falhar, mantém as opções estáticas */ }
 }
@@ -5476,7 +5479,7 @@ async function carregarVitrine(){
       if(window._estrategiaAtiva && window._estrategiaAtiva.id){
         const _e2 = window._vitrineDados[window._estrategiaAtiva.id];
         if(_e2){
-          window._estrategiaAtiva={id:_e2.id, nome:_e2.nome, tags:(_e2.tags||[]), categoria:(_e2.categoria||''), emoji:(_e2.emoji||'')};
+          window._estrategiaAtiva={id:_e2.id, nome:_e2.nome, tags:(_e2.tags||[]), categoria:(_e2.categoria||''), emoji:(_e2.emoji||''), overlays:(_e2.overlays||[]), mercados:(_e2.mercados||[]), top_ativos:(_e2.top_ativos||[])};
           atualizarCabecalhoEstrategia(_e2);
         }
       }
@@ -5488,8 +5491,11 @@ async function carregarVitrine(){
 
 async function escolherEstrategiaVitrine(id){
   const e=window._vitrineDados[id]; if(!e) return;
-  window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||''), overlays:(e.overlays||[])};
+  window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||''), overlays:(e.overlays||[]), mercados:(e.mercados||[]), top_ativos:(e.top_ativos||[])};
   try{ atualizarCabecalhoEstrategia(e); }catch(_){}
+  // AUTO-SWITCH: troca o seletor de ativo para o MELHOR ativo da estratégia
+  // (o 1º da lista de mercados do card) e destaca os recomendados no dropdown.
+  try{ aplicarAtivosDaEstrategia(e); }catch(_){}
   const ed=document.getElementById('code-editor'); if(ed) ed.value=e.codigo;
   if(typeof lastIACode!=='undefined') lastIACode=e.codigo;
   try{ marcarCodigoPersonalizado(); }catch(_){}
@@ -5517,6 +5523,8 @@ async function escolherEstrategiaVitrine(id){
 function voltarVitrine(){
   _vitrineMode=true;
   window._estrategiaAtiva=null;
+  window._ativosRecomendados=null;          // limpa destaque dourado do dropdown
+  try{ destacarAtivosRecomendados(); }catch(_){}
   const hero=document.getElementById('ia-hero-desc'); if(hero) hero.value='';
   const run=document.getElementById('ia-run-btn');
   if(run){ run.textContent=(typeof t==='function'?t('hero.rodar'):'▶ Rodar sua estratégia'); run.onclick=function(){ rodarHero(); }; }
@@ -5538,6 +5546,67 @@ function atualizarCabecalhoEstrategia(e){
     tagsEl.innerHTML = tags.map(function(tg){
       return '<span style="font-size:9.5px;font-weight:700;letter-spacing:.4px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:2px 7px">'+tg+'</span>';
     }).join('');
+  }
+}
+
+// Normaliza nome de ativo p/ casar card ("XAU/USD (Ouro)") com option ("XAU/USD").
+// Remove parênteses, espaços extras, e padroniza apelidos comuns.
+function _normAtivo(s){
+  let x = String(s||'').replace(/\s*\([^)]*\)/,'').trim().toUpperCase();
+  // apelidos: o card pode usar nome curto e o catálogo nome diferente (ou vice-versa)
+  const apelidos = {
+    'NASDAQ':'NAS100', 'NAS100':'NAS100', 'US100':'NAS100',
+    'S&P500':'S&P500', 'SP500':'S&P500', 'US500':'S&P500', 'SPX':'S&P500',
+    'US30':'US30', 'DOW':'US30', 'DJI':'US30',
+    'OURO':'XAU/USD', 'GOLD':'XAU/USD', 'XAUUSD':'XAU/USD',
+    'BITCOIN':'BTC/USD', 'BTCUSD':'BTC/USD',
+  };
+  return apelidos[x] || x;
+}
+
+// Procura no <select id="ativo"> a option que casa com um nome de ativo do card.
+// Retorna o value real da option, ou null se não houver (ativo não está no catálogo).
+function _matchAtivoNoSelect(nomeCard){
+  const sel=document.getElementById('ativo'); if(!sel) return null;
+  const alvo=_normAtivo(nomeCard);
+  for(const o of sel.options){
+    if(o.disabled) continue;            // ativo bloqueado por plano: não auto-seleciona
+    if(_normAtivo(o.value)===alvo) return o.value;
+  }
+  return null;
+}
+
+// AUTO-SWITCH + DESTAQUE: troca o seletor para o melhor ativo da estratégia e
+// pinta de dourado (no dropdown) os ativos recomendados por ela.
+function aplicarAtivosDaEstrategia(e){
+  const sel=document.getElementById('ativo'); if(!sel||!e) return;
+  // lista de ativos recomendados: prioriza top_ativos (ranking real por Sharpe);
+  // se vazio, usa mercados (curadoria manual mostrada no card).
+  const lista = (Array.isArray(e.top_ativos)&&e.top_ativos.length) ? e.top_ativos : (e.mercados||[]);
+  // conjunto normalizado dos recomendados (p/ destacar no dropdown)
+  const recomendados = new Set(lista.map(_normAtivo));
+  window._ativosRecomendados = recomendados;   // usado ao repintar o dropdown
+  // 1) destaque visual: pinta as options recomendadas de dourado
+  destacarAtivosRecomendados();
+  // 2) auto-switch: seleciona o 1º recomendado que exista e esteja liberado
+  for(const nome of lista){
+    const val=_matchAtivoNoSelect(nome);
+    if(val){ sel.value=val; break; }
+  }
+}
+
+// Repinta o dropdown destacando os ativos recomendados pela estratégia ativa.
+// Chamada também após recarregar o catálogo (que reescreve as options).
+function destacarAtivosRecomendados(){
+  const sel=document.getElementById('ativo'); if(!sel) return;
+  const rec = window._ativosRecomendados;
+  for(const o of sel.options){
+    const isRec = rec && rec.has(_normAtivo(o.value)) && !o.disabled;
+    o.style.color = isRec ? '#ffb830' : '';
+    o.style.fontWeight = isRec ? '700' : '';
+    // marca com ★ no texto (sem duplicar)
+    const limpo = o.textContent.replace(/^★\s*/,'');
+    o.textContent = isRec ? ('★ '+limpo) : limpo;
   }
 }
 
