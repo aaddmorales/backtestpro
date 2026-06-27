@@ -3591,30 +3591,53 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
       const validTimes = new Set(candleFormatted.map(c=>c.time));
       const tempoDoMarker = m => (typeof m.t === 'number') ? m.t : m.data?.substring(0,10);
       const mksRaw = markers.filter(m => validTimes.has(tempoDoMarker(m)));
-      // ── Marcadores adaptativos (estilo TradingView) ──────────────────────
-      // 1 marcador por ponto real (entrada/saída). O rótulo B/S é o que mais
-      // polui, então some à medida que cresce o nº de operações, mantendo o
-      // gráfico legível sem esconder nenhuma operação.
-      //   ≤ 80 marc. (~40 trades): seta cheia + letra B/S
-      //   ≤ 300 marc. (~150 trades): seta discreta, sem texto
-      //   > 300 marc.: ponto minúsculo, sem texto
-      const N = mksRaw.length;
-      const comTexto = N <= 80;
-      const usaSeta  = N <= 300;
-      const tam      = N <= 80 ? 2 : 1;
-      const mks = mksRaw
-        .map(m => {
-          const buy = m.tipo === 'BUY';
-          return {
-            time: tempoDoMarker(m),
-            position: buy ? 'belowBar' : 'aboveBar',
-            color: buy ? '#00d084' : '#ff4d6a',
-            shape: usaSeta ? (buy ? 'arrowUp' : 'arrowDown') : 'circle',
-            text: comTexto ? (buy ? 'B' : 'S') : '',
-            size: tam,
-          };
-        })
-        .sort((a,b) => a.time > b.time ? 1 : -1);
+      // ── Marcadores estilo TradingView (skill tradingview-chart-trades) ────
+      // PROBLEMA RESOLVIDO: muitos trades amontoavam círculos e viravam "bolas"
+      // que cobriam os candles. O TradingView real AGRUPA execuções próximas
+      // quando há muitas ("marks are automatically grouped"). Fazemos igual:
+      //   • shape SEMPRE seta (nunca circle — círculo engorda em cluster)
+      //   • size SEMPRE 1 em densidade alta
+      //   • TETO de marcadores: acima dele, agrupa por janela temporal
+      const TETO = 60;   // teto de marcadores visíveis (limpo + rápido)
+      // converte cada trade num marker base (seta)
+      let mks = mksRaw.map(m => {
+        const buy = m.tipo === 'BUY';
+        return {
+          time: tempoDoMarker(m),
+          position: buy ? 'belowBar' : 'aboveBar',
+          color: buy ? '#00d084' : '#ff4d6a',
+          shape: buy ? 'arrowUp' : 'arrowDown',
+          text: '',
+          size: 1,
+        };
+      });
+      const N = mks.length;
+      // poucos trades: pode mostrar a letra B/S sem poluir
+      if(N <= 25){ mks.forEach(m => { m.text = (m.position==='belowBar') ? 'B' : 'S'; }); }
+      // muitos trades: agrupa por janela temporal (separando BUY de SELL)
+      if(N > TETO){
+        const ord = mks.slice().sort((a,b)=> a.time>b.time?1:-1);
+        const t0 = ord[0].time, t1 = ord[ord.length-1].time;
+        // teto/2 no cálculo da janela: como separamos BUY e SELL em buckets
+        // distintos, cada janela pode render até 2 marcadores. Dividir por 2
+        // mantém o TOTAL (buy+sell) próximo do teto desejado.
+        const alvo = Math.max(1, Math.floor(TETO/2));
+        const janela = Math.max(1, Math.ceil((t1 - t0) / alvo));
+        const grupos = new Map();
+        for(const m of ord){
+          const bucket = Math.floor((m.time - t0) / janela);
+          const chave = bucket + '_' + m.position;   // não mistura direção
+          if(!grupos.has(chave)) grupos.set(chave, Object.assign({}, m, {_n:1}));
+          else grupos.get(chave)._n++;
+        }
+        mks = Array.from(grupos.values()).map(g => ({
+          time: g.time, position: g.position, color: g.color,
+          shape: g.shape, size: 1,
+          text: g._n > 1 ? String(g._n) : ''   // ex.: "3" = 3 trades agrupados
+        }));
+      }
+      // ordenar SEMPRE por tempo (markers fora de ordem bugam o render)
+      mks.sort((a,b) => a.time > b.time ? 1 : -1);
       if(mks.length > 0) candleSeries.setMarkers(mks);
     }
 
