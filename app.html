@@ -1172,29 +1172,18 @@ body.modo-vitrine #vitrine{display:block}
                 <div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:13px">Carregando estratégias…</div>
               </div>
             </div>
-            <!-- BARRA IA (movida para depois da vitrine) -->
-            <div id="ia-hero" style="margin:8px 16px 0;padding:18px 20px;background:linear-gradient(135deg,rgba(157,111,255,0.10),rgba(0,208,132,0.07)),var(--bg2);border:1px solid rgba(157,111,255,0.30);border-radius:12px">
-              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px" data-i18n="hero.titulo">✨ Descreva sua estratégia em português</div>
-              <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
-              <div style="position:relative">
-                <textarea id="ia-hero-desc" rows="1" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" data-i18n-ph="hero.ph" placeholder='Descreva ("canal EMA 20 high/low") ou cole seu código Python aqui' oninput="autoGrowHero(this)" onfocus="autoGrowHero(this);if(typeof _vitrineMode!=='undefined'&&_vitrineMode)sairVitrineParaTeste()" onblur="collapseHeroLater(this)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')rodarHero()" style="width:100%;box-sizing:border-box;resize:none;overflow-y:auto;line-height:1.5;min-height:44px;max-height:320px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none"></textarea>
-                <div id="hero-lista" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
-                  <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
-                  <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
+            <!-- barra "voltar à vitrine" + contexto da estratégia (só no modo teste) -->
+            <div id="voltar-vitrine-bar" style="display:none;margin:12px 16px 0">
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,rgba(0,208,132,0.06),rgba(157,111,255,0.05)),var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px">
+                <button onclick="voltarVitrine()" style="display:flex;align-items:center;gap:6px;background:rgba(0,208,132,0.12);border:1px solid rgba(0,208,132,0.45);border-radius:8px;color:var(--green);font-size:12.5px;font-weight:700;padding:9px 16px;cursor:pointer;white-space:nowrap;transition:background .15s" onmouseover="this.style.background='rgba(0,208,132,0.20)'" onmouseout="this.style.background='rgba(0,208,132,0.12)'" data-i18n="vit.voltar">◂ Voltar à vitrine</button>
+                <div id="estrategia-contexto" style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+                  <div style="font-size:10px;font-weight:700;color:var(--muted2);letter-spacing:.6px" data-i18n="vit.testandoLabel">ESTRATÉGIA EM TESTE</div>
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span id="estrategia-nome" style="font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+                    <span id="estrategia-tags" style="display:flex;gap:5px;flex-wrap:wrap"></span>
+                  </div>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-                <button id="ia-run-btn" onclick="rodarHero()" style="padding:11px 18px;font-size:12.5px;background:var(--green);color:#04140d;font-weight:700;border:none;border-radius:8px;cursor:pointer" data-i18n="hero.rodar">▶ Rodar sua estratégia</button>
-                <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px" data-i18n="hero.gerar">✨ Gerar estratégia</button>
-                <button onclick="abrirRadarChat()" title="Falar com a IA" style="white-space:nowrap;padding:9px 14px;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;color:var(--green);font-size:12.5px;cursor:pointer;font-weight:700" data-i18n="radar.bChat">💬 Falar com a IA</button>
-                <button id="hero-limpar-btn" onclick="limparCodigo()" title="Limpar código" style="white-space:nowrap;padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12.5px;cursor:pointer;font-weight:600">🧹 <span data-i18n="hero.limpar">Limpar</span></button>
-              </div>
-              <div id="param-aviso" data-i18n="param.naoIdent" style="display:none;margin-top:9px;padding:10px 13px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12.5px;line-height:1.45"></div>
-              <div id="free-contador" style="display:none;margin-top:8px;font-size:12px;font-weight:600;color:var(--muted2)"></div>
-            </div>
-            <!-- barra "voltar à vitrine" (só no modo teste) -->
-            <div id="voltar-vitrine-bar" style="display:none;margin:12px 16px 0">
-              <button onclick="voltarVitrine()" style="background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer" data-i18n="vit.voltar">◂ Voltar à vitrine</button>
             </div>
             <!-- MÉTRICAS (abaixo da caixa da IA) -->
     <div class="metrics-bar" id="metrics-bar">
@@ -1244,6 +1233,26 @@ body.modo-vitrine #vitrine{display:block}
               </button>
             </div>
             <div id="ov-result" style="display:none"></div>
+            <!-- BARRA IA (no fim: depois da vitrine no modo loja, depois do resultado no modo teste) -->
+            <div id="ia-hero" style="margin:16px 16px 8px;padding:18px 20px;background:linear-gradient(135deg,rgba(157,111,255,0.10),rgba(0,208,132,0.07)),var(--bg2);border:1px solid rgba(157,111,255,0.30);border-radius:12px">
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px" data-i18n="hero.titulo">✨ Descreva sua estratégia em português</div>
+              <div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">A IA gera o código pronto pra testar. Quer escrever Python direto? Use a aba <b>Editor</b> (modo avançado).</div>
+              <div style="position:relative">
+                <textarea id="ia-hero-desc" rows="1" autocomplete="off" name="bb_nl_q_x7" spellcheck="false" data-i18n-ph="hero.ph" placeholder='Descreva ("canal EMA 20 high/low") ou cole seu código Python aqui' oninput="autoGrowHero(this)" onfocus="autoGrowHero(this);if(typeof _vitrineMode!=='undefined'&&_vitrineMode)sairVitrineParaTeste()" onblur="collapseHeroLater(this)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')rodarHero()" style="width:100%;box-sizing:border-box;resize:none;overflow-y:auto;line-height:1.5;min-height:44px;max-height:320px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12.5px;padding:11px 13px;outline:none"></textarea>
+                <div id="hero-lista" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:340px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;z-index:120;box-shadow:0 12px 35px rgba(0,0,0,0.55)">
+                  <div style="padding:9px 13px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted2);letter-spacing:.5px">ESTRATÉGIAS PRONTAS — clique pra testar na hora</div>
+                  <div id="hero-lista-itens"><div style="padding:14px;font-size:12px;color:var(--muted)">Carregando...</div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button id="ia-run-btn" onclick="rodarHero()" style="padding:11px 18px;font-size:12.5px;background:var(--green);color:#04140d;font-weight:700;border:none;border-radius:8px;cursor:pointer" data-i18n="hero.rodar">▶ Rodar sua estratégia</button>
+                <button class="tbtn tbtn-purple" id="ia-hero-btn" onclick="gerarHeroIA()" style="padding:11px 18px;font-size:12.5px" data-i18n="hero.gerar">✨ Gerar estratégia</button>
+                <button onclick="abrirRadarChat()" title="Falar com a IA" style="white-space:nowrap;padding:9px 14px;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;color:var(--green);font-size:12.5px;cursor:pointer;font-weight:700" data-i18n="radar.bChat">💬 Falar com a IA</button>
+                <button id="hero-limpar-btn" onclick="limparCodigo()" title="Limpar código" style="white-space:nowrap;padding:9px 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:12.5px;cursor:pointer;font-weight:600">🧹 <span data-i18n="hero.limpar">Limpar</span></button>
+              </div>
+              <div id="param-aviso" data-i18n="param.naoIdent" style="display:none;margin-top:9px;padding:10px 13px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12.5px;line-height:1.45"></div>
+              <div id="free-contador" style="display:none;margin-top:8px;font-size:12px;font-weight:600;color:var(--muted2)"></div>
+            </div>
           </div>
 
           <!-- TAB: TEMPLATES -->
@@ -2502,7 +2511,7 @@ const I18N = {
   pt: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
+    'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.testandoLabel':'ESTRATÉGIA EM TESTE','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
@@ -2534,7 +2543,7 @@ const I18N = {
   en: {
     'nav.overview':'Overview','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
-    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
+    'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.testandoLabel':'STRATEGY IN TEST','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
@@ -2566,7 +2575,7 @@ const I18N = {
   es: {
     'nav.overview':'Resumen','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
-    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
+    'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.testandoLabel':'ESTRATEGIA EN PRUEBA','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
@@ -5429,7 +5438,8 @@ async function carregarVitrine(){
 
 async function escolherEstrategiaVitrine(id){
   const e=window._vitrineDados[id]; if(!e) return;
-  window._estrategiaAtiva={id:e.id, nome:e.nome};
+  window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||'')};
+  try{ atualizarCabecalhoEstrategia(e); }catch(_){}
   const ed=document.getElementById('code-editor'); if(ed) ed.value=e.codigo;
   if(typeof lastIACode!=='undefined') lastIACode=e.codigo;
   try{ marcarCodigoPersonalizado(); }catch(_){}
@@ -5464,6 +5474,21 @@ function voltarVitrine(){
   document.body.classList.add('modo-vitrine');
   switchTab('overview');
   carregarVitrine();
+}
+
+// Preenche o cabeçalho de contexto (nome + tags) da estratégia escolhida na vitrine.
+// 'e' é o objeto vindo de _vitrineDados (já traduzido pelo backend conforme o idioma).
+function atualizarCabecalhoEstrategia(e){
+  const nomeEl=document.getElementById('estrategia-nome');
+  const tagsEl=document.getElementById('estrategia-tags');
+  if(!e){ if(nomeEl) nomeEl.textContent='—'; if(tagsEl) tagsEl.innerHTML=''; return; }
+  if(nomeEl) nomeEl.textContent=(e.emoji?e.emoji+' ':'')+(e.nome||'—');
+  if(tagsEl){
+    const tags=(e.tags||[]).slice(0,3);
+    tagsEl.innerHTML = tags.map(function(tg){
+      return '<span style="font-size:9.5px;font-weight:700;letter-spacing:.4px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:2px 7px">'+tg+'</span>';
+    }).join('');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function(){
