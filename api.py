@@ -5122,7 +5122,11 @@ def estrategias_vitrine(lang: str = "pt"):
             "categoria": _categoria_de(est.get("tags", [])),
             "nivel": _nivel_loc(est.get("nivel", ""), lang),
             "mercados": est.get("mercados", []),
-            "top_ativos": (m.get("top_ativos") or est.get("mercados", [])),
+            # top_ativos = SÓ ranking real do banco (Sharpe>0.5, filtrado). SEM
+            # fallback p/ 'mercados' manual: se o banco não tem ativo bom medido,
+            # vem vazio de propósito e o card mostra a categoria (não promete ativo
+            # que pode dar prejuízo — foi o caso do NASDAQ no Canal EMA).
+            "top_ativos": (m.get("top_ativos") or []),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
             "overlays": _overlays_da_estrategia(eid),
