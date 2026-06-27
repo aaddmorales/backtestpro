@@ -3123,6 +3123,12 @@ async function rodarBacktest() {
   console.log('liberado:', liberado);
   if (!liberado) return;
 
+  // BOT NA HORA DO CLIQUE: o overlay de processamento aparece JÁ, assim que o
+  // teste é liberado, e cobre todo o tempo (download + cálculo do backtest +
+  // análise do Radar). Some só quando o resultado está pronto — em
+  // radarAnalisarAtivo. Sem isto, o bot só aparecia ao fim, com atraso visível.
+  try{ radarLoadingMostrar(); }catch(_){}
+
   // ── GARANTIA (req 1): Stop/Take NUNCA vazios — repõe o padrão 60/120 ──
   // Estratégias que não usam SL_PTS/TP_PTS (ex.: as da Vitrine) não reagem a
   // stop/take; então não faz sentido abortar nem esvaziar os campos. Apenas
@@ -3184,7 +3190,7 @@ async function rodarBacktest() {
     if(!r.ok) {
       const err = await r.json().catch(()=>({}));
       const det = err.detail;
-      if(det && typeof det === 'object' && det.code){ tratarErroGating(det); return; }
+      if(det && typeof det === 'object' && det.code){ try{ radarLoadingEsconder(); }catch(_){} tratarErroGating(det); return; }
       throw new Error((det && det.msg) || (typeof det==='string'?det:'') || 'Erro na API');
     }
 
@@ -3200,8 +3206,10 @@ async function rodarBacktest() {
     await incrementarBacktest();
   } catch(e) {
     if(e.name==='AbortError') {
+      try{ radarLoadingEsconder(); }catch(_){}
       alert('Timeout: o backtest demorou mais de 2 minutos. Tente um período menor (6 meses) ou timeframe maior (1D).');
     } else {
+      try{ radarLoadingEsconder(); }catch(_){}
       alert('Erro: ' + e.message);
     }
   } finally {
@@ -3731,10 +3739,6 @@ function renderCharts(d, pos, winners, losers, grossProfit, grossLoss, roiDist) 
 
 function renderOverview(d, params, relang) {
   window._ultimoResultado = {d: d, params: params};   // guarda pra re-render em troca de idioma
-  // BOT ANTES DO RESULTADO: o overlay de processamento do Radar aparece já,
-  // cobrindo a tela enquanto o resultado é desenhado por baixo. Some quando a
-  // análise termina (radarAnalisarAtivo), revelando o resultado pronto.
-  if(!relang){ try{ radarLoadingMostrar(); }catch(_){} }
   document.getElementById('ov-empty').style.display = 'none';
   const sampleEl = document.getElementById('ov-sample');
   if(sampleEl) sampleEl.style.display = 'none';
