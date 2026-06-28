@@ -522,6 +522,17 @@ select option{background:#141920}
    TAB: EDITOR
 ════════════════════════════ */
 .tab-editor{padding:0}
+.export-sec{margin-top:14px;padding:16px;background:linear-gradient(135deg,rgba(0,208,132,0.05),rgba(43,214,255,0.04)),var(--bg2);border:1px solid var(--border2);border-radius:12px}
+.export-head{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--text)}
+.export-sub{font-size:12px;color:var(--muted2);margin-top:4px;margin-bottom:13px}
+.export-btns{display:flex;gap:10px;flex-wrap:wrap}
+.export-card{position:relative;flex:1;min-width:140px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:13px 15px;cursor:pointer;transition:border-color .15s,background .15s;text-align:left}
+.export-card:not(.is-soon):hover{border-color:rgba(0,208,132,0.6);background:rgba(0,208,132,0.08)}
+.export-ic{font-size:20px;margin-bottom:3px}
+.export-nome{font-size:13.5px;font-weight:700;color:var(--text)}
+.export-lang{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.export-card.is-soon{opacity:0.55;cursor:not-allowed}
+.export-soon{position:absolute;top:9px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 5px}
 .editor-code-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:420px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
 .editor-code-wrap .ed-body{flex:1;min-height:0}
 .editor-code-wrap #code-editor{font-size:13px;line-height:1.7}
@@ -1176,6 +1187,34 @@ body.modo-vitrine #vitrine{display:block}
               <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2);margin-top:10px">
                 <span>⚡</span>
                 <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> à esquerda para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong>.</span>
+              </div>
+
+              <!-- ── EXPORTAR: levar a estratégia validada pra plataforma de execução ── -->
+              <div class="export-sec">
+                <div class="export-head">
+                  <span style="font-size:15px">🚀</span>
+                  <span data-i18n="export.titulo">Levar pra minha plataforma</span>
+                </div>
+                <div class="export-sub" data-i18n="export.sub">Gere o código da sua estratégia na linguagem da plataforma onde você opera.</div>
+                <div class="export-btns">
+                  <button class="export-card" onclick="exportarPine()">
+                    <span class="export-ic">📈</span>
+                    <span class="export-nome">TradingView</span>
+                    <span class="export-lang">Pine Script</span>
+                  </button>
+                  <button class="export-card is-soon" disabled>
+                    <span class="export-ic">📊</span>
+                    <span class="export-nome">Profit</span>
+                    <span class="export-lang">NTSL</span>
+                    <span class="export-soon" data-i18n="export.embreve">em breve</span>
+                  </button>
+                  <button class="export-card is-soon" disabled>
+                    <span class="export-ic">🤖</span>
+                    <span class="export-nome">MetaTrader 5</span>
+                    <span class="export-lang">MQL5</span>
+                    <span class="export-soon" data-i18n="export.embreve">em breve</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2446,6 +2485,22 @@ initAuth();
   </div>
 </div>
 
+<div class="modal-ov" id="modal-pine">
+  <div class="modal-box">
+    <div class="modal-title">📈 Exportar para TradingView (Pine Script)</div>
+    <div id="pine-aviso" style="display:none;margin-bottom:10px;padding:9px 12px;background:rgba(255,184,48,0.12);border:1px solid rgba(255,184,48,0.5);border-radius:8px;color:var(--text);font-size:12px;line-height:1.45"></div>
+    <div id="pine-passos" style="margin-bottom:10px;font-size:12px;color:var(--muted2);line-height:1.5">
+      <strong style="color:var(--text)" data-i18n="pine.comoUsar">Como usar:</strong>
+      <span data-i18n="pine.passos">abra o TradingView → Pine Editor → cole o código → "Adicionar ao gráfico".</span>
+    </div>
+    <div class="modal-code" id="pine-code">Gerando…</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="modal-close" style="flex:1;background:var(--green-bg);color:var(--green);border-color:rgba(0,208,132,0.4)" onclick="copiarPine()" data-i18n="pine.copiar">📋 Copiar código</button>
+      <button class="modal-close" style="flex:1" onclick="document.getElementById('modal-pine').style.display='none'" data-i18n="modal.fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
 let lastResult = null;
@@ -2541,7 +2596,7 @@ const I18N = {
     'lbl.overlay':'Overlay no gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/custo (por op.)',
     'sec.indicadores':'Indicadores','sec.ate3':'(até 3)','sec.risco':'Gestão de Risco','counter.label':'backtests rodados','auth.idioma':'Idioma','auth.criar':'Criar conta grátis','auth.tabEntrar':'Entrar','auth.tabCriar':'Criar conta','auth.email':'Email','auth.senha':'Senha','auth.nome':'Nome','auth.btnEntrar':'Entrar','auth.esqueci':'Esqueci minha senha','auth.phNome':'Seu nome','auth.sobrenome':'Sobrenome','auth.phSobrenome':'Seu sobrenome','auth.confSenha':'Confirmar senha','auth.phConfSenha':'digite a senha de novo','auth.errSenhaConf':'As senhas não conferem.','auth.recTitulo':'Defina sua nova senha','auth.recSub':'Escolha uma senha nova para sua conta.','auth.novaSenha':'Nova senha','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Salvar nova senha','auth.recOk':'✅ Senha alterada! Entrando...','codigo.selo':'ACESSO DE TESTE','codigo.titulo':'Tem um código de acesso?','codigo.sub':'Resgate seu acesso de cortesia ao Trader Pro.','codigo.ph':'EX: AMIGO-XXXX','codigo.btn':'Resgatar','codigo.ok':'✅ Acesso liberado! Atualizando...','codigo.errVazio':'Digite um código.','codigo.errLogin':'Entre na sua conta primeiro.','codigo.errGenerico':'Não foi possível resgatar o código.','auth.phEmail':'seu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Criando conta...','auth.errCampos':'Preencha todos os campos.','auth.errSenha':'Senha deve ter mínimo 6 caracteres.','auth.errEmail':'Este email já está cadastrado.','auth.sucesso':'✅ Conta criada! Enviamos um link de confirmação para o seu email. Confirme para acessar a plataforma. (Verifique também o spam.)',
-    'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL',
+    'btn.rodar':'Rodar Backtest','btn.otimizar':'⚙ Otimizar parâmetros','btn.ntsl':'📥 Exportar para NTSL','export.titulo':'Levar pra minha plataforma','export.sub':'Gere o código da sua estratégia na linguagem da plataforma onde você opera.','export.embreve':'em breve','pine.comoUsar':'Como usar:','pine.passos':'abra o TradingView → Pine Editor → cole o código → "Adicionar ao gráfico".','pine.copiar':'📋 Copiar código','pine.gerando':'Gerando…','pine.erro':'Conversão indisponível para este código.','pine.erroConexao':'// Erro ao conectar.','modal.fechar':'Fechar',
     'hero.titulo':'✨ Descreva sua estratégia em português','hero.gerar':'✨ Gerar estratégia',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
     'cap.inicial':'Capital Inicial','cap.final':'Capital Final','cap.lucro':'Lucro / Perda','cap.cagr':'Retorno Anual (CAGR)',
@@ -2574,7 +2629,7 @@ const I18N = {
     'lbl.overlay':'Chart overlay','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Max. Ops','lbl.spread':'Spread/cost (per trade)',
     'sec.indicadores':'Indicators','sec.ate3':'(up to 3)','sec.risco':'Risk Management','counter.label':'backtests run','auth.idioma':'Language','auth.criar':'Create free account','auth.tabEntrar':'Sign in','auth.tabCriar':'Create account','auth.email':'Email','auth.senha':'Password','auth.nome':'Name','auth.btnEntrar':'Sign in','auth.esqueci':'Forgot my password','auth.phNome':'Your name','auth.sobrenome':'Last name','auth.phSobrenome':'Your last name','auth.confSenha':'Confirm password','auth.phConfSenha':'type the password again','auth.errSenhaConf':'Passwords do not match.','auth.recTitulo':'Set your new password','auth.recSub':'Choose a new password for your account.','auth.novaSenha':'New password','auth.phNovaSenha':'at least 6 characters','auth.recBtn':'Save new password','auth.recOk':'✅ Password changed! Signing in...','codigo.selo':'TEST ACCESS','codigo.titulo':'Have an access code?','codigo.sub':'Redeem your courtesy access to Trader Pro.','codigo.ph':'EX: FRIEND-XXXX','codigo.btn':'Redeem','codigo.ok':'✅ Access granted! Refreshing...','codigo.errVazio':'Enter a code.','codigo.errLogin':'Sign in to your account first.','codigo.errGenerico':'Could not redeem the code.','auth.phEmail':'you@email.com','auth.phSenha':'at least 6 characters','auth.criando':'Creating account...','auth.errCampos':'Please fill in all fields.','auth.errSenha':'Password must be at least 6 characters.','auth.errEmail':'This email is already registered.','auth.sucesso':'✅ Account created! We sent a confirmation link to your email. Confirm it to access the platform. (Check your spam too.)',
-    'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL',
+    'btn.rodar':'Run Backtest','btn.otimizar':'⚙ Optimize parameters','btn.ntsl':'📥 Export to NTSL','export.titulo':'Take it to my platform','export.sub':'Generate your strategy code in the language of the platform where you trade.','export.embreve':'soon','pine.comoUsar':'How to use:','pine.passos':'open TradingView → Pine Editor → paste the code → "Add to chart".','pine.copiar':'📋 Copy code','pine.gerando':'Generating…','pine.erro':'Conversion unavailable for this code.','pine.erroConexao':'// Connection error.','modal.fechar':'Close',
     'hero.titulo':'✨ Describe your strategy in plain English','hero.gerar':'✨ Generate strategy',
     'met.winrate':'Win Rate','met.sharpe':'Sharpe Ratio','met.drawdown':'Max Drawdown','met.pf':'Profit Factor',
     'cap.inicial':'Initial Capital','cap.final':'Final Capital','cap.lucro':'Profit / Loss','cap.cagr':'Annual Return (CAGR)',
@@ -2607,7 +2662,7 @@ const I18N = {
     'lbl.overlay':'Overlay en el gráfico','lbl.stop':'Stop Loss (pts)','lbl.take':'Take Profit (pts)',
     'lbl.capital':'Capital (USD)','lbl.maxops':'Máx. Ops','lbl.spread':'Spread/costo (por op.)',
     'sec.indicadores':'Indicadores','sec.ate3':'(hasta 3)','sec.risco':'Gestión de Riesgo','counter.label':'backtests ejecutados','auth.idioma':'Idioma','auth.criar':'Crear cuenta gratis','auth.tabEntrar':'Entrar','auth.tabCriar':'Crear cuenta','auth.email':'Email','auth.senha':'Contraseña','auth.nome':'Nombre','auth.btnEntrar':'Entrar','auth.esqueci':'Olvidé mi contraseña','auth.phNome':'Tu nombre','auth.sobrenome':'Apellido','auth.phSobrenome':'Tu apellido','auth.confSenha':'Confirmar contraseña','auth.phConfSenha':'escribe la contraseña otra vez','auth.errSenhaConf':'Las contraseñas no coinciden.','auth.recTitulo':'Define tu nueva contraseña','auth.recSub':'Elige una nueva contraseña para tu cuenta.','auth.novaSenha':'Nueva contraseña','auth.phNovaSenha':'mínimo 6 caracteres','auth.recBtn':'Guardar nueva contraseña','auth.recOk':'✅ ¡Contraseña cambiada! Entrando...','codigo.selo':'ACCESO DE PRUEBA','codigo.titulo':'¿Tienes un código de acceso?','codigo.sub':'Canjea tu acceso de cortesía a Trader Pro.','codigo.ph':'EJ: AMIGO-XXXX','codigo.btn':'Canjear','codigo.ok':'✅ ¡Acceso liberado! Actualizando...','codigo.errVazio':'Escribe un código.','codigo.errLogin':'Entra en tu cuenta primero.','codigo.errGenerico':'No se pudo canjear el código.','auth.phEmail':'tu@email.com','auth.phSenha':'mínimo 6 caracteres','auth.criando':'Creando cuenta...','auth.errCampos':'Completa todos los campos.','auth.errSenha':'La contraseña debe tener al menos 6 caracteres.','auth.errEmail':'Este correo ya está registrado.','auth.sucesso':'✅ ¡Cuenta creada! Enviamos un enlace de confirmación a tu correo. Confírmalo para acceder a la plataforma. (Revisa también el spam.)',
-    'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL',
+    'btn.rodar':'Ejecutar Backtest','btn.otimizar':'⚙ Optimizar parámetros','btn.ntsl':'📥 Exportar a NTSL','export.titulo':'Llevar a mi plataforma','export.sub':'Genera el código de tu estrategia en el lenguaje de la plataforma donde operas.','export.embreve':'pronto','pine.comoUsar':'Cómo usar:','pine.passos':'abre TradingView → Pine Editor → pega el código → "Añadir al gráfico".','pine.copiar':'📋 Copiar código','pine.gerando':'Generando…','pine.erro':'Conversión no disponible para este código.','pine.erroConexao':'// Error de conexión.','modal.fechar':'Cerrar',
     'hero.titulo':'✨ Describe tu estrategia en español','hero.gerar':'✨ Generar estrategia',
     'met.winrate':'Tasa de acierto','met.sharpe':'Ratio de Sharpe','met.drawdown':'Drawdown máx.','met.pf':'Factor de beneficio',
     'cap.inicial':'Capital inicial','cap.final':'Capital final','cap.lucro':'Ganancia / Pérdida','cap.cagr':'Retorno anual (CAGR)',
@@ -4180,6 +4235,55 @@ async function abrirNTSL() {
     const d = await r.json();
     document.getElementById('ntsl-code').textContent = d.codigo||'Erro ao gerar NTSL.';
   } catch(e){document.getElementById('ntsl-code').textContent='// Erro ao conectar.';}
+}
+
+// ── Exportar para TradingView (Pine Script) ──
+// Manda o id da estratégia ativa + os parâmetros reais do usuário. Estratégia
+// conhecida usa conversor testado; código customizado cai na IA (com aviso).
+async function exportarPine(){
+  const modal = document.getElementById('modal-pine');
+  const codeEl = document.getElementById('pine-code');
+  const avisoEl = document.getElementById('pine-aviso');
+  modal.style.display='flex';
+  avisoEl.style.display='none';
+  codeEl.textContent = (typeof t==='function'? t('pine.gerando') : 'Gerando…');
+
+  const est = window._estrategiaAtiva || {};
+  const payload = {
+    codigo: (document.getElementById('code-editor')||{}).value || '',
+    estrategia_id: est.id || '',
+    estrategia_nome: est.nome || '',
+    ema_period: parseInt((document.getElementById('ema_period')||{}).value || '20') || 20,
+    stop_loss: parseFloat((document.getElementById('stop_loss')||{}).value || '50') || 50,
+    take_profit: parseFloat((document.getElementById('take_profit')||{}).value || '100') || 100,
+    ativo: (document.getElementById('ativo')||{}).value || '',
+    timeframe: (window._tfAtual || '1d')
+  };
+  try{
+    const r = await fetch(API+'/exportar/pine', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if(d.codigo){
+      codeEl.textContent = d.codigo;
+      window._pineGerado = d.codigo;
+      if(d.aviso){ avisoEl.textContent = '⚠ '+d.aviso; avisoEl.style.display='block'; }
+    } else {
+      codeEl.textContent = d.aviso || (typeof t==='function'? t('pine.erro') : 'Conversão indisponível para este código.');
+      window._pineGerado = '';
+    }
+  }catch(e){
+    codeEl.textContent = (typeof t==='function'? t('pine.erroConexao') : '// Erro ao conectar.');
+    window._pineGerado = '';
+  }
+}
+function copiarPine(){
+  const txt = window._pineGerado || document.getElementById('pine-code').textContent || '';
+  if(!txt) return;
+  try{ navigator.clipboard.writeText(txt); }catch(_){}
+  const btn = event && event.target;
+  if(btn){ const o=btn.textContent; btn.textContent='✓ Copiado'; setTimeout(()=>{btn.textContent=o;},1500); }
 }
 
 // Init check API
