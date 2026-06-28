@@ -1,6 +1,7 @@
 # ============================================================
-#  BotTested API — v3.5 (Radar IA + cache)
-#  Data: 2026-06-07 | Deploy: Railway
+#  BotTested API — v5.6  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-06-28g-vitrine-tf-natural-diaria | Deploy: Railway
+#  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
 #    backtesting.py (antes engolia erro e devolvia sempre 0 trades).
@@ -601,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.5 — Vitrine: card ranqueia ativos pelo melhor timeframe robusto (BTC aparece na Escalonada, que é diária)"
+API_VERSAO = "5.6 — Vitrine: estratégias diárias (Escalonada, S&R, Ímã, Gap) avaliadas só no D1 (BTC entra na linha de ativos)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28f-vitrine-melhor-tf-robusto"
+BUILD_TAG = "2026-06-28g-vitrine-tf-natural-diaria"
 
 @app.get("/versao")
 def versao():
@@ -6383,7 +6384,7 @@ def estrategias_vitrine(lang: str = "pt"):
     if sb is not None:
         try:
             rows = (sb.table("estudo_biblioteca")
-                    .select("estrategia_id,ativo,sharpe,profit_factor,retorno,win_rate,trades,forca")
+                    .select("estrategia_id,ativo,sharpe,profit_factor,retorno,win_rate,trades,forca,timeframe")
                     .limit(8000).execute().data or [])
             acc = {}
             por_ativo = {}   # estrategia_id -> {ativo -> {sh:[], n:int}}  (p/ ranking de ativos)
@@ -6399,36 +6400,50 @@ def estrategias_vitrine(lang: str = "pt"):
                 a["n"] += 1
                 if r.get("forca") == "forte":
                     a["forte"] += 1
-                # acumula sharpe + trades por ativo (p/ achar onde a estratégia mais funciona,
-                # avaliando pelo MELHOR timeframe robusto, não pela média)
+                # acumula sharpe + trades + timeframe por ativo (p/ achar onde a estratégia
+                # mais funciona). Estratégias diárias são avaliadas só no D1 (ver _TF_NATURAL);
+                # as demais, pelo melhor timeframe robusto.
                 ativo_nome = r.get("ativo")
                 if ativo_nome:
                     pa = por_ativo.setdefault(eid, {}).setdefault(ativo_nome, {"combos": []})
                     pa["combos"].append({"sh": float(r.get("sharpe") or 0),
-                                         "trades": int(r.get("trades") or 0)})
-            # top 3 ativos por estratégia — avaliados pelo MELHOR timeframe robusto
+                                         "trades": int(r.get("trades") or 0),
+                                         "tf": str(r.get("timeframe") or "").strip().lower()})
+            # top 3 ativos por estratégia
             # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
-            # Uma estratégia de timeframe específico (ex: a Escalonada, que lê o D1)
-            # seria injustamente excluída se medíssemos pela MÉDIA de todos os TFs —
-            # os TFs onde ela nem deveria operar (1H/4H) puxam a média pra baixo.
-            # Então avaliamos cada ativo pelo seu MELHOR combo robusto. Critérios:
-            #   • o combo precisa ter trades suficientes (não ser sorte de poucos trades)
-            #   • mínimo de medições para aquele ativo (não 1 só)
-            #   • o melhor sharpe precisa passar do piso (mesmo critério de "robusta")
-            # Se a estratégia não tem ativos robustos suficientes, top fica vazio
-            # e o card cai no fallback do "mercados" curado manualmente.
+            # Estratégias DIÁRIAS por natureza (leem o D1: Escalonada, Suporte&Resistência
+            # do dia anterior, Fechamento Ímã, Gap de abertura) são avaliadas SÓ no
+            # timeframe diário — é onde elas operam de verdade. Avaliá-las no melhor TF
+            # qualquer deixava resultados intraday (5m/15m) sem sentido dominarem o ranking
+            # e empurrarem pra fora ativos que vão bem no diário (ex: BTC na Escalonada).
+            # As demais estratégias continuam pelo MELHOR timeframe robusto.
+            # Critérios (iguais p/ ambas): combo com trades suficientes, mín. de medições,
+            # sharpe acima do piso. Sem ativos robustos -> top vazio -> fallback "mercados".
             _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo
             _MIN_TRADES_COMBO    = 20    # trades mínimos no combo (mesma régua do estudo)
             _PISO_SHARPE_ATIVO   = 0.5   # melhor sharpe mínimo p/ ser sugerível
+            # estratégias que LEEM o D1: avaliadas só no diário
+            _TF_NATURAL = {
+                "tendencia_diaria_piramide": "1d",   # Escalonada
+                "sr_dia_anterior": "1d",             # Suporte & Resistência do dia anterior
+                "fechamento_ima": "1d",              # Fechamento Anterior como Ímã
+                "abertura_gap": "1d",                # Gap de Abertura
+            }
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
+                tf_natural = _TF_NATURAL.get(eid)   # None p/ estratégias multi-timeframe
                 ranking = []
                 for ativo_nome, d in ativos.items():
                     combos = d["combos"]
                     if len(combos) < _MIN_BACKTESTS_ATIVO:
                         continue
-                    # melhor combo entre os que têm trades suficientes
-                    robustos = [c["sh"] for c in combos if c["trades"] >= _MIN_TRADES_COMBO]
+                    if tf_natural:
+                        # estratégia diária: só conta o combo do timeframe natural (D1)
+                        robustos = [c["sh"] for c in combos
+                                    if c["tf"] == tf_natural and c["trades"] >= _MIN_TRADES_COMBO]
+                    else:
+                        # multi-timeframe: melhor combo entre os que têm trades suficientes
+                        robustos = [c["sh"] for c in combos if c["trades"] >= _MIN_TRADES_COMBO]
                     if not robustos:
                         continue
                     sh_melhor = max(robustos)
