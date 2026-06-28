@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.3 — MAGIC único por bot (estratégias diferentes no mesmo ativo não conflitam) + excluir bot + fix invalid stops"
+API_VERSAO = "5.4 — Estudo: seletor da matriz mostra catálogo completo (BTC/USD e cia. selecionáveis) + MAGIC único + excluir bot + fix stops"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28d-magic-unico"
+BUILD_TAG = "2026-06-28e-estudo-catalogo-completo"
 
 @app.get("/versao")
 def versao():
@@ -6090,7 +6090,12 @@ def admin_biblioteca_ativos(user_id: str = ""):
     for a, info in sorted(ativos.items()):
         out.append({"ativo": a, "periodos": sorted(info["periodos"]),
                     "medido_em": info["medido_em"]})
-    return {"ativos": out, "total": len(out)}
+    # catálogo COMPLETO (todos os ativos da biblioteca), marcando quais já têm
+    # dados — pra o seletor da matriz mostrar tudo (ex: BTC/USD antes de rodar)
+    com_dados = {o["ativo"] for o in out}
+    catalogo = [{"ativo": nome, "tem_dados": nome in com_dados}
+                for nome in _bib_lista_todos_ativos()]
+    return {"ativos": out, "total": len(out), "catalogo": catalogo}
 
 
 # ══════════════════════════════════════════════════════════════════════════
