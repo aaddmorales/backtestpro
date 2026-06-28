@@ -3822,6 +3822,194 @@ def exportar_mql5(req: BacktestCustom):
     return res
 
 
+# ════════════════════════════════════════════════════════════════════
+# CAMADA 1 — Leitura de DIREÇÃO (D1 + 1H), multi-sinal
+# 4 sinais que se confirmam: estrutura (topos/fundos), inclinação das médias,
+# força do movimento (corpo vs ATR), alinhamento D1+1H.
+# Retorna veredito {direcao: alta/baixa/lateral, confianca: 0-100, sinais: {...}}
+# É a 1ª camada da análise top-down. Reusa baixar_dados (yfinance).
+# ════════════════════════════════════════════════════════════════════
+
+
+def _ema(serie, n):
+    return pd.Series(serie).ewm(span=n, adjust=False).mean()
+
+
+def _atr(df, n=14):
+    h, l, c = df["High"], df["Low"], df["Close"]
+    tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    return tr.rolling(n).mean()
+
+
+# ── Sinal 1: estrutura de topos e fundos (o mais importante) ───────
+def _sinal_estrutura(df, lookback=4, n_pivos=3, tol=0.003):
+    """Topos e fundos ascendentes = alta; descendentes = baixa. Confirma pivôs
+    olhando 'lookback' candles de cada lado. 'tol' = zona morta (% do preço) pra
+    não chamar de tendência uma diferença mínima entre pivôs (isso é lateral)."""
+    h, l = df["High"].values, df["Low"].values
+    n = len(df)
+    topos, fundos = [], []
+    for i in range(lookback, n - lookback):
+        jan_h = h[i - lookback:i + lookback + 1]
+        jan_l = l[i - lookback:i + lookback + 1]
+        if h[i] == jan_h.max():
+            topos.append(h[i])
+        if l[i] == jan_l.min():
+            fundos.append(l[i])
+    if len(topos) < 2 or len(fundos) < 2:
+        return "lateral", 0.0
+    tt = topos[-n_pivos:] if len(topos) >= n_pivos else topos[-2:]
+    ff = fundos[-n_pivos:] if len(fundos) >= n_pivos else fundos[-2:]
+    preco_ref = float(df["Close"].iloc[-1]) or 1.0
+    dz = tol * preco_ref  # zona morta absoluta
+
+    def _tendencia(seq):
+        # sobe se cada passo cresce mais que a zona morta; desce se cai mais
+        sobe = all(seq[k + 1] - seq[k] > dz for k in range(len(seq) - 1))
+        desce = all(seq[k] - seq[k + 1] > dz for k in range(len(seq) - 1))
+        return "alta" if sobe else "baixa" if desce else "lateral"
+
+    dir_t = _tendencia(tt)
+    dir_f = _tendencia(ff)
+    if dir_t == "alta" and dir_f == "alta":
+        return "alta", 1.0
+    if dir_t == "baixa" and dir_f == "baixa":
+        return "baixa", 1.0
+    # um confirma, outro lateral = sinal parcial
+    if "alta" in (dir_t, dir_f) and "baixa" not in (dir_t, dir_f):
+        return "alta", 0.5
+    if "baixa" in (dir_t, dir_f) and "alta" not in (dir_t, dir_f):
+        return "baixa", 0.5
+    return "lateral", 0.0
+
+
+# ── Sinal 2: inclinação das médias + lado do preço ─────────────────
+def _sinal_medias(df, n_curta=20, n_longa=50):
+    """Média longa inclinada + preço do lado certo. Inclinação medida pela
+    variação da média longa nas últimas barras."""
+    c = df["Close"]
+    if len(c) < n_longa + 6:
+        return "lateral", 0.0
+    ema_l = _ema(c, n_longa)
+    ema_c = _ema(c, n_curta)
+    preco = float(c.iloc[-1])
+    incl = float(ema_l.iloc[-1] - ema_l.iloc[-6])  # inclinação ~6 barras
+    base = float(_atr(df).iloc[-1]) or 1.0
+    incl_rel = incl / base  # inclinação relativa ao ATR
+    acima = preco > float(ema_l.iloc[-1])
+    curta_acima = float(ema_c.iloc[-1]) > float(ema_l.iloc[-1])
+    if incl_rel > 0.15 and acima and curta_acima:
+        return "alta", min(1.0, 0.5 + abs(incl_rel))
+    if incl_rel < -0.15 and not acima and not curta_acima:
+        return "baixa", min(1.0, 0.5 + abs(incl_rel))
+    # inclinação fraca / preço do lado contrário = lateral ou parcial
+    if incl_rel > 0.05 and acima:
+        return "alta", 0.4
+    if incl_rel < -0.05 and not acima:
+        return "baixa", 0.4
+    return "lateral", 0.0
+
+
+# ── Sinal 3: força do movimento (corpo dominante vs ATR) ───────────
+def _sinal_forca(df, n=10, corpo_min=0.55):
+    """Quão direcionais são as últimas n barras: corpo dominante e fechamentos
+    na mesma direção indicam tendência real (não ruído lateral)."""
+    if len(df) < n + 1:
+        return "lateral", 0.0
+    rec = df.iloc[-n:]
+    corpo = (rec["Close"] - rec["Open"])
+    rng = (rec["High"] - rec["Low"]).replace(0, np.nan)
+    frac = (corpo.abs() / rng).fillna(0)
+    fortes = frac >= corpo_min
+    altas = ((corpo > 0) & fortes).sum()
+    baixas = ((corpo < 0) & fortes).sum()
+    total_fortes = int(fortes.sum())
+    if total_fortes < max(2, n // 3):
+        return "lateral", 0.0  # poucas barras fortes = lateral/ruído
+    if altas > baixas:
+        return "alta", min(1.0, altas / n + 0.2)
+    if baixas > altas:
+        return "baixa", min(1.0, baixas / n + 0.2)
+    return "lateral", 0.0
+
+
+# ── Combina os 3 sinais acima num veredito de UM timeframe ─────────
+def _veredito_tf(df):
+    s_est, p_est = _sinal_estrutura(df)
+    s_med, p_med = _sinal_medias(df)
+    s_for, p_for = _sinal_forca(df)
+    pesos = {"estrutura": 1.3, "medias": 1.0, "forca": 0.9}
+    score = {"alta": 0.0, "baixa": 0.0, "lateral": 0.0}
+    score[s_est] += pesos["estrutura"] * p_est
+    score[s_med] += pesos["medias"] * p_med
+    score[s_for] += pesos["forca"] * p_for
+    direcao = max(("alta", "baixa", "lateral"), key=lambda k: score[k])
+    if score[direcao] <= 0:
+        direcao = "lateral"
+
+    # TRAVA ANTI-LATERAL: tendência exige CONSENSO. Se a direção vencedora
+    # não tem pelo menos 2 dos 3 sinais a favor, é lateral (evita ler ruído
+    # de um mercado de lado como tendência forte — bug perigoso pro bot).
+    if direcao != "lateral":
+        a_favor = sum(1 for s in (s_est, s_med, s_for) if s == direcao)
+        if a_favor < 2:
+            direcao = "lateral"
+    return direcao, score, {"estrutura": s_est, "medias": s_med, "forca": s_for}
+
+
+# ── Sinal 4 (orquestrador): alinhamento D1 + 1H = veredito final ───
+def ler_direcao(ativo: str, periodo: str = "6 meses", baixar=None) -> dict:
+    """Leitura de direção robusta combinando D1 e 1H. 'baixar' é a função
+    baixar_dados injetada (pra reusar a do api.py). Retorna veredito completo."""
+    if baixar is None:
+        raise ValueError("baixar_dados não injetada")
+    out = {"ativo": ativo, "direcao": "lateral", "confianca": 0,
+           "d1": None, "h1": None, "sinais": {}, "alinhado": False}
+    try:
+        df_d1 = baixar(ativo, periodo, "1d")
+        if df_d1 is None or len(df_d1) < 60:
+            return out
+        dir_d1, sc_d1, sin_d1 = _veredito_tf(df_d1)
+        out["d1"] = dir_d1
+        out["sinais"]["d1"] = sin_d1
+
+        # 1H: usa um período menor (yfinance limita histórico intradiário)
+        dir_h1, sin_h1 = None, {}
+        try:
+            df_h1 = baixar(ativo, "1 mês", "1h")
+            if df_h1 is not None and len(df_h1) >= 60:
+                dir_h1, sc_h1, sin_h1 = _veredito_tf(df_h1)
+        except Exception:
+            dir_h1 = None
+        out["h1"] = dir_h1
+        out["sinais"]["h1"] = sin_h1
+
+        # alinhamento: D1 manda; 1H confirma ou enfraquece
+        base_conf = 0
+        nz = [k for k, v in sin_d1.items() if v == dir_d1 and dir_d1 != "lateral"]
+        base_conf = int(len(nz) / 3 * 70)  # até 70% só pelo D1 (3 sinais)
+        if dir_h1 is not None and dir_h1 == dir_d1 and dir_d1 != "lateral":
+            out["alinhado"] = True
+            base_conf = min(100, base_conf + 30)  # +30% se 1H confirma
+        elif dir_h1 is not None and dir_h1 != "lateral" and dir_h1 != dir_d1:
+            base_conf = max(0, base_conf - 20)     # divergência = -20%
+
+        out["direcao"] = dir_d1
+        out["confianca"] = base_conf
+        return out
+    except Exception as e:
+        out["erro"] = str(e)
+        return out
+
+
+# ── Endpoint: leitura de DIREÇÃO (Camada 1 da análise top-down) ──
+@app.get("/analise/direcao")
+def analise_direcao(ativo: str = "XAU/USD", periodo: str = "6 meses"):
+    """Camada 1: leitura de direção robusta (D1+1H, 4 sinais). O EA pergunta
+    aqui a cada barra. Read-only, não comanda — informa direção + confiança."""
+    return ler_direcao(ativo, periodo, baixar=baixar_dados)
+
+
 @app.get("/exportar/ntsl")
 def exportar_ntsl():
     codigo = """// ============================================
