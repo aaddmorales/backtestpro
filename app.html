@@ -2718,7 +2718,10 @@ function atualizarFaixaNovoTeste(){
   const fx = document.getElementById('faixa-novo-teste'); if(!fx) return;
   const logado = !!(typeof usuarioAtual!=='undefined' && usuarioAtual && usuarioAtual.id);
   const noOverview = (typeof activeTab==='undefined') || activeTab==='overview';
-  fx.style.display = (logado && noOverview) ? 'flex' : 'none';
+  // só faz sentido na VITRINE (escolher bot pronto). No modo-teste o usuário já
+  // está montando um teste — o botão seria redundante, então some.
+  const naVitrine = (typeof _vitrineMode==='undefined') || _vitrineMode===true;
+  fx.style.display = (logado && noOverview && naVitrine) ? 'flex' : 'none';
 }
 
 // ── ABA ESTUDO: matriz estrategia x timeframe (v5.2, gated por plano) ──
@@ -5239,6 +5242,8 @@ async function usarEstrategiaHero(id){
   try{ atualizarCabecalhoEstrategia(e); }catch(_){}
   // mostra a barra de contexto da estratégia (caso ainda esteja escondida)
   try{ const vb=document.getElementById('voltar-vitrine-bar'); if(vb) vb.style.display=''; }catch(_){}
+  // saiu da vitrine pro modo-teste: esconde o atalho "▶ Novo teste" (redundante aqui)
+  try{ _vitrineMode=false; document.body.classList.remove('modo-vitrine'); atualizarFaixaNovoTeste(); }catch(_){}
   document.getElementById('hero-lista').style.display='none';
   document.getElementById('ia-hero-desc').value = e.nome;
   document.getElementById('code-editor').value = e.codigo;
@@ -5525,6 +5530,7 @@ function sairVitrineParaTeste(){
   _vitrineMode=false;
   document.body.classList.remove('modo-vitrine');
   const vb=document.getElementById('voltar-vitrine-bar'); if(vb) vb.style.display='block';
+  try{ atualizarFaixaNovoTeste(); }catch(_){}
 }
 // Atalho do header: leva direto pro modo TESTE (configurar parâmetros do zero),
 // sem precisar escolher um bot pronto na vitrine. Dá autonomia a quem quer
