@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v5.6  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-06-28g-vitrine-tf-natural-diaria | Deploy: Railway
+#  BotTested API — v5.7  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.6 — Vitrine: estratégias diárias (Escalonada, S&R, Ímã, Gap) avaliadas só no D1 (BTC entra na linha de ativos)"
+API_VERSAO = "5.7 — Vitrine: BTC fixado na Escalonada (curadoria do dono; backtest não captura o escalonamento de lote)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28g-vitrine-tf-natural-diaria"
+BUILD_TAG = "2026-06-28h-vitrine-btc-fixo-escalonada"
 
 @app.get("/versao")
 def versao():
@@ -6429,6 +6429,15 @@ def estrategias_vitrine(lang: str = "pt"):
                 "fechamento_ima": "1d",              # Fechamento Anterior como Ímã
                 "abertura_gap": "1d",                # Gap de Abertura
             }
+            # ── CURADORIA DO DONO ───────────────────────────────────────────
+            # Ativos fixados manualmente em cards específicos: entram SEMPRE na
+            # frente da linha de ativos, independente do ranking automático.
+            # Motivo: algumas estratégias (ex: a Escalonada, com escalonamento de
+            # lote) não são bem capturadas pela métrica de backtest padrão — a
+            # decisão de exibição é do dono, que fará a revisão completa da vitrine.
+            _ATIVOS_FIXOS_VITRINE = {
+                "tendencia_diaria_piramide": ["BTC/USD"],   # Escalonada — decisão do dono
+            }
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
                 tf_natural = _TF_NATURAL.get(eid)   # None p/ estratégias multi-timeframe
@@ -6451,7 +6460,13 @@ def estrategias_vitrine(lang: str = "pt"):
                         continue
                     ranking.append((ativo_nome, sh_melhor, len(combos)))
                 ranking.sort(key=lambda x: x[1], reverse=True)
-                top_ativos_por_est[eid] = [nome for (nome, _sh, _n) in ranking[:3]]
+                auto = [nome for (nome, _sh, _n) in ranking[:3]]
+                fixos = _ATIVOS_FIXOS_VITRINE.get(eid, [])
+                if fixos:
+                    # fixos na frente, sem duplicar, completa com o ranking até 3
+                    top_ativos_por_est[eid] = list(dict.fromkeys(fixos + auto))[:3]
+                else:
+                    top_ativos_por_est[eid] = auto
             def _med(xs):
                 xs = [x for x in xs if x is not None]
                 return round(sum(xs) / len(xs), 2) if xs else None
