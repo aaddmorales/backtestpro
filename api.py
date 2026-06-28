@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.0 — Exportação MQL5 (14 estratégias) + Camada 1 direção (top-down)"
+API_VERSAO = "5.1 — EAs instrumentados pro Conector (log read-only) + Camada 1"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28a-mql5-14-camada1-direcao"
+BUILD_TAG = "2026-06-28b-conector-log-mql5"
 
 @app.get("/versao")
 def versao():
@@ -3002,7 +3002,8 @@ _MQL5_AVISO_HEADER = """//+-----------------------------------------------------
 
 
 def _mql5_preamble(nome: str, ativo: str, magic: int = 20250) -> str:
-    """Cabeçalho + includes + inputs comuns + handle de trade."""
+    """Cabeçalho + includes + inputs comuns + handle de trade + funções de log
+    que o BotTested Conector lê (read-only) pra reportar pra nuvem."""
     alvo = f"  // testado em: {ativo}" if ativo else ""
     return f"""{_MQL5_AVISO_HEADER}
 #property copyright "BotTested"
@@ -3013,6 +3014,24 @@ def _mql5_preamble(nome: str, ativo: str, magic: int = 20250) -> str:
 #include <Trade/Trade.mqh>
 CTrade trade;
 {alvo}
+
+//--- Log pro BotTested Conector (read-only, só Print no log do MT5) ---
+// O conector lê estas linhas e reporta pra nuvem. Não envia nada sozinho.
+void BTEvento(string tipo, string extra="")
+{{
+   PrintFormat("BOTTESTED_EVENTO|%s|tipo=%s|simbolo=%s|%s",
+               tipo, tipo, _Symbol, extra);
+}}
+void BTSnapshot()
+{{
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   double bal= AccountInfoDouble(ACCOUNT_BALANCE);
+   double ml = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   int    np = PositionSelect(_Symbol) ? 1 : 0;
+   double lf = np ? PositionGetDouble(POSITION_PROFIT) : 0.0;
+   PrintFormat("BOTTESTED_SNAPSHOT|equity=%.2f|balance=%.2f|margem_livre=%.2f|posicoes=%d|lucro=%.2f|simbolo=%s",
+               eq, bal, ml, np, lf, _Symbol);
+}}
 """
 
 
@@ -3796,6 +3815,21 @@ def _mql5_via_ia(codigo_py: str, nome: str, p) -> Optional[str]:
         return None
 
 
+def _instrumentar_log_mql5(codigo: str) -> str:
+    """Insere chamadas de log do BotTested Conector no EA gerado, sem reescrever
+    cada conversor: snapshot a cada barra nova + evento em cada ordem."""
+    # snapshot logo após a verificação de nova barra
+    codigo = codigo.replace(
+        "if(!NovaBarra()) return;",
+        "if(!NovaBarra()) return;\n   BTSnapshot();", 1)
+    # eventos nas ordens (marca aberto/fechado pro log)
+    codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
+    codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
+    codigo = codigo.replace("trade.PositionClose(_Symbol);",
+                            "BTEvento(\"fechado\",\"\"); trade.PositionClose(_Symbol);")
+    return codigo
+
+
 def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
     """A: estratégia conhecida → conversor testado; B: customizado → IA (com aviso).
     Retorna {codigo, fonte, aviso, filename}."""
@@ -3803,12 +3837,13 @@ def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
     filename = f"BotTested_{safe}.mq5"
     conv = _CONVERSORES_MQL5.get((estrategia_id or "").strip())
     if conv:
-        return {"codigo": conv(p), "fonte": "testado", "aviso": "", "filename": filename}
+        codigo = _instrumentar_log_mql5(conv(p))
+        return {"codigo": codigo, "fonte": "testado", "aviso": "", "filename": filename}
     mq = _mql5_via_ia(codigo_py, nome or "Estrategia", p)
     if mq:
         aviso = ("Conversao automatica por IA — revise o codigo com atencao. Teste em conta DEMO "
                  "antes de qualquer uso real. Confira entradas/saidas, stop, take e lote.")
-        return {"codigo": mq, "fonte": "ia", "aviso": aviso, "filename": filename}
+        return {"codigo": _instrumentar_log_mql5(mq), "fonte": "ia", "aviso": aviso, "filename": filename}
     return {"codigo": "", "fonte": "indisponivel",
             "aviso": "Conversao automatica indisponivel para este codigo no momento.",
             "filename": filename}
