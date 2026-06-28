@@ -1,5 +1,6 @@
 <!--
-  BotTested Frontend — v5.8 (rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada)
+  BotTested Frontend — v5.9 (exportação MT5/MQL5 em destaque "recomendado" + modal com 3 avisos de risco + download .mq5; todos os emojis 🤖 trocados pelo Fab/robô da marca; exportação Pine/TradingView)
+  v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
   v5.4: auth direto (modal abre na aba certa conforme intenção da landing #criar/#entrar, sem passo intermediário)
@@ -878,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v5.8</span>
+    <span class="vtag">v5.9</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2531,6 +2532,8 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
+const APP_VERSAO = 'v5.9';  // marca de versão do frontend (ver comentário no topo)
+try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
 let chartEq = null, chartPr = null, chartDo = null;
