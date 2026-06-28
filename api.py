@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "4.0 — Radar IA multilíngue (PT/EN/ES) + Estudo como fonte"
+API_VERSAO = "5.0 — Exportação MQL5 (14 estratégias) + Camada 1 direção (top-down)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-25e-radar-stoptake-verificado"
+BUILD_TAG = "2026-06-28a-mql5-14-camada1-direcao"
 
 @app.get("/versao")
 def versao():
