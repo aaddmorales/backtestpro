@@ -2979,6 +2979,849 @@ def exportar_pine(req: BacktestCustom):
     return res
 
 
+# ════════════════════════════════════════════════════════════════════
+# CONVERSOR MQL5 (MetaTrader 5) — BotTested
+# Gera Expert Advisor (.mq5) da estratégia validada. Mesma lógica A+B do Pine.
+# ATENÇÃO: código de EXECUÇÃO REAL — avisos de risco no cabeçalho + base funcional.
+# Usa a API moderna do MT5 (CTrade), stop/take em pontos, MagicNumber por EA.
+# ════════════════════════════════════════════════════════════════════
+
+# Avisos de risco (cabeçalho de TODO .mq5 gerado)
+_MQL5_AVISO_HEADER = """//+------------------------------------------------------------------+
+//|  BotTested — Expert Advisor gerado (bottested.com)               |
+//|  ATENCAO: opera com dinheiro REAL. Teste em conta DEMO primeiro. |
+//|  Historico medido, nao promessa de retorno. Use por sua conta    |
+//|  e risco. Esta e uma BASE FUNCIONAL — revise antes de operar.    |
+//+------------------------------------------------------------------+"""
+
+
+def _mql5_preamble(nome: str, ativo: str, magic: int = 20250) -> str:
+    """Cabeçalho + includes + inputs comuns + handle de trade."""
+    alvo = f"  // testado em: {ativo}" if ativo else ""
+    return f"""{_MQL5_AVISO_HEADER}
+#property copyright "BotTested"
+#property link      "https://bottested.com"
+#property version   "1.00"
+#property description "{nome} — gerado pelo BotTested. BASE FUNCIONAL: teste em conta demo."
+
+#include <Trade/Trade.mqh>
+CTrade trade;
+{alvo}
+"""
+
+
+def _mql5_risk_inputs(stop_pts: float, take_pts: float) -> str:
+    return f"""
+//--- Parametros de risco (revise antes de usar)
+input double  InpLote       = 0.10;        // Lote (volume por ordem)
+input double  InpStopLoss   = {stop_pts};      // Stop Loss (pontos)
+input double  InpTakeProfit = {take_pts};      // Take Profit (pontos)
+input ulong   InpMagic      = 20250;       // Numero magico (identifica este EA)
+input ulong   InpSlippage   = 30;          // Desvio maximo (pontos)
+"""
+
+
+# ── Canal EMA 20 High/Low ──────────────────────────────────────────
+def _mql5_canal_ema20_hl(p) -> str:
+    n = int(getattr(p, "ema_period", 20) or 20)
+    ativo = getattr(p, "ativo", "")
+    s = _mql5_preamble("Canal EMA 20 High/Low", ativo)
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += f"""input int     InpEMAPeriod  = {n};          // Periodo da EMA (canal)
+
+//--- Handles dos indicadores
+int hEmaHigh, hEmaLow;
+
+int OnInit()
+{{
+   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetDeviationInPoints(InpSlippage);
+   // EMA das maximas e EMA das minimas formam o canal
+   hEmaHigh = iMA(_Symbol, _Period, InpEMAPeriod, 0, MODE_EMA, PRICE_HIGH);
+   hEmaLow  = iMA(_Symbol, _Period, InpEMAPeriod, 0, MODE_EMA, PRICE_LOW);
+   if(hEmaHigh == INVALID_HANDLE || hEmaLow == INVALID_HANDLE)
+      return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}}
+
+void OnDeinit(const int reason)
+{{
+   IndicatorRelease(hEmaHigh);
+   IndicatorRelease(hEmaLow);
+}}
+
+//--- so processa uma vez por barra nova
+datetime g_lastBar = 0;
+bool NovaBarra()
+{{
+   datetime t = iTime(_Symbol, _Period, 0);
+   if(t != g_lastBar) {{ g_lastBar = t; return(true); }}
+   return(false);
+}}
+
+void OnTick()
+{{
+   if(!NovaBarra()) return;
+
+   double emaH[], emaL[];
+   if(CopyBuffer(hEmaHigh, 0, 1, 1, emaH) < 1) return;
+   if(CopyBuffer(hEmaLow,  0, 1, 1, emaL) < 1) return;
+
+   double preco = iClose(_Symbol, _Period, 1);
+   double ponto = _Point;
+   bool temPos = PositionSelect(_Symbol);
+   long tipoPos = temPos ? PositionGetInteger(POSITION_TYPE) : -1;
+
+   double sl, tp, ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK), bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+   // Rompe pra cima do canal = compra
+   if(preco > emaH[0] && tipoPos != POSITION_TYPE_BUY)
+   {{
+      if(temPos) trade.PositionClose(_Symbol);
+      sl = ask - InpStopLoss   * ponto;
+      tp = ask + InpTakeProfit * ponto;
+      trade.Buy(InpLote, _Symbol, ask, sl, tp, "BotTested Canal EMA");
+   }}
+   // Rompe pra baixo do canal = venda
+   else if(preco < emaL[0] && tipoPos != POSITION_TYPE_SELL)
+   {{
+      if(temPos) trade.PositionClose(_Symbol);
+      sl = bid + InpStopLoss   * ponto;
+      tp = bid - InpTakeProfit * ponto;
+      trade.Sell(InpLote, _Symbol, bid, sl, tp, "BotTested Canal EMA");
+   }}
+   // dentro do canal = lateralizacao, nao abre nada
+}}
+"""
+    return s
+
+
+# ── Cruzamento EMA 9/21 ────────────────────────────────────────────
+def _mql5_cruzamento_ema_9_21(p) -> str:
+    ativo = getattr(p, "ativo", "")
+    s = _mql5_preamble("Cruzamento EMA 9/21", ativo)
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpFast       = 9;           // EMA rapida
+input int     InpSlow       = 21;          // EMA lenta
+
+int hFast, hSlow;
+
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetDeviationInPoints(InpSlippage);
+   hFast = iMA(_Symbol, _Period, InpFast, 0, MODE_EMA, PRICE_CLOSE);
+   hSlow = iMA(_Symbol, _Period, InpSlow, 0, MODE_EMA, PRICE_CLOSE);
+   if(hFast == INVALID_HANDLE || hSlow == INVALID_HANDLE)
+      return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+
+void OnDeinit(const int reason)
+{
+   IndicatorRelease(hFast);
+   IndicatorRelease(hSlow);
+}
+
+datetime g_lastBar = 0;
+bool NovaBarra()
+{
+   datetime t = iTime(_Symbol, _Period, 0);
+   if(t != g_lastBar) { g_lastBar = t; return(true); }
+   return(false);
+}
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+
+   double f[], s[];
+   // pega 2 valores (barra 1 e 2) p/ detectar cruzamento
+   if(CopyBuffer(hFast, 0, 1, 2, f) < 2) return;
+   if(CopyBuffer(hSlow, 0, 1, 2, s) < 2) return;
+
+   // f[1]=mais recente (barra 1), f[0]=anterior (barra 2)
+   bool cruzaCima  = (f[0] <= s[0]) && (f[1] > s[1]);
+   bool cruzaBaixo = (f[0] >= s[0]) && (f[1] < s[1]);
+
+   double ponto = _Point;
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK), bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double sl, tp;
+
+   if(cruzaCima)
+   {
+      if(PositionSelect(_Symbol)) trade.PositionClose(_Symbol);
+      sl = ask - InpStopLoss   * ponto;
+      tp = ask + InpTakeProfit * ponto;
+      trade.Buy(InpLote, _Symbol, ask, sl, tp, "BotTested Cruz 9/21");
+   }
+   else if(cruzaBaixo)
+   {
+      if(PositionSelect(_Symbol)) trade.PositionClose(_Symbol);
+      sl = bid + InpStopLoss   * ponto;
+      tp = bid - InpTakeProfit * ponto;
+      trade.Sell(InpLote, _Symbol, bid, sl, tp, "BotTested Cruz 9/21");
+   }
+}
+"""
+    return s
+
+
+# ════════════════════════════════════════════════════════════════════
+# CONVERSORES MQL5 — 12 estratégias restantes
+# Tradução fiel da lógica Python (backtesting.py) para Expert Advisor MQL5.
+# Cada uma usa _mql5_preamble + _mql5_risk_inputs (já definidos no módulo base).
+# ════════════════════════════════════════════════════════════════════
+
+# ── Tendência Diária Escalonada (pirâmide a favor da tendência) ─────
+def _mql5_tendencia_diaria_piramide(p) -> str:
+    n = int(getattr(p, "ema_period", 20) or 20)
+    s = _mql5_preamble("Tendencia Diaria Escalonada", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += f"""input int     InpEMAPeriod  = {n};          // Periodo EMA (canal)
+input int     InpMaxPiramide= 3;           // Maximo de entradas empilhadas
+input double  InpTrailPct   = 1.5;         // Trailing stop (%)
+
+int hEmaHigh, hEmaLow;
+double g_topo = 0;
+
+int OnInit()
+{{
+   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetDeviationInPoints(InpSlippage);
+   hEmaHigh = iMA(_Symbol,_Period,InpEMAPeriod,0,MODE_EMA,PRICE_HIGH);
+   hEmaLow  = iMA(_Symbol,_Period,InpEMAPeriod,0,MODE_EMA,PRICE_LOW);
+   if(hEmaHigh==INVALID_HANDLE||hEmaLow==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}}
+void OnDeinit(const int r){{ IndicatorRelease(hEmaHigh); IndicatorRelease(hEmaLow); }}
+
+datetime g_lastBar=0;
+bool NovaBarra(){{ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){{g_lastBar=t;return true;}} return false; }}
+
+int PosicoesAbertas()
+{{
+   int n=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol && PositionGetInteger(POSITION_MAGIC)==(long)InpMagic) n++;
+   return n;
+}}
+
+void OnTick()
+{{
+   if(!NovaBarra()) return;
+   double eh[],el[];
+   if(CopyBuffer(hEmaHigh,0,1,1,eh)<1) return;
+   if(CopyBuffer(hEmaLow,0,1,1,el)<1) return;
+   double preco=iClose(_Symbol,_Period,1);
+   bool alta=preco>eh[0], baixa=preco<el[0];
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK), bid=SymbolInfoDouble(_Symbol,SYMBOL_BID);
+
+   // trailing stop manual sobre o topo
+   if(PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
+   {{
+      g_topo = MathMax(g_topo>0?g_topo:preco, preco);
+      if(preco < g_topo*(1.0-InpTrailPct/100.0)) {{ trade.PositionClose(_Symbol); g_topo=0; return; }}
+   }}
+   // entra/piramida apenas A FAVOR da tendencia
+   if(alta && PosicoesAbertas() < InpMaxPiramide)
+   {{
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Escalonada");
+   }}
+   else if(baixa && PositionSelect(_Symbol))
+   {{ trade.PositionClose(_Symbol); g_topo=0; }}
+}}
+"""
+    return s
+
+
+# ── RSI Sobrevenda/Sobrecompra ─────────────────────────────────────
+def _mql5_rsi_reversao(p) -> str:
+    s = _mql5_preamble("RSI Sobrevenda Sobrecompra", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpRSIPeriod  = 14;          // Periodo do RSI
+input double  InpSobrevenda = 30;          // Nivel de sobrevenda (compra)
+input double  InpSobrecompra= 70;          // Nivel de sobrecompra (sai)
+
+int hRSI;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hRSI = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE);
+   if(hRSI==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hRSI); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double r[];
+   if(CopyBuffer(hRSI,0,1,1,r)<1) return;
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool temPos = PositionSelect(_Symbol);
+   bool ehLong = temPos && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   if(r[0] < InpSobrevenda && !ehLong)
+   {
+      if(temPos) trade.PositionClose(_Symbol);
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested RSI");
+   }
+   else if(r[0] > InpSobrecompra && ehLong)
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Bandas de Bollinger — Reversão ─────────────────────────────────
+def _mql5_bollinger_reversao(p) -> str:
+    s = _mql5_preamble("Bandas de Bollinger Reversao", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpBBPeriod   = 20;          // Periodo das bandas
+input double  InpBBDesvio   = 2.0;         // Desvios-padrao
+
+int hBB;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hBB = iBands(_Symbol,_Period,InpBBPeriod,0,InpBBDesvio,PRICE_CLOSE);
+   if(hBB==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hBB); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double mid[],up[],lo[];
+   // buffer 0=media, 1=superior, 2=inferior
+   if(CopyBuffer(hBB,0,1,1,mid)<1) return;
+   if(CopyBuffer(hBB,1,1,1,up)<1) return;
+   if(CopyBuffer(hBB,2,1,1,lo)<1) return;
+   double preco=iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   // toca banda inferior = compra; volta na media = realiza
+   if(preco <= lo[0] && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Bollinger");
+   }
+   else if(ehLong && preco >= mid[0])
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Rompimento Donchian ────────────────────────────────────────────
+def _mql5_rompimento_donchian(p) -> str:
+    s = _mql5_preamble("Rompimento Donchian", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpEntrada    = 20;          // Janela do canal de entrada (topo)
+input int     InpSaida      = 10;          // Janela do canal de saida (fundo)
+
+int OnInit(){ trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage); return(INIT_SUCCEEDED); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+double MaxHigh(int n,int desl){ double m=0; for(int i=0;i<n;i++){ double h=iHigh(_Symbol,_Period,desl+i); if(h>m)m=h; } return m; }
+double MinLow(int n,int desl){ double m=DBL_MAX; for(int i=0;i<n;i++){ double l=iLow(_Symbol,_Period,desl+i); if(l<m)m=l; } return m; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   // topo/fundo do candle anterior (desloca 2, como no Python topo[-2]/fundo[-2])
+   double topo = MaxHigh(InpEntrada, 2);
+   double fundo = MinLow(InpSaida, 2);
+   double preco = iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   if(preco >= topo && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Donchian");
+   }
+   else if(ehLong && preco <= fundo)
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── MACD Tendência ─────────────────────────────────────────────────
+def _mql5_macd_tendencia(p) -> str:
+    s = _mql5_preamble("MACD Tendencia", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpRapida     = 12;          // EMA rapida
+input int     InpLenta      = 26;          // EMA lenta
+input int     InpSinal      = 9;           // Linha de sinal
+
+int hMACD;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hMACD = iMACD(_Symbol,_Period,InpRapida,InpLenta,InpSinal,PRICE_CLOSE);
+   if(hMACD==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hMACD); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double m[],s[];
+   // buffer 0=MAIN (macd), 1=SIGNAL; pega 2 valores p/ detectar cruzamento
+   if(CopyBuffer(hMACD,0,1,2,m)<2) return;
+   if(CopyBuffer(hMACD,1,1,2,s)<2) return;
+   bool cruzaCima  = (m[1]<=s[1]) && (m[0]>s[0]);
+   bool cruzaBaixo = (m[1]>=s[1]) && (m[0]<s[0]);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   if(cruzaCima)
+   {
+      if(PositionSelect(_Symbol)) trade.PositionClose(_Symbol);
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested MACD");
+   }
+   else if(cruzaBaixo && ehLong)
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Engolfo + Tendência (EMA 50) ───────────────────────────────────
+def _mql5_engolfo_tendencia(p) -> str:
+    s = _mql5_preamble("Engolfo de Tendencia", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpEMA        = 50;          // EMA de tendencia
+
+int hEMA;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hEMA = iMA(_Symbol,_Period,InpEMA,0,MODE_EMA,PRICE_CLOSE);
+   if(hEMA==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hEMA); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double e[];
+   if(CopyBuffer(hEMA,0,1,1,e)<1) return;
+   // candle anterior (1) e o de tras (2)
+   double o1=iOpen(_Symbol,_Period,2), c1=iClose(_Symbol,_Period,2);
+   double o2=iOpen(_Symbol,_Period,1), c2=iClose(_Symbol,_Period,1);
+   bool engolfoAlta = (c1<o1) && (c2>o2) && (c2>o1) && (o2<c1);
+   double preco=iClose(_Symbol,_Period,1);
+   bool acimaEma = preco>e[0];
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   if(engolfoAlta && acimaEma && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Engolfo");
+   }
+   else if(ehLong && preco < e[0])
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Abertura em Gap ────────────────────────────────────────────────
+def _mql5_abertura_gap(p) -> str:
+    s = _mql5_preamble("Abertura em Gap", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input double  InpGapMin     = 0.5;         // Gap minimo p/ operar (%)
+
+int OnInit(){ trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage); return(INIT_SUCCEEDED); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double ab=iOpen(_Symbol,_Period,1), fechAnt=iClose(_Symbol,_Period,2);
+   if(fechAnt==0) return;
+   double gap=(ab-fechAnt)/fechAnt*100.0;
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   if(gap >= InpGapMin && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Gap");
+   }
+   else if(ehLong && gap <= -InpGapMin)
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Média + ATR Trailing (SMA 50 + trailing por ATR) ───────────────
+def _mql5_media_atr_trailing(p) -> str:
+    s = _mql5_preamble("Media com ATR Trailing", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpSMA        = 50;          // Media simples de tendencia
+input int     InpATR        = 14;          // Periodo do ATR
+input double  InpMultATR    = 2.0;         // Multiplicador do ATR (trailing)
+
+int hSMA, hATR;
+double g_stop=0;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hSMA = iMA(_Symbol,_Period,InpSMA,0,MODE_SMA,PRICE_CLOSE);
+   hATR = iATR(_Symbol,_Period,InpATR);
+   if(hSMA==INVALID_HANDLE||hATR==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hSMA); IndicatorRelease(hATR); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double sma[],atr[];
+   if(CopyBuffer(hSMA,0,1,1,sma)<1) return;
+   if(CopyBuffer(hATR,0,1,1,atr)<1) return;
+   double preco=iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   // trailing por ATR enquanto comprado
+   if(ehLong)
+   {
+      double novoStop = preco - InpMultATR*atr[0];
+      g_stop = MathMax(g_stop>0?g_stop:novoStop, novoStop);
+      if(preco <= g_stop) { trade.PositionClose(_Symbol); g_stop=0; return; }
+   }
+   // entra a favor da tendencia (preco acima da media)
+   if(preco > sma[0] && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested ATR Trail");
+      g_stop = preco - InpMultATR*atr[0];
+   }
+}
+"""
+    return s
+
+# ════════════════════════════════════════════════════════════════════
+# CONVERSORES MQL5 — lote 3: estratégias com lógica de pivô/intradiária
+# Estas têm tradução menos direta. Onde a lógica Python depende de detalhes
+# que mudam em execução real (virada de dia, pivôs confirmados), o código traz
+# // TODO honesto. Por isso o aviso "base funcional — revise" é ainda mais
+# importante aqui. São pontos de partida sólidos, não EAs blindados.
+# ════════════════════════════════════════════════════════════════════
+
+# ── Microcanal (mínimas ascendentes + EMA curta) ───────────────────
+def _mql5_microcanal(p) -> str:
+    s = _mql5_preamble("Microcanal", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpSeq        = 3;           // Minimas ascendentes seguidas
+input int     InpEMA        = 9;           // EMA curta de referencia
+
+int hEMA;
+int OnInit()
+{
+   trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage);
+   hEMA = iMA(_Symbol,_Period,InpEMA,0,MODE_EMA,PRICE_CLOSE);
+   if(hEMA==INVALID_HANDLE) return(INIT_FAILED);
+   return(INIT_SUCCEEDED);
+}
+void OnDeinit(const int r){ IndicatorRelease(hEMA); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double e[];
+   if(CopyBuffer(hEMA,0,1,1,e)<1) return;
+   double preco=iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+
+   // quebrou a minima do candle anterior = microcanal acabou -> sai
+   if(PositionSelect(_Symbol))
+   {
+      if(iClose(_Symbol,_Period,1) < iLow(_Symbol,_Period,2))
+         trade.PositionClose(_Symbol);
+      return;
+   }
+   // confere N minimas ascendentes seguidas
+   bool ascendentes=true;
+   for(int k=1; k<=InpSeq; k++)
+      if(iLow(_Symbol,_Period,k) <= iLow(_Symbol,_Period,k+1)) { ascendentes=false; break; }
+
+   bool acimaEma = preco > e[0];
+   if(ascendentes && acimaEma)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Microcanal");
+   }
+}
+"""
+    return s
+
+
+# ── Suporte/Resistência do dia anterior ────────────────────────────
+def _mql5_sr_dia_anterior(p) -> str:
+    s = _mql5_preamble("Suporte Resistencia do dia anterior", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """// Usa a maxima/minima do dia ANTERIOR (D1) como referencia. Rompeu a maxima
+// de ontem = compra. Funciona em qualquer timeframe lendo o periodo D1.
+int OnInit(){ trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage); return(INIT_SUCCEEDED); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   // maxima/minima do candle diario anterior
+   double hOntem = iHigh(_Symbol, PERIOD_D1, 1);
+   double lOntem = iLow(_Symbol,  PERIOD_D1, 1);
+   if(hOntem==0) return;
+   double preco = iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+   bool ehLong = PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;
+
+   // rompeu a resistencia de ontem = compra
+   if(preco > hOntem && !ehLong)
+   {
+      double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested SR Ontem");
+   }
+   // perdeu o suporte de ontem = sai
+   else if(ehLong && preco < lOntem)
+      trade.PositionClose(_Symbol);
+}
+"""
+    return s
+
+
+# ── Ímã de Fechamento (volta ao fechamento do dia anterior) ────────
+def _mql5_fechamento_ima(p) -> str:
+    s = _mql5_preamble("Ima de Fechamento", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input double  InpGapMin     = 0.3;         // Distancia minima na abertura (%)
+// Ideia: quando abre com gap, o preco tende a voltar (ima) ao fechamento de
+// ontem. Alvo = fechamento de ontem. Usa candles diarios como referencia.
+int OnInit(){ trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage); return(INIT_SUCCEEDED); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   double fechOntem = iClose(_Symbol, PERIOD_D1, 1);
+   double abHoje    = iOpen(_Symbol,  PERIOD_D1, 0);
+   if(fechOntem==0) return;
+   double gap = (abHoje - fechOntem)/fechOntem*100.0;
+   double preco = iClose(_Symbol,_Period,1);
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK), bid=SymbolInfoDouble(_Symbol,SYMBOL_BID);
+   bool temPos = PositionSelect(_Symbol);
+
+   // gestao: realiza quando volta ao fechamento de ontem (o "ima")
+   if(temPos)
+   {
+      long tipo = PositionGetInteger(POSITION_TYPE);
+      if(tipo==POSITION_TYPE_BUY  && preco >= fechOntem) trade.PositionClose(_Symbol);
+      if(tipo==POSITION_TYPE_SELL && preco <= fechOntem) trade.PositionClose(_Symbol);
+      return;
+   }
+   // abriu com gap pra BAIXO o suficiente = compra apostando na volta pra cima
+   if(gap <= -InpGapMin)
+   {
+      double sl=ask-InpStopLoss*ponto;
+      trade.Buy(InpLote,_Symbol,ask,sl,fechOntem,"BotTested Ima");
+   }
+   // abriu com gap pra CIMA o suficiente = vende apostando na volta pra baixo
+   else if(gap >= InpGapMin)
+   {
+      double sl=bid+InpStopLoss*ponto;
+      trade.Sell(InpLote,_Symbol,bid,sl,fechOntem,"BotTested Ima");
+   }
+}
+"""
+    return s
+
+
+# ── Topo Duplo / Fundo Duplo (pivôs) ───────────────────────────────
+def _mql5_topo_fundo_duplo(p) -> str:
+    s = _mql5_preamble("Topo Duplo Fundo Duplo", getattr(p, "ativo", ""))
+    s += _mql5_risk_inputs(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """input int     InpK          = 5;           // Candles de cada lado p/ confirmar pivo
+input double  InpTolerancia = 0.4;         // Diferenca maxima entre os 2 topos (%)
+// Detecta fundo duplo: dois fundos parecidos seguidos = sinal de compra.
+// TODO: versao simplificada — confirma pivo olhando K candles de cada lado.
+// Para producao, considere validar o rompimento do pescoco (neckline).
+int OnInit(){ trade.SetExpertMagicNumber(InpMagic); trade.SetDeviationInPoints(InpSlippage); return(INIT_SUCCEEDED); }
+datetime g_lastBar=0;
+bool NovaBarra(){ datetime t=iTime(_Symbol,_Period,0); if(t!=g_lastBar){g_lastBar=t;return true;} return false; }
+
+bool EhPivoFundo(int desl)
+{
+   double centro = iLow(_Symbol,_Period,desl);
+   for(int m=1; m<=InpK; m++)
+   {
+      if(iLow(_Symbol,_Period,desl-m) < centro) return false;
+      if(iLow(_Symbol,_Period,desl+m) < centro) return false;
+   }
+   return true;
+}
+
+double g_fundo1=0;
+int    g_idxFundo1=-1;
+
+void OnTick()
+{
+   if(!NovaBarra()) return;
+   if(Bars(_Symbol,_Period) < 2*InpK+2) return;
+   double ponto=_Point, ask=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+
+   // confirma pivo de fundo K candles atras
+   int desl = InpK + 1;
+   if(EhPivoFundo(desl))
+   {
+      double f = iLow(_Symbol,_Period,desl);
+      if(g_fundo1>0)
+      {
+         double dif = MathAbs(f - g_fundo1)/g_fundo1*100.0;
+         // dois fundos parecidos = fundo duplo -> compra
+         if(dif <= InpTolerancia && !PositionSelect(_Symbol))
+         {
+            double sl=ask-InpStopLoss*ponto, tp=ask+InpTakeProfit*ponto;
+            trade.Buy(InpLote,_Symbol,ask,sl,tp,"BotTested Fundo Duplo");
+            g_fundo1=0; return;
+         }
+      }
+      g_fundo1 = f;
+   }
+}
+"""
+    return s
+
+
+_CONVERSORES_MQL5 = {
+    "canal_ema20_hl": _mql5_canal_ema20_hl,
+    "cruzamento_ema_9_21": _mql5_cruzamento_ema_9_21,
+    "tendencia_diaria_piramide": _mql5_tendencia_diaria_piramide,
+    "rsi_reversao": _mql5_rsi_reversao,
+    "bollinger_reversao": _mql5_bollinger_reversao,
+    "rompimento_donchian": _mql5_rompimento_donchian,
+    "macd_tendencia": _mql5_macd_tendencia,
+    "engolfo_tendencia": _mql5_engolfo_tendencia,
+    "abertura_gap": _mql5_abertura_gap,
+    "media_atr_trailing": _mql5_media_atr_trailing,
+    "microcanal": _mql5_microcanal,
+    "sr_dia_anterior": _mql5_sr_dia_anterior,
+    "fechamento_ima": _mql5_fechamento_ima,
+    "topo_fundo_duplo": _mql5_topo_fundo_duplo,
+}
+
+
+def _mql5_via_ia(codigo_py: str, nome: str, p) -> Optional[str]:
+    """Caminho B: código customizado → IA converte p/ MQL5 (CTrade). Sempre com aviso."""
+    import sys
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave or not codigo_py.strip():
+        return None
+    try:
+        import httpx
+        sistema = (
+            "Você converte estratégias de trading de Python (biblioteca backtesting.py) para "
+            "Expert Advisor MQL5 do MetaTrader 5. REGRAS: (1) gere SOMENTE código MQL5 válido; "
+            "(2) use #include <Trade/Trade.mqh> e a classe CTrade; (3) inputs para lote, stop, take, "
+            "magic; (4) processe uma vez por barra nova; (5) traduza a lógica de entrada/saída "
+            "fielmente — não invente regras; (6) stop/take em pontos (_Point); (7) onde não houver "
+            "equivalente direto, deixe // TODO explicando; (8) inclua no topo um comentário de aviso: "
+            "que opera com dinheiro real, testar em demo, base funcional. NÃO escreva nada fora do código."
+        )
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json"},
+            json={
+                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
+                "max_tokens": 2200, "temperature": 0.2, "system": sistema,
+                "messages": [{"role": "user", "content":
+                    f"Converta esta estratégia '{nome}' para Expert Advisor MQL5:\n\n{codigo_py}"}],
+            },
+            timeout=25.0,
+        )
+        if r.status_code != 200:
+            print(f"MQL5 IA status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return None
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+        if texto.startswith("```"):
+            texto = texto.strip("`")
+            for pref in ("mql5", "cpp", "c++"):
+                if texto.lower().startswith(pref):
+                    texto = texto[len(pref):]
+                    break
+        # garante o cabeçalho de aviso mesmo se a IA não puser
+        if "BotTested" not in texto[:300]:
+            texto = _MQL5_AVISO_HEADER + "\n" + texto
+        return texto.strip() or None
+    except Exception as e:
+        print(f"MQL5 IA erro: {e}", file=sys.stderr)
+        return None
+
+
+def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
+    """A: estratégia conhecida → conversor testado; B: customizado → IA (com aviso).
+    Retorna {codigo, fonte, aviso, filename}."""
+    safe = "".join(c if c.isalnum() else "_" for c in (nome or "BotTested"))[:40] or "BotTested"
+    filename = f"BotTested_{safe}.mq5"
+    conv = _CONVERSORES_MQL5.get((estrategia_id or "").strip())
+    if conv:
+        return {"codigo": conv(p), "fonte": "testado", "aviso": "", "filename": filename}
+    mq = _mql5_via_ia(codigo_py, nome or "Estrategia", p)
+    if mq:
+        aviso = ("Conversao automatica por IA — revise o codigo com atencao. Teste em conta DEMO "
+                 "antes de qualquer uso real. Confira entradas/saidas, stop, take e lote.")
+        return {"codigo": mq, "fonte": "ia", "aviso": aviso, "filename": filename}
+    return {"codigo": "", "fonte": "indisponivel",
+            "aviso": "Conversao automatica indisponivel para este codigo no momento.",
+            "filename": filename}
+
+
+# ── Endpoint: exportar estratégia para MQL5 (MetaTrader 5) ──
+@app.post("/exportar/mql5")
+def exportar_mql5(req: BacktestCustom):
+    """Gera Expert Advisor MQL5 da estratégia ativa. Estratégia conhecida usa
+    conversor testado; código customizado cai na IA (com aviso). EXECUÇÃO REAL —
+    sempre com avisos de risco. Usa os parâmetros reais do usuário."""
+    est_id = (getattr(req, "estrategia_id", "") or "").strip()
+    nome = getattr(req, "estrategia_nome", "") or "Estrategia"
+    res = gerar_mql5(est_id, getattr(req, "codigo", "") or "", nome, req)
+    res["formato"] = "MQL5"
+    res["plataforma"] = "MetaTrader 5"
+    return res
+
+
 @app.get("/exportar/ntsl")
 def exportar_ntsl():
     codigo = """// ============================================
