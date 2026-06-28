@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.2 — Conector: excluir bot (soft delete) + fix invalid stops (SL/TP por stops level do ativo)"
+API_VERSAO = "5.3 — MAGIC único por bot (estratégias diferentes no mesmo ativo não conflitam) + excluir bot + fix invalid stops"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28c-excluir-bot-fix-stops"
+BUILD_TAG = "2026-06-28d-magic-unico"
 
 @app.get("/versao")
 def versao():
@@ -3885,23 +3885,40 @@ def _instrumentar_log_mql5(codigo: str) -> str:
     return codigo
 
 
+def _magic_para_bot(estrategia_id: str, ativo: str, nome: str) -> int:
+    """MAGIC único e determinístico por (estratégia, ativo, nome). Mantém o
+    mesmo bot com o mesmo magic se regenerado, e separa estratégias/ativos
+    diferentes pra não brigarem no mesmo gráfico do MT5. Range seguro, longe
+    do 20250 padrão e dos magics fixos do TrailingBot (20280-20283)."""
+    base = (f"{(estrategia_id or '').strip().lower()}|"
+            f"{(ativo or '').strip().upper()}|"
+            f"{(nome or '').strip().lower()}")
+    h = hashlib.sha1(base.encode("utf-8")).hexdigest()
+    # faixa 100000 .. ~1.9 bi (cabe em ulong do MT5, fora das faixas reservadas)
+    return 100000 + (int(h[:12], 16) % 1_900_000_000)
+
+
 def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
     """A: estratégia conhecida → conversor testado; B: customizado → IA (com aviso).
-    Retorna {codigo, fonte, aviso, filename}."""
+    Retorna {codigo, fonte, aviso, filename, magic}."""
     safe = "".join(c if c.isalnum() else "_" for c in (nome or "BotTested"))[:40] or "BotTested"
     filename = f"BotTested_{safe}.mq5"
+    magic = _magic_para_bot(estrategia_id, getattr(p, "ativo", "") or "", nome or "")
     conv = _CONVERSORES_MQL5.get((estrategia_id or "").strip())
     if conv:
         codigo = _instrumentar_log_mql5(conv(p))
-        return {"codigo": codigo, "fonte": "testado", "aviso": "", "filename": filename}
+        codigo = codigo.replace("InpMagic      = 20250;", f"InpMagic      = {magic};", 1)
+        return {"codigo": codigo, "fonte": "testado", "aviso": "", "filename": filename, "magic": magic}
     mq = _mql5_via_ia(codigo_py, nome or "Estrategia", p)
     if mq:
         aviso = ("Conversao automatica por IA — revise o codigo com atencao. Teste em conta DEMO "
                  "antes de qualquer uso real. Confira entradas/saidas, stop, take e lote.")
-        return {"codigo": _instrumentar_log_mql5(mq), "fonte": "ia", "aviso": aviso, "filename": filename}
+        codigo = _instrumentar_log_mql5(mq)
+        codigo = codigo.replace("InpMagic      = 20250;", f"InpMagic      = {magic};", 1)
+        return {"codigo": codigo, "fonte": "ia", "aviso": aviso, "filename": filename, "magic": magic}
     return {"codigo": "", "fonte": "indisponivel",
             "aviso": "Conversao automatica indisponivel para este codigo no momento.",
-            "filename": filename}
+            "filename": filename, "magic": magic}
 
 
 # ── Endpoint: exportar estratégia para MQL5 (MetaTrader 5) ──
