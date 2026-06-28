@@ -584,7 +584,7 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 _ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
 # Prefixos de rotas de API que SEMPRE devolvem JSON, mesmo abertas no navegador
 # (não redireciona pro app-lock). Inclui a análise top-down e a tubulação do bot.
-_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/")
+_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/", "/conector/")
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.1 — EAs instrumentados pro Conector (log read-only) + Camada 1"
+API_VERSAO = "5.2 — Conector: excluir bot (soft delete) + fix invalid stops (SL/TP por stops level do ativo)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28b-conector-log-mql5"
+BUILD_TAG = "2026-06-28c-excluir-bot-fix-stops"
 
 @app.get("/versao")
 def versao():
@@ -3032,6 +3032,7 @@ void BTSnapshot()
    PrintFormat("BOTTESTED_SNAPSHOT|equity=%.2f|balance=%.2f|margem_livre=%.2f|posicoes=%d|lucro=%.2f|simbolo=%s",
                eq, bal, ml, np, lf, _Symbol);
 }}
+//__BT_INJECT_WRAPPERS__
 """
 
 
@@ -3815,18 +3816,72 @@ def _mql5_via_ia(codigo_py: str, nome: str, p) -> Optional[str]:
         return None
 
 
+# Wrappers MQL5 injetados nos EAs nativos: logam o evento, ajustam SL/TP pro
+# nível mínimo de stops/freeze do ativo (evita "invalid stops" no BTC e cia.)
+# e só então enviam a ordem. Injetado no marcador //__BT_INJECT_WRAPPERS__,
+# DEPOIS do replace trade.Buy/Sell -> BTBuy/BTSell (por isso o trade.Buy/Sell
+# aqui dentro não é tocado pelo replace).
+_BT_WRAPPERS_MQL5 = """//--- BotTested: ajuste de stops + wrappers de entrada (injetado) ------
+// Respeita o nivel minimo de stops/freeze do ativo e o lado da ordem,
+// evitando "invalid stops" (distancia em pontos pequena demais p/ o ativo,
+// ex.: BTCUSD). Normaliza os precos pelas casas decimais do simbolo.
+void BTAjustaStops(bool ehCompra, double preco, double &sl, double &tp)
+{
+   double pt  = _Point;
+   long   lvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   long   frz = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double distMin = (double)((lvl > frz ? lvl : frz) + 10) * pt;  // folga de 10 pts
+   if(ehCompra)
+   {
+      if(sl > 0.0 && preco - sl < distMin) sl = preco - distMin;
+      if(tp > 0.0 && tp - preco < distMin) tp = preco + distMin;
+   }
+   else
+   {
+      if(sl > 0.0 && sl - preco < distMin) sl = preco + distMin;
+      if(tp > 0.0 && preco - tp < distMin) tp = preco - distMin;
+   }
+   if(sl > 0.0) sl = NormalizeDouble(sl, _Digits);
+   if(tp > 0.0) tp = NormalizeDouble(tp, _Digits);
+}
+bool BTBuy(double lote, string sym, double preco, double sl, double tp, string com="")
+{
+   BTEvento("aberto", "lado=BUY");
+   BTAjustaStops(true, preco, sl, tp);
+   return trade.Buy(lote, sym, preco, sl, tp, com);
+}
+bool BTSell(double lote, string sym, double preco, double sl, double tp, string com="")
+{
+   BTEvento("aberto", "lado=SELL");
+   BTAjustaStops(false, preco, sl, tp);
+   return trade.Sell(lote, sym, preco, sl, tp, com);
+}
+//----------------------------------------------------------------------"""
+
+
 def _instrumentar_log_mql5(codigo: str) -> str:
     """Insere chamadas de log do BotTested Conector no EA gerado, sem reescrever
-    cada conversor: snapshot a cada barra nova + evento em cada ordem."""
+    cada conversor: snapshot a cada barra nova + evento em cada ordem. Nos EAs
+    nativos (com preâmbulo), também ajusta SL/TP pro stops level do ativo via
+    wrappers BTBuy/BTSell."""
     # snapshot logo após a verificação de nova barra
     codigo = codigo.replace(
         "if(!NovaBarra()) return;",
         "if(!NovaBarra()) return;\n   BTSnapshot();", 1)
-    # eventos nas ordens (marca aberto/fechado pro log)
-    codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
-    codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
+    # fechamento de posição: marca evento pro log
     codigo = codigo.replace("trade.PositionClose(_Symbol);",
                             "BTEvento(\"fechado\",\"\"); trade.PositionClose(_Symbol);")
+    if "//__BT_INJECT_WRAPPERS__" in codigo:
+        # EA nativo: troca as entradas pelas wrappers (logam evento + ajustam
+        # stops) e injeta as definições no marcador, DEPOIS dos replaces.
+        codigo = codigo.replace("trade.Buy(",  "BTBuy(")
+        codigo = codigo.replace("trade.Sell(", "BTSell(")
+        codigo = codigo.replace("//__BT_INJECT_WRAPPERS__", _BT_WRAPPERS_MQL5, 1)
+    else:
+        # EA da IA (sem preâmbulo): mantém o comportamento antigo (só loga o
+        # evento), sem wrappers — não dá pra garantir BTEvento/CTrade ali.
+        codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
+        codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
     return codigo
 
 
@@ -5280,6 +5335,10 @@ class ConectorEvento(BaseModel):
     tipo: str                                 # trade_aberto | trade_fechado | reversao | piramide | erro
     detalhe: Optional[dict] = None
 
+class ConectorExcluir(BaseModel):
+    user_id: str
+    bot_id: int
+
 class SugestaoLida(BaseModel):
     user_id: str
     sugestao_id: int
@@ -5470,6 +5529,31 @@ def conector_evento(ev: ConectorEvento):
     return {"ok": True}
 
 
+@app.post("/conector/bot/excluir")
+def conector_bot_excluir(req: ConectorExcluir):
+    """Remove um bot do painel (soft delete): marca como excluído e some da
+    lista, mas preserva o histórico (snapshots/eventos) no banco. Valida que
+    o bot pertence ao user_id antes de mexer."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    try:
+        r = (sb.table("conector_bots").select("id,user_id")
+             .eq("id", req.bot_id).limit(1).execute())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar bot: {e}")
+    if not r.data:
+        raise HTTPException(status_code=404, detail="Bot não encontrado")
+    if str(r.data[0].get("user_id")) != str(req.user_id):
+        # não é dono — nega sem revelar nada
+        raise HTTPException(status_code=403, detail="Sem permissão para este bot")
+    try:
+        sb.table("conector_bots").update({"excluido": True}).eq("id", req.bot_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir bot: {e}")
+    return {"ok": True, "bot_id": req.bot_id}
+
+
 @app.get("/conector/bots")
 def conector_bots(user_id: str):
     """Painel: lista bots do usuário com status online/offline (3 min sem ping)."""
@@ -5484,6 +5568,8 @@ def conector_bots(user_id: str):
     agora = _dt.now(_tz.utc)
     bots = []
     for b in (r.data or []):
+        if b.get("excluido"):
+            continue  # soft delete: some da lista, histórico fica no banco
         online = False
         if b.get("ultimo_ping"):
             try:
