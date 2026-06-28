@@ -3953,14 +3953,28 @@ def _veredito_tf(df):
     if score[direcao] <= 0:
         direcao = "lateral"
 
-    # TRAVA ANTI-LATERAL: tendência exige CONSENSO. Se a direção vencedora
-    # não tem pelo menos 2 dos 3 sinais a favor, é lateral (evita ler ruído
-    # de um mercado de lado como tendência forte — bug perigoso pro bot).
+    # TRAVA ANTI-LATERAL + DETECÇÃO DE VIRADA (calibrada com gráficos reais):
+    # - 2+ sinais a favor = tendência firme.
+    # - sinais brigando (1 a favor, 1 contra) = lateral.
+    # - força recente aponta uma direção e estrutura/médias ainda NÃO confirmaram
+    #   (laterais), sem nenhum sinal contrário = POSSÍVEL VIRADA: segue o
+    #   movimento recente (força manda), mas marca virada=True. É o caso de uma
+    #   queda/alta recente forte antes da estrutura longa virar.
+    virada = False
     if direcao != "lateral":
         a_favor = sum(1 for s in (s_est, s_med, s_for) if s == direcao)
-        if a_favor < 2:
+        contrario = "baixa" if direcao == "alta" else "alta"
+        tem_contra = any(s == contrario for s in (s_est, s_med, s_for))
+        if a_favor < 2 and tem_contra:
             direcao = "lateral"
-    return direcao, score, {"estrutura": s_est, "medias": s_med, "forca": s_for}
+    # se o veredito deu lateral MAS a força recente é direcional e nada a contradiz,
+    # é uma virada começando — assume a direção da força
+    if direcao == "lateral" and s_for in ("alta", "baixa"):
+        oposto = "baixa" if s_for == "alta" else "alta"
+        if s_est != oposto and s_med != oposto:
+            direcao = s_for
+            virada = True
+    return direcao, score, {"estrutura": s_est, "medias": s_med, "forca": s_for}, virada
 
 
 # ── Sinal 4 (orquestrador): alinhamento D1 + 1H = veredito final ───
@@ -3970,12 +3984,13 @@ def ler_direcao(ativo: str, periodo: str = "6 meses", baixar=None) -> dict:
     if baixar is None:
         raise ValueError("baixar_dados não injetada")
     out = {"ativo": ativo, "direcao": "lateral", "confianca": 0,
-           "d1": None, "h1": None, "sinais": {}, "alinhado": False}
+           "d1": None, "h1": None, "sinais": {}, "alinhado": False,
+           "virada": False, "estado": "lateral"}
     try:
         df_d1 = baixar(ativo, periodo, "1d")
         if df_d1 is None or len(df_d1) < 60:
             return out
-        dir_d1, sc_d1, sin_d1 = _veredito_tf(df_d1)
+        dir_d1, sc_d1, sin_d1, virada_d1 = _veredito_tf(df_d1)
         out["d1"] = dir_d1
         out["sinais"]["d1"] = sin_d1
 
@@ -3984,24 +3999,41 @@ def ler_direcao(ativo: str, periodo: str = "6 meses", baixar=None) -> dict:
         try:
             df_h1 = baixar(ativo, "1 mês", "1h")
             if df_h1 is not None and len(df_h1) >= 60:
-                dir_h1, sc_h1, sin_h1 = _veredito_tf(df_h1)
+                dir_h1, sc_h1, sin_h1, _virada_h1 = _veredito_tf(df_h1)
         except Exception:
             dir_h1 = None
         out["h1"] = dir_h1
         out["sinais"]["h1"] = sin_h1
 
-        # alinhamento: D1 manda; 1H confirma ou enfraquece
-        base_conf = 0
+        # confiança: D1 manda a direção (estrutural). O 1H só ajusta levemente
+        # (é mais instável por causa do histórico intradiário curto).
         nz = [k for k, v in sin_d1.items() if v == dir_d1 and dir_d1 != "lateral"]
-        base_conf = int(len(nz) / 3 * 70)  # até 70% só pelo D1 (3 sinais)
+        n_favor = len(nz)
+        base_map = {0: 0, 1: 45, 2: 68, 3: 85}
+        base_conf = base_map.get(n_favor, 0)
+
+        # POSSÍVEL VIRADA: a força recente puxou a direção, estrutura ainda não
+        # confirmou. Direção segue o movimento recente, mas confiança é moderada
+        # (é uma transição, não tendência madura) e o estado avisa.
+        if virada_d1 and dir_d1 != "lateral":
+            base_conf = max(base_conf, 40)   # virada começa com confiança média
+            out["virada"] = True
+
         if dir_h1 is not None and dir_h1 == dir_d1 and dir_d1 != "lateral":
             out["alinhado"] = True
-            base_conf = min(100, base_conf + 30)  # +30% se 1H confirma
+            base_conf = min(100, base_conf + 12)
         elif dir_h1 is not None and dir_h1 != "lateral" and dir_h1 != dir_d1:
-            base_conf = max(0, base_conf - 20)     # divergência = -20%
+            base_conf = max(0, base_conf - 8)
 
         out["direcao"] = dir_d1
         out["confianca"] = base_conf
+        # estado legível: tendência firme / possível virada / lateral
+        if dir_d1 == "lateral":
+            out["estado"] = "lateral"
+        elif out["virada"]:
+            out["estado"] = "possivel_virada_" + dir_d1
+        else:
+            out["estado"] = "tendencia_" + dir_d1
         return out
     except Exception as e:
         out["erro"] = str(e)
