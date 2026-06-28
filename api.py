@@ -601,9 +601,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.4 — Estudo: seletor da matriz mostra catálogo completo (BTC/USD e cia. selecionáveis) + MAGIC único + excluir bot + fix stops"
+API_VERSAO = "5.5 — Vitrine: card ranqueia ativos pelo melhor timeframe robusto (BTC aparece na Escalonada, que é diária)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28e-estudo-catalogo-completo"
+BUILD_TAG = "2026-06-28f-vitrine-melhor-tf-robusto"
 
 @app.get("/versao")
 def versao():
@@ -6399,40 +6399,47 @@ def estrategias_vitrine(lang: str = "pt"):
                 a["n"] += 1
                 if r.get("forca") == "forte":
                     a["forte"] += 1
-                # acumula sharpe por ativo (p/ descobrir os ativos onde a estratégia mais funciona)
+                # acumula sharpe + trades por ativo (p/ achar onde a estratégia mais funciona,
+                # avaliando pelo MELHOR timeframe robusto, não pela média)
                 ativo_nome = r.get("ativo")
                 if ativo_nome:
-                    pa = por_ativo.setdefault(eid, {}).setdefault(ativo_nome, {"sh": [], "n": 0})
-                    pa["sh"].append(float(r.get("sharpe") or 0))
-                    pa["n"] += 1
-            def _med(xs):
-                xs = [x for x in xs if x is not None]
-                return round(sum(xs) / len(xs), 2) if xs else None
-            # top 3 ativos por estratégia (maior sharpe médio; mínimo de dados p/ não ser ruído)
+                    pa = por_ativo.setdefault(eid, {}).setdefault(ativo_nome, {"combos": []})
+                    pa["combos"].append({"sh": float(r.get("sharpe") or 0),
+                                         "trades": int(r.get("trades") or 0)})
+            # top 3 ativos por estratégia — avaliados pelo MELHOR timeframe robusto
             # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
-            # Um ativo só entra no "top" se tiver evidência decente — senão é
-            # ruído estatístico (banco ainda parcialmente populado). Critérios:
-            #   • mínimo de backtests medidos para aquele ativo (não 1 só)
-            #   • sharpe médio acima de um piso (mesmo critério de "robusta")
+            # Uma estratégia de timeframe específico (ex: a Escalonada, que lê o D1)
+            # seria injustamente excluída se medíssemos pela MÉDIA de todos os TFs —
+            # os TFs onde ela nem deveria operar (1H/4H) puxam a média pra baixo.
+            # Então avaliamos cada ativo pelo seu MELHOR combo robusto. Critérios:
+            #   • o combo precisa ter trades suficientes (não ser sorte de poucos trades)
+            #   • mínimo de medições para aquele ativo (não 1 só)
+            #   • o melhor sharpe precisa passar do piso (mesmo critério de "robusta")
             # Se a estratégia não tem ativos robustos suficientes, top fica vazio
             # e o card cai no fallback do "mercados" curado manualmente.
             _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo
-            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível
+            _MIN_TRADES_COMBO    = 20    # trades mínimos no combo (mesma régua do estudo)
+            _PISO_SHARPE_ATIVO   = 0.5   # melhor sharpe mínimo p/ ser sugerível
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
                 ranking = []
                 for ativo_nome, d in ativos.items():
-                    sh_med = _med(d["sh"])
-                    if sh_med is None:
+                    combos = d["combos"]
+                    if len(combos) < _MIN_BACKTESTS_ATIVO:
                         continue
-                    # só entra se tiver dados suficientes E qualidade mínima
-                    if d["n"] < _MIN_BACKTESTS_ATIVO:
+                    # melhor combo entre os que têm trades suficientes
+                    robustos = [c["sh"] for c in combos if c["trades"] >= _MIN_TRADES_COMBO]
+                    if not robustos:
                         continue
-                    if sh_med < _PISO_SHARPE_ATIVO:
+                    sh_melhor = max(robustos)
+                    if sh_melhor < _PISO_SHARPE_ATIVO:
                         continue
-                    ranking.append((ativo_nome, sh_med, d["n"]))
+                    ranking.append((ativo_nome, sh_melhor, len(combos)))
                 ranking.sort(key=lambda x: x[1], reverse=True)
                 top_ativos_por_est[eid] = [nome for (nome, _sh, _n) in ranking[:3]]
+            def _med(xs):
+                xs = [x for x in xs if x is not None]
+                return round(sum(xs) / len(xs), 2) if xs else None
             for eid, a in acc.items():
                 medias[eid] = {
                     "sharpe_medio": _med(a["sh"]),
