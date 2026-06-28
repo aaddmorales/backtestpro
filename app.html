@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v5.9 (exportação MT5/MQL5 em destaque "recomendado" + modal com 3 avisos de risco + download .mq5; todos os emojis 🤖 trocados pelo Fab/robô da marca; exportação Pine/TradingView)
+  BotTested Frontend — v6.0 (Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v5.9</span>
+    <span class="vtag">v6.0</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2532,7 +2532,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v5.9';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.0';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5529,6 +5529,7 @@ async function marcarLida(id){
 
 // ── Monitor: bots ──
 let _pollBots = null;
+let _botsAtuais = [];
 function iniciarPollingBots(){ pararPollingBots(); _pollBots = setInterval(carregarBots, 20000); }
 function pararPollingBots(){ if(_pollBots){ clearInterval(_pollBots); _pollBots=null; } }
 async function carregarBots(){
@@ -5544,6 +5545,7 @@ async function carregarBots(){
       grid.innerHTML = '<div style="grid-column:1/-1;padding:18px;text-align:center;background:var(--bg3);border:1px dashed var(--border2);border-radius:10px;font-size:12px;color:var(--muted)">Nenhum bot conectado ainda — gere um token abaixo e conecte seu MT5</div>';
       return;
     }
+    _botsAtuais = d.bots;
     grid.innerHTML = d.bots.map(b=>`
       <div style="background:var(--bg3);border:1px solid ${b.online?'rgba(0,208,132,0.35)':'var(--border2)'};border-radius:11px;padding:14px 16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
@@ -5561,8 +5563,23 @@ async function carregarBots(){
           <div><span style="color:var(--muted)">Posições</span><br><b style="color:var(--text)">${b.posicoes_abertas??0}</b></div>
           <div><span style="color:var(--muted)">Padrão</span><br><b style="color:var(--muted2)">${b.ultimo_padrao||'—'}</b></div>
         </div>
+        <div style="margin-top:11px;text-align:right">
+          <button onclick="excluirBot(${b.id})" style="background:transparent;border:1px solid var(--border2);color:var(--muted);font-size:11px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">Excluir</button>
+        </div>
       </div>`).join('');
   }catch(e){ console.log('bots erro', e); }
+}
+async function excluirBot(id){
+  if(!(usuarioAtual&&usuarioAtual.id)) return;
+  const bot = _botsAtuais.find(x=>x.id===id);
+  const nome = bot ? (bot.nome||'Bot') : 'este bot';
+  if(!confirm('Apagar o bot "'+nome+'"?\n\nO card sai do painel, mas o histórico (snapshots/eventos) é mantido.')) return;
+  try{
+    const r = await fetch(API+'/conector/bot/excluir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id,bot_id:id})});
+    const d = await r.json();
+    if(d.ok){ carregarBots(); }
+    else alert('Não foi possível excluir: '+(d.detail||'erro desconhecido'));
+  }catch(e){ alert('Erro ao conectar com a API.'); }
 }
 async function registrarBot(){
   if(!(usuarioAtual&&usuarioAtual.id)){ abrirAuth('login'); return; }
