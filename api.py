@@ -582,14 +582,20 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 #    text/html), redireciona pro app em vez de mostrar JSON cru.
 #    fetch() do front pede Accept: */* e continua recebendo JSON normalmente.
 _ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
+# Prefixos de rotas de API que SEMPRE devolvem JSON, mesmo abertas no navegador
+# (não redireciona pro app-lock). Inclui a análise top-down e a tubulação do bot.
+_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/")
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
     try:
-        if request.method == "GET" and request.url.path not in _ROTAS_HTML:
-            accept = request.headers.get("accept", "")
-            if "text/html" in accept:
-                return RedirectResponse(url="/app")
+        path = request.url.path
+        if request.method == "GET" and path not in _ROTAS_HTML:
+            # rotas de API nunca redirecionam — sempre JSON
+            if not any(path.startswith(p) for p in _PREFIXOS_API):
+                accept = request.headers.get("accept", "")
+                if "text/html" in accept:
+                    return RedirectResponse(url="/app")
     except Exception:
         pass
     return await call_next(request)
