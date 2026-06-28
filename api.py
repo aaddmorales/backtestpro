@@ -159,6 +159,8 @@ class BacktestParams(BaseModel):
 
 class BacktestCustom(BacktestParams):
     codigo: str = ""
+    estrategia_id: Optional[str] = None      # id da estratégia ativa (p/ conversor testado)
+    estrategia_nome: Optional[str] = None    # nome amigável (p/ cabeçalho do código exportado)
 
 class IARequest(BaseModel):
     descricao: str
@@ -2810,6 +2812,173 @@ def gerar_bot_ia(req: IARequest):
         "indicador_detectado": "RSI" if "rsi" in desc else "MACD" if "macd" in desc else "EMA Channel"
     }
 
+# ════════════════════════════════════════════════════════════════════
+# CONVERSOR PINE SCRIPT (TradingView) — BotTested
+# Caminho A: conversores testados por estratégia conhecida (id da vitrine)
+# Caminho B: fallback IA p/ código customizado (feito no endpoint)
+# Os conversores recebem os PARÂMETROS REAIS do usuário (ema_period, stop,
+# take, etc.) e geram Pine v5 pronto pra colar no TradingView.
+# ════════════════════════════════════════════════════════════════════
+
+def _pine_header(nome: str, ativo: str = "") -> str:
+    """Cabeçalho comum do Pine: versão, strategy(), comentário de origem."""
+    alvo = f" · {ativo}" if ativo else ""
+    return (
+        "//@version=5\n"
+        f'// ── {nome}{alvo} ──\n'
+        "// Gerado pelo BotTested (bottested.com) — histórico medido, não promessa.\n"
+        "// Revise os parâmetros antes de usar em conta real.\n"
+        f'strategy("{nome}", overlay=true, '
+        "default_qty_type=strategy.percent_of_equity, default_qty_value=100, "
+        "commission_type=strategy.commission.percent, commission_value=0.02)\n\n"
+    )
+
+
+def _pine_stop_take(stop_pts: float, take_pts: float) -> str:
+    """Bloco de stop/take em pontos (pontos do ativo, igual ao backtest)."""
+    return (
+        f"// Gestão de risco (em pontos do ativo)\n"
+        f"stopPts  = input.float({stop_pts}, 'Stop Loss (pts)')\n"
+        f"takePts  = input.float({take_pts}, 'Take Profit (pts)')\n"
+    )
+
+
+# ── Canal EMA 20 High/Low ──────────────────────────────────────────
+def _pine_canal_ema20_hl(p) -> str:
+    n = int(getattr(p, "ema_period", 20) or 20)
+    s = _pine_header("Canal EMA 20 High/Low", getattr(p, "ativo", ""))
+    s += _pine_stop_take(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += f"""
+len = input.int({n}, 'Período EMA')
+emaHigh = ta.ema(high, len)
+emaLow  = ta.ema(low,  len)
+
+plot(emaHigh, 'EMA High', color=color.new(color.orange, 0))
+plot(emaLow,  'EMA Low',  color=color.new(color.orange, 40))
+
+// Rompe pra cima do canal = compra; pra baixo = venda; dentro = lateral (não opera)
+longCond  = close > emaHigh
+shortCond = close < emaLow
+
+if longCond and strategy.position_size <= 0
+    strategy.entry('Long', strategy.long)
+if shortCond and strategy.position_size >= 0
+    strategy.entry('Short', strategy.short)
+
+// Stop/Take em pontos
+strategy.exit('xL', 'Long',  loss=stopPts, profit=takePts)
+strategy.exit('xS', 'Short', loss=stopPts, profit=takePts)
+"""
+    return s
+
+
+# ── Cruzamento EMA 9/21 ────────────────────────────────────────────
+def _pine_cruzamento_ema_9_21(p) -> str:
+    s = _pine_header("Cruzamento EMA 9/21", getattr(p, "ativo", ""))
+    s += _pine_stop_take(getattr(p, "stop_loss", 50), getattr(p, "take_profit", 100))
+    s += """
+fast = input.int(9,  'EMA Rápida')
+slow = input.int(21, 'EMA Lenta')
+emaFast = ta.ema(close, fast)
+emaSlow = ta.ema(close, slow)
+
+plot(emaFast, 'EMA 9',  color=color.new(color.aqua, 0))
+plot(emaSlow, 'EMA 21', color=color.new(color.purple, 0))
+
+longCond  = ta.crossover(emaFast, emaSlow)
+shortCond = ta.crossunder(emaFast, emaSlow)
+
+if longCond
+    strategy.entry('Long', strategy.long)
+if shortCond
+    strategy.entry('Short', strategy.short)
+
+strategy.exit('xL', 'Long',  loss=stopPts, profit=takePts)
+strategy.exit('xS', 'Short', loss=stopPts, profit=takePts)
+"""
+    return s
+
+
+# Mapa id da estratégia → função conversora (Caminho A: testado)
+_CONVERSORES_PINE = {
+    "canal_ema20_hl": _pine_canal_ema20_hl,
+    "cruzamento_ema_9_21": _pine_cruzamento_ema_9_21,
+    # demais estratégias adicionadas após validar estas duas
+}
+
+
+def _pine_via_ia(codigo_py: str, nome: str, p) -> Optional[str]:
+    """Caminho B: código customizado → IA converte p/ Pine v5. Sempre com aviso.
+    Falha → None (caller mostra mensagem de indisponível)."""
+    import sys
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave or not codigo_py.strip():
+        return None
+    try:
+        import httpx
+        sistema = (
+            "Você converte estratégias de trading de Python (biblioteca backtesting.py) "
+            "para Pine Script v5 do TradingView. REGRAS: (1) gere SOMENTE código Pine v5 válido, "
+            "começando com //@version=5 e strategy(...); (2) use overlay=true; (3) traduza a lógica "
+            "de entrada/saída fielmente — não invente regras que não existem no Python; (4) inclua "
+            "stop/take se houver; (5) se algo do Python não tiver equivalente direto em Pine, "
+            "deixe um comentário // TODO explicando, em vez de inventar; (6) NÃO escreva nenhuma "
+            "explicação fora do código — apenas o Pine. O usuário foi avisado de que deve revisar."
+        )
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json"},
+            json={
+                "model": os.environ.get("RADAR_IA_MODELO", "claude-haiku-4-5-20251001"),
+                "max_tokens": 1500, "temperature": 0.2, "system": sistema,
+                "messages": [{"role": "user", "content":
+                    f"Converta esta estratégia '{nome}' para Pine Script v5:\n\n{codigo_py}"}],
+            },
+            timeout=20.0,
+        )
+        if r.status_code != 200:
+            print(f"PINE IA status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return None
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+        if texto.startswith("```"):
+            texto = texto.strip("`")
+            if texto.lower().startswith("pine"):
+                texto = texto[4:]
+        return texto.strip() or None
+    except Exception as e:
+        print(f"PINE IA erro: {e}", file=sys.stderr)
+        return None
+
+
+def gerar_pine(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
+    """Decide o caminho: estratégia conhecida → conversor testado (A);
+    senão → IA (B) com aviso. Retorna {codigo, fonte, aviso}."""
+    conv = _CONVERSORES_PINE.get((estrategia_id or "").strip())
+    if conv:
+        return {"codigo": conv(p), "fonte": "testado", "aviso": ""}
+    # código customizado / estratégia ainda sem conversor testado
+    pine = _pine_via_ia(codigo_py, nome or "Estratégia", p)
+    if pine:
+        aviso = ("Conversão automática por IA — revise o código com atenção antes de usar "
+                 "em conta real. Confira regras de entrada/saída, stop e take.")
+        return {"codigo": pine, "fonte": "ia", "aviso": aviso}
+    return {"codigo": "", "fonte": "indisponivel",
+            "aviso": "Conversão automática indisponível para este código no momento."}
+
+# ── Endpoint: exportar estratégia para Pine Script (TradingView) ──
+@app.post("/exportar/pine")
+def exportar_pine(req: BacktestCustom):
+    """Gera Pine Script v5 da estratégia ativa. Estratégia conhecida usa conversor
+    testado; código customizado cai na IA (com aviso). Usa os parâmetros reais."""
+    est_id = (getattr(req, "estrategia_id", "") or "").strip()
+    nome = getattr(req, "estrategia_nome", "") or "Estratégia"
+    res = gerar_pine(est_id, getattr(req, "codigo", "") or "", nome, req)
+    res["formato"] = "Pine Script v5"
+    res["plataforma"] = "TradingView"
+    return res
+
+
 @app.get("/exportar/ntsl")
 def exportar_ntsl():
     codigo = """// ============================================
@@ -3951,11 +4120,6 @@ def estrategias_prontas(lang: str = "pt"):
         e = dict(est)
         e["nome"] = _estrat_loc(est, lang, "nome")
         e["desc"] = _estrat_loc(est, lang, "desc")
-        # mesmos campos visuais da vitrine, p/ quando o Radar troca de estratégia
-        # o cabeçalho, as tags e os overlays do gráfico ficarem corretos.
-        e["tags"] = [_tag_loc(t, lang) for t in est.get("tags", [])]
-        e["categoria"] = _categoria_de(est.get("tags", []))
-        e["overlays"] = _overlays_da_estrategia(est["id"])
         out.append(e)
     return {"estrategias": out, "total": len(out)}
 
@@ -4988,62 +5152,18 @@ def calendario_semana(de_dias: int = 7, ate_dias: int = 10):
     return {"agora_utc": agora.isoformat(), "total": len(rows), "eventos": rows}
 
 
-# ── OVERLAYS VISUAIS por estratégia (linhas EMA/SMA/BB desenhadas no gráfico) ──
-# O frontend não tem como adivinhar quais linhas desenhar a partir do código
-# Python. Aqui declaramos, por id de estratégia, os overlays que representam
-# visualmente cada uma. 'source' high/low/close indica sobre qual preço calcular.
-_OVERLAYS_ESTRATEGIA = {
-    "canal_ema20_hl": [
-        {"tipo": "EMA", "period": 20, "source": "high", "color": "#ffb830", "titulo": "EMA20 High"},
-        {"tipo": "EMA", "period": 20, "source": "low",  "color": "#ff8a3d", "titulo": "EMA20 Low"},
-    ],
-    "tendencia_diaria_piramide": [
-        {"tipo": "EMA", "period": 20, "source": "high", "color": "#ffb830", "titulo": "EMA20 High"},
-        {"tipo": "EMA", "period": 20, "source": "low",  "color": "#ff8a3d", "titulo": "EMA20 Low"},
-    ],
-    "cruzamento_ema_9_21": [
-        {"tipo": "EMA", "period": 9,  "source": "close", "color": "#2bd6ff", "titulo": "EMA9"},
-        {"tipo": "EMA", "period": 21, "source": "close", "color": "#9d6fff", "titulo": "EMA21"},
-    ],
-    "bollinger_reversao": [
-        {"tipo": "BB", "period": 20, "k": 2, "source": "close", "color": "#9d6fff", "titulo": "Bollinger 20"},
-    ],
-    "engolfo_tendencia": [
-        {"tipo": "EMA", "period": 50, "source": "close", "color": "#ffb830", "titulo": "EMA50"},
-    ],
-    "media_atr_trailing": [
-        {"tipo": "SMA", "period": 50, "source": "close", "color": "#ffb830", "titulo": "SMA50"},
-    ],
-    "microcanal": [
-        {"tipo": "EMA", "period": 9, "source": "close", "color": "#ffb830", "titulo": "EMA9"},
-    ],
-    # topo_fundo_duplo, rsi_reversao, rompimento_donchian, macd_tendencia,
-    # abertura_gap, sr_dia_anterior: sem overlay de linha (price action / osciladores
-    # em painel separado / níveis dinâmicos que não viram linha contínua).
-}
-def _overlays_da_estrategia(eid):
-    return _OVERLAYS_ESTRATEGIA.get(eid, [])
-
-
 # ── VITRINE: estratégias prontas + desempenho MÉDIO histórico (público) ──
 # Regra de marca: nunca revelar a existência da biblioteca interna. Aqui
 # devolvemos apenas uma MÉDIA de desempenho histórico por estratégia,
 # apresentada como "média histórica" — sem expor linhas nem a fonte.
-_VITRINE_CACHE = {}   # chave = lang ('pt'/'en'/'es') → {"t": float, "dados": {...}}
+_VITRINE_CACHE = {"t": 0.0, "dados": None}
 
 @app.get("/estrategias/vitrine")
 def estrategias_vitrine(lang: str = "pt"):
     import time as _t
-    # normaliza idioma (só pt/en/es; qualquer outro cai em pt)
-    lang = (lang or "pt").lower()
-    if lang not in ("pt", "en", "es"):
-        lang = "pt"
-    # cache de 1h POR IDIOMA (cada lang tem seu próprio resultado traduzido).
-    # Antes o cache era único e "fixava" o primeiro idioma carregado — por isso
-    # os cards não trocavam de idioma. Agora cada idioma tem sua entrada.
-    _c = _VITRINE_CACHE.get(lang)
-    if _c is not None and (_t.time() - _c["t"] < 3600):
-        return _c["dados"]
+    # cache de 1h (cálculo de média é estável; evita varrer a tabela a cada visita)
+    if _VITRINE_CACHE["dados"] is not None and (_t.time() - _VITRINE_CACHE["t"] < 3600):
+        return _VITRINE_CACHE["dados"]
 
     # agrega média por estrategia_id (server-side; nunca devolve linha individual)
     medias = {}
@@ -5076,22 +5196,16 @@ def estrategias_vitrine(lang: str = "pt"):
             def _med(xs):
                 xs = [x for x in xs if x is not None]
                 return round(sum(xs) / len(xs), 2) if xs else None
-            # top 3 ativos POR ESTRATÉGIA (maior sharpe médio; mínimo de dados p/ não ser ruído)
+            # top 3 ativos por estratégia (maior sharpe médio; mínimo de dados p/ não ser ruído)
             # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
-            # IMPORTANTE: o ranking é ISOLADO por estratégia. Um ativo pode ser
-            # negativo numa estratégia (ex: NASDAQ no Canal EMA) e lucrativo em
-            # outra (ex: NASDAQ no Cruzamento 9/21). Aqui não existe "ativo bom"
-            # ou "ativo ruim" em absoluto — existe a RELAÇÃO ativo↔estratégia.
-            # Por isso 'por_ativo' é indexado por estrategia_id: cada estratégia
-            # ranqueia seus próprios ativos.
-            # Um ativo só entra no "top" daquela estratégia se tiver evidência
-            # decente — senão é ruído (banco parcialmente populado). Critérios:
-            #   • mínimo de backtests medidos para aquele ativo NAQUELA estratégia
-            #   • sharpe médio acima de um piso (conservador; Radar refina depois)
-            # Se a estratégia não tem ativos robustos, top fica vazio e o card
-            # mostra a categoria (NÃO promete ativo — regra de marca).
-            _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo (nesta estratégia)
-            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível (conservador)
+            # Um ativo só entra no "top" se tiver evidência decente — senão é
+            # ruído estatístico (banco ainda parcialmente populado). Critérios:
+            #   • mínimo de backtests medidos para aquele ativo (não 1 só)
+            #   • sharpe médio acima de um piso (mesmo critério de "robusta")
+            # Se a estratégia não tem ativos robustos suficientes, top fica vazio
+            # e o card cai no fallback do "mercados" curado manualmente.
+            _MIN_BACKTESTS_ATIVO = 2     # nº mínimo de medições por ativo
+            _PISO_SHARPE_ATIVO   = 0.5    # sharpe médio mínimo p/ ser sugerível
             top_ativos_por_est = {}
             for eid, ativos in por_ativo.items():
                 ranking = []
@@ -5133,14 +5247,9 @@ def estrategias_vitrine(lang: str = "pt"):
             "categoria": _categoria_de(est.get("tags", [])),
             "nivel": _nivel_loc(est.get("nivel", ""), lang),
             "mercados": est.get("mercados", []),
-            # top_ativos = SÓ ranking real do banco (Sharpe>0.5, filtrado). SEM
-            # fallback p/ 'mercados' manual: se o banco não tem ativo bom medido,
-            # vem vazio de propósito e o card mostra a categoria (não promete ativo
-            # que pode dar prejuízo — foi o caso do NASDAQ no Canal EMA).
-            "top_ativos": (m.get("top_ativos") or []),
+            "top_ativos": (m.get("top_ativos") or est.get("mercados", [])),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
-            "overlays": _overlays_da_estrategia(eid),
             "sharpe_medio": m.get("sharpe_medio"),
             "pf_medio": m.get("pf_medio"),
             "retorno_medio": m.get("retorno_medio"),
@@ -5149,7 +5258,8 @@ def estrategias_vitrine(lang: str = "pt"):
             "forte_pct": m.get("forte_pct", 0),
         })
     out = {"total": len(itens), "estrategias": itens}
-    _VITRINE_CACHE[lang] = {"t": _t.time(), "dados": out}
+    _VITRINE_CACHE["t"] = _t.time()
+    _VITRINE_CACHE["dados"] = out
     return out
 
 
