@@ -893,8 +893,6 @@ body.modo-vitrine #vitrine{display:block}
       <span id="user-nome-curto">Usuário</span>
       <span class="user-plano plano-free" id="user-plano-badge">FREE</span>
     </button>
-    <!-- Atalho: montar o próprio teste (sai da vitrine direto pro modo configuração) -->
-    <button id="btn-novo-teste" onclick="irParaNovoTeste()" style="display:none;margin-top:6px;width:100%;align-items:center;justify-content:center;gap:5px;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:7px;color:var(--green);font-size:11.5px;font-weight:700;padding:6px 10px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(0,208,132,0.20)'" onmouseout="this.style.background='rgba(0,208,132,0.10)'"><span data-i18n="nav.novoTeste">▶ Novo teste</span></button>
     <!-- Dropdown -->
     <div class="user-dropdown" id="user-dropdown" style="display:none">
       <div class="user-dropdown-header">
@@ -909,6 +907,12 @@ body.modo-vitrine #vitrine{display:block}
   </div>
   </div><!-- /top-right -->
 </div><!-- /topbar -->
+
+<!-- FAIXA: atalho para montar o próprio teste (só logado, aba Overview) -->
+<div id="faixa-novo-teste" style="display:none;align-items:center;justify-content:flex-end;gap:10px;padding:7px 18px;background:var(--bg2);border-bottom:1px solid var(--border)">
+  <span style="font-size:11.5px;color:var(--muted2)" data-i18n="faixa.novoTesteHint">Prefere configurar do zero?</span>
+  <button id="btn-novo-teste" onclick="irParaNovoTeste()" style="display:flex;align-items:center;gap:5px;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:7px;color:var(--green);font-size:11.5px;font-weight:700;padding:6px 13px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(0,208,132,0.20)'" onmouseout="this.style.background='rgba(0,208,132,0.10)'"><span data-i18n="nav.novoTeste">▶ Novo teste</span></button>
+</div>
 
 <!-- MAIN -->
 <div class="main">
@@ -1945,7 +1949,7 @@ function onLogout() {
   atualizarVisibilidadeAdmin();
   document.getElementById('btn-login').style.display = 'flex';
   document.getElementById('btn-user').style.display = 'none';
-  try{ const bnt=document.getElementById('btn-novo-teste'); if(bnt) bnt.style.display='none'; }catch(_){}
+  try{ const fx=document.getElementById('faixa-novo-teste'); if(fx) fx.style.display='none'; }catch(_){}
   document.getElementById('limit-banner').classList.remove('show');
   travarApp();
   abrirAuth('login');
@@ -2081,7 +2085,7 @@ function atualizarUI() {
   // Topbar
   document.getElementById('btn-login').style.display = 'none';
   document.getElementById('btn-user').style.display = 'flex';
-  try{ const bnt=document.getElementById('btn-novo-teste'); if(bnt) bnt.style.display='flex'; }catch(_){}
+  try{ atualizarFaixaNovoTeste(); }catch(_){}
   document.getElementById('user-avatar').textContent = nome.charAt(0).toUpperCase();
   document.getElementById('user-nome-curto').textContent = nome.split(' ')[0];
 
@@ -2533,7 +2537,7 @@ const TEMPLATES = {
 // ── SISTEMA DE IDIOMAS (i18n) PT/EN/ES — v5.3 ──────────────────
 const I18N = {
   pt: {
-    'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
+    'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','faixa.novoTesteHint':'Prefere configurar do zero?','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias prontas pra testar','vit.sub':'Escolha uma, ajuste o ativo e teste. Desempenho médio histórico — varia por ativo e período. Histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.testandoLabel':'ESTRATÉGIA EM TESTE','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
     'lbl.ativo':'Ativo','lbl.periodo':'Período','lbl.estrategia':'Estratégia principal',
@@ -2566,7 +2570,7 @@ const I18N = {
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
   en: {
-    'nav.overview':'Overview','nav.novoTeste':'▶ New test','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
+    'nav.overview':'Overview','nav.novoTeste':'▶ New test','faixa.novoTesteHint':'Prefer to set it up from scratch?','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Ready-to-test strategies','vit.sub':'Pick one, set the asset and test. Average historical performance — varies by asset and period. Measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.testandoLabel':'STRATEGY IN TEST','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
     'lbl.ativo':'Asset','lbl.periodo':'Period','lbl.estrategia':'Main strategy',
@@ -2599,7 +2603,7 @@ const I18N = {
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
   es: {
-    'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
+    'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','faixa.novoTesteHint':'¿Prefieres configurar desde cero?','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
     'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias listas para probar','vit.sub':'Elige una, ajusta el activo y prueba. Rendimiento histórico medio — varía por activo y período. Historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.testandoLabel':'ESTRATEGIA EN PRUEBA','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
     'lbl.ativo':'Activo','lbl.periodo':'Período','lbl.estrategia':'Estrategia principal',
@@ -2708,6 +2712,16 @@ function switchTab(tab) {
     document.body.classList.remove('modo-vitrine');
   }
   if (tab === 'planos') { const cb = document.getElementById('codigo-box'); if (cb) cb.style.display = 'block'; }
+  try{ atualizarFaixaNovoTeste(); }catch(_){}
+}
+
+// Faixa "▶ Novo teste": só aparece quando logado E na aba Overview (onde vive a
+// vitrine/teste). Some nas outras abas e quando deslogado — sem deformar o header.
+function atualizarFaixaNovoTeste(){
+  const fx = document.getElementById('faixa-novo-teste'); if(!fx) return;
+  const logado = !!(typeof usuarioAtual!=='undefined' && usuarioAtual && usuarioAtual.id);
+  const noOverview = (typeof activeTab==='undefined') || activeTab==='overview';
+  fx.style.display = (logado && noOverview) ? 'flex' : 'none';
 }
 
 // ── ABA ESTUDO: matriz estrategia x timeframe (v5.2, gated por plano) ──
