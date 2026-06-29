@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v6.6 (i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v6.7 (Editor: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -540,9 +540,10 @@ select option{background:#141920}
 .export-card.is-main:hover{border-color:rgba(0,208,132,0.85);background:rgba(0,208,132,0.13)}
 .export-star{position:absolute;top:9px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--green);background:var(--green-bg);border:1px solid rgba(0,208,132,0.4);border-radius:4px;padding:2px 5px}
 .export-soon{position:absolute;top:9px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 5px}
-.editor-code-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);min-height:420px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
-.editor-code-wrap .ed-body{flex:1;min-height:0}
-.editor-code-wrap #code-editor{font-size:13px;line-height:1.7}
+.editor-code-wrap{display:flex;flex-direction:column;height:auto;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
+.editor-code-wrap .ed-body{flex:none}
+.editor-code-wrap #code-editor{font-size:13px;line-height:1.7;flex:none;height:160px;min-height:160px;transition:height .18s ease}
+.editor-code-wrap #code-editor:focus{height:250px;min-height:250px}
 .editor-center{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:100%;min-height:400px;gap:20px;padding:40px 20px;
@@ -879,7 +880,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v6.6</span>
+    <span class="vtag">v6.7</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2549,7 +2550,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v6.6';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.7';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
