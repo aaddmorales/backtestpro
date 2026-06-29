@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v6.8 (Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v6.9 (Editor: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v6.8</span>
+    <span class="vtag">v6.9</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2547,7 +2547,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v6.8';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.9';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5321,15 +5321,16 @@ function autoGrowHero(el){
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 320) + 'px';
 }
-// editor de código: cresce conforme cola/digita (mostra o código colado);
-// ao focar abre ~10 linhas; teto de 480px com scroll interno
+// editor de código: ao focar abre ~10 linhas e cresce com o que está colado;
+// ao clicar fora, fecha (volta ao tamanho compacto)
 function autoGrowCode(){
   const el = document.getElementById('code-editor');
   if(!el) return;
   const focado = (document.activeElement === el);
+  if(!focado){ el.style.height = '160px'; return; }          // clicou fora → fecha
+  if(!el.value.trim()){ el.style.height = '250px'; return; } // vazio → abre 10 linhas
   el.style.height = 'auto';
-  const min = focado ? 250 : 160;
-  el.style.height = Math.min(Math.max(el.scrollHeight, min), 480) + 'px';
+  el.style.height = Math.min(Math.max(el.scrollHeight, 250), 480) + 'px';  // com código → cresce
 }
 function collapseHero(el){   // recolhe ao clicar fora (o conteúdo é preservado)
   if(el) el.style.height = '44px';
