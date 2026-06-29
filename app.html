@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v6.1 (Estudo: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v6.2 (Editor: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v6.1</span>
+    <span class="vtag">v6.2</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1191,9 +1191,24 @@ body.modo-vitrine #vitrine{display:block}
                 <input type="text" id="ia-desc" placeholder="Ex: Bot XAU/USD com RSI 14, compra abaixo de 30, stop 50 pts...">
                 <button class="ia-gen-btn" id="ia-btn" onclick="gerarBotIA()">✨ Gerar Bot com IA</button>
               </div>
-              <div class="edz-hint" style="background:var(--green-bg);border-color:rgba(0,208,132,0.2);margin-top:10px">
-                <span>⚡</span>
-                <span>Clique em <strong style="color:var(--green)">▶ Rodar Backtest</strong> à esquerda para executar. O resultado aparece na aba <strong style="color:var(--green)">Overview</strong>.</span>
+              <!-- ── ENVIAR PRO MT5: nomear o bot e gerar o token de pareamento ── -->
+              <div class="export-sec" style="margin-top:12px">
+                <div class="export-head">
+                  <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🤖'))"></span>
+                  <span>Enviar pro MT5</span>
+                </div>
+                <div class="export-sub">Dê um nome ao seu bot e gere o token pra parear com o conector.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+                  <input type="text" id="ed-bot-nome" placeholder="Nome do bot (ex: Meu Bot de Ouro D1)" style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none">
+                  <button onclick="gerarTokenEditor()" id="ed-btn-token" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 16px;cursor:pointer;font-family:var(--sans)">🔑 Gerar token</button>
+                </div>
+                <div id="ed-token-box" style="display:none;margin-top:12px;padding:12px 14px;background:var(--green-bg);border:1px solid rgba(0,208,132,0.3);border-radius:9px">
+                  <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">TOKEN — cole no conector (aparece só uma vez, guarde bem):</div>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <code id="ed-token" style="flex:1;min-width:0;font-family:var(--mono);font-size:12.5px;color:var(--text);word-break:break-all"></code>
+                    <button onclick="copiarTokenEditor(this)" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:8px 13px;cursor:pointer;font-family:var(--sans)">📋 Copiar</button>
+                  </div>
+                </div>
               </div>
 
               <!-- ── EXPORTAR: levar a estratégia validada pra plataforma de execução ── -->
@@ -2532,7 +2547,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v6.1';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.2';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5609,6 +5624,35 @@ async function registrarBot(){
 function copiarToken(){
   const t = document.getElementById('novo-bot-token').textContent;
   navigator.clipboard.writeText(t).then(()=>alert('Token copiado!'));
+}
+// ── Token no Editor: nomeia o bot, gera o token (mesmo endpoint do Monitor) ──
+async function gerarTokenEditor(){
+  if(!(usuarioAtual&&usuarioAtual.id)){ abrirAuth('login'); return; }
+  const nome = (document.getElementById('ed-bot-nome').value||'').trim() || 'Meu Bot';
+  const simbolo = (((document.getElementById('ativo')||{}).value)||'').replace(/\//g,'').toUpperCase();
+  const btn = document.getElementById('ed-btn-token');
+  const txtOrig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳...';
+  try{
+    const r = await fetch(API+'/conector/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:usuarioAtual.id,nome,simbolo})});
+    const d = await r.json();
+    if(d.bot_token){
+      document.getElementById('ed-token').textContent = d.bot_token;
+      document.getElementById('ed-token-box').style.display = 'block';
+      if(typeof carregarBots==='function'){ try{ carregarBots(); }catch(e){} }
+    } else alert('Erro ao gerar token.');
+  }catch(e){ alert('Erro ao conectar com a API.'); }
+  btn.disabled = false; btn.innerHTML = txtOrig;
+}
+// botão copiar estilo Claude: vira "Copiado" por ~1.6s
+function copiarTokenEditor(btn){
+  const t = document.getElementById('ed-token').textContent;
+  try{ navigator.clipboard.writeText(t); }catch(e){}
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Copiado';
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(0,208,132,0.5)';
+  setTimeout(function(){ btn.innerHTML = orig; btn.style.color=''; btn.style.borderColor=''; }, 1600);
 }
 
 // ══════════════════════════════════════════════════════════════════
