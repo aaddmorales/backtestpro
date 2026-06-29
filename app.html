@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v6.5 (Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v6.6 (i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v6.5</span>
+    <span class="vtag">v6.6</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1153,10 +1153,10 @@ body.modo-vitrine #vitrine{display:block}
                 <div class="spacer"></div>
                 <div class="ed-actions" style="gap:4px">
                   <button class="ea-btn" onclick="limparCodigo()" data-i18n="hero.limpar">Limpar</button>
-                  <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
+                  <button class="ea-btn" data-i18n="hero.copiar" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
                 </div>
               </div>
-              <div style="padding:9px 14px;font-size:12.5px;color:var(--text);background:linear-gradient(135deg,rgba(0,208,132,0.07),rgba(43,214,255,0.05));border-bottom:1px solid var(--border)">📋 Cole o código aqui, ou descreva sua estratégia abaixo que a IA gera pra você.</div>
+              <div data-i18n="ed.faixa" style="padding:9px 14px;font-size:12.5px;color:var(--text);background:linear-gradient(135deg,rgba(0,208,132,0.07),rgba(43,214,255,0.05));border-bottom:1px solid var(--border)">📋 Cole o código aqui, ou descreva sua estratégia abaixo que a IA gera pra você.</div>
               <div class="ed-body">
                 <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
 # Ou descreva abaixo e clica Gerar com IA
@@ -1186,29 +1186,29 @@ body.modo-vitrine #vitrine{display:block}
               </div>
               <!-- ── CONTROLES DA IA (no rodapé do editor): gerar, conversar (Radar), testar ── -->
               <div class="ed-footer">
-                <input type="text" id="ia-desc" placeholder="Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarBotIA()">
+                <input type="text" id="ia-desc" data-i18n-ph="ed.iaPh" placeholder="Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarBotIA()">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                  <button onclick="gerarBotIA()" id="ia-btn" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">✨ Gerar estratégia IA</button>
-                  <button onclick="abrirRadarChat()" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;color:var(--green);font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">💬 Conversar com IA</button>
-                  <button onclick="rodarBacktest()" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">▶ Testar o código</button>
+                  <button onclick="gerarBotIA()" id="ia-btn" data-i18n="ed.btnGerar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">✨ Gerar estratégia IA</button>
+                  <button onclick="abrirRadarChat()" data-i18n="ed.btnConversar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;color:var(--green);font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">💬 Conversar com IA</button>
+                  <button onclick="rodarBacktest()" data-i18n="ed.btnTestar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">▶ Testar o código</button>
                 </div>
               </div>
               <!-- ── ENVIAR PRO MT5: nomear o bot e gerar o token de pareamento ── -->
               <div class="export-sec" style="margin-top:12px">
                 <div class="export-head">
                   <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🤖'))"></span>
-                  <span>Enviar pro MT5</span>
+                  <span data-i18n="mt5.titulo">Enviar pro MT5</span>
                 </div>
-                <div class="export-sub">Dê um nome ao seu bot e gere o token pra parear com o conector.</div>
+                <div class="export-sub" data-i18n="mt5.sub">Dê um nome ao seu bot e gere o token pra parear com o conector.</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-                  <input type="text" id="ed-bot-nome" placeholder="Nome do bot (ex: Meu Bot de Ouro D1)" style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none">
-                  <button onclick="gerarTokenEditor()" id="ed-btn-token" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 16px;cursor:pointer;font-family:var(--sans)">🔑 Gerar token</button>
+                  <input type="text" id="ed-bot-nome" data-i18n-ph="mt5.nomePh" placeholder="Nome do bot (ex: Meu Bot de Ouro D1)" style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none">
+                  <button onclick="gerarTokenEditor()" id="ed-btn-token" data-i18n="mt5.btnToken" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 16px;cursor:pointer;font-family:var(--sans)">🔑 Gerar token</button>
                 </div>
                 <div id="ed-token-box" style="display:none;margin-top:12px;padding:12px 14px;background:var(--green-bg);border:1px solid rgba(0,208,132,0.3);border-radius:9px">
-                  <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">TOKEN — cole no conector (aparece só uma vez, guarde bem):</div>
+                  <div data-i18n="mt5.tokenLabel" style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">TOKEN — cole no conector (aparece só uma vez, guarde bem):</div>
                   <div style="display:flex;gap:8px;align-items:center">
                     <code id="ed-token" style="flex:1;min-width:0;font-family:var(--mono);font-size:12.5px;color:var(--text);word-break:break-all"></code>
-                    <button onclick="copiarTokenEditor(this)" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:8px 13px;cursor:pointer;font-family:var(--sans)">📋 Copiar</button>
+                    <button onclick="copiarTokenEditor(this)" data-i18n="mt5.copiar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:8px 13px;cursor:pointer;font-family:var(--sans)">📋 Copiar</button>
                   </div>
                 </div>
               </div>
@@ -2549,7 +2549,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v6.5';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.6';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2637,6 +2637,7 @@ const TEMPLATES = {
 // ── SISTEMA DE IDIOMAS (i18n) PT/EN/ES — v5.3 ──────────────────
 const I18N = {
   pt: {
+    'ed.faixa':'📋 Cole o código aqui, ou descreva sua estratégia abaixo que a IA gera pra você.','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Testar o código','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','faixa.novoTesteHint':'Prefere configurar do zero?','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias reais, medidas no histórico','vit.sub':'Escolha uma, ajuste o ativo e teste agora. Desempenho médio que varia por ativo e período — histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.testandoLabel':'ESTRATÉGIA EM TESTE','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
@@ -2670,6 +2671,7 @@ const I18N = {
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
   en: {
+    'ed.faixa':'📋 Paste your code here, or describe your strategy below and the AI writes it for you.','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Test the code','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy',
     'nav.overview':'Overview','nav.novoTeste':'▶ New test','faixa.novoTesteHint':'Prefer to set it up from scratch?','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Real strategies, measured on history','vit.sub':'Pick one, set the asset and test now. Average performance that varies by asset and period — measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.testandoLabel':'STRATEGY IN TEST','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
@@ -2703,6 +2705,7 @@ const I18N = {
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
   es: {
+    'ed.faixa':'📋 Pega tu código aquí, o describe tu estrategia abajo y la IA la genera para ti.','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar el código','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','faixa.novoTesteHint':'¿Prefieres configurar desde cero?','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
     'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias reales, medidas en el historial','vit.sub':'Elige una, ajusta el activo y prueba ahora. Rendimiento medio que varía por activo y período — historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.testandoLabel':'ESTRATEGIA EN PRUEBA','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
