@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v6.3 (Editor: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v6.5 (Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v6.3</span>
+    <span class="vtag">v6.5</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1156,6 +1156,7 @@ body.modo-vitrine #vitrine{display:block}
                   <button class="ea-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
                 </div>
               </div>
+              <div style="padding:9px 14px;font-size:12.5px;color:var(--text);background:linear-gradient(135deg,rgba(0,208,132,0.07),rgba(43,214,255,0.05));border-bottom:1px solid var(--border)">📋 Cole o código aqui, ou descreva sua estratégia abaixo que a IA gera pra você.</div>
               <div class="ed-body">
                 <textarea id="code-editor" placeholder="# Cole o código aqui ou use um Template
 # Ou descreva abaixo e clica Gerar com IA
@@ -1183,18 +1184,13 @@ body.modo-vitrine #vitrine{display:block}
 #             if preco < self.ema_low[-1]:
 #                 self.position.close()"></textarea>
               </div>
-              <!-- ── CONVERSE COM A IA: descreve e cria, ou roda a que está no editor ── -->
+              <!-- ── CONTROLES DA IA (no rodapé do editor): gerar, conversar (Radar), testar ── -->
               <div class="ed-footer">
-                <div class="export-sec" style="margin-top:0;border-color:rgba(0,208,132,0.4)">
-                  <div class="export-head">
-                    <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🤖'))"></span>
-                    <span style="color:var(--green)">Converse com a IA</span>
-                  </div>
-                  <div class="export-sub">Cria uma estratégia nova ou roda a que está no editor.</div>
-                  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-                    <input type="text" id="ia-desc" placeholder="Ex: cria um bot de RSI 14 no XAU…" style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')conversaIA()">
-                    <button onclick="conversaIA()" id="ia-btn" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">➤ Enviar</button>
-                  </div>
+                <input type="text" id="ia-desc" placeholder="Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')gerarBotIA()">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                  <button onclick="gerarBotIA()" id="ia-btn" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">✨ Gerar estratégia IA</button>
+                  <button onclick="abrirRadarChat()" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(0,208,132,0.10);border:1px solid rgba(0,208,132,0.40);border-radius:8px;color:var(--green);font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">💬 Conversar com IA</button>
+                  <button onclick="rodarBacktest()" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;font-family:var(--sans)">▶ Testar o código</button>
                 </div>
               </div>
               <!-- ── ENVIAR PRO MT5: nomear o bot e gerar o token de pareamento ── -->
@@ -1220,7 +1216,7 @@ body.modo-vitrine #vitrine{display:block}
               <!-- ── EXPORTAR: levar a estratégia validada pra plataforma de execução ── -->
               <div class="export-sec">
                 <div class="export-head">
-                  <span style="font-size:15px">🚀</span>
+                  <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🚀'))"></span>
                   <span data-i18n="export.titulo">Levar pra minha plataforma</span>
                 </div>
                 <div class="export-sub" data-i18n="export.sub">Gere o código da sua estratégia na linguagem da plataforma onde você opera.</div>
@@ -2553,7 +2549,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v6.3';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v6.5';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
