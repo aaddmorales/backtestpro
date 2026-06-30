@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v7.9 (Editor: DIÁLOGO REAL — chat fala com /editor/dialogo (api.py v5.8): a própria IA decide se conversa ou gera o código, sem regra de palavra; memória de diálogo (_edChatHist); código gerado vai pro editor de baixo; v7.8: regra de palavra (aposentada)
+  BotTested Frontend — v8.0 (Fix: Run Test do Editor abria o Overview no modo-vitrine (loja) em vez do resultado — rodarBacktest agora sai do modo-vitrine antes de mostrar o resultado; v7.9: DIÁLOGO REAL via /editor/dialogo
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v7.9</span>
+    <span class="vtag">v8.0</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2541,7 +2541,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v7.9';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.0';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -3375,6 +3375,9 @@ async function rodarBacktest() {
     const ovTab = document.getElementById('tab-overview');
     if(ovrEl && ovTab && ovrEl.parentElement !== ovTab){ ovTab.appendChild(ovrEl); }
     renderOverview(d, params);
+    // resultado de um teste = modo TESTE (não vitrine): garante que o Overview
+    // mostre o resultado, não a loja de estratégias.
+    try{ _vitrineMode=false; document.body.classList.remove('modo-vitrine'); atualizarFaixaNovoTeste(); }catch(_){}
     switchTab('overview');
     await incrementarBacktest();
     // Convite proativo: depois que o resultado aparece, o Radar oferece ajuda
