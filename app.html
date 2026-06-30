@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v7.3 (Editor: diálogo SEM identidade Radar (título "Converse com a IA"); ao gerar a estratégia a IA avisa e roda o teste sozinha (rodarBacktest auto, muda pra Overview); v7.2: DIÁLOGO EMBUTIDO na tela — área de chat com o Radar (mensagens + input) dentro da aba Editor; regra rápida reconhece pedido (→ gera código no editor via /gerar-bot-ia) vs conversa (→ /radar/chat); botão "Chat IA" rola/foca no diálogo; PT/EN/ES; v7.1: botões renomeados — "Chat IA" e "Testar código"; v7.0: Fix: "Falar com a IA" abria e fechava o Radar no mesmo clique (listener de fechar-ao-clicar-fora) — agora stopPropagation; e descrição escrita no editor (não código) é levada pro chat do Radar; v6.9: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v7.4 (Editor: botão "Falar com a IA" agora LÊ o que está escrito no próprio editor (pedido → IA gera+roda; código → testa); edChatEnviar aceita texto externo; regra de reconhecimento ampliada (construir/poderia/quero); v7.3: diálogo SEM identidade Radar (título "Converse com a IA"); ao gerar a estratégia a IA avisa e roda o teste sozinha (rodarBacktest auto, muda pra Overview); v7.2: DIÁLOGO EMBUTIDO na tela — área de chat com o Radar (mensagens + input) dentro da aba Editor; regra rápida reconhece pedido (→ gera código no editor via /gerar-bot-ia) vs conversa (→ /radar/chat); botão "Chat IA" rola/foca no diálogo; PT/EN/ES; v7.1: botões renomeados — "Chat IA" e "Testar código"; v7.0: Fix: "Falar com a IA" abria e fechava o Radar no mesmo clique (listener de fechar-ao-clicar-fora) — agora stopPropagation; e descrição escrita no editor (não código) é levada pro chat do Radar; v6.9: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v7.3</span>
+    <span class="vtag">v7.4</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1187,7 +1187,7 @@ body.modo-vitrine #vitrine{display:block}
               <!-- ── CONTROLES DO EDITOR: falar com a IA (Radar) e testar ── -->
               <div class="ed-footer">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                  <button onclick="focarChatEditor()" data-i18n="ed.btnFalar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">💬 Falar com a IA</button>
+                  <button onclick="falarComIAEditor()" data-i18n="ed.btnFalar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">💬 Falar com a IA</button>
                   <button onclick="rodarBacktest()" data-i18n="ed.btnTestar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">▶ Testar o código</button>
                 </div>
               </div>
@@ -2562,7 +2562,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v7.3';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v7.4';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5366,10 +5366,13 @@ function edChatBolha(html, tipo){
   body.appendChild(div); body.scrollTop=body.scrollHeight;
   return div;
 }
-async function edChatEnviar(){
+async function edChatEnviar(textoExterno){
   if(_edChatBusy) return;
-  const inp=document.getElementById('ed-chat-input'); if(!inp) return;
-  const txt=(inp.value||'').trim(); if(!txt) return;
+  const inp=document.getElementById('ed-chat-input');
+  let txt;
+  if(typeof textoExterno==='string'){ txt=textoExterno.trim(); }
+  else { if(!inp) return; txt=(inp.value||'').trim(); }
+  if(!txt) return;
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const M=({
     pt:{p:'…', feito:'Pronto! Escrevi o código no editor e já vou rodar o teste — te mostro o resultado em instantes.', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
@@ -5377,12 +5380,12 @@ async function edChatEnviar(){
     es:{p:'…', feito:'¡Listo! Escribí el código en el editor y ya voy a probarlo — te muestro el resultado enseguida.', erroGerar:'No pude generarlo ahora. ¿Intentas describirlo de otra forma?', erro:'Error de conexión. ¿Intentas de nuevo?'}
   })[L] || {p:'…',feito:'',erroGerar:'',erro:''};
   edChatBolha(txt.replace(/</g,'&lt;'),'user');
-  inp.value='';
+  if(inp && typeof textoExterno!=='string') inp.value='';
   _edChatBusy=true;
   const send=document.getElementById('ed-chat-send'); if(send) send.disabled=true;
   const pensando=edChatBolha(M.p,'pensando');
   // regra rápida: pedido pra criar (verbo de criação) e não parece código
-  const pedeCriar = /\b(cria|criar|crie|gera|gerar|gere|faz|fazer|monta|montar|quero um|quero uma|create|build|make|generate)\b/i.test(txt) && !/\b(def |class |import |self\.|lambda)\b/.test(txt);
+  const pedeCriar = /\b(cria|criar|crie|gera|gerar|gere|constr[óo]i|construir|construa|monta|montar|faz|fa[çc]a|fazer|quero|gostaria|poderia|create|build|make|generate)\b/i.test(txt) && !/\b(def |class |import |self\.|lambda)\b/.test(txt);
   try{
     if(pedeCriar){
       const r=await fetch(API+'/gerar-bot-ia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao:txt})});
@@ -5417,6 +5420,18 @@ function focarChatEditor(){
   const sec=document.getElementById('ed-chat-sec');
   if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'});
   setTimeout(function(){ const i=document.getElementById('ed-chat-input'); if(i) i.focus(); }, 140);
+}
+// botão "AI Chat": lê o que está no EDITOR e age (conversa/pedido → IA; código → testa)
+function falarComIAEditor(){
+  const ed=document.getElementById('code-editor');
+  const txt=((ed&&ed.value)||'').trim();
+  const sec=document.getElementById('ed-chat-sec');
+  if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'});
+  if(!txt){ setTimeout(function(){ if(ed) ed.focus(); }, 200); return; }  // vazio → foca o editor
+  const pareceCodigo = /\b(def |class |import |self\.|lambda)\b/.test(txt) || txt.split('\n').length>4;
+  if(pareceCodigo){ if(typeof rodarBacktest==='function') rodarBacktest(); return; }  // código → testa
+  if(ed){ ed.value=''; if(typeof autoGrowCode==='function') autoGrowCode(); }  // pedido → limpa e processa
+  edChatEnviar(txt);
 }
 function collapseHero(el){   // recolhe ao clicar fora (o conteúdo é preservado)
   if(el) el.style.height = '44px';
