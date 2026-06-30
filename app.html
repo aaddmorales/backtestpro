@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v7.4 (Editor: botão "Falar com a IA" agora LÊ o que está escrito no próprio editor (pedido → IA gera+roda; código → testa); edChatEnviar aceita texto externo; regra de reconhecimento ampliada (construir/poderia/quero); v7.3: diálogo SEM identidade Radar (título "Converse com a IA"); ao gerar a estratégia a IA avisa e roda o teste sozinha (rodarBacktest auto, muda pra Overview); v7.2: DIÁLOGO EMBUTIDO na tela — área de chat com o Radar (mensagens + input) dentro da aba Editor; regra rápida reconhece pedido (→ gera código no editor via /gerar-bot-ia) vs conversa (→ /radar/chat); botão "Chat IA" rola/foca no diálogo; PT/EN/ES; v7.1: botões renomeados — "Chat IA" e "Testar código"; v7.0: Fix: "Falar com a IA" abria e fechava o Radar no mesmo clique (listener de fechar-ao-clicar-fora) — agora stopPropagation; e descrição escrita no editor (não código) é levada pro chat do Radar; v6.9: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v7.5 (Editor REDESENHADO conforme desenho do Adriano: UMA caixa só, sem divisória visível entre chat (cima) e código (baixo); botões "Chat IA" e "Rodar Test" no topo; chat colado vira código e é jogado pra parte de baixo com aviso pra testar; caixa de chat separada removida; placeholder/saudação ajustados pra "aqui embaixo"
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -543,6 +543,18 @@ select option{background:#141920}
 .editor-code-wrap{display:flex;flex-direction:column;height:auto;border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin:14px 16px}
 .editor-code-wrap .ed-body{flex:none}
 .editor-code-wrap #code-editor{font-size:13px;line-height:1.7;flex:none;height:160px;min-height:160px;max-height:480px;overflow-y:auto;transition:height .15s ease}
+/* Editor unificado: chat (cima) + código (baixo) numa caixa só, SEM divisória visível */
+.ed-barra-acoes{display:flex;gap:8px;padding:10px 12px 8px;flex-shrink:0}
+.ed-btn-chat{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;cursor:pointer;font-family:var(--sans)}
+.ed-btn-test{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:10px 18px;cursor:pointer;font-family:var(--sans)}
+.ed-unico{display:flex;flex-direction:column;background:var(--bg2)}
+.ed-unico #ed-chat-msgs{display:flex;flex-direction:column;gap:8px;padding:12px 12px 6px;max-height:230px;overflow-y:auto}
+.ed-unico #ed-chat-msgs:empty{display:none}
+.ed-chat-linha{display:flex;gap:8px;align-items:center;padding:2px 12px 8px}
+.ed-unico #ed-chat-input{flex:1;min-width:0;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:13.5px;padding:6px 2px;outline:none}
+.ed-unico #ed-chat-input::placeholder{color:var(--muted)}
+.ed-unico #ed-chat-send{flex-shrink:0;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:15px;cursor:pointer}
+.ed-unico #code-editor{background:transparent}
 .editor-center{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:100%;min-height:400px;gap:20px;padding:40px 20px;
@@ -879,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v7.4</span>
+    <span class="vtag">v7.5</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1152,59 +1164,28 @@ body.modo-vitrine #vitrine{display:block}
                 <span class="ed-fname">strategy.py</span>
                 <div class="spacer"></div>
                 <div class="ed-actions" style="gap:4px">
-                  <button class="ea-btn" onclick="limparCodigo()" data-i18n="hero.limpar">Limpar</button>
+                  <button class="ea-btn" onclick="limparEditorTudo()" data-i18n="hero.limpar">Limpar</button>
                   <button class="ea-btn" data-i18n="hero.copiar" onclick="navigator.clipboard.writeText(document.getElementById('code-editor').value)">Copiar</button>
                 </div>
               </div>
-              <div data-i18n="ed.faixa" style="padding:9px 14px;font-size:12.5px;color:var(--text);background:linear-gradient(135deg,rgba(0,208,132,0.07),rgba(43,214,255,0.05));border-bottom:1px solid var(--border)">📋 Cole o código aqui, ou descreva sua estratégia abaixo que a IA gera pra você.</div>
-              <div class="ed-body">
-                <textarea id="code-editor" onfocus="autoGrowCode()" oninput="autoGrowCode()" onpaste="setTimeout(autoGrowCode,0)" onblur="setTimeout(autoGrowCode,0)" placeholder="# Cole seu código Python aqui ou use um Template
-# Ou clique em &quot;Falar com a IA&quot; pra ela criar pra você
-
-# EXEMPLO — EMA Channel XAU/USD:
-# class EMAChannelStrategy(Strategy):
-#     ema_period = 20
-#
-#     def init(self):
-#         self.ema_high = self.I(
-#             lambda h: pd.Series(h).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.High)
-#         self.ema_low = self.I(
-#             lambda l: pd.Series(l).ewm(
-#                 span=self.ema_period,adjust=False
-#             ).mean().values, self.data.Low)
-#
-#     def next(self):
-#         preco = self.data.Close[-1]
-#         if not self.position:
-#             if preco > self.ema_high[-1]:
-#                 self.buy()
-#         else:
-#             if preco < self.ema_low[-1]:
-#                 self.position.close()"></textarea>
+              <!-- ── BOTÕES PRINCIPAIS no topo da caixa ── -->
+              <div class="ed-barra-acoes">
+                <button class="ed-btn-chat" onclick="chatIAClick()" data-i18n="ed.btnFalar">💬 Chat IA</button>
+                <button class="ed-btn-test" onclick="rodarBacktest()" data-i18n="ed.btnTestar">▶ Rodar Test</button>
               </div>
-              <!-- ── CONTROLES DO EDITOR: falar com a IA (Radar) e testar ── -->
-              <div class="ed-footer">
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                  <button onclick="falarComIAEditor()" data-i18n="ed.btnFalar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">💬 Falar com a IA</button>
-                  <button onclick="rodarBacktest()" data-i18n="ed.btnTestar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--green);border:none;border-radius:8px;color:#04140d;font-size:13px;font-weight:700;padding:11px 18px;cursor:pointer;font-family:var(--sans)">▶ Testar o código</button>
+              <!-- ── CAIXA ÚNICA: chat (cima) + código (baixo), SEM divisória visível ── -->
+              <div class="ed-unico">
+                <div id="ed-chat-msgs">
+                  <div data-i18n="ed.chatSaudacao" style="align-self:flex-start;max-width:90%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:8px 12px;border-radius:12px">Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.</div>
                 </div>
-              </div>
-              <!-- ── DIÁLOGO COM A IA (Radar) embutido na própria tela do editor ── -->
-              <div class="export-sec" id="ed-chat-sec" style="margin-top:12px">
-                <div class="export-head">
-                  <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🤖'))"></span>
-                  <span data-i18n="ed.chatTitulo">Converse com a IA</span>
+                <div class="ed-chat-linha">
+                  <input type="text" id="ed-chat-input" data-i18n-ph="ed.chatPh" placeholder="Fale com a IA ou cole seu código…" onkeydown="if(event.key==='Enter')edChatEnviar()">
+                  <button id="ed-chat-send" onclick="edChatEnviar()" title="Enviar">➤</button>
                 </div>
-                <div class="export-sub" data-i18n="ed.chatSub">Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.</div>
-                <div id="ed-chat-msgs" style="margin-top:10px;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px">
-                  <div data-i18n="ed.chatSaudacao" style="align-self:flex-start;max-width:88%;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:8px 12px;border-radius:12px">Oi! Descreva a estratégia que você quer e eu escrevo o código aqui em cima. Ou cole um código e me pergunte sobre ele.</div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
-                  <input type="text" id="ed-chat-input" data-i18n-ph="ed.chatPh" placeholder="Peça, ajuste ou cole seu código…" style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:11px 13px;outline:none" onkeydown="if(event.key==='Enter')edChatEnviar()">
-                  <button onclick="edChatEnviar()" id="ed-chat-send" title="Enviar" style="flex-shrink:0;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:#9d6fff;border:none;border-radius:8px;color:#fff;font-size:16px;cursor:pointer">➤</button>
-                </div>
+                <textarea id="code-editor" onfocus="autoGrowCode()" oninput="autoGrowCode()" onpaste="setTimeout(autoGrowCode,0)" onblur="setTimeout(autoGrowCode,0)" placeholder="# O código da sua estratégia aparece aqui.
+# Gerado pela IA acima, ou cole o seu direto aqui.
+#
+# Ex.: class EMAChannel(Strategy): ..."></textarea>
               </div>
               <!-- ── ENVIAR PRO MT5: nomear o bot e gerar o token de pareamento ── -->
               <div class="export-sec" style="margin-top:12px">
@@ -2562,7 +2543,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v7.4';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v7.5';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2651,8 +2632,8 @@ const TEMPLATES = {
 const I18N = {
   pt: {
     'ed.chatTitulo':'Converse com a IA',
-    'ed.chatSub':'Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.','ed.chatPh':'Peça, ajuste ou cole seu código…','ed.chatSaudacao':'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui em cima. Ou cole um código e me pergunte sobre ele.',
-    'ed.faixa':'📋 Cole seu código aqui — ou fale com a IA pra ela criar pra você.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Testar código','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar',
+    'ed.chatSub':'Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.','ed.chatPh':'Fale com a IA ou cole seu código…','ed.chatSaudacao':'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.',
+    'ed.faixa':'📋 Cole seu código aqui — ou fale com a IA pra ela criar pra você.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Rodar Test','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','faixa.novoTesteHint':'Prefere configurar do zero?','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias reais, medidas no histórico','vit.sub':'Escolha uma, ajuste o ativo e teste agora. Desempenho médio que varia por ativo e período — histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.testandoLabel':'ESTRATÉGIA EM TESTE','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
@@ -2687,8 +2668,8 @@ const I18N = {
   },
   en: {
     'ed.chatTitulo':'Chat with the AI',
-    'ed.chatSub':'Ask to create, tweak it, or ask questions — the AI knows if it is chat or code.','ed.chatPh':'Ask, tweak, or paste your code…','ed.chatSaudacao':'Hi! Describe the strategy you want and I will write the code up there. Or paste some code and ask me about it.',
-    'ed.faixa':'📋 Paste your code here — or talk to the AI to create it for you.','ed.btnFalar':'💬 AI Chat','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Test code','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy',
+    'ed.chatSub':'Ask to create, tweak it, or ask questions — the AI knows if it is chat or code.','ed.chatPh':'Talk to the AI or paste your code…','ed.chatSaudacao':'Hi! Describe the strategy you want and I will write the code right below. Or paste your code directly.',
+    'ed.faixa':'📋 Paste your code here — or talk to the AI to create it for you.','ed.btnFalar':'💬 AI Chat','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Run Test','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy',
     'nav.overview':'Overview','nav.novoTeste':'▶ New test','faixa.novoTesteHint':'Prefer to set it up from scratch?','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Real strategies, measured on history','vit.sub':'Pick one, set the asset and test now. Average performance that varies by asset and period — measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.testandoLabel':'STRATEGY IN TEST','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
@@ -2723,8 +2704,8 @@ const I18N = {
   },
   es: {
     'ed.chatTitulo':'Habla con la IA',
-    'ed.chatSub':'Pide crear, ajusta o pregunta — la IA entiende si es charla o código.','ed.chatPh':'Pide, ajusta o pega tu código…','ed.chatSaudacao':'¡Hola! Describe la estrategia que quieres y escribo el código arriba. O pega un código y pregúntame sobre él.',
-    'ed.faixa':'📋 Pega tu código aquí — o habla con la IA para que la cree por ti.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar código','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar',
+    'ed.chatSub':'Pide crear, ajusta o pregunta — la IA entiende si es charla o código.','ed.chatPh':'Habla con la IA o pega tu código…','ed.chatSaudacao':'¡Hola! Describe la estrategia que quieres y escribo el código aquí abajo. O pega tu código directo.',
+    'ed.faixa':'📋 Pega tu código aquí — o habla con la IA para que la cree por ti.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','faixa.novoTesteHint':'¿Prefieres configurar desde cero?','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
     'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias reales, medidas en el historial','vit.sub':'Elige una, ajusta el activo y prueba ahora. Rendimiento medio que varía por activo y período — historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.testandoLabel':'ESTRATEGIA EN PRUEBA','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
@@ -5374,6 +5355,16 @@ async function edChatEnviar(textoExterno){
   else { if(!inp) return; txt=(inp.value||'').trim(); }
   if(!txt) return;
   const L=(typeof LANG!=='undefined'?LANG:'pt');
+  // código colado na parte de cima → joga pra parte de baixo (editor) e pede pra testar
+  const ehCodigoColado = /\b(def\s|class\s|import\s|self\.|lambda)\b/.test(txt) || (txt.split('\n').length>=4 && /[=():\[\]{}]/.test(txt));
+  if(ehCodigoColado){
+    const ed2=document.getElementById('code-editor');
+    if(ed2){ ed2.value=txt; if(typeof autoGrowCode==='function') autoGrowCode(); }
+    if(inp && typeof textoExterno!=='string') inp.value='';
+    const msgCod = L==='en' ? 'Got it — I moved your code down to the editor below. Hit ▶ Run Test to backtest it.' : L==='es' ? 'Listo — moví tu código al editor de abajo. Pulsa ▶ Run Test para hacer el backtest.' : 'Pronto — joguei seu código pra parte de baixo. Aperta ▶ Rodar Test pra fazer o backtest.';
+    edChatBolha(msgCod,'ia');
+    return;
+  }
   const M=({
     pt:{p:'…', feito:'Pronto! Escrevi o código no editor e já vou rodar o teste — te mostro o resultado em instantes.', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
     en:{p:'…', feito:'Done! I wrote the code in the editor and I am running the test now — result coming up.', erroGerar:'I could not generate it now. Try describing it differently?', erro:'Connection error. Try again?'},
@@ -5416,22 +5407,21 @@ async function edChatEnviar(textoExterno){
   _edChatBusy=false;
   if(send) send.disabled=false;
 }
-function focarChatEditor(){
-  const sec=document.getElementById('ed-chat-sec');
-  if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'});
-  setTimeout(function(){ const i=document.getElementById('ed-chat-input'); if(i) i.focus(); }, 140);
+// botão "Chat IA": envia a mensagem do chat (se vazio, foca o campo de cima)
+function chatIAClick(){
+  const inp=document.getElementById('ed-chat-input');
+  if(inp && !(inp.value||'').trim()){ inp.focus(); return; }
+  edChatEnviar();
 }
-// botão "AI Chat": lê o que está no EDITOR e age (conversa/pedido → IA; código → testa)
-function falarComIAEditor(){
-  const ed=document.getElementById('code-editor');
-  const txt=((ed&&ed.value)||'').trim();
-  const sec=document.getElementById('ed-chat-sec');
-  if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'});
-  if(!txt){ setTimeout(function(){ if(ed) ed.focus(); }, 200); return; }  // vazio → foca o editor
-  const pareceCodigo = /\b(def |class |import |self\.|lambda)\b/.test(txt) || txt.split('\n').length>4;
-  if(pareceCodigo){ if(typeof rodarBacktest==='function') rodarBacktest(); return; }  // código → testa
-  if(ed){ ed.value=''; if(typeof autoGrowCode==='function') autoGrowCode(); }  // pedido → limpa e processa
-  edChatEnviar(txt);
+// "Limpar": zera o código E volta o chat à saudação
+function limparEditorTudo(){
+  if(typeof limparCodigo==='function') limparCodigo();
+  const msgs=document.getElementById('ed-chat-msgs');
+  if(msgs){
+    const sa=(typeof I18N!=='undefined'&&I18N[LANG]&&I18N[LANG]['ed.chatSaudacao'])||'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.';
+    msgs.innerHTML='<div data-i18n="ed.chatSaudacao" style="align-self:flex-start;max-width:90%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:8px 12px;border-radius:12px">'+sa+'</div>';
+  }
+  const inp=document.getElementById('ed-chat-input'); if(inp) inp.value='';
 }
 function collapseHero(el){   // recolhe ao clicar fora (o conteúdo é preservado)
   if(el) el.style.height = '44px';
