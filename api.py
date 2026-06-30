@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v5.7  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v5.8  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.7 — Vitrine: BTC fixado na Escalonada (curadoria do dono; backtest não captura o escalonamento de lote)"
+API_VERSAO = "5.8 — Editor: novo /editor/dialogo (IA de diálogo real — conversa e gera código quando você pede; a própria IA decide, sem regra de palavra)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-28h-vitrine-btc-fixo-escalonada"
+BUILD_TAG = "2026-06-30a-editor-dialogo-ia"
 
 @app.get("/versao")
 def versao():
@@ -7013,3 +7013,114 @@ def radar_chat(req: RadarChatReq):
     except Exception as e:
         print(f"RADAR CHAT erro: {e}")
         return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes."}
+
+# ════════════════════════════════════════════════════════════════════════════
+#  /editor/dialogo — IA de DIÁLOGO do Editor (conversa + gera código)
+#  Uma chamada ao modelo. Ele DECIDE: só conversa, ou conversa + escreve a
+#  estratégia dentro de [[CODIGO]]...[[/CODIGO]]. O backend separa o código
+#  (vai pro editor de baixo) do texto (vai pro chat). Sem regra de palavra:
+#  quem entende a intenção é a própria IA, lendo o usuário.
+#  Modelo: EDITOR_IA_MODELO (default Sonnet — melhor pra escrever código).
+# ════════════════════════════════════════════════════════════════════════════
+def _editor_dialogo_system(idioma: str) -> str:
+    idi = {"pt": "português do Brasil", "en": "English", "es": "español"}.get(idioma, "português do Brasil")
+    return f"""Você é a IA do Editor de estratégias do BotTested, uma plataforma de backtesting para traders.
+
+Você CONVERSA com o usuário em {idi}. Ele pode te perguntar qualquer coisa (o que é drawdown, como funciona um indicador, o que pode estar errado na estratégia dele) OU pedir que você monte uma estratégia. Trate tudo como um diálogo natural — não como um formulário.
+
+QUANDO GERAR CÓDIGO:
+- Só escreva o código quando o usuário pedir uma estratégia E você já tiver detalhes suficientes pra montá-la (pelo menos a lógica de entrada e de saída).
+- Se o pedido for vago (ex.: "quero ganhar dinheiro", "uma estratégia pra lucrar 50 por dia"), NÃO gere. Converse e faça 1 ou 2 perguntas objetivas pra entender o que ele quer (que tipo de sinal, qual indicador, qual ativo, qual estilo).
+- Se ele só quer tirar uma dúvida ou conversar, NÃO gere código — apenas responda.
+
+COMO GERAR O CÓDIGO (quando for o caso):
+- Escreva uma classe Python da biblioteca backtesting.py (herda de Strategy), com os métodos init() e next(). Use self.I() para indicadores, self.data.Close / self.data.High / self.data.Low, self.buy(), self.position e self.position.close(). O pandas está disponível como pd.
+- Coloque o código COMPLETO dentro da tag abaixo, sem crases e sem markdown:
+[[CODIGO]]
+class MinhaEstrategia(Strategy):
+    ...
+[[/CODIGO]]
+- FORA da tag, escreva uma resposta curta no chat explicando em 1-2 frases o que você montou e dizendo pra ele apertar o botão Run Test pra testar.
+
+EXEMPLO do estilo da casa (canal de EMA das máximas e das mínimas, opera no rompimento):
+[[CODIGO]]
+class CanalEMAHighLow(Strategy):
+    ema_period = 20
+    def init(self):
+        self.ema_high = self.I(lambda h: pd.Series(h).ewm(span=self.ema_period, adjust=False).mean().values, self.data.High)
+        self.ema_low = self.I(lambda l: pd.Series(l).ewm(span=self.ema_period, adjust=False).mean().values, self.data.Low)
+    def next(self):
+        preco = self.data.Close[-1]
+        if not self.position:
+            if preco > self.ema_high[-1]:
+                self.buy()
+        else:
+            if preco < self.ema_low[-1]:
+                self.position.close()
+[[/CODIGO]]
+
+REGRAS IMPORTANTES:
+- NUNCA prometa retorno ou lucro. Resultado é histórico medido, não promessa.
+- Texto curto: no máximo 2 parágrafos. Se precisar destacar algo, use HTML simples (<b>, <br>) — nunca markdown.
+- Não invente números de desempenho e não fale de detalhes internos da plataforma."""
+
+
+@app.post("/editor/dialogo")
+def editor_dialogo(req: RadarChatReq):
+    idioma = req.idioma if req.idioma in ("pt", "en", "es") else "pt"
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave:
+        return {"ok": False, "resposta": "IA indisponível no momento.", "codigo": None}
+    msg = (req.mensagem or "").strip()
+    if not msg:
+        return {"ok": False, "resposta": "", "codigo": None}
+    try:
+        import httpx, sys, re as _re
+        mensagens = []
+        for m in (req.historico or [])[-12:]:
+            papel = "assistant" if m.get("role") == "assistant" else "user"
+            cont = str(m.get("content", ""))[:4000]
+            if cont:
+                mensagens.append({"role": papel, "content": cont})
+        conteudo = msg[:4000]
+        if req.codigo:
+            conteudo += ("\n\n[Código que JÁ está no editor agora, como contexto. "
+                         "Se o usuário pedir um ajuste, parta deste código]:\n" + req.codigo[:4000])
+        mensagens.append({"role": "user", "content": conteudo})
+        modelo = os.environ.get("EDITOR_IA_MODELO", "claude-sonnet-4-6")
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={
+                "model": modelo,
+                "max_tokens": 2600,
+                "temperature": 0.6,
+                "system": _editor_dialogo_system(idioma),
+                "messages": mensagens,
+            },
+            timeout=45.0,
+        )
+        if r.status_code != 200:
+            print(f"EDITOR DIALOGO status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes.", "codigo": None}
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+        # ── extrai [[CODIGO]]...[[/CODIGO]] ──
+        codigo = None
+        m = _re.search(r"\[\[\s*CODIGO\s*\]\](.*?)\[\[\s*/\s*CODIGO\s*\]\]", texto, _re.IGNORECASE | _re.DOTALL)
+        if m:
+            codigo = m.group(1).strip()
+            # remove crases acidentais (```python ... ```)
+            codigo = _re.sub(r"^```[a-zA-Z]*\s*\n?", "", codigo)
+            codigo = _re.sub(r"\n?\s*```$", "", codigo).strip()
+            # tira o bloco do texto visível
+            texto = _re.sub(r"\[\[\s*CODIGO\s*\]\].*?\[\[\s*/\s*CODIGO\s*\]\]", "", texto,
+                            flags=_re.IGNORECASE | _re.DOTALL).strip()
+        # limpa qualquer tag órfã que tenha escapado
+        texto = _re.sub(r"\[\[\s*/?\s*CODIGO\s*\]\]", "", texto, flags=_re.IGNORECASE).strip()
+        if not texto:
+            texto = ("Pronto — escrevi a estratégia no editor. Aperta ▶ Run Test pra testar."
+                     if codigo else "…")
+        return {"ok": True, "resposta": texto, "codigo": codigo}
+    except Exception as e:
+        print(f"EDITOR DIALOGO erro: {e}")
+        return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes.", "codigo": None}
