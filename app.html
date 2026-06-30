@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v7.5 (Editor REDESENHADO conforme desenho do Adriano: UMA caixa só, sem divisória visível entre chat (cima) e código (baixo); botões "Chat IA" e "Rodar Test" no topo; chat colado vira código e é jogado pra parte de baixo com aviso pra testar; caixa de chat separada removida; placeholder/saudação ajustados pra "aqui embaixo"
+  BotTested Frontend — v7.7 (Editor: IA NÃO roda mais o teste sozinha ao gerar — agora ela escreve o código embaixo, avisa no chat e o usuário aperta Run Test quando quiser (antes caía no teste e trocava de aba, parecendo que a IA não conversava); v7.6: removida bolha de saudação redundante
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v7.5</span>
+    <span class="vtag">v7.7</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1175,9 +1175,7 @@ body.modo-vitrine #vitrine{display:block}
               </div>
               <!-- ── CAIXA ÚNICA: chat (cima) + código (baixo), SEM divisória visível ── -->
               <div class="ed-unico">
-                <div id="ed-chat-msgs">
-                  <div data-i18n="ed.chatSaudacao" style="align-self:flex-start;max-width:90%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:8px 12px;border-radius:12px">Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.</div>
-                </div>
+                <div id="ed-chat-msgs"></div>
                 <div class="ed-chat-linha">
                   <input type="text" id="ed-chat-input" data-i18n-ph="ed.chatPh" placeholder="Fale com a IA ou cole seu código…" onkeydown="if(event.key==='Enter')edChatEnviar()">
                   <button id="ed-chat-send" onclick="edChatEnviar()" title="Enviar">➤</button>
@@ -2543,7 +2541,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v7.5';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v7.7';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5366,9 +5364,9 @@ async function edChatEnviar(textoExterno){
     return;
   }
   const M=({
-    pt:{p:'…', feito:'Pronto! Escrevi o código no editor e já vou rodar o teste — te mostro o resultado em instantes.', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
-    en:{p:'…', feito:'Done! I wrote the code in the editor and I am running the test now — result coming up.', erroGerar:'I could not generate it now. Try describing it differently?', erro:'Connection error. Try again?'},
-    es:{p:'…', feito:'¡Listo! Escribí el código en el editor y ya voy a probarlo — te muestro el resultado enseguida.', erroGerar:'No pude generarlo ahora. ¿Intentas describirlo de otra forma?', erro:'Error de conexión. ¿Intentas de nuevo?'}
+    pt:{p:'…', feito:'Pronto! Escrevi o código aqui embaixo. Quando quiser, aperta ▶ Run Test pra testar.', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
+    en:{p:'…', feito:'Done! I wrote the code right below. Whenever you want, hit ▶ Run Test to backtest it.', erroGerar:'I could not generate it now. Try describing it differently?', erro:'Connection error. Try again?'},
+    es:{p:'…', feito:'¡Listo! Escribí el código aquí abajo. Cuando quieras, pulsa ▶ Run Test para probarlo.', erroGerar:'No pude generarlo ahora. ¿Intentas describirlo de otra forma?', erro:'Error de conexión. ¿Intentas de nuevo?'}
   })[L] || {p:'…',feito:'',erroGerar:'',erro:''};
   edChatBolha(txt.replace(/</g,'&lt;'),'user');
   if(inp && typeof textoExterno!=='string') inp.value='';
@@ -5386,8 +5384,6 @@ async function edChatEnviar(textoExterno){
         const ed=document.getElementById('code-editor');
         if(ed){ ed.value=d.codigo; if(typeof autoGrowCode==='function') autoGrowCode(); }
         edChatBolha(M.feito,'ia');
-        // a IA avisou que vai rodar → roda sozinha (rodarBacktest já muda pra Overview)
-        setTimeout(function(){ if(typeof rodarBacktest==='function') rodarBacktest(); }, 1000);
       } else { edChatBolha(M.erroGerar,'ia'); }
     } else {
       const code=((document.getElementById('code-editor')||{}).value)||'';
@@ -5413,14 +5409,10 @@ function chatIAClick(){
   if(inp && !(inp.value||'').trim()){ inp.focus(); return; }
   edChatEnviar();
 }
-// "Limpar": zera o código E volta o chat à saudação
+// "Limpar": zera o código E esvazia o chat
 function limparEditorTudo(){
   if(typeof limparCodigo==='function') limparCodigo();
-  const msgs=document.getElementById('ed-chat-msgs');
-  if(msgs){
-    const sa=(typeof I18N!=='undefined'&&I18N[LANG]&&I18N[LANG]['ed.chatSaudacao'])||'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.';
-    msgs.innerHTML='<div data-i18n="ed.chatSaudacao" style="align-self:flex-start;max-width:90%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:8px 12px;border-radius:12px">'+sa+'</div>';
-  }
+  const msgs=document.getElementById('ed-chat-msgs'); if(msgs) msgs.innerHTML='';
   const inp=document.getElementById('ed-chat-input'); if(inp) inp.value='';
 }
 function collapseHero(el){   // recolhe ao clicar fora (o conteúdo é preservado)
