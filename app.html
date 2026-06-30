@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v7.2 (Editor: DIÁLOGO EMBUTIDO na tela — área de chat com o Radar (mensagens + input) dentro da aba Editor; regra rápida reconhece pedido (→ gera código no editor via /gerar-bot-ia) vs conversa (→ /radar/chat); botão "Chat IA" rola/foca no diálogo; PT/EN/ES; v7.1: botões renomeados — "Chat IA" e "Testar código"; v7.0: Fix: "Falar com a IA" abria e fechava o Radar no mesmo clique (listener de fechar-ao-clicar-fora) — agora stopPropagation; e descrição escrita no editor (não código) é levada pro chat do Radar; v6.9: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
+  BotTested Frontend — v7.3 (Editor: diálogo SEM identidade Radar (título "Converse com a IA"); ao gerar a estratégia a IA avisa e roda o teste sozinha (rodarBacktest auto, muda pra Overview); v7.2: DIÁLOGO EMBUTIDO na tela — área de chat com o Radar (mensagens + input) dentro da aba Editor; regra rápida reconhece pedido (→ gera código no editor via /gerar-bot-ia) vs conversa (→ /radar/chat); botão "Chat IA" rola/foca no diálogo; PT/EN/ES; v7.1: botões renomeados — "Chat IA" e "Testar código"; v7.0: Fix: "Falar com a IA" abria e fechava o Radar no mesmo clique (listener de fechar-ao-clicar-fora) — agora stopPropagation; e descrição escrita no editor (não código) é levada pro chat do Radar; v6.9: fix do auto-grow — fecha (160px) ao clicar fora, abre ~10 linhas (250px) ao focar mesmo vazio, e cresce só com código real (ignora o placeholder); v6.8: Editor = imagem 1: 1 campo (o editor) + 2 botões — "Falar com a IA" (abre o Radar) e "Testar o código"; saiu o campo de descrever e o 3º botão; editor com auto-grow (cresce ao colar o código, ~10 linhas ao focar, teto 480px); v6.7: campo de código com altura confortável (~6 linhas) que expande pra ~10 linhas ao clicar/focar; o editor cresce com o conteúdo em vez de altura fixa de tela; v6.6: i18n: traduzidos os elementos novos do Editor (faixa, campo, 3 botões, Enviar pro MT5, token) em PT/EN/ES; v6.5: Editor unificado: controles da IA no rodapé do próprio editor, 3 botões — Gerar estratégia IA (roxo), Conversar com IA (abre o Radar), Testar o código (roda e vai pra Overview); v6.4: 3 caixas no mesmo padrão (Fab + título normal, sem borda verde no "Converse com a IA"; Fab no "Levar pra plataforma"); faixa de instrução visível no topo do editor; v6.3: topo virou "Converse com a IA" (Fab) — descreve e cria ou roda; saiu o botão "Colar código" e o "Descreve a estratégia"; v6.2: área "Enviar pro MT5" — nomeia o bot e gera o token ali mesmo, com botão Copiar de 1 clique; removida a caixa de instrução "Rodar Backtest"; v6.1: seletor da matriz mostra o catálogo completo de ativos, BTC/USD selecionável; v6.0: Monitor: botão "Excluir" no card do bot com confirmação, soft delete mantendo histórico; v5.9: exportação MT5/MQL5 em destaque + modal de avisos + download .mq5; Pine/TradingView)
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,7 +879,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v7.2</span>
+    <span class="vtag">v7.3</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1195,7 +1195,7 @@ body.modo-vitrine #vitrine{display:block}
               <div class="export-sec" id="ed-chat-sec" style="margin-top:12px">
                 <div class="export-head">
                   <span style="font-size:15px"><img class="fab-ic" src="/assets/robo_default.png" alt="" onerror="this.replaceWith(document.createTextNode('🤖'))"></span>
-                  <span>Radar</span>
+                  <span data-i18n="ed.chatTitulo">Converse com a IA</span>
                 </div>
                 <div class="export-sub" data-i18n="ed.chatSub">Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.</div>
                 <div id="ed-chat-msgs" style="margin-top:10px;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px">
@@ -2562,7 +2562,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v7.2';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v7.3';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2650,6 +2650,7 @@ const TEMPLATES = {
 // ── SISTEMA DE IDIOMAS (i18n) PT/EN/ES — v5.3 ──────────────────
 const I18N = {
   pt: {
+    'ed.chatTitulo':'Converse com a IA',
     'ed.chatSub':'Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.','ed.chatPh':'Peça, ajuste ou cole seu código…','ed.chatSaudacao':'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui em cima. Ou cole um código e me pergunte sobre ele.',
     'ed.faixa':'📋 Cole seu código aqui — ou fale com a IA pra ela criar pra você.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Testar código','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','faixa.novoTesteHint':'Prefere configurar do zero?','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
@@ -2685,6 +2686,7 @@ const I18N = {
     'ov.emptyDesc':'Configure os parâmetros à esquerda, escolha um ativo e clique em ▶ Rodar Backtest pra ver seu resultado aqui.',
   },
   en: {
+    'ed.chatTitulo':'Chat with the AI',
     'ed.chatSub':'Ask to create, tweak it, or ask questions — the AI knows if it is chat or code.','ed.chatPh':'Ask, tweak, or paste your code…','ed.chatSaudacao':'Hi! Describe the strategy you want and I will write the code up there. Or paste some code and ask me about it.',
     'ed.faixa':'📋 Paste your code here — or talk to the AI to create it for you.','ed.btnFalar':'💬 AI Chat','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Test code','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy',
     'nav.overview':'Overview','nav.novoTeste':'▶ New test','faixa.novoTesteHint':'Prefer to set it up from scratch?','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
@@ -2720,6 +2722,7 @@ const I18N = {
     'ov.emptyDesc':'Set the parameters on the left, pick an asset and click ▶ Run Backtest to see your results here.',
   },
   es: {
+    'ed.chatTitulo':'Habla con la IA',
     'ed.chatSub':'Pide crear, ajusta o pregunta — la IA entiende si es charla o código.','ed.chatPh':'Pide, ajusta o pega tu código…','ed.chatSaudacao':'¡Hola! Describe la estrategia que quieres y escribo el código arriba. O pega un código y pregúntame sobre él.',
     'ed.faixa':'📋 Pega tu código aquí — o habla con la IA para que la cree por ti.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar código','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar',
     'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','faixa.novoTesteHint':'¿Prefieres configurar desde cero?','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
@@ -5369,9 +5372,9 @@ async function edChatEnviar(){
   const txt=(inp.value||'').trim(); if(!txt) return;
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const M=({
-    pt:{p:'…', feito:'Pronto, escrevi o código no editor acima. Quer testar? É só clicar em "Testar código".', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
-    en:{p:'…', feito:'Done — I wrote the code in the editor above. Want to test it? Just click "Test code".', erroGerar:'I could not generate it now. Try describing it differently?', erro:'Connection error. Try again?'},
-    es:{p:'…', feito:'Listo, escribí el código en el editor de arriba. ¿Quieres probarlo? Haz clic en "Probar código".', erroGerar:'No pude generarlo ahora. ¿Intentas describirlo de otra forma?', erro:'Error de conexión. ¿Intentas de nuevo?'}
+    pt:{p:'…', feito:'Pronto! Escrevi o código no editor e já vou rodar o teste — te mostro o resultado em instantes.', erroGerar:'Não consegui gerar agora. Tenta descrever de outro jeito?', erro:'Erro ao conectar. Tenta de novo?'},
+    en:{p:'…', feito:'Done! I wrote the code in the editor and I am running the test now — result coming up.', erroGerar:'I could not generate it now. Try describing it differently?', erro:'Connection error. Try again?'},
+    es:{p:'…', feito:'¡Listo! Escribí el código en el editor y ya voy a probarlo — te muestro el resultado enseguida.', erroGerar:'No pude generarlo ahora. ¿Intentas describirlo de otra forma?', erro:'Error de conexión. ¿Intentas de nuevo?'}
   })[L] || {p:'…',feito:'',erroGerar:'',erro:''};
   edChatBolha(txt.replace(/</g,'&lt;'),'user');
   inp.value='';
@@ -5389,6 +5392,8 @@ async function edChatEnviar(){
         const ed=document.getElementById('code-editor');
         if(ed){ ed.value=d.codigo; if(typeof autoGrowCode==='function') autoGrowCode(); }
         edChatBolha(M.feito,'ia');
+        // a IA avisou que vai rodar → roda sozinha (rodarBacktest já muda pra Overview)
+        setTimeout(function(){ if(typeof rodarBacktest==='function') rodarBacktest(); }, 1000);
       } else { edChatBolha(M.erroGerar,'ia'); }
     } else {
       const code=((document.getElementById('code-editor')||{}).value)||'';
