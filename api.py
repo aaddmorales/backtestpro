@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v5.8  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v5.9  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.8 — Editor: novo /editor/dialogo (IA de diálogo real — conversa e gera código quando você pede; a própria IA decide, sem regra de palavra)"
+API_VERSAO = "5.9 — Editor: /editor/analisar-oos (a IA lê a validação out-of-sample e diz, como mentor, se está bom/ruim e por quê olhando os números reais, e como melhorar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-06-30a-editor-dialogo-ia"
+BUILD_TAG = "2026-07-01a-analise-oos-ia"
 
 @app.get("/versao")
 def versao():
@@ -7124,3 +7124,87 @@ def editor_dialogo(req: RadarChatReq):
     except Exception as e:
         print(f"EDITOR DIALOGO erro: {e}")
         return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes.", "codigo": None}
+
+# ════════════════════════════════════════════════════════════════════════════
+#  /editor/analisar-oos — a IA LÊ o resultado da validação out-of-sample e diz,
+#  como um mentor, se está bom ou ruim (e POR QUÊ, olhando os números reais) e
+#  o que fazer pra melhorar. Diferencial: não é texto genérico por veredito —
+#  é análise contextual da amostra específica (ex.: "só 3 trades no teste →
+#  ruído, não robustez"). Nunca promete retorno.
+# ════════════════════════════════════════════════════════════════════════════
+def _analise_oos_system(idioma: str) -> str:
+    idi = {"pt": "português do Brasil", "en": "English", "es": "español"}.get(idioma, "português do Brasil")
+    return f"""Você é o copiloto de validação do BotTested — um mentor que fala disciplina e nunca prevê o mercado.
+
+Você recebe o resultado de uma validação OUT-OF-SAMPLE (treino 70% / teste 30% nunca visto) de uma estratégia de trading. Responda em {idi}, de forma honesta e didática, cobrindo DUAS coisas:
+1) O que esse resultado significa — está bom ou ruim, e POR QUÊ, olhando os números reais que recebeu.
+2) O que o usuário pode fazer pra melhorar (ações concretas).
+
+COMO ANALISAR (use os números que recebeu, seja específico):
+- Compare treino vs teste. Se o desempenho no teste desabou em relação ao treino → sinal de overfitting (ajustada demais ao passado).
+- OLHE O NÚMERO DE TRADES com atenção. Poucos trades (abaixo de ~15-20, e principalmente abaixo de 10) tornam Sharpe, Profit Factor e retorno POUCO CONFIÁVEIS — são ruído de amostra pequena, não robustez. Se o teste tem pouquíssimos trades (ex.: 3), diga claramente que aqueles números altos ali são acaso de janela, não prova de qualidade.
+- Um veredito "misto" ou até "robusto" em cima de uma amostra minúscula NÃO é bom sinal — é falta de dados. Seja honesto sobre isso; não deixe o usuário se empolgar com Sharpe alto vindo de 3 operações.
+
+COMO SUGERIR MELHORIA (escolha o que faz sentido pro caso):
+- Amostra pequena (poucos trades) → aumentar o período (ex.: de 2 para 5 anos), usar um timeframe menor (gera mais operações), ou testar em outros ativos. O objetivo é ter dados suficientes pra o resultado significar algo.
+- Queda forte de treino pra teste → a lógica pode estar superajustada; vale simplificar a estratégia ou reduzir parâmetros.
+- Se estiver realmente sólido COM amostra decente → reconheça que é bom sinal, mas reforce que backtest não garante futuro e sugira validar em mais períodos/ativos antes de levar pro MT5.
+
+REGRAS:
+- NUNCA prometa retorno ou lucro. Histórico medido, não promessa.
+- Seja específico aos números recebidos (cite valores, ex.: "só 3 trades no teste", "o Sharpe caiu de X pra Y"). Nada de frase genérica que serviria pra qualquer resultado.
+- Curto: no máximo 2 parágrafos. Use HTML simples (<b>) pra destacar se precisar — nunca markdown, nunca crases."""
+
+
+class AnaliseOOSReq(BaseModel):
+    treino: dict = {}
+    teste: dict = {}
+    veredito: dict = {}
+    ativo: str = ""
+    periodo: str = ""
+    timeframe: str = ""
+    idioma: str = "pt"
+
+
+@app.post("/editor/analisar-oos")
+def editor_analisar_oos(req: AnaliseOOSReq):
+    idioma = req.idioma if req.idioma in ("pt", "en", "es") else "pt"
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave:
+        return {"ok": False, "analise": ""}
+    try:
+        import httpx, sys, json as _json
+        tr = req.treino or {}
+        te = req.teste or {}
+        v = req.veredito or {}
+        dados = {
+            "ativo": req.ativo, "periodo": req.periodo, "timeframe": req.timeframe,
+            "treino": {"retorno_pct": tr.get("retorno"), "sharpe": tr.get("sharpe"),
+                       "profit_factor": tr.get("profit_factor"), "trades": tr.get("total_trades")},
+            "teste_nunca_visto": {"retorno_pct": te.get("retorno"), "sharpe": te.get("sharpe"),
+                                  "profit_factor": te.get("profit_factor"), "trades": te.get("total_trades")},
+            "veredito_nivel": v.get("nivel"),
+        }
+        prompt = ("Analise este resultado de validação out-of-sample e responda no formato pedido "
+                  "(o que significa + como melhorar):\n" + _json.dumps(dados, ensure_ascii=False))
+        modelo = os.environ.get("ANALISE_OOS_MODELO", os.environ.get("EDITOR_IA_MODELO", "claude-sonnet-4-6"))
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={
+                "model": modelo,
+                "max_tokens": 800,
+                "temperature": 0.5,
+                "system": _analise_oos_system(idioma),
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=40.0,
+        )
+        if r.status_code != 200:
+            print(f"ANALISE OOS status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return {"ok": False, "analise": ""}
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+        return {"ok": True, "analise": texto}
+    except Exception as e:
+        print(f"ANALISE OOS erro: {e}")
+        return {"ok": False, "analise": ""}
