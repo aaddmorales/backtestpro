@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v5.9  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.0  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "5.9 — Editor: /editor/analisar-oos (a IA lê a validação out-of-sample e diz, como mentor, se está bom/ruim e por quê olhando os números reais, e como melhorar)"
+API_VERSAO = "6.0 — Editor: análise OOS agora devolve RESUMO (principais motivos) + DETALHE (aprofundamento), pra tela mostrar o resumo e esconder o detalhe atrás de uma seta"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-01a-analise-oos-ia"
+BUILD_TAG = "2026-07-01b-analise-oos-resumo-detalhe"
 
 @app.get("/versao")
 def versao():
@@ -7153,7 +7153,15 @@ COMO SUGERIR MELHORIA (escolha o que faz sentido pro caso):
 REGRAS:
 - NUNCA prometa retorno ou lucro. Histórico medido, não promessa.
 - Seja específico aos números recebidos (cite valores, ex.: "só 3 trades no teste", "o Sharpe caiu de X pra Y"). Nada de frase genérica que serviria pra qualquer resultado.
-- Curto: no máximo 2 parágrafos. Use HTML simples (<b>) pra destacar se precisar — nunca markdown, nunca crases."""
+- HTML simples (<b>) pra destacar — nunca markdown, nunca crases.
+
+FORMATO DA RESPOSTA (obrigatório, exatamente assim, com as duas tags):
+[[RESUMO]]
+2 a 3 frases curtas com os PRINCIPAIS motivos — o suficiente pro usuário entender na hora se pode confiar ou não e qual o principal passo. Direto, sem enrolação. Pode destacar 1 ou 2 números-chave com <b>.
+[[/RESUMO]]
+[[DETALHE]]
+A análise completa, em no máximo 2 parágrafos: o que o resultado significa (com os números) e o que fazer pra melhorar. É o aprofundamento pra quem quiser ler mais.
+[[/DETALHE]]"""
 
 
 class AnaliseOOSReq(BaseModel):
@@ -7204,7 +7212,23 @@ def editor_analisar_oos(req: AnaliseOOSReq):
             print(f"ANALISE OOS status {r.status_code}: {r.text[:200]}", file=sys.stderr)
             return {"ok": False, "analise": ""}
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
-        return {"ok": True, "analise": texto}
+        import re as _re
+        resumo = ""
+        detalhe = ""
+        mr = _re.search(r"\[\[\s*RESUMO\s*\]\](.*?)\[\[\s*/\s*RESUMO\s*\]\]", texto, _re.IGNORECASE | _re.DOTALL)
+        md = _re.search(r"\[\[\s*DETALHE\s*\]\](.*?)\[\[\s*/\s*DETALHE\s*\]\]", texto, _re.IGNORECASE | _re.DOTALL)
+        if mr:
+            resumo = mr.group(1).strip()
+        if md:
+            detalhe = md.group(1).strip()
+        # fallback: modelo não usou as tags → texto todo vira detalhe; 1º parágrafo vira resumo
+        if not resumo and not detalhe:
+            limpo = _re.sub(r"\[\[\s*/?\s*(RESUMO|DETALHE)\s*\]\]", "", texto, flags=_re.IGNORECASE).strip()
+            detalhe = limpo
+            resumo = (limpo.split("\n\n")[0] if limpo else limpo)[:500]
+        elif not resumo:
+            resumo = (detalhe.split("\n\n")[0] if detalhe else "")[:500]
+        return {"ok": True, "resumo": resumo, "detalhe": detalhe, "analise": detalhe or resumo}
     except Exception as e:
         print(f"ANALISE OOS erro: {e}")
         return {"ok": False, "analise": ""}
