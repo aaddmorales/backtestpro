@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.1  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.2  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.1 — Editor: diálogo agora declara o ATIVO da estratégia ([[ATIVO:...]]) e recebe o ativo selecionado como contexto — o front sincroniza o dropdown pra o teste rodar no ativo certo (não mais divergir)"
+API_VERSAO = "6.2 — Ponte Enviar pro MT5: gera o .mq5 (IA) e cria job de validação; conector compila na máquina do usuário e reporta veredito (/mt5/enviar, /mt5/pendente, /mt5/veredito, /mt5/status)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-01c-editor-sincroniza-ativo"
+BUILD_TAG = "2026-07-01d-ponte-mt5-validacao"
 
 @app.get("/versao")
 def versao():
@@ -7244,3 +7244,159 @@ def editor_analisar_oos(req: AnaliseOOSReq):
     except Exception as e:
         print(f"ANALISE OOS erro: {e}")
         return {"ok": False, "analise": ""}
+
+# ════════════════════════════════════════════════════════════════════════════
+#  PONTE "ENVIAR PRO MT5" — geração do .mq5 + validação na máquina do usuário
+#  Fluxo: front aperta Enviar pro MT5 → /mt5/enviar gera o .mq5 (IA) e cria um
+#  job "validando" → o conector do usuário pega em /mt5/pendente, instala e
+#  COMPILA (metaeditor /compile, sem tocar no terminal de trading) → reporta em
+#  /mt5/veredito → o modal do front acompanha por /mt5/status.
+#  Jobs ficam em memória (v1). Se o Railway rodar múltiplos workers, migrar
+#  _MT5_JOBS para Supabase/Redis.
+# ════════════════════════════════════════════════════════════════════════════
+import time as _time_mt5
+_MT5_JOBS = {}   # job_id -> {bot_token, filename, mq5, status, aprovado, log, ts}
+
+
+def _mt5_slug(nome):
+    import re as _re
+    s = _re.sub(r"[^A-Za-z0-9_]+", "_", (nome or "").strip()).strip("_")
+    return (s or "BotTested_EA")[:48]
+
+
+def _mt5_limpar_velhos():
+    """Remove jobs com mais de 1h pra não vazar memória."""
+    agora = _time_mt5.time()
+    for jid in [k for k, v in _MT5_JOBS.items() if agora - v.get("ts", 0) > 3600]:
+        _MT5_JOBS.pop(jid, None)
+
+
+def _mq5_system():
+    return """Você converte uma estratégia de trading escrita em Python (biblioteca backtesting.py) em um Expert Advisor MQL5 COMPLETO e COMPILÁVEL para MetaTrader 5 (build recente).
+
+Requisitos do EA:
+- Comece com #property strict e #include <Trade/Trade.mqh>; use um objeto CTrade para abrir/fechar posições.
+- Declare inputs (input) para os parâmetros (períodos de indicadores, stop, take).
+- Implemente OnInit(), OnDeinit() e OnTick() com a MESMA lógica de entrada/saída do Python.
+- Use as APIs corretas de MQL5: crie handles de indicadores no OnInit (iMA, iRSI, iBands, etc.) e leia com CopyBuffer no OnTick. NÃO use assinaturas antigas de MQL4.
+- Opere uma posição por vez (cheque PositionSelect(_Symbol)).
+- Stop e take em PONTOS: converta com _Point.
+
+Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
+- Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
+- Ao fechar: Print("BOTTESTED_EVENTO|fechado|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
+- Uma vez por barra nova: Print("BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol);
+
+REGRAS:
+- O código TEM que compilar no MetaEditor sem erros. Prefira o simples ao esperto.
+- Responda APENAS com o código .mq5 puro. Sem crases, sem markdown, sem explicação, sem texto antes ou depois."""
+
+
+def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
+    chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not chave or not (codigo_python or "").strip():
+        return ""
+    try:
+        import httpx, sys, re as _re
+        ativo = params.get("ativo", "")
+        sl = params.get("stop_loss", 60)
+        tp = params.get("take_profit", 120)
+        prompt = (f"Converta esta estratégia (Python, backtesting.py) em um Expert Advisor MQL5 "
+                  f"completo e compilável.\nAtivo alvo: {ativo}. Stop loss (pontos): {sl}. "
+                  f"Take profit (pontos): {tp}.\n\nCódigo Python:\n{codigo_python[:6000]}")
+        modelo = os.environ.get("MQL5_IA_MODELO", os.environ.get("EDITOR_IA_MODELO", "claude-sonnet-4-6"))
+        r = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": modelo, "max_tokens": 4000, "temperature": 0.2,
+                  "system": _mq5_system(), "messages": [{"role": "user", "content": prompt}]},
+            timeout=90.0,
+        )
+        if r.status_code != 200:
+            print(f"GERAR MQL5 status {r.status_code}: {r.text[:200]}", file=sys.stderr)
+            return ""
+        texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
+        texto = _re.sub(r"^```[a-zA-Z0-9]*\s*\n?", "", texto)
+        texto = _re.sub(r"\n?```\s*$", "", texto).strip()
+        return texto
+    except Exception as e:
+        print(f"GERAR MQL5 erro: {e}")
+        return ""
+
+
+class MT5EnviarReq(BaseModel):
+    user_id: str = ""
+    bot_nome: str = ""
+    bot_token: str = ""
+    codigo: str = ""
+    ativo: str = ""
+    stop_loss: float = 60
+    take_profit: float = 120
+    ema_period: int = 20
+    timeframe: str = "1d"
+    idioma: str = "pt"
+
+
+@app.post("/mt5/enviar")
+def mt5_enviar(req: MT5EnviarReq):
+    _mt5_limpar_velhos()
+    if not req.bot_token:
+        return {"ok": False, "erro": "sem_token"}
+    if not (req.codigo or "").strip():
+        return {"ok": False, "erro": "sem_codigo"}
+    mq5 = _gerar_mq5_de_codigo(req.codigo, {
+        "ativo": req.ativo, "stop_loss": req.stop_loss, "take_profit": req.take_profit,
+    }, req.idioma)
+    if not mq5:
+        return {"ok": False, "erro": "falha_gerar_mq5"}
+    import uuid
+    job_id = uuid.uuid4().hex[:16]
+    _MT5_JOBS[job_id] = {
+        "bot_token": req.bot_token,
+        "filename": _mt5_slug(req.bot_nome) + ".mq5",
+        "mq5": mq5,
+        "status": "validando",
+        "aprovado": None,
+        "log": "",
+        "ts": _time_mt5.time(),
+    }
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/mt5/pendente")
+def mt5_pendente(bot_token: str = ""):
+    if not bot_token:
+        return {"pendente": False}
+    cand = [(jid, j) for jid, j in _MT5_JOBS.items()
+            if j.get("bot_token") == bot_token and j.get("status") == "validando"]
+    if not cand:
+        return {"pendente": False}
+    cand.sort(key=lambda x: x[1].get("ts", 0), reverse=True)
+    jid, j = cand[0]
+    return {"pendente": True, "job_id": jid, "codigo": j["mq5"], "filename": j["filename"]}
+
+
+class MT5VeredictoReq(BaseModel):
+    bot_token: str = ""
+    job_id: str = ""
+    aprovado: bool = False
+    log: str = ""
+
+
+@app.post("/mt5/veredito")
+def mt5_veredito(req: MT5VeredictoReq):
+    j = _MT5_JOBS.get(req.job_id)
+    if not j:
+        return {"ok": False, "erro": "job_inexistente"}
+    j["status"] = "aprovado" if req.aprovado else "reprovado"
+    j["aprovado"] = bool(req.aprovado)
+    j["log"] = (req.log or "")[:4000]
+    return {"ok": True}
+
+
+@app.get("/mt5/status")
+def mt5_status(job_id: str = ""):
+    j = _MT5_JOBS.get(job_id)
+    if not j:
+        return {"status": "desconhecido"}
+    return {"status": j.get("status"), "aprovado": j.get("aprovado"), "log": j.get("log", "")}
