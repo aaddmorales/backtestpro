@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.0  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.1  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.0 — Editor: análise OOS agora devolve RESUMO (principais motivos) + DETALHE (aprofundamento), pra tela mostrar o resumo e esconder o detalhe atrás de uma seta"
+API_VERSAO = "6.1 — Editor: diálogo agora declara o ATIVO da estratégia ([[ATIVO:...]]) e recebe o ativo selecionado como contexto — o front sincroniza o dropdown pra o teste rodar no ativo certo (não mais divergir)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-01b-analise-oos-resumo-detalhe"
+BUILD_TAG = "2026-07-01c-editor-sincroniza-ativo"
 
 @app.get("/versao")
 def versao():
@@ -6519,6 +6519,7 @@ class RadarChatReq(BaseModel):
     historico: list = []          # [{role:'user'|'assistant', content:str}, ...]
     idioma: str = "pt"
     codigo: str = ""              # código atual no editor (contexto opcional)
+    ativo: str = ""               # ativo selecionado no dropdown (contexto p/ o Editor)
     resultado: dict = {}          # último resultado de backtest na tela (contexto opcional)
     config: dict = {}             # parâmetros atuais (stop, take, capital, máx ops, spread, ativo, tf, período)
     estrategia_id: str = ""       # id da estratégia escolhida na vitrine (p/ comparar com a média do card)
@@ -7060,6 +7061,9 @@ class CanalEMAHighLow(Strategy):
 [[/CODIGO]]
 
 REGRAS IMPORTANTES:
+- O backtest SEMPRE roda no ativo selecionado na barra lateral. Então o ativo que você menciona TEM que ser o mesmo que vai ser testado — nunca fale de um ativo diferente do selecionado sem sincronizar.
+- Se você montar (ou o usuário pedir) uma estratégia para um ativo ESPECÍFICO, emita ao final, em uma linha própria, a tag [[ATIVO:NOME]] com um destes: EUR/USD, GBP/USD, USD/JPY, AUD/USD, XAU/USD, BTC/USD, S&P500, NAS100, US30, IBOVESPA, USD/BRL. O sistema vai selecionar esse ativo automaticamente para o teste rodar certo — e aí você pode dizer que já deixou o ativo selecionado. Ex.: se montou pro ouro, escreva [[ATIVO:XAU/USD]].
+- Se a estratégia serve para qualquer ativo (é genérica), NÃO emita [[ATIVO]] e peça pro usuário escolher o ativo na barra lateral antes de testar.
 - NUNCA prometa retorno ou lucro. Resultado é histórico medido, não promessa.
 - Texto curto: no máximo 2 parágrafos. Se precisar destacar algo, use HTML simples (<b>, <br>) — nunca markdown.
 - Não invente números de desempenho e não fale de detalhes internos da plataforma."""
@@ -7083,6 +7087,8 @@ def editor_dialogo(req: RadarChatReq):
             if cont:
                 mensagens.append({"role": papel, "content": cont})
         conteudo = msg[:4000]
+        if req.ativo:
+            conteudo += f"\n\n[Ativo selecionado agora na barra lateral: {req.ativo}]"
         if req.codigo:
             conteudo += ("\n\n[Código que JÁ está no editor agora, como contexto. "
                          "Se o usuário pedir um ajuste, parta deste código]:\n" + req.codigo[:4000])
@@ -7117,10 +7123,16 @@ def editor_dialogo(req: RadarChatReq):
                             flags=_re.IGNORECASE | _re.DOTALL).strip()
         # limpa qualquer tag órfã que tenha escapado
         texto = _re.sub(r"\[\[\s*/?\s*CODIGO\s*\]\]", "", texto, flags=_re.IGNORECASE).strip()
+        # ── extrai [[ATIVO:NOME]] (qual ativo a estratégia é / deve rodar) ──
+        ativo = None
+        ma = _re.search(r"\[\[\s*ATIVO\s*:\s*([^\]]+?)\s*\]\]", texto, _re.IGNORECASE)
+        if ma:
+            ativo = ma.group(1).strip()
+            texto = _re.sub(r"\[\[\s*ATIVO\s*:[^\]]*\]\]", "", texto, flags=_re.IGNORECASE).strip()
         if not texto:
             texto = ("Pronto — escrevi a estratégia no editor. Aperta ▶ Run Test pra testar."
                      if codigo else "…")
-        return {"ok": True, "resposta": texto, "codigo": codigo}
+        return {"ok": True, "resposta": texto, "codigo": codigo, "ativo": ativo}
     except Exception as e:
         print(f"EDITOR DIALOGO erro: {e}")
         return {"ok": False, "resposta": "Não consegui responder agora. Tente de novo em instantes.", "codigo": None}
