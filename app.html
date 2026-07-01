@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.1 (Fix: botão "Validar meu código (out-of-sample)" jogava o resultado no Radar flutuante escondido no canto — agora valida e mostra o veredito INLINE no Overview (validarCodigoOOS2 + #ov-oos-box; radarMostrarOOS aceita destino); v8.0: fix modo-vitrine no Run Test
+  BotTested Frontend — v8.2 (Editor: após a validação out-of-sample, a IA (/editor/analisar-oos, api.py v5.9) LÊ os números reais e escreve um parecer inline — se está bom/ruim e por quê, e como melhorar; diferencial contextual, não texto genérico; v8.1: validação OOS inline no Overview
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.1</span>
+    <span class="vtag">v8.2</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2541,7 +2541,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.1';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.2';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -4943,13 +4943,40 @@ async function validarCodigoOOS2(){
     const r = await fetch(`${API}/validar-overfitting`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     if(!r.ok){ const e = await r.json().catch(()=>({detail:r.status})); throw new Error(e.detail||r.status); }
     const data = await r.json();
-    if(box){ box.innerHTML=''; radarMostrarOOS(data, box); }
+    if(box){ box.innerHTML=''; radarMostrarOOS(data, box); analisarOOSInline(data, box); }
   }catch(e){
     if(box) box.innerHTML = '<div style="padding:10px 13px;background:rgba(255,90,90,0.1);border:1px solid rgba(255,90,90,0.4);border-radius:8px;color:var(--text);font-size:12.5px">'+t('radar.oosErro')+(e.message||e)+'</div>';
     console.error('validarCodigoOOS2', e);
   }finally{
     _oosRodando = false;
   }
+}
+
+// A IA lê o resultado da validação e escreve um parecer (bom/ruim + como melhorar),
+// logo abaixo da tabela. É o diferencial: análise contextual dos números reais.
+async function analisarOOSInline(data, box){
+  if(!box) return;
+  const L=(typeof LANG!=='undefined'?LANG:'pt');
+  const carregando = L==='en'?'AI is reading your result…':L==='es'?'La IA está leyendo tu resultado…':'A IA está lendo seu resultado…';
+  const titulo = L==='en'?'AI reading of your validation':L==='es'?'Lectura de la IA de tu validación':'Leitura da IA sobre sua validação';
+  const wrap = document.createElement('div');
+  wrap.style.cssText='margin-top:10px;padding:13px 15px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;font-size:13px;line-height:1.55;color:var(--text)';
+  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:12px"><div class="spinner" style="width:13px;height:13px"></div>'+carregando+'</div>';
+  box.appendChild(wrap);
+  try{
+    const r=await fetch(API+'/editor/analisar-oos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      treino:data.treino||{}, teste:data.teste||{}, veredito:data.veredito||{},
+      ativo:document.getElementById('ativo').value,
+      periodo:document.getElementById('periodo').value,
+      timeframe:document.getElementById('timeframe').value,
+      idioma:L
+    })});
+    const d=await r.json();
+    if(d && d.ok && d.analise){
+      wrap.innerHTML='<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><img src="/assets/robo_default.png" style="width:20px;height:20px;object-fit:contain" onerror="this.style.display=\'none\'"><b style="font-size:12.5px">'+titulo+'</b></div>'
+        +'<div style="color:var(--text)">'+d.analise.replace(/\n/g,'<br>')+'</div>';
+    } else { wrap.remove(); }
+  }catch(e){ wrap.remove(); console.error('analisarOOSInline', e); }
 }
 
 // O Radar oferece validar o código do cliente (aparece após rodar código custom)
