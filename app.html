@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.3 (Editor: parecer da IA na validação agora mostra RESUMO curto (letra maior, 14.5px) + seta "mais detalhes" que expande o aprofundamento (toggleOOSDet) — menos cansativo pra quem valida várias vezes; v8.2: análise OOS pela IA
+  BotTested Frontend — v8.4 (Editor: quando a IA monta pra um ativo específico, o dropdown de ativo é sincronizado (via [[ATIVO:...]] + _matchAtivoNoSelect) — antes a IA falava XAUUSD mas o teste rodava no ativo do dropdown (S&P500); v8.3: análise OOS resumo+detalhe
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.3</span>
+    <span class="vtag">v8.4</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2541,7 +2541,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.3';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.4';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5455,7 +5455,8 @@ async function edChatEnviar(textoExterno){
     // Diálogo real: manda TUDO pra IA. Ela decide se conversa ou gera o código.
     const r=await fetch(API+'/editor/dialogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       user_id:(typeof usuarioAtual!=='undefined'&&usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:'',
-      mensagem:txt, historico:_edChatHist.slice(-12), idioma:L, codigo:code
+      mensagem:txt, historico:_edChatHist.slice(-12), idioma:L, codigo:code,
+      ativo:(document.getElementById('ativo')||{}).value||''
     })});
     const d=await r.json();
     if(pensando) pensando.remove();
@@ -5464,6 +5465,15 @@ async function edChatEnviar(textoExterno){
     if(d && d.codigo){
       const ed=document.getElementById('code-editor');
       if(ed){ ed.value=d.codigo; if(typeof autoGrowCode==='function') autoGrowCode(); }
+    }
+    // se a IA montou pra um ativo específico, seleciona ele no dropdown (fonte da verdade do teste)
+    if(d && d.ativo && typeof _matchAtivoNoSelect==='function'){
+      const val=_matchAtivoNoSelect(d.ativo);
+      const sel=document.getElementById('ativo');
+      if(val && sel && sel.value!==val){
+        sel.value=val;
+        try{ sel.dispatchEvent(new Event('change',{bubbles:true})); }catch(_){}
+      }
     }
     edChatBolha(resp.replace(/\n/g,'<br>'),'ia');
     // memória do diálogo (pra IA dar continuidade)
