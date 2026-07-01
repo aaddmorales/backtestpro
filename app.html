@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.2 (Editor: após a validação out-of-sample, a IA (/editor/analisar-oos, api.py v5.9) LÊ os números reais e escreve um parecer inline — se está bom/ruim e por quê, e como melhorar; diferencial contextual, não texto genérico; v8.1: validação OOS inline no Overview
+  BotTested Frontend — v8.3 (Editor: parecer da IA na validação agora mostra RESUMO curto (letra maior, 14.5px) + seta "mais detalhes" que expande o aprofundamento (toggleOOSDet) — menos cansativo pra quem valida várias vezes; v8.2: análise OOS pela IA
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.2</span>
+    <span class="vtag">v8.3</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2541,7 +2541,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.2';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.3';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -4952,16 +4952,24 @@ async function validarCodigoOOS2(){
   }
 }
 
-// A IA lê o resultado da validação e escreve um parecer (bom/ruim + como melhorar),
-// logo abaixo da tabela. É o diferencial: análise contextual dos números reais.
+// A IA lê o resultado da validação e escreve um parecer (resumo curto + detalhe
+// atrás de uma seta), logo abaixo da tabela. Diferencial: análise contextual real.
+function toggleOOSDet(btn){
+  const body = btn.parentElement.querySelector('.oos-det-body');
+  if(!body) return;
+  const abrir = (body.style.display==='none' || !body.style.display);
+  body.style.display = abrir ? 'block' : 'none';
+  const seta = btn.querySelector('.oos-seta'); if(seta) seta.textContent = abrir ? '▴' : '▾';
+}
 async function analisarOOSInline(data, box){
   if(!box) return;
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const carregando = L==='en'?'AI is reading your result…':L==='es'?'La IA está leyendo tu resultado…':'A IA está lendo seu resultado…';
   const titulo = L==='en'?'AI reading of your validation':L==='es'?'Lectura de la IA de tu validación':'Leitura da IA sobre sua validação';
+  const maisDet = L==='en'?'more details':L==='es'?'más detalles':'mais detalhes';
   const wrap = document.createElement('div');
-  wrap.style.cssText='margin-top:10px;padding:13px 15px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;font-size:13px;line-height:1.55;color:var(--text)';
-  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:12px"><div class="spinner" style="width:13px;height:13px"></div>'+carregando+'</div>';
+  wrap.style.cssText='margin-top:10px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;color:var(--text)';
+  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:13.5px"><div class="spinner" style="width:14px;height:14px"></div>'+carregando+'</div>';
   box.appendChild(wrap);
   try{
     const r=await fetch(API+'/editor/analisar-oos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -4972,9 +4980,20 @@ async function analisarOOSInline(data, box){
       idioma:L
     })});
     const d=await r.json();
-    if(d && d.ok && d.analise){
-      wrap.innerHTML='<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><img src="/assets/robo_default.png" style="width:20px;height:20px;object-fit:contain" onerror="this.style.display=\'none\'"><b style="font-size:12.5px">'+titulo+'</b></div>'
-        +'<div style="color:var(--text)">'+d.analise.replace(/\n/g,'<br>')+'</div>';
+    const resumo=(d&&(d.resumo||d.analise))||'';
+    const detalhe=(d&&d.detalhe)||'';
+    if(d && d.ok && (resumo||detalhe)){
+      let html='<div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><img src="/assets/robo_default.png" style="width:22px;height:22px;object-fit:contain" onerror="this.style.display=\'none\'"><b style="font-size:14.5px">'+titulo+'</b></div>';
+      html+='<div style="font-size:14.5px;line-height:1.62">'+(resumo||detalhe).replace(/\n/g,'<br>')+'</div>';
+      const detLimpo=detalhe.replace(/<[^>]*>/g,'').trim();
+      const resLimpo=resumo.replace(/<[^>]*>/g,'').trim();
+      if(detLimpo && detLimpo!==resLimpo){
+        html+='<div style="margin-top:10px">'
+          +'<button onclick="toggleOOSDet(this)" style="background:transparent;border:none;color:var(--green);font-size:13.5px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:6px"><span class="oos-seta">▾</span>'+maisDet+'</button>'
+          +'<div class="oos-det-body" style="display:none;margin-top:9px;font-size:14px;line-height:1.62;color:var(--text2)">'+detalhe.replace(/\n/g,'<br>')+'</div>'
+          +'</div>';
+      }
+      wrap.innerHTML=html;
     } else { wrap.remove(); }
   }catch(e){ wrap.remove(); console.error('analisarOOSInline', e); }
 }
