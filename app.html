@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.4 (Editor: quando a IA monta pra um ativo específico, o dropdown de ativo é sincronizado (via [[ATIVO:...]] + _matchAtivoNoSelect) — antes a IA falava XAUUSD mas o teste rodava no ativo do dropdown (S&P500); v8.3: análise OOS resumo+detalhe
+  BotTested Frontend — v8.5 (Enviar pro MT5: botão + modal "Validando o bot para funcionamento no MT5…"; chama /mt5/enviar (gera .mq5) e faz polling de /mt5/status; conector compila e reporta; desfechos aprovado/reprovado; v8.4: sincroniza ativo
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.4</span>
+    <span class="vtag">v8.5</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1202,6 +1202,9 @@ body.modo-vitrine #vitrine{display:block}
                     <code id="ed-token" style="flex:1;min-width:0;font-family:var(--mono);font-size:12.5px;color:var(--text);word-break:break-all"></code>
                     <button onclick="copiarTokenEditor(this)" data-i18n="mt5.copiar" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:8px 13px;cursor:pointer;font-family:var(--sans)">📋 Copiar</button>
                   </div>
+                </div>
+                <div id="ed-mt5-enviar-wrap" style="display:none;margin-top:12px">
+                  <button onclick="enviarProMT5()" id="ed-btn-enviar-mt5" style="width:100%;background:#9d6fff;border:none;border-radius:9px;color:#fff;font-size:14px;font-weight:800;padding:13px;cursor:pointer;font-family:var(--sans)">🚀 <span data-i18n="mt5.enviarBtn">Enviar pro MT5 e validar</span></button>
                 </div>
               </div>
 
@@ -2541,7 +2544,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.4';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.5';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2631,7 +2634,7 @@ const I18N = {
   pt: {
     'ed.chatTitulo':'Converse com a IA',
     'ed.chatSub':'Peça pra criar, ajuste ou tire dúvidas — a IA entende se é conversa ou código.','ed.chatPh':'Fale com a IA ou cole seu código…','ed.chatSaudacao':'Oi! Descreva a estratégia que você quer e eu escrevo o código aqui embaixo. Ou cole um código direto.',
-    'ed.faixa':'📋 Cole seu código aqui — ou fale com a IA pra ela criar pra você.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Rodar Test','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar',
+    'ed.faixa':'📋 Cole seu código aqui — ou fale com a IA pra ela criar pra você.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Descreva sua estratégia (ex: cria um bot de RSI 14 no XAU…) e clique Gerar','ed.btnGerar':'✨ Gerar estratégia IA','ed.btnConversar':'💬 Conversar com IA','ed.btnTestar':'▶ Rodar Test','mt5.titulo':'Enviar pro MT5','mt5.sub':'Dê um nome ao seu bot e gere o token pra parear com o conector.','mt5.nomePh':'Nome do bot (ex: Meu Bot de Ouro D1)','mt5.btnToken':'🔑 Gerar token','mt5.tokenLabel':'TOKEN — cole no conector (aparece só uma vez, guarde bem):','mt5.copiar':'📋 Copiar','mt5.enviarBtn':'Enviar pro MT5 e validar',
     'nav.overview':'Overview','nav.novoTeste':'▶ Novo teste','faixa.novoTesteHint':'Prefere configurar do zero?','nav.editor':'Editor','nav.otimizar':'⚙ Otimização',
     'nav.estudo':'🧪 Estudo','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Planos','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendário','vit.titulo':'Estratégias reais, medidas no histórico','vit.sub':'Escolha uma, ajuste o ativo e teste agora. Desempenho médio que varia por ativo e período — histórico medido, não promessa.','vit.sharpe':'Sharpe médio','vit.pf':'Profit Factor','vit.winrate':'Win Rate médio','vit.testar':'▶ Testar estratégia','vit.semmedia':'Sem média histórica ainda — teste e descubra.','vit.voltar':'◂ Voltar à vitrine','vit.testandoLabel':'ESTRATÉGIA EM TESTE','vit.rodar':'▶ Rodar sua estratégia','vit.iniciar':'▶ Iniciar teste','vit.flip':'passe o mouse para detalhes ↻','vit.carregando':'Carregando estratégias…','vit.vazio':'Nenhuma estratégia disponível.','vit.erro':'Não foi possível carregar as estratégias agora.','cal.titulo':'Calendário Econômico','cal.sub':'Eventos que movem o mercado mundial · horário no seu fuso · histórico medido, não previsão','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Médio','cal.baixo':'Baixo','cal.atualizar':'↻ Atualizar','cal.atual':'ATUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoje','cal.amanha':'Amanhã','cal.carregando':'Carregando calendário…','cal.vazio':'Nenhum evento para os filtros selecionados.','cal.erro':'Não foi possível carregar o calendário agora.','cal.disclaimer':'ⓘ Calendário informativo, relevante para operação ao vivo (seus bots pausam em torno de notícias de alto impacto). Não afeta seus backtests — o teste mede a estratégia no histórico real, sem pular dias.','nav.apionline':'API Online',
@@ -2667,7 +2670,7 @@ const I18N = {
   en: {
     'ed.chatTitulo':'Chat with the AI',
     'ed.chatSub':'Ask to create, tweak it, or ask questions — the AI knows if it is chat or code.','ed.chatPh':'Talk to the AI or paste your code…','ed.chatSaudacao':'Hi! Describe the strategy you want and I will write the code right below. Or paste your code directly.',
-    'ed.faixa':'📋 Paste your code here — or talk to the AI to create it for you.','ed.btnFalar':'💬 AI Chat','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Run Test','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy',
+    'ed.faixa':'📋 Paste your code here — or talk to the AI to create it for you.','ed.btnFalar':'💬 AI Chat','hero.copiar':'Copy','ed.iaPh':'Describe your strategy (e.g. create an RSI 14 bot on XAU…) and click Generate','ed.btnGerar':'✨ Generate AI strategy','ed.btnConversar':'💬 Chat with AI','ed.btnTestar':'▶ Run Test','mt5.titulo':'Send to MT5','mt5.sub':'Name your bot and generate the token to pair with the connector.','mt5.nomePh':'Bot name (e.g. My Gold Bot D1)','mt5.btnToken':'🔑 Generate token','mt5.tokenLabel':'TOKEN — paste it in the connector (shown only once, keep it safe):','mt5.copiar':'📋 Copy','mt5.enviarBtn':'Send to MT5 & validate',
     'nav.overview':'Overview','nav.novoTeste':'▶ New test','faixa.novoTesteHint':'Prefer to set it up from scratch?','nav.editor':'Editor','nav.otimizar':'⚙ Optimization',
     'nav.estudo':'🧪 Study','nav.templates':'Templates','nav.rank':'🏆 Rank',
     'nav.planos':'💳 Plans','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendar','vit.titulo':'Real strategies, measured on history','vit.sub':'Pick one, set the asset and test now. Average performance that varies by asset and period — measured history, not a promise.','vit.sharpe':'Avg Sharpe','vit.pf':'Profit Factor','vit.winrate':'Avg Win Rate','vit.testar':'▶ Test strategy','vit.semmedia':'No historical average yet — test and find out.','vit.voltar':'◂ Back to showcase','vit.testandoLabel':'STRATEGY IN TEST','vit.rodar':'▶ Run your strategy','vit.iniciar':'▶ Start test','vit.flip':'hover for details ↻','vit.carregando':'Loading strategies…','vit.vazio':'No strategies available.','vit.erro':'Could not load strategies right now.','cal.titulo':'Economic Calendar','cal.sub':'Events that move global markets · time in your zone · measured history, not a forecast','cal.impacto':'IMPACT:','cal.alto':'High','cal.medio':'Medium','cal.baixo':'Low','cal.atualizar':'↻ Refresh','cal.atual':'ACTUAL','cal.prev':'FCST','cal.ant':'PREV','cal.hoje':'Today','cal.amanha':'Tomorrow','cal.carregando':'Loading calendar…','cal.vazio':'No events for the selected filters.','cal.erro':'Could not load the calendar right now.','cal.disclaimer':'ⓘ Informational calendar, relevant for live trading (your bots pause around high-impact news). It does not affect your backtests — the test measures the strategy on real history, without skipping days.','nav.apionline':'API Online',
@@ -2703,7 +2706,7 @@ const I18N = {
   es: {
     'ed.chatTitulo':'Habla con la IA',
     'ed.chatSub':'Pide crear, ajusta o pregunta — la IA entiende si es charla o código.','ed.chatPh':'Habla con la IA o pega tu código…','ed.chatSaudacao':'¡Hola! Describe la estrategia que quieres y escribo el código aquí abajo. O pega tu código directo.',
-    'ed.faixa':'📋 Pega tu código aquí — o habla con la IA para que la cree por ti.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar',
+    'ed.faixa':'📋 Pega tu código aquí — o habla con la IA para que la cree por ti.','ed.btnFalar':'💬 Chat IA','hero.copiar':'Copiar','ed.iaPh':'Describe tu estrategia (ej: crea un bot de RSI 14 en XAU…) y haz clic en Generar','ed.btnGerar':'✨ Generar estrategia IA','ed.btnConversar':'💬 Hablar con IA','ed.btnTestar':'▶ Probar','mt5.titulo':'Enviar a MT5','mt5.sub':'Dale un nombre a tu bot y genera el token para vincular el conector.','mt5.nomePh':'Nombre del bot (ej: Mi Bot de Oro D1)','mt5.btnToken':'🔑 Generar token','mt5.tokenLabel':'TOKEN — pégalo en el conector (aparece solo una vez, guárdalo bien):','mt5.copiar':'📋 Copiar','mt5.enviarBtn':'Enviar a MT5 y validar',
     'nav.overview':'Resumen','nav.novoTeste':'▶ Nueva prueba','faixa.novoTesteHint':'¿Prefieres configurar desde cero?','nav.editor':'Editor','nav.otimizar':'⚙ Optimización',
     'nav.estudo':'🧪 Estudio','nav.templates':'Plantillas','nav.rank':'🏆 Ranking',
     'nav.planos':'💳 Planes','nav.monitor':'📡 Monitor','nav.calendario':'📅 Calendario','vit.titulo':'Estrategias reales, medidas en el historial','vit.sub':'Elige una, ajusta el activo y prueba ahora. Rendimiento medio que varía por activo y período — historial medido, no una promesa.','vit.sharpe':'Sharpe medio','vit.pf':'Profit Factor','vit.winrate':'Win Rate medio','vit.testar':'▶ Probar estrategia','vit.semmedia':'Sin media histórica aún — prueba y descubre.','vit.voltar':'◂ Volver a la vitrina','vit.testandoLabel':'ESTRATEGIA EN PRUEBA','vit.rodar':'▶ Ejecutar tu estrategia','vit.iniciar':'▶ Iniciar prueba','vit.flip':'pasa el mouse para detalles ↻','vit.carregando':'Cargando estrategias…','vit.vazio':'No hay estrategias disponibles.','vit.erro':'No se pudieron cargar las estrategias ahora.','cal.titulo':'Calendario Económico','cal.sub':'Eventos que mueven el mercado mundial · hora en tu zona · historial medido, no un pronóstico','cal.impacto':'IMPACTO:','cal.alto':'Alto','cal.medio':'Medio','cal.baixo':'Bajo','cal.atualizar':'↻ Actualizar','cal.atual':'ACTUAL','cal.prev':'PREV.','cal.ant':'ANT.','cal.hoje':'Hoy','cal.amanha':'Mañana','cal.carregando':'Cargando calendario…','cal.vazio':'No hay eventos para los filtros seleccionados.','cal.erro':'No se pudo cargar el calendario ahora.','cal.disclaimer':'ⓘ Calendario informativo, relevante para operación en vivo (tus bots pausan alrededor de noticias de alto impacto). No afecta tus backtests — la prueba mide la estrategia en el historial real, sin saltar días.','nav.apionline':'API en línea',
@@ -5828,6 +5831,7 @@ async function gerarTokenEditor(){
     if(d.bot_token){
       document.getElementById('ed-token').textContent = d.bot_token;
       document.getElementById('ed-token-box').style.display = 'block';
+      const ew=document.getElementById('ed-mt5-enviar-wrap'); if(ew) ew.style.display='block';
       if(typeof carregarBots==='function'){ try{ carregarBots(); }catch(e){} }
     } else alert('Erro ao gerar token.');
   }catch(e){ alert('Erro ao conectar com a API.'); }
@@ -5842,6 +5846,74 @@ function copiarTokenEditor(btn){
   btn.style.color = 'var(--green)';
   btn.style.borderColor = 'rgba(0,208,132,0.5)';
   setTimeout(function(){ btn.innerHTML = orig; btn.style.color=''; btn.style.borderColor=''; }, 1600);
+}
+
+// ── ENVIAR PRO MT5: gera o .mq5, valida na máquina do usuário (via conector) ──
+let _mt5Poll=null;
+function _mt5Modal(estado, titulo, msg){
+  const m=document.getElementById('mt5-modal'); if(!m) return;
+  m.style.display='flex';
+  const ic=document.getElementById('mt5-modal-icone');
+  const t=document.getElementById('mt5-modal-titulo');
+  const ms=document.getElementById('mt5-modal-msg');
+  const ac=document.getElementById('mt5-modal-acoes');
+  if(estado==='validando'){ ic.innerHTML='<div class="spinner" style="width:34px;height:34px;margin:0 auto"></div>'; ac.style.display='none'; }
+  else if(estado==='aprovado'){ ic.innerHTML='<div style="font-size:42px;line-height:1">✅</div>'; ac.style.display='block'; }
+  else { ic.innerHTML='<div style="font-size:42px;line-height:1">⚠️</div>'; ac.style.display='block'; }
+  if(t) t.textContent=titulo||'';
+  if(ms) ms.innerHTML=msg||'';
+}
+function fecharModalMT5(){ const m=document.getElementById('mt5-modal'); if(m) m.style.display='none'; if(_mt5Poll){clearInterval(_mt5Poll);_mt5Poll=null;} }
+async function enviarProMT5(){
+  const L=(typeof LANG!=='undefined'?LANG:'pt');
+  const TT=({
+    pt:{semToken:'Gere o token primeiro (botão 🔑 Gerar token) e deixe o conector aberto.', semCod:'Não há estratégia pra enviar — gere ou escreva o código primeiro.',
+        validando:'Validando o bot para funcionamento no MT5…', validandoSub:'Estou preparando o robô e conferindo se ele compila no seu MT5. Deixe o conector aberto e conectado.',
+        aprovadoT:'Aprovado — bot pronto pro MT5', aprovadoM:'O robô compilou sem erros e foi instalado no seu MT5. A partir de agora a IA acompanha as decisões dele ao vivo.',
+        reprovadoT:'Não aprovado no último teste', reprovadoM:'A estratégia não passou na validação de funcionamento. Ajuste os parâmetros para aprovação de performance e rendimento e tente de novo.',
+        semConector:'Não recebi resposta do conector. Confira se ele está aberto, conectado e com este mesmo token.', erro:'Não consegui enviar agora. Tente de novo em instantes.'},
+    en:{semToken:'Generate the token first (🔑 Generate token) and keep the connector open.', semCod:'No strategy to send — generate or write the code first.',
+        validando:'Validating the bot for MT5…', validandoSub:'I am preparing the robot and checking if it compiles on your MT5. Keep the connector open and connected.',
+        aprovadoT:'Approved — bot ready for MT5', aprovadoM:'The robot compiled with no errors and was installed on your MT5. From now on the AI follows its decisions live.',
+        reprovadoT:'Not approved in the last test', reprovadoM:'The strategy did not pass the functioning check. Adjust the parameters for performance and return approval and try again.',
+        semConector:'No response from the connector. Make sure it is open, connected and using this same token.', erro:'Could not send now. Try again in a moment.'},
+    es:{semToken:'Genera el token primero (🔑 Generar token) y deja el conector abierto.', semCod:'No hay estrategia para enviar — genera o escribe el código primero.',
+        validando:'Validando el bot para funcionar en MT5…', validandoSub:'Estoy preparando el robot y comprobando si compila en tu MT5. Deja el conector abierto y conectado.',
+        aprovadoT:'Aprobado — bot listo para MT5', aprovadoM:'El robot compiló sin errores y se instaló en tu MT5. A partir de ahora la IA sigue sus decisiones en vivo.',
+        reprovadoT:'No aprobado en la última prueba', reprovadoM:'La estrategia no pasó la validación de funcionamiento. Ajusta los parámetros para la aprobación de rendimiento e inténtalo de nuevo.',
+        semConector:'Sin respuesta del conector. Verifica que esté abierto, conectado y con este mismo token.', erro:'No pude enviar ahora. Inténtalo de nuevo en un momento.'}
+  })[L]||{};
+  const token=((document.getElementById('ed-token')||{}).textContent||'').trim();
+  if(!token){ _mt5Modal('reprovado', TT.reprovadoT, TT.semToken); return; }
+  const codigo=((document.getElementById('code-editor')||{}).value||'').trim();
+  if(!codigo || codigo.startsWith('#')){ _mt5Modal('reprovado', TT.reprovadoT, TT.semCod); return; }
+  _mt5Modal('validando', TT.validando, TT.validandoSub);
+  try{
+    const r=await fetch(API+'/mt5/enviar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      user_id:(typeof usuarioAtual!=='undefined'&&usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:'',
+      bot_nome:((document.getElementById('ed-bot-nome')||{}).value||''),
+      bot_token:token, codigo:codigo,
+      ativo:((document.getElementById('ativo')||{}).value||''),
+      stop_loss:parseFloat((document.getElementById('stop_loss')||{}).value)||60,
+      take_profit:parseFloat((document.getElementById('take_profit')||{}).value)||120,
+      ema_period:parseInt((document.getElementById('ema_period')||{}).value)||20,
+      timeframe:((document.getElementById('timeframe')||{}).value||'1d'), idioma:L
+    })});
+    const d=await r.json();
+    if(!d || !d.ok || !d.job_id){ _mt5Modal('reprovado', TT.reprovadoT, TT.erro); return; }
+    let tentativas=0;
+    if(_mt5Poll) clearInterval(_mt5Poll);
+    _mt5Poll=setInterval(async function(){
+      tentativas++;
+      try{
+        const s=await fetch(API+'/mt5/status?job_id='+encodeURIComponent(d.job_id));
+        const sd=await s.json();
+        if(sd.status==='aprovado'){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('aprovado', TT.aprovadoT, TT.aprovadoM); }
+        else if(sd.status==='reprovado'){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('reprovado', TT.reprovadoT, TT.reprovadoM); }
+      }catch(_){}
+      if(tentativas>40){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('reprovado', TT.reprovadoT, TT.semConector); }
+    }, 3000);
+  }catch(e){ _mt5Modal('reprovado', TT.reprovadoT, TT.erro); console.error('enviarProMT5', e); }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -6456,6 +6528,18 @@ function _calRenderFull(){
   <div id="rc-msg">Quer ajuda pra entender esse resultado? Fala comigo!</div>
   <div class="rc-arrow"></div>
 </div>
+<!-- ── MODAL "Validando pro MT5" ── -->
+<div id="mt5-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(4,10,20,0.82);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div style="width:min(440px,92vw);background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:30px 28px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,0.55)">
+    <div id="mt5-modal-icone" style="margin-bottom:16px"></div>
+    <div id="mt5-modal-titulo" style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:9px"></div>
+    <div id="mt5-modal-msg" style="font-size:14px;line-height:1.55;color:var(--muted2)"></div>
+    <div id="mt5-modal-acoes" style="margin-top:22px;display:none">
+      <button onclick="fecharModalMT5()" style="background:#9d6fff;border:none;border-radius:9px;color:#fff;font-size:13.5px;font-weight:700;padding:11px 26px;cursor:pointer;font-family:var(--sans)">OK</button>
+    </div>
+  </div>
+</div>
+
 <div class="radar-panel" id="radar-panel">
   <div class="radar-head">
     <img class="radar-head-img" src="/assets/robo_default.png" alt="Radar">
