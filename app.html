@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.5 (Enviar pro MT5: botão + modal "Validando o bot para funcionamento no MT5…"; chama /mt5/enviar (gera .mq5) e faz polling de /mt5/status; conector compila e reporta; desfechos aprovado/reprovado; v8.4: sincroniza ativo
+  BotTested Frontend — v8.6 (Fix: chat do Editor parava de responder depois do teste — a flag _edChatBusy podia ficar presa se o fetch travasse; agora finally garante o reset, timeout de 75s (AbortController) com aviso amigável, e watchdog de 90s destrava sozinho; v8.5: ponte Enviar pro MT5
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -891,7 +891,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.5</span>
+    <span class="vtag">v8.6</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2544,7 +2544,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.5';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.6';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5436,6 +5436,8 @@ function edChatBolha(html, tipo){
   return div;
 }
 async function edChatEnviar(textoExterno){
+  // watchdog: se a flag ficou presa (fetch que nunca voltou), destrava sozinho
+  if(_edChatBusy && window._edChatBusyDesde && (Date.now()-window._edChatBusyDesde)>90000){ _edChatBusy=false; }
   if(_edChatBusy) return;
   const inp=document.getElementById('ed-chat-input');
   let txt;
@@ -5444,19 +5446,23 @@ async function edChatEnviar(textoExterno){
   if(!txt) return;
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const M=({
-    pt:{p:'…', erro:'Não consegui responder agora. Tenta de novo em instantes?'},
-    en:{p:'…', erro:'I could not respond now. Try again in a moment?'},
-    es:{p:'…', erro:'No pude responder ahora. ¿Intentas de nuevo en un momento?'}
-  })[L] || {p:'…',erro:'…'};
+    pt:{p:'…', erro:'Não consegui responder agora. Tenta de novo em instantes?', demorou:'Demorei demais e cancelei. Manda de novo?'},
+    en:{p:'…', erro:'I could not respond now. Try again in a moment?', demorou:'That took too long and I cancelled. Send it again?'},
+    es:{p:'…', erro:'No pude responder ahora. ¿Intentas de nuevo en un momento?', demorou:'Tardé demasiado y cancelé. ¿Lo envías de nuevo?'}
+  })[L] || {p:'…',erro:'…',demorou:'…'};
   edChatBolha(txt.replace(/</g,'&lt;'),'user');
   if(inp && typeof textoExterno!=='string') inp.value='';
   _edChatBusy=true;
+  window._edChatBusyDesde=Date.now();
   const send=document.getElementById('ed-chat-send'); if(send) send.disabled=true;
   const pensando=edChatBolha(M.p,'pensando');
   const code=((document.getElementById('code-editor')||{}).value)||'';
+  // timeout: se o servidor não responder em 75s, cancela em vez de travar o chat
+  const ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const tKill=ctrl?setTimeout(function(){ try{ctrl.abort();}catch(_){}} ,75000):null;
   try{
     // Diálogo real: manda TUDO pra IA. Ela decide se conversa ou gera o código.
-    const r=await fetch(API+'/editor/dialogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const r=await fetch(API+'/editor/dialogo',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl?ctrl.signal:undefined,body:JSON.stringify({
       user_id:(typeof usuarioAtual!=='undefined'&&usuarioAtual&&usuarioAtual.id)?usuarioAtual.id:'',
       mensagem:txt, historico:_edChatHist.slice(-12), idioma:L, codigo:code,
       ativo:(document.getElementById('ativo')||{}).value||''
@@ -5485,10 +5491,14 @@ async function edChatEnviar(textoExterno){
     if(_edChatHist.length>24) _edChatHist=_edChatHist.slice(-24);
   }catch(e){
     if(pensando) pensando.remove();
-    edChatBolha(M.erro,'ia');
+    edChatBolha((e&&e.name==='AbortError')?M.demorou:M.erro,'ia');
+    console.error('edChatEnviar', e);
+  }finally{
+    if(tKill) clearTimeout(tKill);
+    _edChatBusy=false;
+    window._edChatBusyDesde=0;
+    const send2=document.getElementById('ed-chat-send'); if(send2) send2.disabled=false;
   }
-  _edChatBusy=false;
-  if(send) send.disabled=false;
 }
 // botão "Chat IA": envia a mensagem do chat (se vazio, foca o campo de cima)
 function chatIAClick(){
