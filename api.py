@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.2  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.3  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -602,9 +602,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.2 — Ponte Enviar pro MT5: gera o .mq5 (IA) e cria job de validação; conector compila na máquina do usuário e reporta veredito (/mt5/enviar, /mt5/pendente, /mt5/veredito, /mt5/status)"
+API_VERSAO = "6.3 — MT5: /mt5/conector-status (nuvem sabe se o conector está online pelo polling) — o front detecta na hora e abre o conector sozinho via bottested:// em vez de esperar 2min no escuro"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-01d-ponte-mt5-validacao"
+BUILD_TAG = "2026-07-02a-conector-status-protocolo"
 
 @app.get("/versao")
 def versao():
@@ -7256,6 +7256,7 @@ def editor_analisar_oos(req: AnaliseOOSReq):
 # ════════════════════════════════════════════════════════════════════════════
 import time as _time_mt5
 _MT5_JOBS = {}   # job_id -> {bot_token, filename, mq5, status, aprovado, log, ts}
+_MT5_POLLS = {}  # bot_token -> ts do último polling do conector (= conector online)
 
 
 def _mt5_slug(nome):
@@ -7367,6 +7368,7 @@ def mt5_enviar(req: MT5EnviarReq):
 def mt5_pendente(bot_token: str = ""):
     if not bot_token:
         return {"pendente": False}
+    _MT5_POLLS[bot_token] = _time_mt5.time()   # conector deu sinal de vida
     cand = [(jid, j) for jid, j in _MT5_JOBS.items()
             if j.get("bot_token") == bot_token and j.get("status") == "validando"]
     if not cand:
@@ -7374,6 +7376,15 @@ def mt5_pendente(bot_token: str = ""):
     cand.sort(key=lambda x: x[1].get("ts", 0), reverse=True)
     jid, j = cand[0]
     return {"pendente": True, "job_id": jid, "codigo": j["mq5"], "filename": j["filename"]}
+
+
+@app.get("/mt5/conector-status")
+def mt5_conector_status(bot_token: str = ""):
+    """O conector está online? (fez polling nos últimos 15s)"""
+    ts = _MT5_POLLS.get(bot_token, 0)
+    delta = _time_mt5.time() - ts if ts else None
+    return {"online": bool(ts and delta is not None and delta < 15),
+            "visto_ha_seg": (round(delta, 1) if delta is not None else None)}
 
 
 class MT5VeredictoReq(BaseModel):
