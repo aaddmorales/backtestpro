@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.3  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-06-28h-vitrine-btc-fixo-escalonada | Deploy: Railway
+#  BotTested API — v6.4  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-03a-identidade-por-bot | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -162,6 +162,8 @@ class BacktestCustom(BacktestParams):
     codigo: str = ""
     estrategia_id: Optional[str] = None      # id da estratégia ativa (p/ conversor testado)
     estrategia_nome: Optional[str] = None    # nome amigável (p/ cabeçalho do código exportado)
+    bot_nome: Optional[str] = None           # nome do BOT (vira o arquivo/EA no MT5)
+    bot_token: Optional[str] = None          # token do bot (deriva o magic único por bot)
 
 class IARequest(BaseModel):
     descricao: str
@@ -602,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.3 — MT5: /mt5/conector-status (nuvem sabe se o conector está online pelo polling) — o front detecta na hora e abre o conector sozinho via bottested:// em vez de esperar 2min no escuro"
+API_VERSAO = "6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-02a-conector-status-protocolo"
+BUILD_TAG = "2026-07-03a-identidade-por-bot"
 
 @app.get("/versao")
 def versao():
@@ -3899,23 +3901,72 @@ def _magic_para_bot(estrategia_id: str, ativo: str, nome: str) -> int:
     return 100000 + (int(h[:12], 16) % 1_900_000_000)
 
 
-def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p) -> dict:
+def _magic_do_token(bot_token: str, base_fallback: str = "") -> int:
+    """MAGIC único por BOT — derivado do TOKEN (que é único por bot na nuvem).
+    Assim cada bot tem o seu magic e as ordens de bots diferentes nunca se
+    confundem no MT5, mesmo com nomes ou estratégias iguais. Sem token, cai num
+    hash do fallback (estratégia/ativo/nome) só pra não repetir o 20250 padrão.
+    Mesma faixa segura do _magic_para_bot (100000..~1.9bi)."""
+    chave = (bot_token or "").strip() or (base_fallback or "").strip()
+    if not chave:
+        return 20250
+    h = hashlib.sha1(("bot|" + chave).encode("utf-8")).hexdigest()
+    return 100000 + (int(h[:12], 16) % 1_900_000_000)
+
+
+def _nome_arquivo_bot(bot_nome: str, fallback: str = "MeuBot") -> str:
+    """Nome do arquivo/EA = nome do bot que o usuário digitou, sanitizado.
+    SEM prefixo e SEM sufixo — é a identidade do bot na plataforma e no MT5.
+    Acentos viram ASCII (á→a, ç→c) pro MetaEditor não estranhar; colapsa
+    separadores repetidos, limita tamanho e cai no fallback se vazio."""
+    import unicodedata as _ud
+    base = _ud.normalize("NFKD", (bot_nome or "").strip())
+    base = base.encode("ascii", "ignore").decode("ascii")   # tira acentos
+    safe = "".join(c if (c.isalnum() and ord(c) < 128) else "_" for c in base)
+    safe = "_".join(p for p in safe.split("_") if p)         # tira __ repetidos
+    safe = safe[:40].strip("_")
+    return safe or fallback
+
+
+def _forcar_magic_mql5(codigo: str, magic: int) -> str:
+    """Garante que o .mq5 use exatamente ESTE magic, seja qual for o formato:
+    troca o valor de InpMagic (conversores testados e IA que segue a instrução)
+    ou, em último caso, o literal dentro de SetExpertMagicNumber(...)."""
+    import re as _re
+    if not codigo:
+        return codigo
+    novo, n = _re.subn(r"(InpMagic\s*=\s*)\d+", r"\g<1>" + str(magic), codigo, count=1)
+    if n:
+        return novo
+    novo, n = _re.subn(r"SetExpertMagicNumber\s*\(\s*\d+\s*\)",
+                       f"SetExpertMagicNumber({magic})", codigo, count=1)
+    return novo if n else codigo
+
+
+def gerar_mql5(estrategia_id: str, codigo_py: str, nome: str, p,
+               bot_nome: str = "", bot_token: str = "") -> dict:
     """A: estratégia conhecida → conversor testado; B: customizado → IA (com aviso).
+    IDENTIDADE POR BOT: o arquivo/EA leva o NOME DO BOT (bot_nome) e o magic vem
+    do TOKEN — então dois bots nunca colidem no MT5, nem no arquivo nem nas ordens.
+    Sem bot_nome/bot_token (chamada antiga), cai no nome da estratégia como antes.
     Retorna {codigo, fonte, aviso, filename, magic}."""
-    safe = "".join(c if c.isalnum() else "_" for c in (nome or "BotTested"))[:40] or "BotTested"
-    filename = f"BotTested_{safe}.mq5"
-    magic = _magic_para_bot(estrategia_id, getattr(p, "ativo", "") or "", nome or "")
+    ativo = getattr(p, "ativo", "") or ""
+    # nome do arquivo = nome do bot (sanitizado, sem prefixo/sufixo). Fallback: estratégia.
+    filename = _nome_arquivo_bot(bot_nome, fallback=_nome_arquivo_bot(nome, fallback="MeuBot")) + ".mq5"
+    # magic = token (único por bot); sem token, hash de (estratégia|ativo|nome)
+    base_fb = f"{(estrategia_id or '').lower()}|{ativo.upper()}|{(bot_nome or nome or '').lower()}"
+    magic = _magic_do_token(bot_token, base_fb)
     conv = _CONVERSORES_MQL5.get((estrategia_id or "").strip())
     if conv:
         codigo = _instrumentar_log_mql5(conv(p))
-        codigo = codigo.replace("InpMagic      = 20250;", f"InpMagic      = {magic};", 1)
+        codigo = _forcar_magic_mql5(codigo, magic)
         return {"codigo": codigo, "fonte": "testado", "aviso": "", "filename": filename, "magic": magic}
-    mq = _mql5_via_ia(codigo_py, nome or "Estrategia", p)
+    mq = _mql5_via_ia(codigo_py, bot_nome or nome or "Estrategia", p)
     if mq:
         aviso = ("Conversao automatica por IA — revise o codigo com atencao. Teste em conta DEMO "
                  "antes de qualquer uso real. Confira entradas/saidas, stop, take e lote.")
         codigo = _instrumentar_log_mql5(mq)
-        codigo = codigo.replace("InpMagic      = 20250;", f"InpMagic      = {magic};", 1)
+        codigo = _forcar_magic_mql5(codigo, magic)
         return {"codigo": codigo, "fonte": "ia", "aviso": aviso, "filename": filename, "magic": magic}
     return {"codigo": "", "fonte": "indisponivel",
             "aviso": "Conversao automatica indisponivel para este codigo no momento.",
@@ -3930,7 +3981,9 @@ def exportar_mql5(req: BacktestCustom):
     sempre com avisos de risco. Usa os parâmetros reais do usuário."""
     est_id = (getattr(req, "estrategia_id", "") or "").strip()
     nome = getattr(req, "estrategia_nome", "") or "Estrategia"
-    res = gerar_mql5(est_id, getattr(req, "codigo", "") or "", nome, req)
+    res = gerar_mql5(est_id, getattr(req, "codigo", "") or "", nome, req,
+                     bot_nome=getattr(req, "bot_nome", "") or "",
+                     bot_token=getattr(req, "bot_token", "") or "")
     res["formato"] = "MQL5"
     res["plataforma"] = "MetaTrader 5"
     return res
@@ -7302,9 +7355,13 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         ativo = params.get("ativo", "")
         sl = params.get("stop_loss", 60)
         tp = params.get("take_profit", 120)
+        magic = int(params.get("magic", 0) or 0)
+        instr_magic = (f"Declare EXATAMENTE: input long InpMagic = {magic}; e no OnInit chame "
+                       f"trade.SetExpertMagicNumber(InpMagic); — este magic identifica ESTE bot, "
+                       f"não invente outro.\n") if magic else ""
         prompt = (f"Converta esta estratégia (Python, backtesting.py) em um Expert Advisor MQL5 "
                   f"completo e compilável.\nAtivo alvo: {ativo}. Stop loss (pontos): {sl}. "
-                  f"Take profit (pontos): {tp}.\n\nCódigo Python:\n{codigo_python[:6000]}")
+                  f"Take profit (pontos): {tp}.\n{instr_magic}\nCódigo Python:\n{codigo_python[:6000]}")
         modelo = os.environ.get("MQL5_IA_MODELO", os.environ.get("EDITOR_IA_MODELO", "claude-sonnet-4-6"))
         r = httpx.post(
             "https://api.anthropic.com/v1/messages",
@@ -7319,6 +7376,8 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
         texto = _re.sub(r"^```[a-zA-Z0-9]*\s*\n?", "", texto)
         texto = _re.sub(r"\n?```\s*$", "", texto).strip()
+        if magic:
+            texto = _forcar_magic_mql5(texto, magic)
         return texto
     except Exception as e:
         print(f"GERAR MQL5 erro: {e}")
@@ -7345,8 +7404,11 @@ def mt5_enviar(req: MT5EnviarReq):
         return {"ok": False, "erro": "sem_token"}
     if not (req.codigo or "").strip():
         return {"ok": False, "erro": "sem_codigo"}
+    # magic único por bot (do token) e nome do arquivo = nome do bot
+    magic = _magic_do_token(req.bot_token, f"{req.ativo}|{req.bot_nome}")
     mq5 = _gerar_mq5_de_codigo(req.codigo, {
         "ativo": req.ativo, "stop_loss": req.stop_loss, "take_profit": req.take_profit,
+        "magic": magic,
     }, req.idioma)
     if not mq5:
         return {"ok": False, "erro": "falha_gerar_mq5"}
@@ -7354,7 +7416,8 @@ def mt5_enviar(req: MT5EnviarReq):
     job_id = uuid.uuid4().hex[:16]
     _MT5_JOBS[job_id] = {
         "bot_token": req.bot_token,
-        "filename": _mt5_slug(req.bot_nome) + ".mq5",
+        "filename": _nome_arquivo_bot(req.bot_nome, fallback=_mt5_slug(req.bot_nome)) + ".mq5",
+        "magic": magic,
         "mq5": mq5,
         "status": "validando",
         "aprovado": None,
