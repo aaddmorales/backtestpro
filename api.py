@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.6  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-03c-subir-conector | Deploy: Railway
+#  BotTested API — v6.7  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-03d-subir-conector-supabase | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-03c-subir-conector"
+BUILD_TAG = "2026-07-03d-subir-conector-supabase"
 
 @app.get("/versao")
 def versao():
@@ -7550,19 +7550,58 @@ class MT5SubirReq(BaseModel):
 @app.post("/mt5/subir-conector")
 def mt5_subir_conector(req: MT5SubirReq):
     """A plataforma pede pra trazer o conector pra frente (usuário apertou
-    'Entendi' na guia, ou o ✅ chegou com a guia suprimida). Só marca o sinal;
-    quem age é o conector, que consulta isso e se traz pra frente."""
+    'Entendi' na guia, ou o ✅ chegou com a guia suprimida). Grava o sinal no
+    Supabase (assim QUALQUER worker do Railway enxerga) e também na memória
+    local como atalho rápido. Quem age é o conector, que consulta isso."""
     if req.bot_token:
-        _MT5_RAISE[req.bot_token] = _time_mt5.time()
+        _MT5_RAISE[req.bot_token] = _time_mt5.time()   # atalho (mesmo worker)
+        try:
+            sb = _sb_admin()
+            if sb is not None:
+                sb.table("conector_bots").update(
+                    {"subir_pedido_em": _dt.now(_tz.utc).isoformat()}
+                ).eq("bot_token", req.bot_token).execute()
+        except Exception as _e:
+            try: print(f"[subir-conector] aviso ao gravar: {_e}")
+            except Exception: pass
     return {"ok": True}
 
 
 @app.get("/mt5/subir-conector")
 def mt5_subir_conector_check(bot_token: str = ""):
-    """O conector consulta aqui. One-shot: lê e limpa o sinal. Só vale por 180s
-    pra um pedido velho não subir o conector fora de hora."""
+    """O conector consulta aqui (rápido). One-shot: lê e LIMPA o sinal, então
+    ele só sobe uma vez por pedido. Válido por 180s pra pedido velho não subir
+    o conector fora de hora. Checa memória (rápido) e Supabase (confiável)."""
+    if not bot_token:
+        return {"subir": False}
+    # 1) atalho em memória (se caiu no mesmo worker que gravou)
     ts = _MT5_RAISE.pop(bot_token, 0)
-    return {"subir": bool(ts and (_time_mt5.time() - ts) < 180)}
+    if ts and (_time_mt5.time() - ts) < 180:
+        try:
+            sb = _sb_admin()
+            if sb is not None:
+                sb.table("conector_bots").update({"subir_pedido_em": None}).eq("bot_token", bot_token).execute()
+        except Exception: pass
+        return {"subir": True}
+    # 2) Supabase (qualquer worker vê o mesmo sinal)
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            r = (sb.table("conector_bots").select("subir_pedido_em")
+                 .eq("bot_token", bot_token).limit(1).execute())
+            val = r.data[0].get("subir_pedido_em") if r.data else None
+            if val:
+                try:
+                    pedido = _dt.fromisoformat(str(val).replace("Z", "+00:00"))
+                    recente = (_dt.now(_tz.utc) - pedido).total_seconds() < 180
+                except Exception:
+                    recente = True
+                if recente:
+                    sb.table("conector_bots").update({"subir_pedido_em": None}).eq("bot_token", bot_token).execute()
+                    return {"subir": True}
+    except Exception:
+        pass
+    return {"subir": False}
 
 
 class MT5VeredictoReq(BaseModel):
