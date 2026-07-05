@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.7 (Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v8.8 (modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -100,6 +100,15 @@ body::after{
 .logo{display:flex;align-items:center;gap:8px;margin-right:6px}
 
 .vtag{font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid rgba(0,208,132,0.25);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-weight:500}
+/* Fab (robô vermelho) trabalhando no modal de validação MT5 */
+.fab-loader{position:relative;width:78px;height:78px;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.fab-loader-img{width:60px;height:60px;object-fit:contain;position:relative;z-index:2;animation:fabBob 1.6s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(255,64,84,0.38))}
+.fab-loader-glow{position:absolute;inset:0;border-radius:50%;z-index:1;background:radial-gradient(circle,rgba(255,72,92,0.40),rgba(255,72,92,0) 68%);animation:fabGlow 1.6s ease-in-out infinite}
+.fab-loader-ring{position:absolute;inset:6px;border-radius:50%;border:2px solid rgba(255,72,92,0.18);border-top-color:rgba(255,72,92,0.85);z-index:1;animation:fabSpin 1s linear infinite}
+@keyframes fabBob{0%,100%{transform:translateY(0) rotate(-4deg) scale(1)}50%{transform:translateY(-7px) rotate(4deg) scale(1.06)}}
+@keyframes fabGlow{0%,100%{transform:scale(0.85);opacity:0.5}50%{transform:scale(1.15);opacity:0.95}}
+@keyframes fabSpin{to{transform:rotate(360deg)}}
+.mt5-fase{font-size:13.5px;color:var(--green);font-weight:700;transition:opacity .18s ease;min-height:19px}
 .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
 .top-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
 
@@ -891,7 +900,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.7</span>
+    <span class="vtag">v8.8</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2544,7 +2553,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.7';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.8';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5860,6 +5869,13 @@ function copiarTokenEditor(btn){
 
 // ── ENVIAR PRO MT5: gera o .mq5, valida na máquina do usuário (via conector) ──
 let _mt5Poll=null;
+const _MT5_FASES = {
+  pt:['Gerando o robô…','Compilando no MetaEditor…','Conferindo se ele compila…','Ajustando os detalhes…','Quase lá…'],
+  en:['Building the robot…','Compiling in MetaEditor…','Checking it compiles…','Final touches…','Almost there…'],
+  es:['Generando el robot…','Compilando en MetaEditor…','Comprobando que compila…','Últimos ajustes…','Casi listo…']
+};
+let _mt5FaseTimer=null;
+function _mt5PararFases(){ if(_mt5FaseTimer){ clearInterval(_mt5FaseTimer); _mt5FaseTimer=null; } }
 function _mt5Modal(estado, titulo, msg){
   const m=document.getElementById('mt5-modal'); if(!m) return;
   m.style.display='flex';
@@ -5867,13 +5883,22 @@ function _mt5Modal(estado, titulo, msg){
   const t=document.getElementById('mt5-modal-titulo');
   const ms=document.getElementById('mt5-modal-msg');
   const ac=document.getElementById('mt5-modal-acoes');
-  if(estado==='validando'){ ic.innerHTML='<div class="spinner" style="width:34px;height:34px;margin:0 auto"></div>'; ac.style.display='none'; }
-  else if(estado==='aprovado'){ ic.innerHTML='<div style="font-size:42px;line-height:1">✅</div>'; ac.style.display='block'; }
-  else { ic.innerHTML='<div style="font-size:42px;line-height:1">⚠️</div>'; ac.style.display='block'; }
+  _mt5PararFases();
   if(t) t.textContent=titulo||'';
-  if(ms) ms.innerHTML=msg||'';
+  if(estado==='validando'){
+    ic.innerHTML='<div class="fab-loader"><span class="fab-loader-glow"></span><span class="fab-loader-ring"></span><img src="/assets/robo_default.png" class="fab-loader-img" alt="" onerror="this.replaceWith(document.createTextNode(\'🤖\'))"></div>';
+    ac.style.display='none';
+    const L=(typeof LANG!=='undefined'?LANG:'pt'); const fs=_MT5_FASES[L]||_MT5_FASES.pt;
+    let i=0; const base=(msg||'').trim();
+    if(ms) ms.innerHTML=(base?'<div style="margin-bottom:10px">'+base+'</div>':'')+'<div class="mt5-fase" id="mt5-fase">'+fs[0]+'</div>';
+    _mt5FaseTimer=setInterval(function(){ i++; var el=document.getElementById('mt5-fase'); if(!el) return; el.style.opacity='0'; setTimeout(function(){ el.textContent=fs[i%fs.length]; el.style.opacity='1'; },180); },2400);
+  } else if(estado==='aprovado'){
+    ic.innerHTML='<div style="font-size:42px;line-height:1">✅</div>'; ac.style.display='block'; if(ms) ms.innerHTML=msg||'';
+  } else {
+    ic.innerHTML='<div style="font-size:42px;line-height:1">⚠️</div>'; ac.style.display='block'; if(ms) ms.innerHTML=msg||'';
+  }
 }
-function fecharModalMT5(){ const m=document.getElementById('mt5-modal'); if(m) m.style.display='none'; if(_mt5Poll){clearInterval(_mt5Poll);_mt5Poll=null;} }
+function fecharModalMT5(){ const m=document.getElementById('mt5-modal'); if(m) m.style.display='none'; if(_mt5Poll){clearInterval(_mt5Poll);_mt5Poll=null;} _mt5PararFases(); }
 async function enviarProMT5(){
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const TT=({
