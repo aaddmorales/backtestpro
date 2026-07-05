@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.8 (modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v8.9 (pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -109,6 +109,17 @@ body::after{
 @keyframes fabGlow{0%,100%{transform:scale(0.85);opacity:0.5}50%{transform:scale(1.15);opacity:0.95}}
 @keyframes fabSpin{to{transform:rotate(360deg)}}
 .mt5-fase{font-size:13.5px;color:var(--green);font-weight:700;transition:opacity .18s ease;min-height:19px}
+/* Ilustração do Navigator do MT5 na janela-guia pós-aprovado */
+.nav-illus{position:relative;background:#0a0f18;border:1px solid var(--border2);border-radius:10px;padding:6px 0;font-family:var(--mono,monospace);font-size:12px;color:#cfd6e0;overflow:hidden}
+.nav-illus-head{background:#111826;color:#8b95a5;padding:4px 12px;font-size:11px;border-bottom:1px solid #1c2636;margin-bottom:3px}
+.nav-row{padding:3px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-exp{color:#e6ebf2;font-weight:700}
+.nav-ind{padding-left:28px;color:#aab3c0}
+.nav-sel{background:#1e4a86;color:#fff;border-radius:3px;margin:1px 8px;padding-left:20px;max-width:60%}
+.nav-menu{position:absolute;right:14px;top:28px;background:#141b28;border:1px solid #2a3648;border-radius:6px;padding:4px 0;min-width:148px;box-shadow:0 8px 22px rgba(0,0,0,.55)}
+.nav-menu-item{padding:5px 14px;font-size:11.5px;color:#c3cad6;white-space:nowrap}
+.nav-menu-hot{background:#2f7bd6;color:#fff;font-weight:700}
+.nav-steps{font-size:12.5px;color:var(--muted2);line-height:1.7;margin-top:12px}
 .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
 .top-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
 
@@ -900,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.8</span>
+    <span class="vtag">v8.9</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2553,7 +2564,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.8';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v8.9';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5899,6 +5910,56 @@ function _mt5Modal(estado, titulo, msg){
   }
 }
 function fecharModalMT5(){ const m=document.getElementById('mt5-modal'); if(m) m.style.display='none'; if(_mt5Poll){clearInterval(_mt5Poll);_mt5Poll=null;} _mt5PararFases(); }
+
+const _GUIA_TT = {
+  pt:{titulo:'Bot aprovado! Falta 1 passo pra ele rodar',
+      sub:'Seu {NOME} compilou e foi instalado no MT5. Pra vê-lo e colocar pra operar:',
+      passos:'1) No Navegador do MT5, clique com o botão direito em <b>Expert Advisors</b> → <b>Refresh</b>.<br>2) Arraste o {NOME} pro gráfico do ativo que você quer.',
+      aviso:'Se depois do Refresh o bot não aparecer, feche o MT5 e abra de novo — ele vai estar lá.',
+      refresh:'Refresh', check:'Não mostrar mais essa mensagem', ok:'Entendi'},
+  en:{titulo:'Bot approved! One last step to run it',
+      sub:'Your {NOME} compiled and was installed in MT5. To see it and put it to work:',
+      passos:'1) In the MT5 Navigator, right-click <b>Expert Advisors</b> → <b>Refresh</b>.<br>2) Drag {NOME} onto the chart of the asset you want.',
+      aviso:'If the bot does not show after Refresh, close MT5 and open it again — it will be there.',
+      refresh:'Refresh', check:'Do not show this message again', ok:'Got it'},
+  es:{titulo:'¡Bot aprobado! Falta 1 paso para que funcione',
+      sub:'Tu {NOME} compiló y se instaló en MT5. Para verlo y ponerlo a operar:',
+      passos:'1) En el Navegador de MT5, clic derecho en <b>Expert Advisors</b> → <b>Refresh</b>.<br>2) Arrastra {NOME} al gráfico del activo que quieras.',
+      aviso:'Si tras el Refresh el bot no aparece, cierra MT5 y ábrelo de nuevo — estará allí.',
+      refresh:'Refresh', check:'No mostrar más este mensaje', ok:'Entendido'}
+};
+function _guiaEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _guiaNavHTML(nome, T){
+  return '<div class="nav-illus">'
+    +'<div class="nav-illus-head">Navigator</div>'
+    +'<div class="nav-row nav-exp">▾ Expert Advisors</div>'
+    +'<div class="nav-row nav-ind">Advisors</div>'
+    +'<div class="nav-row nav-ind">Examples</div>'
+    +'<div class="nav-row nav-sel" title="'+nome+'">'+nome+'</div>'
+    +'<div class="nav-menu"><div class="nav-menu-item">Buy from the Market</div>'
+    +'<div class="nav-menu-item nav-menu-hot">↻ '+(T.refresh||'Refresh')+'</div></div>'
+    +'</div>'
+    +'<div class="nav-steps">'+T.passos.replace(/\{NOME\}/g,'<b style="color:var(--text)">'+nome+'</b>')+'</div>';
+}
+function abrirGuiaMT5(nome){
+  const L=(typeof LANG!=='undefined'?LANG:'pt'); const T=_GUIA_TT[L]||_GUIA_TT.pt;
+  const m=document.getElementById('mt5-guia'); if(!m) return;
+  const safe=_guiaEsc(nome||'Meu Bot');
+  let el;
+  el=document.getElementById('mt5-guia-titulo'); if(el) el.textContent=T.titulo;
+  el=document.getElementById('mt5-guia-sub'); if(el) el.innerHTML=T.sub.replace(/\{NOME\}/g,'<b style="color:var(--text)">'+safe+'</b>');
+  el=document.getElementById('mt5-guia-nav'); if(el) el.innerHTML=_guiaNavHTML(safe, T);
+  el=document.getElementById('mt5-guia-aviso'); if(el) el.innerHTML='<b>⚠</b> '+T.aviso;
+  el=document.getElementById('mt5-guia-check-txt'); if(el) el.textContent=T.check;
+  el=document.getElementById('mt5-guia-ok'); if(el) el.textContent=T.ok;
+  const cb=document.getElementById('mt5-guia-nao-mostrar'); if(cb) cb.checked=false;
+  m.style.display='flex';
+}
+function fecharGuiaMT5(){
+  const cb=document.getElementById('mt5-guia-nao-mostrar');
+  if(cb && cb.checked){ try{ localStorage.setItem('bt_guia_mt5_off','1'); }catch(_){} }
+  const m=document.getElementById('mt5-guia'); if(m) m.style.display='none';
+}
 async function enviarProMT5(){
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const TT=({
@@ -5968,7 +6029,13 @@ async function enviarProMT5(){
       try{
         const s=await fetch(API+'/mt5/status?job_id='+encodeURIComponent(d.job_id));
         const sd=await s.json();
-        if(sd.status==='aprovado'){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('aprovado', TT.aprovadoT, TT.aprovadoM); }
+        if(sd.status==='aprovado'){
+          clearInterval(_mt5Poll); _mt5Poll=null;
+          var nomeBot=((document.getElementById('ed-bot-nome')||{}).value||'').trim()||'Meu Bot';
+          var guiaOff=false; try{ guiaOff=localStorage.getItem('bt_guia_mt5_off')==='1'; }catch(_){}
+          if(guiaOff){ _mt5Modal('aprovado', TT.aprovadoT, TT.aprovadoM); }
+          else { fecharModalMT5(); setTimeout(function(){ abrirGuiaMT5(nomeBot); }, 3500); }
+        }
         else if(sd.status==='reprovado'){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('reprovado', TT.reprovadoT, TT.reprovadoM); }
       }catch(_){}
       if(tentativas>40){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('reprovado', TT.reprovadoT, TT.semConector); }
@@ -6596,6 +6663,26 @@ function _calRenderFull(){
     <div id="mt5-modal-msg" style="font-size:14px;line-height:1.55;color:var(--muted2)"></div>
     <div id="mt5-modal-acoes" style="margin-top:22px;display:none">
       <button onclick="fecharModalMT5()" style="background:#9d6fff;border:none;border-radius:9px;color:#fff;font-size:13.5px;font-weight:700;padding:11px 26px;cursor:pointer;font-family:var(--sans)">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── JANELA-GUIA "como ver o bot no MT5" (pós-aprovado) ── -->
+<div id="mt5-guia" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(4,10,20,0.86);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div style="width:min(500px,94vw);background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px 26px 20px;box-shadow:0 24px 70px rgba(0,0,0,0.55)">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
+      <img src="/assets/robo_default.png" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith(document.createTextNode('🤖'))">
+      <div id="mt5-guia-titulo" style="font-size:16.5px;font-weight:800;color:var(--text)"></div>
+    </div>
+    <div id="mt5-guia-sub" style="font-size:13.5px;color:var(--muted2);line-height:1.5;margin-bottom:14px"></div>
+    <div id="mt5-guia-nav"></div>
+    <div id="mt5-guia-aviso" style="font-size:12.5px;color:var(--muted2);line-height:1.5;margin:14px 0 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:9px"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted2);margin-top:14px;cursor:pointer;user-select:none">
+      <input type="checkbox" id="mt5-guia-nao-mostrar" style="width:15px;height:15px;cursor:pointer">
+      <span id="mt5-guia-check-txt"></span>
+    </label>
+    <div style="margin-top:16px;text-align:right">
+      <button id="mt5-guia-ok" onclick="fecharGuiaMT5()" style="background:#9d6fff;border:none;border-radius:9px;color:#fff;font-size:13.5px;font-weight:700;padding:11px 28px;cursor:pointer;font-family:var(--sans)"></button>
     </div>
   </div>
 </div>
