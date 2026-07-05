@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.5  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-03b-meus-bots | Deploy: Railway
+#  BotTested API — v6.6  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-03c-subir-conector | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-03b-meus-bots"
+BUILD_TAG = "2026-07-03c-subir-conector"
 
 @app.get("/versao")
 def versao():
@@ -7390,6 +7390,7 @@ def editor_analisar_oos(req: AnaliseOOSReq):
 import time as _time_mt5
 _MT5_JOBS = {}   # job_id -> {bot_token, filename, mq5, status, aprovado, log, ts}
 _MT5_POLLS = {}  # bot_token -> ts do último polling do conector (= conector online)
+_MT5_RAISE = {}  # bot_token -> ts do pedido "trazer o conector pra frente" (Entendi na guia)
 
 
 def _mt5_slug(nome):
@@ -7540,6 +7541,28 @@ def mt5_conector_status(bot_token: str = ""):
     delta = _time_mt5.time() - ts if ts else None
     return {"online": bool(ts and delta is not None and delta < 15),
             "visto_ha_seg": (round(delta, 1) if delta is not None else None)}
+
+
+class MT5SubirReq(BaseModel):
+    bot_token: str = ""
+
+
+@app.post("/mt5/subir-conector")
+def mt5_subir_conector(req: MT5SubirReq):
+    """A plataforma pede pra trazer o conector pra frente (usuário apertou
+    'Entendi' na guia, ou o ✅ chegou com a guia suprimida). Só marca o sinal;
+    quem age é o conector, que consulta isso e se traz pra frente."""
+    if req.bot_token:
+        _MT5_RAISE[req.bot_token] = _time_mt5.time()
+    return {"ok": True}
+
+
+@app.get("/mt5/subir-conector")
+def mt5_subir_conector_check(bot_token: str = ""):
+    """O conector consulta aqui. One-shot: lê e limpa o sinal. Só vale por 180s
+    pra um pedido velho não subir o conector fora de hora."""
+    ts = _MT5_RAISE.pop(bot_token, 0)
+    return {"subir": bool(ts and (_time_mt5.time() - ts) < 180)}
 
 
 class MT5VeredictoReq(BaseModel):
