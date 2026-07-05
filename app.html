@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v8.9 (pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.0 (o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v8.9</span>
+    <span class="vtag">v9.0</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2564,7 +2564,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v8.9';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.0';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -5955,10 +5955,19 @@ function abrirGuiaMT5(nome){
   const cb=document.getElementById('mt5-guia-nao-mostrar'); if(cb) cb.checked=false;
   m.style.display='flex';
 }
+function _pedirSubirConector(){
+  try{
+    var tok=((document.getElementById('ed-token')||{}).textContent||'').trim();
+    if(!tok) return;
+    fetch(API+'/mt5/subir-conector',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({bot_token:tok})}).catch(function(){});
+  }catch(_){}
+}
 function fecharGuiaMT5(){
   const cb=document.getElementById('mt5-guia-nao-mostrar');
   if(cb && cb.checked){ try{ localStorage.setItem('bt_guia_mt5_off','1'); }catch(_){} }
   const m=document.getElementById('mt5-guia'); if(m) m.style.display='none';
+  _pedirSubirConector();   // Entendi → pede pro conector subir sozinho
 }
 async function enviarProMT5(){
   const L=(typeof LANG!=='undefined'?LANG:'pt');
@@ -6033,7 +6042,7 @@ async function enviarProMT5(){
           clearInterval(_mt5Poll); _mt5Poll=null;
           var nomeBot=((document.getElementById('ed-bot-nome')||{}).value||'').trim()||'Meu Bot';
           var guiaOff=false; try{ guiaOff=localStorage.getItem('bt_guia_mt5_off')==='1'; }catch(_){}
-          if(guiaOff){ _mt5Modal('aprovado', TT.aprovadoT, TT.aprovadoM); }
+          if(guiaOff){ _mt5Modal('aprovado', TT.aprovadoT, TT.aprovadoM); _pedirSubirConector(); }
           else { fecharModalMT5(); setTimeout(function(){ abrirGuiaMT5(nomeBot); }, 3500); }
         }
         else if(sd.status==='reprovado'){ clearInterval(_mt5Poll); _mt5Poll=null; _mt5Modal('reprovado', TT.reprovadoT, TT.reprovadoM); }
