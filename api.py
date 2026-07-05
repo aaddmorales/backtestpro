@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.4  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-03a-identidade-por-bot | Deploy: Railway
+#  BotTested API — v6.5  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-03b-meus-bots | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-03a-identidade-por-bot"
+BUILD_TAG = "2026-07-03b-meus-bots"
 
 @app.get("/versao")
 def versao():
@@ -5407,8 +5407,9 @@ class ConectorEvento(BaseModel):
     detalhe: Optional[dict] = None
 
 class ConectorExcluir(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None    # caminho plataforma (front já manda user_id)
     bot_id: int
+    bot_token: Optional[str] = None  # caminho conector (deleta via token do bot)
 
 class SugestaoLida(BaseModel):
     user_id: str
@@ -5608,6 +5609,14 @@ def conector_bot_excluir(req: ConectorExcluir):
     sb = _sb_admin()
     if sb is None:
         raise HTTPException(status_code=500, detail="Supabase indisponível")
+    # user_id pode vir direto (plataforma) ou ser resolvido pelo token (conector)
+    user_id = req.user_id
+    if not user_id and req.bot_token:
+        dono = _bot_por_token(sb, req.bot_token)
+        if dono:
+            user_id = dono.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id ou bot_token obrigatório")
     try:
         r = (sb.table("conector_bots").select("id,user_id")
              .eq("id", req.bot_id).limit(1).execute())
@@ -5615,7 +5624,7 @@ def conector_bot_excluir(req: ConectorExcluir):
         raise HTTPException(status_code=500, detail=f"Erro ao buscar bot: {e}")
     if not r.data:
         raise HTTPException(status_code=404, detail="Bot não encontrado")
-    if str(r.data[0].get("user_id")) != str(req.user_id):
+    if str(r.data[0].get("user_id")) != str(user_id):
         # não é dono — nega sem revelar nada
         raise HTTPException(status_code=403, detail="Sem permissão para este bot")
     try:
@@ -5651,6 +5660,77 @@ def conector_bots(user_id: str):
         b.pop("bot_token", None)  # token nunca volta pro front
         bots.append({**b, "online": online})
     return {"bots": bots}
+
+
+@app.get("/conector/meus-bots")
+def conector_meus_bots(bot_token: str):
+    """Lista os bots do usuário DONO deste token — pro card 'Meus bots' do
+    conector. Resolve o user_id pelo token, então o conector não precisa saber
+    o user_id. Devolve nome, símbolo, magic, filename e online/offline."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    dono = _bot_por_token(sb, bot_token)
+    if not dono:
+        raise HTTPException(status_code=401, detail="bot_token inválido")
+    uid = dono.get("user_id")
+    try:
+        r = (sb.table("conector_bots").select("*")
+             .eq("user_id", uid).order("criado_em", desc=True).execute())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar bots: {e}")
+    agora = _dt.now(_tz.utc)
+    bots = []
+    for b in (r.data or []):
+        if b.get("excluido"):
+            continue
+        online = False
+        if b.get("ultimo_ping"):
+            try:
+                ping = _dt.fromisoformat(str(b["ultimo_ping"]).replace("Z", "+00:00"))
+                online = (agora - ping).total_seconds() < OFFLINE_APOS_SEGUNDOS
+            except Exception:
+                pass
+        nome = b.get("nome") or "Meu Bot"
+        filename = b.get("mq5_filename") or (_nome_arquivo_bot(nome) + ".mq5")
+        tem_mq5 = bool(b.get("mq5_codigo"))
+        bots.append({
+            "id": b.get("id"), "nome": nome, "simbolo": b.get("simbolo") or "",
+            "magic_number": b.get("magic_number"), "filename": filename,
+            "online": online, "tem_mq5": tem_mq5,
+            "ultimo_equity": b.get("ultimo_equity"),
+        })
+    return {"bots": bots}
+
+
+@app.get("/conector/bot/mq5")
+def conector_bot_mq5(bot_token: str, bot_id: int):
+    """Devolve o .mq5 salvo de um bot pro conector REINSTALAR sem regenerar.
+    Valida que o bot pertence ao dono do token. Se o bot foi criado antes de
+    passarmos a salvar o código, devolve tem_mq5=False (o usuário reenvia pelo
+    Editor)."""
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    dono = _bot_por_token(sb, bot_token)
+    if not dono:
+        raise HTTPException(status_code=401, detail="bot_token inválido")
+    try:
+        r = (sb.table("conector_bots").select("id,user_id,nome,mq5_codigo,mq5_filename")
+             .eq("id", bot_id).limit(1).execute())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar bot: {e}")
+    if not r.data:
+        raise HTTPException(status_code=404, detail="Bot não encontrado")
+    b = r.data[0]
+    if str(b.get("user_id")) != str(dono.get("user_id")):
+        raise HTTPException(status_code=403, detail="Sem permissão para este bot")
+    codigo = b.get("mq5_codigo") or ""
+    if not codigo.strip():
+        return {"tem_mq5": False, "filename": b.get("mq5_filename") or ""}
+    nome = b.get("nome") or "Meu Bot"
+    filename = b.get("mq5_filename") or (_nome_arquivo_bot(nome) + ".mq5")
+    return {"tem_mq5": True, "codigo": codigo, "filename": filename}
 
 
 @app.get("/agente/sugestoes")
@@ -7414,9 +7494,10 @@ def mt5_enviar(req: MT5EnviarReq):
         return {"ok": False, "erro": "falha_gerar_mq5"}
     import uuid
     job_id = uuid.uuid4().hex[:16]
+    filename = _nome_arquivo_bot(req.bot_nome, fallback=_mt5_slug(req.bot_nome)) + ".mq5"
     _MT5_JOBS[job_id] = {
         "bot_token": req.bot_token,
-        "filename": _nome_arquivo_bot(req.bot_nome, fallback=_mt5_slug(req.bot_nome)) + ".mq5",
+        "filename": filename,
         "magic": magic,
         "mq5": mq5,
         "status": "validando",
@@ -7424,6 +7505,17 @@ def mt5_enviar(req: MT5EnviarReq):
         "log": "",
         "ts": _time_mt5.time(),
     }
+    # guarda o .mq5 na nuvem pra o card "Meus bots" poder REINSTALAR sem regenerar.
+    # try/except isolado: se a coluna ainda não existir no Supabase, não quebra o envio.
+    try:
+        sb = _sb_admin()
+        if sb is not None and req.bot_token:
+            sb.table("conector_bots").update({
+                "mq5_codigo": mq5, "mq5_filename": filename, "magic_number": magic,
+            }).eq("bot_token", req.bot_token).execute()
+    except Exception as _e:
+        try: print(f"[mt5_enviar] aviso: não persistiu mq5 ({_e})")
+        except Exception: pass
     return {"ok": True, "job_id": job_id}
 
 
