@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.7  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-03d-subir-conector-supabase | Deploy: Railway
+#  BotTested API — v6.8  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-06a-selo-bottested | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-03d-subir-conector-supabase"
+BUILD_TAG = "2026-07-06a-selo-bottested"
 
 @app.get("/versao")
 def versao():
@@ -3862,6 +3862,151 @@ bool BTSell(double lote, string sym, double preco, double sl, double tp, string 
 //----------------------------------------------------------------------"""
 
 
+# Selo BotTested: painel de identidade on-chart, injetado ANTES do OnInit em
+# TODO bot gerado (conversor testado E IA). Sem include — só objetos de gráfico,
+# então compila em qualquer EA. Reposicionado abaixo do rótulo do símbolo (some
+# a colisão do Comment()). Robô Fab vermelho = marca; status muda de cor com o
+# estado (verde=lucro/compra, vermelho=prejuízo/venda, âmbar=aguardando).
+# A estratégia pode setar g_btEstado/g_btEstadoCor pra um status rico; senão o
+# selo infere sozinho pela posição/lucro.
+_BT_PAINEL_MQL5 = """//----------------------------------------------------------------------
+//  SELO BOTTESTED — painel de identidade on-chart (injetado, sem include)
+//  Robo vermelho (Fab) + marca + dados vivos + status colorido por estado.
+//----------------------------------------------------------------------
+#define BT_PFX     "BTselo_"
+#define BT_CORNER  CORNER_LEFT_UPPER
+#define BT_X       8
+#define BT_Y       22
+#define BT_W       214
+#define BTC_CARD   C'13,21,32'
+#define BTC_BORDA  C'30,42,58'
+#define BTC_TXT    C'232,236,241'
+#define BTC_MUTE   C'138,150,166'
+#define BTC_VERDE  C'0,208,132'
+#define BTC_VERM   C'229,72,77'
+#define BTC_AMBAR  C'255,184,48'
+#define BTC_OLHO   C'142,230,255'
+string g_btEstado    = "";
+int    g_btEstadoCor = 0;   // 0=auto 1=verde 2=vermelho 3=ambar
+void BTrect(string id,int x,int y,int w,int h,color bg,color brd)
+{
+   string n=BT_PFX+id;
+   if(ObjectFind(0,n)<0) ObjectCreate(0,n,OBJ_RECTANGLE_LABEL,0,0,0);
+   ObjectSetInteger(0,n,OBJPROP_CORNER,BT_CORNER);
+   ObjectSetInteger(0,n,OBJPROP_XDISTANCE,BT_X+x);
+   ObjectSetInteger(0,n,OBJPROP_YDISTANCE,BT_Y+y);
+   ObjectSetInteger(0,n,OBJPROP_XSIZE,w);
+   ObjectSetInteger(0,n,OBJPROP_YSIZE,h);
+   ObjectSetInteger(0,n,OBJPROP_BGCOLOR,bg);
+   ObjectSetInteger(0,n,OBJPROP_BORDER_TYPE,BORDER_FLAT);
+   ObjectSetInteger(0,n,OBJPROP_COLOR,brd);
+   ObjectSetInteger(0,n,OBJPROP_BACK,false);
+   ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);
+}
+void BTtxt(string id,int x,int y,string txt,color clr,int sz,int anchor,string font)
+{
+   string n=BT_PFX+id;
+   if(ObjectFind(0,n)<0) ObjectCreate(0,n,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(0,n,OBJPROP_CORNER,BT_CORNER);
+   ObjectSetInteger(0,n,OBJPROP_XDISTANCE,BT_X+x);
+   ObjectSetInteger(0,n,OBJPROP_YDISTANCE,BT_Y+y);
+   ObjectSetInteger(0,n,OBJPROP_ANCHOR,anchor);
+   ObjectSetString (0,n,OBJPROP_FONT,font);
+   ObjectSetInteger(0,n,OBJPROP_FONTSIZE,sz);
+   ObjectSetInteger(0,n,OBJPROP_COLOR,clr);
+   ObjectSetString (0,n,OBJPROP_TEXT,txt);
+   ObjectSetInteger(0,n,OBJPROP_BACK,false);
+   ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);
+}
+int BTposSimb()
+{
+   int c=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol) c++;
+   return c;
+}
+double BTlucroSimb()
+{
+   double L=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol) L+=PositionGetDouble(POSITION_PROFIT);
+   return L;
+}
+int BTladoSimb()
+{
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol)
+         return (PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)?1:-1;
+   return 0;
+}
+void BTPainelInit()
+{
+   BTrect("card",0,0,BT_W,152,BTC_CARD,BTC_BORDA);
+   BTrect("accent",0,0,4,152,BTC_AMBAR,BTC_AMBAR);
+   BTrect("r_dot", 16,0,5,4, BTC_VERDE,BTC_VERDE);
+   BTrect("r_ant", 18,3,2,5, BTC_MUTE, BTC_MUTE);
+   BTrect("r_head",12,8,16,13,BTC_VERM, BTC_VERM);
+   BTrect("r_eye1",16,12,3,3, BTC_OLHO, BTC_OLHO);
+   BTrect("r_eye2",22,12,3,3, BTC_OLHO, BTC_OLHO);
+   BTtxt("brand",  36,6, "BotTested", BTC_VERDE,10,ANCHOR_LEFT_UPPER,"Segoe UI Semibold");
+   string nome = MQLInfoString(MQL5_PROGRAM_NAME);
+   if(StringLen(nome)>24) nome=StringSubstr(nome,0,24);
+   BTtxt("botname",36,22,nome, BTC_MUTE,7,ANCHOR_LEFT_UPPER,"Segoe UI");
+   BTrect("div1",8,37,BT_W-16,1,BTC_BORDA,BTC_BORDA);
+   BTtxt("c_preco",12,45,"Preco",    BTC_MUTE,8,ANCHOR_LEFT_UPPER,"Segoe UI");
+   BTtxt("c_pos",  12,61,"Posicoes", BTC_MUTE,8,ANCHOR_LEFT_UPPER,"Segoe UI");
+   BTtxt("c_saldo",12,77,"Saldo",    BTC_MUTE,8,ANCHOR_LEFT_UPPER,"Segoe UI");
+   BTtxt("c_lucro",12,93,"Lucro",    BTC_MUTE,8,ANCHOR_LEFT_UPPER,"Segoe UI");
+   BTrect("div2",8,113,BT_W-16,1,BTC_BORDA,BTC_BORDA);
+   BTPainelTick();
+}
+void BTPainelTick()
+{
+   double preco = SymbolInfoDouble(_Symbol,SYMBOL_BID);
+   int    dig   = (int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+   int    pos   = BTposSimb();
+   double saldo = AccountInfoDouble(ACCOUNT_BALANCE);
+   double lucro = BTlucroSimb();
+   int    lado  = BTladoSimb();
+   string moeda = AccountInfoString(ACCOUNT_CURRENCY);
+   BTtxt("v_preco",BT_W-10,45,DoubleToString(preco,dig),BTC_TXT,8,ANCHOR_RIGHT_UPPER,"Segoe UI");
+   BTtxt("v_pos",  BT_W-10,61,IntegerToString(pos),      BTC_TXT,8,ANCHOR_RIGHT_UPPER,"Segoe UI");
+   BTtxt("v_saldo",BT_W-10,77,DoubleToString(saldo,2)+" "+moeda,BTC_TXT,8,ANCHOR_RIGHT_UPPER,"Segoe UI");
+   color  clu = (lucro>0?BTC_VERDE:(lucro<0?BTC_VERM:BTC_TXT));
+   string slu = (lucro>=0?"+":"")+DoubleToString(lucro,2)+" "+moeda;
+   BTtxt("v_lucro",BT_W-10,93,slu,clu,8,ANCHOR_RIGHT_UPPER,"Segoe UI");
+   string est; color cor;
+   if(g_btEstado!="")
+   {
+      est=g_btEstado;
+      cor = (g_btEstadoCor==1?BTC_VERDE:
+             g_btEstadoCor==2?BTC_VERM:
+             g_btEstadoCor==3?BTC_AMBAR:
+             (lucro>0?BTC_VERDE:(lucro<0?BTC_VERM:BTC_AMBAR)));
+   }
+   else if(pos==0){ est="AGUARDANDO ENTRADA"; cor=BTC_AMBAR; }
+   else
+   {
+      string ld=(lado>0?"COMPRADO":"VENDIDO");
+      est=ld+"  "+(lucro>=0?"+":"")+DoubleToString(lucro,0);
+      cor=(lucro>=0?BTC_VERDE:BTC_VERM);
+   }
+   BTtxt("status",12,121,est,cor,10,ANCHOR_LEFT_UPPER,"Segoe UI Semibold");
+   ObjectSetInteger(0,BT_PFX+"accent",OBJPROP_BGCOLOR,cor);
+   ObjectSetInteger(0,BT_PFX+"accent",OBJPROP_COLOR,cor);
+   ChartRedraw(0);
+}
+void BTPainelDeinit()
+{
+   ObjectsDeleteAll(0,BT_PFX);
+   ChartRedraw(0);
+}
+//----------------------------------------------------------------------
+"""
+
+
 def _instrumentar_log_mql5(codigo: str) -> str:
     """Insere chamadas de log do BotTested Conector no EA gerado, sem reescrever
     cada conversor: snapshot a cada barra nova + evento em cada ordem. Nos EAs
@@ -3885,6 +4030,26 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         # evento), sem wrappers — não dá pra garantir BTEvento/CTrade ali.
         codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
         codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
+
+    # ── SELO BOTTESTED: painel de identidade on-chart (universal) ─────────
+    # Injeta as funções do selo ANTES do OnInit e chama Init/Tick/Deinit por
+    # regex. Só ativa se achar o OnInit — se não achar, deixa o EA intacto (não
+    # entra função sem chamada nem chamada sem função → nunca compila quebrado).
+    import re as _re
+    if _re.search(r"int\s+OnInit\s*\(", codigo):
+        # 1) funções do selo logo antes do OnInit (lambda evita interpretar \\ e \g)
+        codigo = _re.sub(r"int\s+OnInit\s*\(",
+                         lambda m: _BT_PAINEL_MQL5 + "\n" + m.group(0), codigo, count=1)
+        # 2) BTPainelInit() logo após a chave de abertura do OnInit
+        codigo = _re.sub(r"(int\s+OnInit\s*\([^)]*\)\s*\{)",
+                         lambda m: m.group(1) + "\n   BTPainelInit();", codigo, count=1)
+        # 3) BTPainelTick() no topo do OnTick (selo vivo a cada tick)
+        codigo = _re.sub(r"(void\s+OnTick\s*\([^)]*\)\s*\{)",
+                         lambda m: m.group(1) + "\n   BTPainelTick();", codigo, count=1)
+        # 4) BTPainelDeinit() no OnDeinit, se existir (limpa os objetos)
+        if _re.search(r"void\s+OnDeinit\s*\(", codigo):
+            codigo = _re.sub(r"(void\s+OnDeinit\s*\([^)]*\)\s*\{)",
+                             lambda m: m.group(1) + "\n   BTPainelDeinit();", codigo, count=1)
     return codigo
 
 
