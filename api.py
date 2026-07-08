@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.8  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-06a-selo-bottested | Deploy: Railway
+#  BotTested API — v6.9  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-07a-visao-multitf | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-06a-selo-bottested"
+BUILD_TAG = "2026-07-07a-visao-multitf"
 
 @app.get("/versao")
 def versao():
@@ -4007,15 +4007,151 @@ void BTPainelDeinit()
 """
 
 
+# VISÃO multi-timeframe: o "olho" do bot. Computa a posição do preço vivo no
+# canal EMA20 High/Low em CADA timeframe (atuação 5m/15m/60m/4h/D + virada
+# 1m/5m/15m) e emite a linha BOTTESTED_SNAPSHOT enriquecida por TEMPO (~15s),
+# não por barra — o que conserta o D1 ficar offline. Reporta o CRU (acima/
+# dentro/abaixo); a síntese de regime (tendencia/lateral/virada) fica na nuvem
+# (ler_direcao). Só objetos/handles próprios (prefixo hV), sem tocar na
+# estratégia — compila em qualquer EA. Preenche dd/conta/corretora (colunas que
+# já existiam vazias) e ativa as regras F1/F3 do agente de brinde.
+_BT_VISAO_MQL5 = """//----------------------------------------------------------------------
+//  VISAO BOTTESTED — snapshot multi-timeframe enriquecido (injetado)
+//  Emite BOTTESTED_SNAPSHOT por TEMPO com zonas cruas por TF + detalhe.
+//----------------------------------------------------------------------
+#define BT_VISAO_SEG 15          // intervalo de emissao (segundos)
+#define BT_VEMA_PER  20          // periodo do canal EMA High/Low
+int hVH1,hVL1, hVH5,hVL5, hVH15,hVL15, hVH60,hVL60, hVH240,hVL240, hVHD,hVLD;
+int hVHc,hVLc, hVATR;
+datetime g_btVisaoUlt = 0;
+double   g_btPicoEq   = 0;
+string BTvD(double v){ return DoubleToString(v,_Digits); }
+string BTvTF(ENUM_TIMEFRAMES tf)
+{
+   switch(tf)
+   {
+      case PERIOD_M1:  return "1m";
+      case PERIOD_M5:  return "5m";
+      case PERIOD_M15: return "15m";
+      case PERIOD_M30: return "30m";
+      case PERIOD_H1:  return "60m";
+      case PERIOD_H4:  return "4h";
+      case PERIOD_D1:  return "D";
+      default:         return EnumToString(tf);
+   }
+}
+string BTvZona(int hH,int hL)
+{
+   double eh[],el[];
+   if(CopyBuffer(hH,0,0,1,eh)<1) return "?";
+   if(CopyBuffer(hL,0,0,1,el)<1) return "?";
+   double p = SymbolInfoDouble(_Symbol,SYMBOL_BID);
+   if(p > eh[0]) return "acima";
+   if(p < el[0]) return "abaixo";
+   return "dentro";
+}
+double BTvValor(int h)
+{
+   double b[];
+   if(CopyBuffer(h,0,0,1,b)<1) return 0.0;
+   return b[0];
+}
+int BTvPosSimb()
+{
+   int c=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol) c++;
+   return c;
+}
+double BTvLucroSimb()
+{
+   double L=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+      if(PositionGetSymbol(i)==_Symbol) L+=PositionGetDouble(POSITION_PROFIT);
+   return L;
+}
+double BTvDD()
+{
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   if(eq > g_btPicoEq) g_btPicoEq = eq;
+   if(g_btPicoEq <= 0) return 0.0;
+   return (g_btPicoEq - eq)/g_btPicoEq*100.0;
+}
+void BTVisaoInit()
+{
+   g_btPicoEq = AccountInfoDouble(ACCOUNT_EQUITY);
+   hVH1  =iMA(_Symbol,PERIOD_M1, BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVL1  =iMA(_Symbol,PERIOD_M1, BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVH5  =iMA(_Symbol,PERIOD_M5, BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVL5  =iMA(_Symbol,PERIOD_M5, BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVH15 =iMA(_Symbol,PERIOD_M15,BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVL15 =iMA(_Symbol,PERIOD_M15,BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVH60 =iMA(_Symbol,PERIOD_H1, BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVL60 =iMA(_Symbol,PERIOD_H1, BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVH240=iMA(_Symbol,PERIOD_H4, BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVL240=iMA(_Symbol,PERIOD_H4, BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVHD  =iMA(_Symbol,PERIOD_D1, BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH); hVLD  =iMA(_Symbol,PERIOD_D1, BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVHc =iMA(_Symbol,_Period,BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH);
+   hVLc =iMA(_Symbol,_Period,BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
+   hVATR=iATR(_Symbol,_Period,14);
+}
+void BTVisaoDeinit()
+{
+   int hs[15]={hVH1,hVL1,hVH5,hVL5,hVH15,hVL15,hVH60,hVL60,hVH240,hVL240,hVHD,hVLD,hVHc,hVLc,hVATR};
+   for(int i=0;i<15;i++) if(hs[i]!=INVALID_HANDLE) IndicatorRelease(hs[i]);
+}
+void BTVisaoTick()
+{
+   if(TimeCurrent() - g_btVisaoUlt < BT_VISAO_SEG) return;
+   g_btVisaoUlt = TimeCurrent();
+   string z1  = BTvZona(hVH1,hVL1);
+   string z5  = BTvZona(hVH5,hVL5);
+   string z15 = BTvZona(hVH15,hVL15);
+   string z60 = BTvZona(hVH60,hVL60);
+   string z240= BTvZona(hVH240,hVL240);
+   string zD  = BTvZona(hVHD,hVLD);
+   double preco = SymbolInfoDouble(_Symbol,SYMBOL_BID);
+   double emaHc = BTvValor(hVHc);
+   double emaLc = BTvValor(hVLc);
+   double atr   = BTvValor(hVATR);
+   double eq  = AccountInfoDouble(ACCOUNT_EQUITY);
+   double bal = AccountInfoDouble(ACCOUNT_BALANCE);
+   double ml  = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   string conta = IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   string corretora = AccountInfoString(ACCOUNT_COMPANY);
+   StringReplace(corretora,"|","/");
+   double dd  = BTvDD();
+   int    pos = BTvPosSimb();
+   double lucro = BTvLucroSimb();
+   string lado="flat"; double entrada=0,tp=0,sl=0,lote=0; long idade=0;
+   if(PositionSelect(_Symbol))
+   {
+      long t = PositionGetInteger(POSITION_TYPE);
+      lado    = (t==POSITION_TYPE_BUY)?"buy":"sell";
+      entrada = PositionGetDouble(POSITION_PRICE_OPEN);
+      tp      = PositionGetDouble(POSITION_TP);
+      sl      = PositionGetDouble(POSITION_SL);
+      lote    = PositionGetDouble(POSITION_VOLUME);
+      datetime ot = (datetime)PositionGetInteger(POSITION_TIME);
+      idade   = (long)((TimeCurrent()-ot)/60);
+   }
+   string linha = StringFormat(
+      "BOTTESTED_SNAPSHOT|equity=%.2f|balance=%.2f|margem_livre=%.2f|posicoes=%d|lucro=%.2f|simbolo=%s"
+      "|dd=%.2f|conta=%s|corretora=%s|tfop=%s|preco=%s|emaH=%s|emaL=%s|atr=%s"
+      "|z1=%s|z5=%s|z15=%s|z60=%s|z240=%s|zD=%s"
+      "|lado=%s|entrada=%s|tp=%s|sl=%s|lote=%.2f|idade=%d",
+      eq,bal,ml,pos,lucro,_Symbol,
+      dd,conta,corretora,BTvTF(_Period),BTvD(preco),BTvD(emaHc),BTvD(emaLc),BTvD(atr),
+      z1,z5,z15,z60,z240,zD,
+      lado,BTvD(entrada),BTvD(tp),BTvD(sl),lote,(int)idade);
+   Print(linha);
+}
+//----------------------------------------------------------------------
+"""
+
+
 def _instrumentar_log_mql5(codigo: str) -> str:
-    """Insere chamadas de log do BotTested Conector no EA gerado, sem reescrever
-    cada conversor: snapshot a cada barra nova + evento em cada ordem. Nos EAs
-    nativos (com preâmbulo), também ajusta SL/TP pro stops level do ativo via
-    wrappers BTBuy/BTSell."""
-    # snapshot logo após a verificação de nova barra
-    codigo = codigo.replace(
-        "if(!NovaBarra()) return;",
-        "if(!NovaBarra()) return;\n   BTSnapshot();", 1)
+    """Insere no EA gerado, sem reescrever cada conversor: (a) evento em cada
+    ordem, (b) o SELO de identidade on-chart e (c) a VISÃO multi-timeframe, que
+    emite o snapshot enriquecido por TEMPO (~15s, não por barra). Nos EAs nativos
+    (com preâmbulo) também ajusta SL/TP pro stops level via wrappers BTBuy/BTSell.
+    A visão SUBSTITUI o antigo BTSnapshot por-barra — mais rico e sem o bug do
+    D1 offline."""
     # fechamento de posição: marca evento pro log
     codigo = codigo.replace("trade.PositionClose(_Symbol);",
                             "BTEvento(\"fechado\",\"\"); trade.PositionClose(_Symbol);")
@@ -4031,25 +4167,31 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
         codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
 
-    # ── SELO BOTTESTED: painel de identidade on-chart (universal) ─────────
-    # Injeta as funções do selo ANTES do OnInit e chama Init/Tick/Deinit por
-    # regex. Só ativa se achar o OnInit — se não achar, deixa o EA intacto (não
-    # entra função sem chamada nem chamada sem função → nunca compila quebrado).
+    # ── SELO (identidade on-chart) + VISÃO (snapshot multi-timeframe) ─────
+    # Injeta as funções dos dois ANTES do OnInit e chama Init/Tick/Deinit de
+    # cada um por regex. Só ativa se achar o OnInit — se não achar, deixa o EA
+    # intacto (nunca entra função sem chamada nem chamada sem função → não
+    # compila quebrado). A visão emite por tempo, então NÃO depende de NovaBarra.
     import re as _re
     if _re.search(r"int\s+OnInit\s*\(", codigo):
-        # 1) funções do selo logo antes do OnInit (lambda evita interpretar \\ e \g)
+        # 1) funções do selo + da visão logo antes do OnInit
+        #    (lambda evita o re interpretar \\ e \g no texto injetado)
         codigo = _re.sub(r"int\s+OnInit\s*\(",
-                         lambda m: _BT_PAINEL_MQL5 + "\n" + m.group(0), codigo, count=1)
-        # 2) BTPainelInit() logo após a chave de abertura do OnInit
+                         lambda m: _BT_PAINEL_MQL5 + "\n" + _BT_VISAO_MQL5 + "\n" + m.group(0),
+                         codigo, count=1)
+        # 2) Init logo após a chave de abertura do OnInit
         codigo = _re.sub(r"(int\s+OnInit\s*\([^)]*\)\s*\{)",
-                         lambda m: m.group(1) + "\n   BTPainelInit();", codigo, count=1)
-        # 3) BTPainelTick() no topo do OnTick (selo vivo a cada tick)
+                         lambda m: m.group(1) + "\n   BTPainelInit();\n   BTVisaoInit();",
+                         codigo, count=1)
+        # 3) Tick no topo do OnTick (selo vivo + visão por tempo, antes de qualquer guard)
         codigo = _re.sub(r"(void\s+OnTick\s*\([^)]*\)\s*\{)",
-                         lambda m: m.group(1) + "\n   BTPainelTick();", codigo, count=1)
-        # 4) BTPainelDeinit() no OnDeinit, se existir (limpa os objetos)
+                         lambda m: m.group(1) + "\n   BTPainelTick();\n   BTVisaoTick();",
+                         codigo, count=1)
+        # 4) Deinit, se existir (libera objetos do selo e handles da visão)
         if _re.search(r"void\s+OnDeinit\s*\(", codigo):
             codigo = _re.sub(r"(void\s+OnDeinit\s*\([^)]*\)\s*\{)",
-                             lambda m: m.group(1) + "\n   BTPainelDeinit();", codigo, count=1)
+                             lambda m: m.group(1) + "\n   BTPainelDeinit();\n   BTVisaoDeinit();",
+                             codigo, count=1)
     return codigo
 
 
