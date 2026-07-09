@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.11  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-08a-offmind-vivo | Deploy: Railway
+#  BotTested API — v6.12  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-08b-gerente-leitura | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.12 — IA GERENCIADORA (o maestro): junta regime + padrao (OffMind) + estrutura (S/R) e traduz numa LEITURA acionavel por EVENTO, propondo entre as estrategias que o usuario JA APROVOU (nunca inventa gatilho). Read-only: vira sugestao no monitor, NAO comanda o bot (canal nuvem->EA segue fora de escopo por seguranca). Dispara so em momentos que importam (padrao formando + preco testando nivel; ou virada de regime) com cooldown de 20min — controle de custo e ruido. Deterministica e auditavel. Grava em detalhe_json.leitura e emite no feed do agente. Fecha o organismo: bot enxerga (zonas+candles) -> nuvem sintetiza (regime) -> cerebro reconhece (OffMind) -> gerente traduz e propoe. | 6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-08a-offmind-vivo"
+BUILD_TAG = "2026-07-08b-gerente-leitura"
 
 @app.get("/versao")
 def versao():
@@ -5673,7 +5673,7 @@ def estrategias_prontas(lang: str = "pt"):
 OFFLINE_APOS_SEGUNDOS = 180  # 3 min sem ping = offline
 
 # Cooldown anti-spam por regra (minutos)
-_AGENTE_COOLDOWN_MIN = {"F1": 60, "F2": 30, "F3": 15, "F4": 1440}
+_AGENTE_COOLDOWN_MIN = {"F1": 60, "F2": 30, "F3": 15, "F4": 1440, "LEITURA": 20}
 
 # Mapeia símbolo MT5 -> nome do ativo no catálogo (p/ cruzar com backtests)
 _MT5_PARA_CATALOGO = {
@@ -5990,6 +5990,69 @@ def _offmind_ao_vivo(det: dict) -> Optional[dict]:
                        "testando_nivel": len(testando)}}
 
 
+# ── IA GERENCIADORA (o maestro): junta regime + padrão + estrutura e traduz numa
+# LEITURA acionável, propondo entre as estratégias que o usuário JÁ APROVOU.
+# Read-only: é uma leitura pro copiloto/monitor — NÃO comanda o bot (o canal
+# nuvem→EA continua fora de escopo, por segurança). Dispara por EVENTO (a maioria
+# dos snapshots não gera leitura) e tem cooldown — controle de custo e de ruído.
+# Determinística e auditável; a IA em linguagem natural pode narrar isto depois.
+def _gatilho_leitura(regime: Optional[dict], offmind: Optional[dict]) -> Optional[dict]:
+    """Decide se o momento merece leitura. Conservador de propósito."""
+    if not offmind:
+        if regime and regime.get("virada"):
+            return {"tipo": "virada", "motivo": f"Regime sinalizou {regime.get('estado')}"}
+        return None
+    padroes = offmind.get("padroes") or []
+    testando = [e for e in (offmind.get("estrutura") or []) if e.get("testando")]
+    if padroes and testando:
+        return {"tipo": "reversao_em_nivel",
+                "motivo": "Padrão formando com o preço testando um nível de estrutura"}
+    if padroes and regime and regime.get("virada"):
+        return {"tipo": "virada_confirmada",
+                "motivo": "Padrão formando junto de uma virada de regime"}
+    if regime and regime.get("virada"):
+        return {"tipo": "virada", "motivo": f"Regime {regime.get('estado')}"}
+    return None
+
+def _mapear_estrategia(gatilho: dict, offmind: Optional[dict]) -> list:
+    """Mapeia a situação ao vivo → estratégia(s) PRÉ-APROVADAS que casam.
+    Nunca inventa gatilho: aponta entre as estratégias da galeria (ESTRATEGIAS_PRONTAS)."""
+    tipo = gatilho.get("tipo")
+    if tipo == "reversao_em_nivel":
+        ids = ["topo_fundo_duplo", "sr_dia_anterior", "bollinger_reversao"]
+    elif tipo in ("virada_confirmada", "virada"):
+        ids = ["engolfo_tendencia", "rsi_reversao"]
+    else:
+        ids = []
+    nome = {e["id"]: e["nome"] for e in ESTRATEGIAS_PRONTAS}
+    return [{"id": i, "nome": nome.get(i, i)} for i in ids if i in nome]
+
+def _leitura_ao_vivo(gat: dict, regime: Optional[dict], offmind: Optional[dict],
+                     snap) -> dict:
+    """Leitura estruturada do gerente: o que está se formando + estratégia
+    aprovada que casa + contexto. Regra pura (custo zero, auditável)."""
+    padroes = (offmind or {}).get("padroes") or []
+    testando = [e for e in ((offmind or {}).get("estrutura") or []) if e.get("testando")]
+    ests = _mapear_estrategia(gat, offmind)
+    simbolo = getattr(snap, "simbolo", "") or ""
+    reg = (regime or {}).get("estado", "?")
+    partes = []
+    if padroes:
+        p = padroes[0]
+        partes.append(f"{p['nome']} formando no {p['tf']} (direção {p['direcao']})")
+    if testando:
+        t = testando[0]
+        partes.append(f"preço testando {t['tipo']} em {t['nivel']} no {t['tf']} ({t['toques']} toques)")
+    partes.append(f"regime {reg}")
+    contexto = "; ".join(partes)
+    nomes = ", ".join(e["nome"] for e in ests)
+    texto = (f"{simbolo}: {contexto}. "
+             + (f"Setup compatível com estratégia(s) que você aprovou: {nomes}. " if ests else "")
+             + "Leitura ao vivo — histórico medido, não promessa; a decisão é sua e do bot.")
+    return {"gatilho": gat, "simbolo": simbolo, "contexto": contexto,
+            "estrategias_sugeridas": ests, "texto": texto}
+
+
 @app.post("/conector/snapshot")
 def conector_snapshot(snap: ConectorSnapshot):
     """Recebe snapshot read-only do conector. Atualiza ping, grava e roda o agente."""
@@ -6017,6 +6080,18 @@ def conector_snapshot(snap: ConectorSnapshot):
             print(f"[offmind vivo] {_e}", file=_sys.stderr)
     # reaproveita a coluna ultima_direcao/direcao_d1 (vinha vazia) pro estado do regime
     direcao_final = (regime or {}).get("estado") or snap.direcao_d1
+    # ── IA GERENCIADORA: leitura acionável por EVENTO (com cooldown) ──
+    # Read-only: vira sugestão no monitor, NÃO comanda o bot.
+    try:
+        gat = _gatilho_leitura(regime, det.get("offmind"))
+        if gat and not _agente_em_cooldown(sb, user_id, "LEITURA"):
+            leitura = _leitura_ao_vivo(gat, regime, det.get("offmind"), snap)
+            det["leitura"] = leitura
+            _agente_emite(sb, user_id, "LEITURA", "operacao",
+                          leitura["texto"], "info", leitura)
+    except Exception as _e:
+        import sys as _sys
+        print(f"[leitura ao vivo] {_e}", file=_sys.stderr)
     try:
         sb.table("conector_bots").update({
             "ultimo_ping": agora,
