@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.9  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-07a-visao-multitf | Deploy: Railway
+#  BotTested API — v6.11  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-08a-offmind-vivo | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-07a-visao-multitf"
+BUILD_TAG = "2026-07-08a-offmind-vivo"
 
 @app.get("/versao")
 def versao():
@@ -5851,6 +5851,145 @@ def conector_registrar(req: ConectorRegistrar):
             "instrucao": "Cole este token no conector (config). Ele identifica o bot — nunca compartilhe."}
 
 
+# ── VISÃO → REGIME: sintetiza o regime a partir do mapa de zonas cruas ──────
+# "As duas juntas": o EA manda o CRU (posição do preço no canal EMA H/L por TF),
+# a nuvem sintetiza aqui o regime — de graça, sem yfinance, usando o dado VIVO da
+# corretora (o que o bot realmente vê). Top-down (regra do Adriano): a TENDÊNCIA
+# é ancorada pelos tempos MAIORES (60m/4h/D — lentos, definem o regime), e a
+# VIRADA é liderada pelos MENORES (1m/5m/15m — os menores confirmam antes dos
+# maiores). Sem sobreposição, pra o sinal de virada não poluir a tendência.
+_BT_ZONAS_ANCORA = ("z60", "z240", "zD")   # tendência estabelecida (top-down)
+_BT_ZONAS_FAST   = ("z1", "z5", "z15")     # lideram a virada
+
+def _regime_das_zonas(det: dict) -> Optional[dict]:
+    """Recebe o detalhe do snapshot (zonas como strings acima/dentro/abaixo/?).
+    Devolve {regime, estado, virada, confianca, ...} ou None se não há âncora
+    suficiente. Puro (sem I/O) — roda a cada snapshot sem custo.
+    Conservador: só chama tendência com maioria clara da âncora, e só sinaliza
+    virada quando há tendência estabelecida E os rápidos viraram contra ela."""
+    if not isinstance(det, dict):
+        return None
+    def _z(k):
+        v = det.get(k)
+        return v.strip().lower() if isinstance(v, str) else None
+    anc = {k: _z(k) for k in _BT_ZONAS_ANCORA}
+    validos = [v for v in anc.values() if v in ("acima", "dentro", "abaixo")]
+    if len(validos) < 2:
+        return None  # âncora não pronta (TF sem histórico) → sem regime
+    acima  = sum(1 for v in anc.values() if v == "acima")
+    abaixo = sum(1 for v in anc.values() if v == "abaixo")
+    n = len(validos)
+    # tendência pela âncora (maioria clara; senão lateral)
+    regime = "lateral"
+    if acima > abaixo and acima >= 2:
+        regime = "tendencia_alta"
+    elif abaixo > acima and abaixo >= 2:
+        regime = "tendencia_baixa"
+    # virada: os rápidos (1m/5m/15m) viraram CONTRA a tendência da âncora
+    af = sum(1 for k in _BT_ZONAS_FAST if _z(k) == "acima")
+    bf = sum(1 for k in _BT_ZONAS_FAST if _z(k) == "abaixo")
+    virada = None
+    if regime == "tendencia_alta" and bf >= 2 and af == 0:
+        virada = "possivel_virada_baixa"
+    elif regime == "tendencia_baixa" and af >= 2 and bf == 0:
+        virada = "possivel_virada_alta"
+    estado = virada or regime
+    conf = int(round(100 * max(acima, abaixo) / n)) if regime != "lateral" else 0
+    return {"regime": regime, "estado": estado, "virada": bool(virada),
+            "confianca": conf, "acima": acima, "abaixo": abaixo, "ancoras_validas": n}
+
+
+# ── OFFMIND AO VIVO: lê os candles reais que o bot mandou e enxerga o que o bot
+# não vê — padrões se FORMANDO na borda (mecânica 1m/5m/15m) e níveis de
+# suporte/resistência sendo testados (estrutura 30m/60m/4h). Roda sobre o dado
+# da CORRETORA (sintonia: IA e bot no mesmo candle), puro (sem yfinance), só
+# quando a leva de candles chega (~1x/min). Reusa os detectores do OffMind.
+_BT_TF_MECANICA  = (("c1m", "1m"), ("c5m", "5m"), ("c15m", "15m"))     # gatilho entrada/saida
+_BT_TF_ESTRUTURA = (("c30m", "30m"), ("c60m", "60m"), ("c4h", "4h"))   # fundo/topo
+
+def _bt_parse_candles(s):
+    """'o,h,l,c;o,h,l,c;...' → DataFrame Open/High/Low/Close (cronológico)."""
+    if not isinstance(s, str) or not s.strip():
+        return None
+    linhas = []
+    for parte in s.split(";"):
+        vs = parte.split(",")
+        if len(vs) != 4:
+            continue
+        try:
+            linhas.append([float(x) for x in vs])
+        except Exception:
+            continue
+    if len(linhas) < 2:
+        return None
+    return pd.DataFrame(linhas, columns=["Open", "High", "Low", "Close"])
+
+def _bt_niveis_sr(df, tol_frac=0.0015, min_toques=2, max_niveis=3):
+    """Níveis horizontais (suporte pelos mínimos, resistência pelos máximos)
+    tocados >= min_toques na janela; marca se o preço atual está TESTANDO um.
+    Clusterização 1D simples por tolerância relativa ao preço."""
+    if df is None or len(df) < 4:
+        return []
+    preco = float(df["Close"].iloc[-1])
+    tol = max(preco * tol_frac, 1e-9)
+    def _cluster(vals):
+        vals = sorted(float(v) for v in vals)
+        cl = []
+        for v in vals:
+            if cl and abs(v - cl[-1]["soma"] / cl[-1]["n"]) <= tol:
+                cl[-1]["soma"] += v; cl[-1]["n"] += 1
+            else:
+                cl.append({"soma": v, "n": 1})
+        return [{"nivel": round(c["soma"] / c["n"], 5), "toques": c["n"]}
+                for c in cl if c["n"] >= min_toques]
+    out = []
+    for s in _cluster(df["Low"].tolist()):
+        out.append({"tipo": "suporte", "nivel": s["nivel"], "toques": s["toques"],
+                    "testando": abs(preco - s["nivel"]) <= tol})
+    for r in _cluster(df["High"].tolist()):
+        out.append({"tipo": "resistencia", "nivel": r["nivel"], "toques": r["toques"],
+                    "testando": abs(preco - r["nivel"]) <= tol})
+    # prioriza os que estão sendo testados agora, depois por nº de toques
+    out.sort(key=lambda x: (not x["testando"], -x["toques"]))
+    return out[:max_niveis]
+
+def _offmind_ao_vivo(det: dict) -> Optional[dict]:
+    """Roda os detectores do OffMind sobre as janelas de candle do bot.
+    Devolve {padroes, estrutura} ou None se não há candles. 'padroes' = padrão
+    se formando na ÚLTIMA vela dos TFs de mecânica; 'estrutura' = níveis S/R
+    testados nos TFs de estrutura. Honesto: reporta o que ESTÁ se formando —
+    a estatística histórica é anexada depois (não prevê o futuro aqui)."""
+    if not isinstance(det, dict):
+        return None
+    padroes = []
+    for chave, tf in _BT_TF_MECANICA:
+        df = _bt_parse_candles(det.get(chave))
+        if df is None or len(df) < 4:
+            continue
+        ult = len(df) - 1
+        for pk, meta in PADROES_OFFMIND.items():
+            try:
+                ocorr = meta["fn"](df)
+            except Exception:
+                continue
+            # padrão fechando na ÚLTIMA vela = formando agora
+            if any(idx == ult for (idx, _dir) in ocorr):
+                direc = next(d for (i, d) in ocorr if i == ult)
+                padroes.append({"tf": tf, "padrao": pk, "nome": meta["nome"], "direcao": direc})
+    estrutura = []
+    for chave, tf in _BT_TF_ESTRUTURA:
+        df = _bt_parse_candles(det.get(chave))
+        niveis = _bt_niveis_sr(df)
+        for nv in niveis:
+            estrutura.append({"tf": tf, **nv})
+    if not padroes and not estrutura:
+        return None
+    testando = [e for e in estrutura if e.get("testando")]
+    return {"padroes": padroes, "estrutura": estrutura,
+            "resumo": {"padroes_formando": len(padroes),
+                       "testando_nivel": len(testando)}}
+
+
 @app.post("/conector/snapshot")
 def conector_snapshot(snap: ConectorSnapshot):
     """Recebe snapshot read-only do conector. Atualiza ping, grava e roda o agente."""
@@ -5862,12 +6001,28 @@ def conector_snapshot(snap: ConectorSnapshot):
         raise HTTPException(status_code=401, detail="bot_token inválido")
     user_id = bot.get("user_id")
     agora = _dt.now(_tz.utc).isoformat()
+    # ── VISÃO → REGIME: sintetiza a partir das zonas cruas (as duas juntas) ──
+    det = dict(snap.detalhe or {})
+    regime = _regime_das_zonas(det)
+    if regime:
+        det["regime"] = regime                       # cru + sintetizado no mesmo JSON
+    # ── OFFMIND AO VIVO: só quando a leva de candles chega (~1x/min) ──
+    if any(k in det for k, _ in _BT_TF_MECANICA) or any(k in det for k, _ in _BT_TF_ESTRUTURA):
+        try:
+            om = _offmind_ao_vivo(det)
+            if om:
+                det["offmind"] = om                  # padrões + estrutura ao vivo
+        except Exception as _e:
+            import sys as _sys
+            print(f"[offmind vivo] {_e}", file=_sys.stderr)
+    # reaproveita a coluna ultima_direcao/direcao_d1 (vinha vazia) pro estado do regime
+    direcao_final = (regime or {}).get("estado") or snap.direcao_d1
     try:
         sb.table("conector_bots").update({
             "ultimo_ping": agora,
             "ultimo_equity": snap.equity,
             "ultimo_dd": snap.drawdown_atual,
-            "ultima_direcao": snap.direcao_d1,
+            "ultima_direcao": direcao_final,
             "ultimo_padrao": snap.padrao_ativo,
             "posicoes_abertas": snap.posicoes_abertas,
         }).eq("id", bot["id"]).execute()
@@ -5880,8 +6035,8 @@ def conector_snapshot(snap: ConectorSnapshot):
             "posicoes_abertas": snap.posicoes_abertas,
             "lucro_flutuante": snap.lucro_flutuante,
             "drawdown_atual": snap.drawdown_atual,
-            "direcao_d1": snap.direcao_d1, "padrao_ativo": snap.padrao_ativo,
-            "detalhe_json": snap.detalhe or {},
+            "direcao_d1": direcao_final, "padrao_ativo": snap.padrao_ativo,
+            "detalhe_json": det,
         }).execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gravar snapshot: {e}")
