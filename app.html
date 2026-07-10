@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.12 (FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.13 (TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.12</span>
+    <span class="vtag">v9.13</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2092,12 +2092,37 @@ window.__trilhaEtapa = 1;
     var atual = window.__trilhaEtapa || 1;
     if(n > atual) pintar(n);
   };
-  // Mostra/esconde a barra conforme login. (Não busca mais backend — é sessão local.)
+  // Mostra/esconde a barra conforme login. Liga o polling do backend (etapas 5/6).
+  window.checarTrilhaBackend = async function(){
+    if(typeof usuarioAtual === 'undefined' || !usuarioAtual || !usuarioAtual.id) return;
+    try {
+      var r = await fetch(API + '/usuario/progresso?user_id=' + encodeURIComponent(usuarioAtual.id));
+      if(!r.ok) return;
+      var d = await r.json();
+      var etapaBackend = d.etapa || 1;
+      // só o backend detecta CONECTAR (5) e OPERAR (6); empurra a trilha pra frente
+      if(etapaBackend >= 5) window.trilhaAvancar(etapaBackend);
+    } catch(e){ /* silencioso */ }
+  };
+  var _trilhaPoll = null;
+  window.iniciarPollingTrilha = function(){
+    if(_trilhaPoll) return;
+    window.checarTrilhaBackend();
+    _trilhaPoll = setInterval(function(){ window.checarTrilhaBackend(); }, 15000);
+  };
+  window.pararPollingTrilha = function(){
+    if(_trilhaPoll){ clearInterval(_trilhaPoll); _trilhaPoll = null; }
+  };
   window.atualizarTrilha = function(){
     var bar = document.getElementById('trilha-bar');
     if(!bar) return;
-    if(typeof usuarioAtual === 'undefined' || !usuarioAtual || !usuarioAtual.id){ bar.style.display='none'; return; }
+    if(typeof usuarioAtual === 'undefined' || !usuarioAtual || !usuarioAtual.id){
+      bar.style.display='none';
+      if(window.pararPollingTrilha) window.pararPollingTrilha();
+      return;
+    }
     bar.style.display='block';
+    if(window.iniciarPollingTrilha) window.iniciarPollingTrilha();
   };
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', initTrilha);
@@ -2745,7 +2770,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.12';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.13';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -6178,6 +6203,12 @@ function fecharGuiaMT5(){
 }
 async function enviarProMT5(){
   if(window.trilhaAvancar) trilhaAvancar(4);  // enviou pro MT5 → etapa 4
+  // após enviar, checa o backend algumas vezes pra pegar a CONEXÃO (etapa 5) rapidinho
+  if(window.checarTrilhaBackend){
+    [4000, 9000, 16000, 25000].forEach(function(ms){
+      setTimeout(function(){ window.checarTrilhaBackend(); }, ms);
+    });
+  }
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const TT=({
     pt:{semToken:'Gere o token primeiro (botão 🔑 Gerar token) e deixe o conector aberto.', semCod:'Não há estratégia pra enviar — gere ou escreva o código primeiro.',
