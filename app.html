@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.4 (FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.5 (Trilha agora e da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.4</span>
+    <span class="vtag">v9.5</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -1999,8 +1999,9 @@ let usuarioAtual = null;
 // ── PAINEL ADMIN (Biblioteca de Estudo) — só este user vê a aba Estudo ──
 const BIB_ADMIN_USER_ID = 'cd99b5b0-d97e-484a-900e-30a267a01f12';
 function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID; }
-// Trilha de progresso fixa na barra superior. Busca a etapa real do backend
-// (/usuario/progresso), acende as etapas concluídas, e mostra o detalhe no hover.
+// Trilha de progresso da ESTRATÉGIA ATUAL (sessão local, não histórico de conta).
+// Zera pra etapa 1 ao escolher uma estratégia na vitrine ou criar uma no Editor,
+// e avança conforme as ações: testar (2), enviar (4). Detalhe no hover.
 window.__trilhaEtapa = 1;
 (function(){
   var TRILHA = [
@@ -2062,18 +2063,22 @@ window.__trilhaEtapa = 1;
       p.addEventListener('mouseenter', function(){ mostrarTip(i, p); });
       p.addEventListener('mouseleave', function(){ tip.style.display='none'; });
     });
-    pintar(1);
+    pintar(window.__trilhaEtapa || 1);
   }
-  // Chamada pública: atualiza a etapa a partir do backend (chamar após login e após ações).
-  window.atualizarTrilha = async function(){
+  // ── API pública da trilha (sessão local) ──
+  // Zera pra etapa 1: chamado ao escolher/criar uma estratégia nova.
+  window.trilhaReset = function(){ pintar(1); };
+  // Avança pra uma etapa (só pra frente — nunca volta): testar=2, enviar=4, etc.
+  window.trilhaAvancar = function(n){
+    var atual = window.__trilhaEtapa || 1;
+    if(n > atual) pintar(n);
+  };
+  // Mostra/esconde a barra conforme login. (Não busca mais backend — é sessão local.)
+  window.atualizarTrilha = function(){
     var bar = document.getElementById('trilha-bar');
     if(!bar) return;
     if(typeof usuarioAtual === 'undefined' || !usuarioAtual || !usuarioAtual.id){ bar.style.display='none'; return; }
     bar.style.display='block';
-    try {
-      var r = await fetch(API + '/usuario/progresso?user_id=' + encodeURIComponent(usuarioAtual.id));
-      if(r.ok){ var d = await r.json(); pintar(d.etapa || 1); }
-    } catch(e){ /* silencioso: mantém o que já estava */ }
   };
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', initTrilha);
@@ -2702,7 +2707,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.4';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.5';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2956,7 +2961,6 @@ function setLang(lang) {
 
 function switchTab(tab) {
   activeTab = tab;
-  if(window.atualizarTrilha) atualizarTrilha();
   ['editor','overview','templates','rank','planos','otimizar','monitor','estudo','calendario'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
@@ -3452,6 +3456,7 @@ function pararPiscarParams(){
 }
 
 async function rodarBacktest() {
+  if(window.trilhaAvancar) trilhaAvancar(3);  // testou → etapa 2/3 (ajustar liberado)
   console.log('rodarBacktest() chamado');
   // Verificar login e limite
   const liberado = await verificarLimite();
@@ -4432,6 +4437,7 @@ function colarCodigoIA() {
 }
 
 async function gerarBotIA() {
+  if(window.trilhaReset) trilhaReset();  // nova estratégia criada → zera a trilha
   const desc = document.getElementById('ia-desc').value.trim();
   if(!desc){document.getElementById('ia-desc').focus();return;}
   const btn = document.getElementById('ia-btn');
@@ -5729,6 +5735,7 @@ function indicadorMudou(){
 }
 // ▶ Rodar teste: roda código colado; ou gera da frase e roda
 async function rodarHero(){
+  if(window.trilhaAvancar) trilhaAvancar(3);  // testou no editor → etapa 2/3
   if(typeof _vitrineMode!=='undefined' && _vitrineMode) sairVitrineParaTeste();
   const campo=document.getElementById('ia-hero-desc');
   const v=(campo.value||'').trim();
@@ -6109,6 +6116,7 @@ function fecharGuiaMT5(){
   _pedirSubirConector();   // Entendi → pede pro conector subir sozinho
 }
 async function enviarProMT5(){
+  if(window.trilhaAvancar) trilhaAvancar(4);  // enviou pro MT5 → etapa 4
   const L=(typeof LANG!=='undefined'?LANG:'pt');
   const TT=({
     pt:{semToken:'Gere o token primeiro (botão 🔑 Gerar token) e deixe o conector aberto.', semCod:'Não há estratégia pra enviar — gere ou escreva o código primeiro.',
@@ -6495,6 +6503,7 @@ async function carregarVitrine(){
 }
 
 async function escolherEstrategiaVitrine(id){
+  if(window.trilhaReset) trilhaReset();  // nova estratégia escolhida → zera a trilha
   const e=window._vitrineDados[id]; if(!e) return;
   window._estrategiaAtiva={id:e.id, nome:e.nome, tags:(e.tags||[]), categoria:(e.categoria||''), emoji:(e.emoji||''), overlays:(e.overlays||[]), mercados:(e.mercados||[]), top_ativos:(e.top_ativos||[])};
   try{ atualizarCabecalhoEstrategia(e); }catch(_){}
