@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.13 (TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.14 (trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -108,6 +108,7 @@ body::after{
 @keyframes fabBob{0%,100%{transform:translateY(0) rotate(-4deg) scale(1)}50%{transform:translateY(-7px) rotate(4deg) scale(1.06)}}
 @keyframes fabGlow{0%,100%{transform:scale(0.85);opacity:0.5}50%{transform:scale(1.15);opacity:0.95}}
 @keyframes fabSpin{to{transform:rotate(360deg)}}
+@keyframes trilhaPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,208,132,0.5);transform:scale(1)}50%{box-shadow:0 0 0 6px rgba(0,208,132,0);transform:scale(1.12)}}
 .mt5-fase{font-size:13.5px;color:var(--green);font-weight:700;transition:opacity .18s ease;min-height:19px}
 /* Ilustração do Navigator do MT5 na janela-guia pós-aprovado */
 .nav-illus{position:relative;background:#0a0f18;border:1px solid var(--border2);border-radius:10px;padding:6px 0;font-family:var(--mono,monospace);font-size:12px;color:#cfd6e0;overflow:hidden}
@@ -911,7 +912,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.13</span>
+    <span class="vtag">v9.14</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -987,6 +988,10 @@ body.modo-vitrine #vitrine{display:block}
     <div class="trilha-pt" data-i="5" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
       <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">6</div>
       <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Operar</span>
+    </div>
+    <div class="trilha-pt" id="trilha-monitorar" data-i="6" onclick="if(window.__trilhaEtapa>=6){switchTab('monitor');}" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" id="trilha-dot-monitor" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">📡</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Monitorar</span>
     </div>
   </div>
 </div>
@@ -2017,7 +2022,8 @@ window.__trilhaEtapa = 1;
     {n:"3", t:"Ajustar com o Radar", d:"O Radar analisa teu resultado e sugere como melhorar a estratégia — quais parâmetros mexer antes de levar pro mercado real."},
     {n:"4", t:"Enviar pro MT5", d:"Satisfeito com o teste? Dê um nome ao seu bot no Editor e clique em Enviar pro MT5 pra gerar o robô pronto pra operar."},
     {n:"5", t:"Conectar o bot", d:"Instale o conector (se ainda não tiver) e clique em Enviar de novo. É a ponte que leva o seu bot da plataforma pro seu MetaTrader 5."},
-    {n:"6", t:"Operar e monitorar", d:"No MT5, abra Navegador → Expert Advisors, ache o seu bot pelo nome e arraste pro gráfico do ativo. Pronto: ele opera e você acompanha ao vivo."}
+    {n:"6", t:"Operar e monitorar", d:"No MT5, abra Navegador → Expert Advisors, ache o seu bot pelo nome e arraste pro gráfico do ativo. Pronto: ele opera e você acompanha ao vivo."},
+    {n:"📡", t:"Monitorar ao vivo", d:"Seu bot está operando! Clique aqui pra abrir o Monitor e acompanhar o pulso dele — e dos seus outros bots — em tempo real."}
   ];
   function pintar(etapa){
     var track = document.getElementById('trilha-track');
@@ -2026,7 +2032,8 @@ window.__trilhaEtapa = 1;
     var pts = track.querySelectorAll('.trilha-pt');
     var total = pts.length;
     var fill = document.getElementById('trilha-fill');
-    if(fill && total>1){ fill.style.width = 'calc((100% - 32px) * ' + ((etapa-1)/(total-1)) + ')'; }
+    // 6 etapas "normais" definem o preenchimento; a 7ª (Monitorar) é destino especial
+    if(fill){ var frac = Math.min(etapa, 6); fill.style.width = 'calc((100% - 32px) * ' + ((frac-1)/6) + ')'; }
     pts.forEach(function(p, idx){
       var num = idx+1;
       var dot = p.querySelector('.trilha-dot');
@@ -2045,6 +2052,21 @@ window.__trilhaEtapa = 1;
     // botão "Enviar Estratégia →" aparece depois do teste (etapa 3+) e some no reset
     var btnEnv = document.getElementById('btn-proximo-envio');
     if(btnEnv){ btnEnv.style.display = (etapa >= 3 && etapa < 4) ? 'flex' : 'none'; }
+    // 7ª bolinha "Monitorar": acende + pisca quando o bot está operando (etapa >= 6)
+    var dotMon = document.getElementById('trilha-dot-monitor');
+    var ptMon = document.getElementById('trilha-monitorar');
+    if(dotMon){
+      var operando = etapa >= 6;
+      dotMon.style.background = operando ? 'var(--green)' : 'var(--bg4)';
+      dotMon.style.borderColor = operando ? 'var(--green)' : 'var(--border2)';
+      dotMon.style.color = operando ? '#03150e' : 'var(--muted)';
+      dotMon.style.animation = operando ? 'trilhaPulse 1.4s ease-in-out infinite' : 'none';
+      if(ptMon){
+        var lblMon = ptMon.querySelector('.trilha-lbl');
+        if(lblMon) lblMon.style.color = operando ? 'var(--green)' : 'var(--muted)';
+        ptMon.style.cursor = operando ? 'pointer' : 'default';
+      }
+    }
   }
   function mostrarTip(i, ptEl){
     var d = TRILHA[i]; if(!d) return;
@@ -2086,7 +2108,7 @@ window.__trilhaEtapa = 1;
   }
   // ── API pública da trilha (sessão local) ──
   // Zera pra etapa 1: chamado ao escolher/criar uma estratégia nova.
-  window.trilhaReset = function(){ pintar(1); };
+  window.trilhaReset = function(){ window.__botTokenAtual = ''; pintar(1); };
   // Avança pra uma etapa (só pra frente — nunca volta): testar=2, enviar=4, etc.
   window.trilhaAvancar = function(n){
     var atual = window.__trilhaEtapa || 1;
@@ -2095,13 +2117,18 @@ window.__trilhaEtapa = 1;
   // Mostra/esconde a barra conforme login. Liga o polling do backend (etapas 5/6).
   window.checarTrilhaBackend = async function(){
     if(typeof usuarioAtual === 'undefined' || !usuarioAtual || !usuarioAtual.id) return;
+    // só checa 5/6 se HÁ um bot desta sessão (o que você acabou de enviar).
+    // sem isso, um bot antigo já operando inflaria a trilha de uma estratégia nova.
+    var tok = window.__botTokenAtual || '';
+    if(!tok) return;
     try {
-      var r = await fetch(API + '/usuario/progresso?user_id=' + encodeURIComponent(usuarioAtual.id));
+      var r = await fetch(API + '/usuario/progresso?user_id=' + encodeURIComponent(usuarioAtual.id) + '&bot_token=' + encodeURIComponent(tok));
       if(!r.ok) return;
       var d = await r.json();
       var etapaBackend = d.etapa || 1;
-      // só o backend detecta CONECTAR (5) e OPERAR (6); empurra a trilha pra frente
       if(etapaBackend >= 5) window.trilhaAvancar(etapaBackend);
+      // etapa 6 (operando) = jornada do bot terminou → para o polling; o Monitor assume o pulso
+      if(etapaBackend >= 6 && window.pararPollingTrilha) window.pararPollingTrilha();
     } catch(e){ /* silencioso */ }
   };
   var _trilhaPoll = null;
@@ -2770,7 +2797,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.13';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.14';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -6070,6 +6097,7 @@ async function gerarTokenEditor(){
     const d = await r.json();
     if(d.bot_token){
       document.getElementById('ed-token').textContent = d.bot_token;
+      window.__botTokenAtual = d.bot_token;  // trilha segue ESTE bot (etapas 5/6)
       document.getElementById('ed-token-box').style.display = 'block';
       const ew=document.getElementById('ed-mt5-enviar-wrap'); if(ew) ew.style.display='block';
       if(typeof carregarBots==='function'){ try{ carregarBots(); }catch(e){} }
