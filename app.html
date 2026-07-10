@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.2 (Trilha da jornada: faixa no topo da Overview com 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar); hover em cada ponto abre um balão explicando a etapa — dá ao usuário a noção do caminho até o bot operando no MT5). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.3 (Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.2</span>
+    <span class="vtag">v9.3</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -958,6 +958,46 @@ body.modo-vitrine #vitrine{display:block}
   </div>
   </div><!-- /top-right -->
 </div><!-- /topbar -->
+
+<!-- TRILHA DE PROGRESSO (fixa abaixo do menu, visível em toda tela; hover mostra o detalhe) -->
+<div id="trilha-bar" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 16px">
+  <div id="trilha-track" style="position:relative;display:flex;justify-content:space-between;align-items:center;max-width:760px;margin:0 auto;padding:0 4px">
+    <div style="position:absolute;left:16px;right:16px;top:13px;height:2px;background:var(--border2);z-index:0"></div>
+    <div id="trilha-fill" style="position:absolute;left:16px;top:13px;height:2px;width:0;background:var(--green);z-index:0;transition:width .4s ease"></div>
+    <div class="trilha-pt" data-i="0" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">1</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Criar</span>
+    </div>
+    <div class="trilha-pt" data-i="1" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">2</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Testar</span>
+    </div>
+    <div class="trilha-pt" data-i="2" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">3</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Ajustar</span>
+    </div>
+    <div class="trilha-pt" data-i="3" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">4</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Enviar</span>
+    </div>
+    <div class="trilha-pt" data-i="4" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">5</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Conectar</span>
+    </div>
+    <div class="trilha-pt" data-i="5" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="trilha-dot" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:12px;transition:all .2s ease">6</div>
+      <span class="trilha-lbl" style="font-size:10px;color:var(--muted);white-space:nowrap">Operar</span>
+    </div>
+  </div>
+  <div id="trilha-tip" style="display:none;position:absolute;z-index:50;max-width:300px;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span id="trilha-tip-num" style="width:20px;height:20px;border-radius:50%;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">1</span>
+      <span id="trilha-tip-titulo" style="font-size:13px;font-weight:700;color:var(--text)">—</span>
+      <span id="trilha-tip-status" style="margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px"></span>
+    </div>
+    <p id="trilha-tip-txt" style="font-size:12px;color:var(--muted2);margin:0;line-height:1.5">—</p>
+  </div>
+</div>
 
 <!-- Atalho solto (sobre o fundo de candles): montar o próprio teste -->
 <div id="faixa-novo-teste" style="display:none;align-items:center;justify-content:flex-end;padding:8px 18px 0;background:transparent;pointer-events:none">
@@ -1263,34 +1303,6 @@ body.modo-vitrine #vitrine{display:block}
           <div id="tab-overview" style="display:block">
             <!-- VITRINE (modo loja) -->
             <div id="vitrine" style="padding:6px 16px 28px">
-              <!-- TRILHA DA JORNADA (do teste ao bot operando no MT5) -->
-              <div id="trilha-jornada" style="max-width:820px;margin:20px auto 6px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px 24px 18px">
-                <div style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Como funciona · do teste ao bot operando</div>
-                <div id="trilha-track" style="position:relative;display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:0 auto 10px;padding:0 6px">
-                  <div style="position:absolute;left:20px;right:20px;top:50%;height:3px;background:var(--border2);transform:translateY(-50%);z-index:0"></div>
-                  <div class="trilha-pt" data-i="0" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--green);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#03150e;font-weight:800;font-size:13px;transition:transform .15s ease">1</div></div>
-                  <div class="trilha-pt" data-i="1" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--red);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#2a0710;font-weight:800;font-size:13px;transition:transform .15s ease">2</div></div>
-                  <div class="trilha-pt" data-i="2" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--red);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#2a0710;font-weight:800;font-size:13px;transition:transform .15s ease">3</div></div>
-                  <div class="trilha-pt" data-i="3" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--red);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#2a0710;font-weight:800;font-size:13px;transition:transform .15s ease">4</div></div>
-                  <div class="trilha-pt" data-i="4" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--red);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#2a0710;font-weight:800;font-size:13px;transition:transform .15s ease">5</div></div>
-                  <div class="trilha-pt" data-i="5" style="position:relative;z-index:1;cursor:pointer"><div class="trilha-dot" style="width:32px;height:32px;border-radius:50%;background:var(--red);border:3px solid var(--bg2);display:flex;align-items:center;justify-content:center;color:#2a0710;font-weight:800;font-size:13px;transition:transform .15s ease">6</div></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;max-width:640px;margin:0 auto;padding:0 6px;gap:4px">
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Criar</span>
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Testar</span>
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Ajustar</span>
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Enviar</span>
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Conectar</span>
-                  <span class="trilha-lbl" style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Operar</span>
-                </div>
-                <div style="max-width:520px;margin:16px auto 0;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:13px 16px;min-height:78px">
-                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-                    <span id="trilha-num" style="width:24px;height:24px;border-radius:50%;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">1</span>
-                    <span id="trilha-titulo" style="font-size:14px;font-weight:700;color:var(--text)">Criar ou escolher a estratégia</span>
-                  </div>
-                  <p id="trilha-txt" style="font-size:13px;color:var(--muted2);margin:0;line-height:1.55">Escolha uma estratégia pronta na vitrine ou crie a sua do zero no Editor, descrevendo em português — a IA gera o código pra você.</p>
-                </div>
-              </div>
               <div style="text-align:center;margin:26px auto 22px;max-width:760px">
                 <div style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-0.7px;line-height:1.15" data-i18n="vit.titulo">Estratégias reais, medidas no histórico</div>
                 <div style="font-size:14px;color:var(--muted2);margin:9px auto 0;max-width:620px;line-height:1.5" data-i18n="vit.sub">Escolha uma, ajuste o ativo e teste agora. Desempenho médio que varia por ativo e período — histórico medido, não promessa.</div>
@@ -1987,7 +1999,9 @@ let usuarioAtual = null;
 // ── PAINEL ADMIN (Biblioteca de Estudo) — só este user vê a aba Estudo ──
 const BIB_ADMIN_USER_ID = 'cd99b5b0-d97e-484a-900e-30a267a01f12';
 function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID; }
-// Trilha da jornada na Overview: hover em cada ponto troca o balão explicativo.
+// Trilha de progresso fixa na barra superior. Busca a etapa real do backend
+// (/usuario/progresso), acende as etapas concluídas, e mostra o detalhe no hover.
+window.__trilhaEtapa = 1;
 (function(){
   var TRILHA = [
     {n:"1", t:"Criar ou escolher a estratégia", d:"Escolha uma estratégia pronta na vitrine ou crie a sua do zero no Editor, descrevendo em português — a IA gera o código pra você."},
@@ -1997,32 +2011,70 @@ function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID
     {n:"5", t:"Conectar o bot", d:"Instale o conector (se ainda não tiver) e clique em Enviar de novo. É a ponte que leva o seu bot da plataforma pro seu MetaTrader 5."},
     {n:"6", t:"Operar e monitorar", d:"No MT5, abra Navegador → Expert Advisors, ache o seu bot pelo nome e arraste pro gráfico do ativo. Pronto: ele opera e você acompanha ao vivo."}
   ];
+  function pintar(etapa){
+    var track = document.getElementById('trilha-track');
+    if(!track) return;
+    window.__trilhaEtapa = etapa;
+    var pts = track.querySelectorAll('.trilha-pt');
+    var total = pts.length;
+    var fill = document.getElementById('trilha-fill');
+    if(fill && total>1){ fill.style.width = 'calc((100% - 32px) * ' + ((etapa-1)/(total-1)) + ')'; }
+    pts.forEach(function(p, idx){
+      var num = idx+1;
+      var dot = p.querySelector('.trilha-dot');
+      var lbl = p.querySelector('.trilha-lbl');
+      var feito = num <= etapa;
+      var atual = num === etapa;
+      if(dot){
+        dot.style.background = feito ? 'var(--green)' : 'var(--bg4)';
+        dot.style.borderColor = feito ? 'var(--green)' : 'var(--border2)';
+        dot.style.color = feito ? '#03150e' : 'var(--muted)';
+        dot.style.transform = atual ? 'scale(1.12)' : 'scale(1)';
+        dot.style.boxShadow = atual ? '0 0 0 3px var(--green-bg)' : 'none';
+      }
+      if(lbl){ lbl.style.color = feito ? 'var(--text)' : 'var(--muted)'; }
+    });
+  }
+  function mostrarTip(i, ptEl){
+    var d = TRILHA[i]; if(!d) return;
+    var tip = document.getElementById('trilha-tip');
+    document.getElementById('trilha-tip-num').textContent = d.n;
+    document.getElementById('trilha-tip-titulo').textContent = d.t;
+    document.getElementById('trilha-tip-txt').textContent = d.d;
+    var num = i+1, et = window.__trilhaEtapa;
+    var st = document.getElementById('trilha-tip-status');
+    if(num < et){ st.textContent='concluído'; st.style.background='var(--green-bg)'; st.style.color='var(--green)'; }
+    else if(num === et){ st.textContent='você está aqui'; st.style.background='var(--green-bg)'; st.style.color='var(--green)'; }
+    else { st.textContent='próximo'; st.style.background='var(--bg3)'; st.style.color='var(--muted)'; }
+    tip.style.display='block';
+    var r = ptEl.getBoundingClientRect();
+    var bar = document.getElementById('trilha-bar').getBoundingClientRect();
+    var left = r.left - bar.left + (r.width/2) - 150;
+    left = Math.max(8, Math.min(left, bar.width - 308));
+    tip.style.left = left + 'px';
+    tip.style.top = (r.bottom - bar.top + 6) + 'px';
+  }
   function initTrilha(){
     var track = document.getElementById('trilha-track');
     if(!track) return;
-    var num = document.getElementById('trilha-num');
-    var tit = document.getElementById('trilha-titulo');
-    var txt = document.getElementById('trilha-txt');
-    var pts = track.querySelectorAll('.trilha-pt');
-    var lbls = document.querySelectorAll('.trilha-lbl');
-    function ativar(i){
-      var d = TRILHA[i]; if(!d) return;
-      num.textContent = d.n; tit.textContent = d.t; txt.textContent = d.d;
-      pts.forEach(function(p, idx){
-        var dot = p.querySelector('.trilha-dot');
-        if(dot) dot.style.transform = (idx===i) ? 'scale(1.22)' : 'scale(1)';
-      });
-      lbls.forEach(function(l, idx){
-        l.style.color = (idx===i) ? 'var(--text)' : 'var(--muted)';
-        l.style.fontWeight = (idx===i) ? '700' : '400';
-      });
-    }
-    pts.forEach(function(p, i){
-      p.addEventListener('mouseenter', function(){ ativar(i); });
-      p.addEventListener('click', function(){ ativar(i); });
+    var tip = document.getElementById('trilha-tip');
+    track.querySelectorAll('.trilha-pt').forEach(function(p, i){
+      p.addEventListener('mouseenter', function(){ mostrarTip(i, p); });
+      p.addEventListener('mouseleave', function(){ tip.style.display='none'; });
     });
-    ativar(0);
+    pintar(1);
   }
+  // Chamada pública: atualiza a etapa a partir do backend (chamar após login e após ações).
+  window.atualizarTrilha = async function(){
+    var bar = document.getElementById('trilha-bar');
+    if(!bar) return;
+    if(!window.usuarioAtual || !usuarioAtual.id){ bar.style.display='none'; return; }
+    bar.style.display='block';
+    try {
+      var r = await fetch(API + '/usuario/progresso?user_id=' + encodeURIComponent(usuarioAtual.id));
+      if(r.ok){ var d = await r.json(); pintar(d.etapa || 1); }
+    } catch(e){ /* silencioso: mantém o que já estava */ }
+  };
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', initTrilha);
   } else { initTrilha(); }
@@ -2098,6 +2150,7 @@ async function onLogin(user) {
   if (idiomaUser && I18N[idiomaUser] && idiomaUser !== LANG) setLang(idiomaUser);
   atualizarUI();
   atualizarVisibilidadeAdmin();
+  if(window.atualizarTrilha) atualizarTrilha();
   onbVerificar();
   destravarApp();
 }
@@ -2106,6 +2159,7 @@ function onLogout() {
   usuarioAtual = null;
   perfilAtual = null;
   atualizarVisibilidadeAdmin();
+  if(window.atualizarTrilha) atualizarTrilha();
   document.getElementById('btn-login').style.display = 'flex';
   document.getElementById('btn-user').style.display = 'none';
   try{ const fx=document.getElementById('faixa-novo-teste'); if(fx) fx.style.display='none'; }catch(_){}
@@ -2648,7 +2702,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.2';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.3';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -2902,6 +2956,7 @@ function setLang(lang) {
 
 function switchTab(tab) {
   activeTab = tab;
+  if(window.atualizarTrilha) atualizarTrilha();
   ['editor','overview','templates','rank','planos','otimizar','monitor','estudo','calendario'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById('tab-'+t+'-btn');
