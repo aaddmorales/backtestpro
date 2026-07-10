@@ -587,7 +587,7 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 _ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
 # Prefixos de rotas de API que SEMPRE devolvem JSON, mesmo abertas no navegador
 # (não redireciona pro app-lock). Inclui a análise top-down e a tubulação do bot.
-_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/", "/conector/")
+_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/", "/conector/", "/admin/")
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
