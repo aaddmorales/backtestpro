@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.0 (o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,13 +911,14 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.0</span>
+    <span class="vtag">v9.1</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
   <button class="tbtn" id="tab-editor-btn" onclick="switchTab('editor')" data-i18n="nav.editor">Editor</button>
   <button class="tbtn" id="tab-otimizar-btn" onclick="switchTab('otimizar')" data-i18n="nav.otimizar">⚙ Otimização</button>
   <button class="tbtn" id="tab-estudo-btn" onclick="switchTab('estudo')" style="display:none"><span data-i18n="nav.estudo">🧪 Estudo</span> <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">ADMIN</span></button>
+  <button class="tbtn" id="tab-radar-btn" onclick="abrirPainelRadar()" style="display:none">🛰️ Radar <span style="font-size:8px;font-weight:800;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:4px;padding:1px 4px;vertical-align:middle;letter-spacing:.05em">ADMIN</span></button>
   <button class="tbtn" id="tab-templates-btn" onclick="switchTab('templates')" data-i18n="nav.templates">Templates</button>
   <button class="tbtn" id="tab-rank-btn" onclick="switchTab('rank')" data-i18n="nav.rank">🏆 Rank</button>
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')" data-i18n="nav.planos">💳 Planos</button>
@@ -1961,6 +1962,21 @@ function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID
 function atualizarVisibilidadeAdmin(){
   const b = document.getElementById('tab-estudo-btn');
   if(b) b.style.display = ehAdmin() ? '' : 'none';
+  const r = document.getElementById('tab-radar-btn');
+  if(r) r.style.display = ehAdmin() ? '' : 'none';
+}
+// Abre o Painel do Radar em aba nova. O token NÃO fica no front:
+// pede pro backend o link autenticado (só responde se o user_id for o admin).
+async function abrirPainelRadar(){
+  if(!ehAdmin()){ return; }
+  try {
+    const r = await fetch(API + '/admin/radar/link?user_id=' + encodeURIComponent(usuarioAtual.id));
+    if(!r.ok){ alert('Acesso restrito ao admin.'); return; }
+    const d = await r.json();
+    window.open(API + d.url, '_blank');
+  } catch(e){
+    alert('Não consegui abrir o Radar agora. Tenta de novo.');
+  }
 }
 // BabyMachine: id de sessao agrupa os testes da mesma rodada de ajustes (a "jornada" do trader)
 const BB_SESSAO_ID = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
@@ -2564,7 +2580,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.0';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.1';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
