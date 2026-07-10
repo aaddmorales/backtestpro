@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.12  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-08b-gerente-leitura | Deploy: Railway
+#  BotTested API — v6.13  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.12 — IA GERENCIADORA (o maestro): junta regime + padrao (OffMind) + estrutura (S/R) e traduz numa LEITURA acionavel por EVENTO, propondo entre as estrategias que o usuario JA APROVOU (nunca inventa gatilho). Read-only: vira sugestao no monitor, NAO comanda o bot (canal nuvem->EA segue fora de escopo por seguranca). Dispara so em momentos que importam (padrao formando + preco testando nivel; ou virada de regime) com cooldown de 20min — controle de custo e ruido. Deterministica e auditavel. Grava em detalhe_json.leitura e emite no feed do agente. Fecha o organismo: bot enxerga (zonas+candles) -> nuvem sintetiza (regime) -> cerebro reconhece (OffMind) -> gerente traduz e propoe. | 6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.13 — PAINEL DO RADAR (inteligencia do usuario): le o radar_chat_log (que ja grava cada conversa com a IA) e mostra os padroes num dashboard — ativos/estrategias que mais geram duvida, temas recorrentes (palavras nas perguntas), volume por dia e as perguntas recentes cruas. Vira bussola de produto (FAQ, onde o usuario trava, onde a IA pode melhorar). Endpoints /admin/radar/painel (HTML) e /admin/radar/insights (JSON), admin-only pelo BIBLIOTECA_ADMIN_TOKEN. | 6.12 — IA GERENCIADORA (o maestro): junta regime + padrao (OffMind) + estrutura (S/R) e traduz numa LEITURA acionavel por EVENTO, propondo entre as estrategias que o usuario JA APROVOU (nunca inventa gatilho). Read-only: vira sugestao no monitor, NAO comanda o bot (canal nuvem->EA segue fora de escopo por seguranca). Dispara so em momentos que importam (padrao formando + preco testando nivel; ou virada de regime) com cooldown de 20min — controle de custo e ruido. Deterministica e auditavel. Grava em detalhe_json.leitura e emite no feed do agente. Fecha o organismo: bot enxerga (zonas+candles) -> nuvem sintetiza (regime) -> cerebro reconhece (OffMind) -> gerente traduz e propoe. | 6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-08b-gerente-leitura"
+BUILD_TAG = "2026-07-08c-painel-radar"
 
 @app.get("/versao")
 def versao():
@@ -8165,3 +8165,157 @@ def mt5_status(job_id: str = ""):
     if not j:
         return {"status": "desconhecido"}
     return {"status": j.get("status"), "aprovado": j.get("aprovado"), "log": j.get("log", "")}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ║  PAINEL DE INTELIGÊNCIA DO USUÁRIO — lê o radar_chat_log e mostra os     ║
+# ║  padrões: o que os usuários perguntam pra IA, onde travam, que ativo/    ║
+# ║  estratégia gera mais dúvida. Transforma o histórico já coletado numa    ║
+# ║  bússola de produto. Admin-only (BIBLIOTECA_ADMIN_TOKEN).                ║
+# ══════════════════════════════════════════════════════════════════════════
+
+def _re_html(s):
+    """Escapa HTML minimo pra exibir perguntas do usuario com seguranca."""
+    return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+# stopwords PT/EN/ES — palavras genéricas que não são sinal (termos de trading
+# tipo "stop", "ativo", "backtest" NÃO entram aqui de propósito: são sinal).
+_RADAR_STOPWORDS = set("""
+a o e de da do das dos em no na nos nas um uma uns umas que se com por para pra
+como mais mas ou ao aos à às os as é ser tem ter foi era são está estão estou
+eu voce você me te lhe nos vos meu minha seu sua isso isto esse essa este esta
+aquele aquela quando onde porque por que qual quais quero posso pode fazer faz
+não sim ja já só muito bem aqui ali la lá tudo nada algo cada entre sobre até
+the of and to in a is it for on with as at by an be this that i you my your we
+they he she them from or if not what how when where why can do does are was were
+el la los las de en un una y que se con por para como mas o su sus es ser esta
+estan estoy yo tu me te le nos os mi mis muy bien aqui alli todo nada
+""".split())
+
+def _radar_insights(sb, limite: int = 5000) -> dict:
+    from collections import Counter
+    import re as _re2
+    rows = (sb.table("radar_chat_log")
+            .select("plano,idioma,ativo,estrategia_id,pergunta,created_at")
+            .order("created_at", desc=True).limit(limite).execute().data or [])
+    total = len(rows)
+    por_plano = Counter((r.get("plano") or "?") for r in rows)
+    por_idioma = Counter((r.get("idioma") or "?") for r in rows)
+    por_ativo = Counter(r.get("ativo") for r in rows if r.get("ativo"))
+    por_estrat = Counter(r.get("estrategia_id") for r in rows if r.get("estrategia_id"))
+    # frequência de palavras nas perguntas (tema/dúvida recorrente)
+    palavras = Counter()
+    for r in rows:
+        for w in _re2.findall(r"[a-zA-Zà-úÀ-Ú0-9]{3,}", (r.get("pergunta") or "").lower()):
+            if w not in _RADAR_STOPWORDS:
+                palavras[w] += 1
+    # volume por dia (últimos 14)
+    por_dia = Counter()
+    for r in rows:
+        d = str(r.get("created_at") or "")[:10]
+        if d:
+            por_dia[d] += 1
+    dias = sorted(por_dia.items())[-14:]
+    # perguntas recentes cruas (ler a dor do usuário)
+    recentes = [{"pergunta": (r.get("pergunta") or "").strip()[:220],
+                 "ativo": r.get("ativo"), "plano": r.get("plano"),
+                 "quando": str(r.get("created_at") or "")[:16]}
+                for r in rows[:40] if (r.get("pergunta") or "").strip()]
+    return {
+        "total": total,
+        "por_plano": por_plano.most_common(),
+        "por_idioma": por_idioma.most_common(),
+        "top_ativos": por_ativo.most_common(10),
+        "top_estrategias": por_estrat.most_common(10),
+        "top_palavras": palavras.most_common(25),
+        "volume_dia": dias,
+        "recentes": recentes,
+    }
+
+
+@app.get("/admin/radar/insights")
+def admin_radar_insights(token: str = "", limite: int = 5000):
+    """Agregações do radar_chat_log em JSON. Admin-only."""
+    if not os.getenv("BIBLIOTECA_ADMIN_TOKEN", "") or token != os.getenv("BIBLIOTECA_ADMIN_TOKEN", ""):
+        raise HTTPException(status_code=403, detail="Token inválido")
+    sb = _sb_admin()
+    if sb is None:
+        raise HTTPException(status_code=500, detail="Supabase indisponível")
+    return _radar_insights(sb, max(100, min(int(limite or 5000), 20000)))
+
+
+@app.get("/admin/radar/painel", response_class=HTMLResponse)
+def admin_radar_painel(token: str = ""):
+    """Dashboard HTML: o que os usuários perguntam pra IA. Admin-only."""
+    if not os.getenv("BIBLIOTECA_ADMIN_TOKEN", "") or token != os.getenv("BIBLIOTECA_ADMIN_TOKEN", ""):
+        return HTMLResponse("<h3 style='font-family:sans-serif;color:#c33'>Token inválido</h3>", status_code=403)
+    sb = _sb_admin()
+    if sb is None:
+        return HTMLResponse("<h3>Supabase indisponível</h3>", status_code=500)
+    d = _radar_insights(sb)
+    if not d["total"]:
+        return HTMLResponse("<body style='background:#0a0f14;color:#e8ecf1;font-family:sans-serif;padding:40px'>"
+                            "<h2>Painel do Radar</h2><p>Ainda não há conversas registradas.</p></body>")
+
+    def barras(itens, cor="#00d084", maxn=10):
+        itens = itens[:maxn]
+        top = max((v for _, v in itens), default=1) or 1
+        linhas = ""
+        for nome, v in itens:
+            pct = int(100 * v / top)
+            linhas += (f"<div class='row'><div class='lbl'>{nome}</div>"
+                       f"<div class='bar'><div class='fill' style='width:{pct}%;background:{cor}'></div></div>"
+                       f"<div class='val'>{v}</div></div>")
+        return linhas or "<p class='muted'>sem dados</p>"
+
+    palavras_html = "".join(
+        f"<span class='chip' style='font-size:{min(26, 12 + v)}px'>{w} <b>{v}</b></span>"
+        for w, v in d["top_palavras"])
+
+    vol_html = barras([(dia[5:], n) for dia, n in d["volume_dia"]], "#4aa3ff", 14)
+
+    recentes_html = "".join(
+        f"<tr><td class='q'>{_re_html(r['pergunta'])}</td><td>{r.get('ativo') or '—'}</td>"
+        f"<td>{r.get('plano') or '—'}</td><td class='muted'>{r['quando']}</td></tr>"
+        for r in d["recentes"])
+
+    plano_html = " · ".join(f"<b>{p}</b>: {n}" for p, n in d["por_plano"])
+    idioma_html = " · ".join(f"<b>{i}</b>: {n}" for i, n in d["por_idioma"])
+
+    html = f"""<!doctype html><html><head><meta charset='utf-8'>
+<title>Painel do Radar — BotTested</title><meta name='viewport' content='width=device-width,initial-scale=1'>
+<style>
+body{{background:#0a0f14;color:#e8ecf1;font-family:system-ui,-apple-system,sans-serif;max-width:1000px;margin:30px auto;padding:0 20px;line-height:1.5}}
+h1{{color:#00d084;font-size:24px;margin-bottom:2px}} .sub{{color:#8a96a6;font-size:13px;margin-bottom:22px}}
+.grid{{display:grid;grid-template-columns:1fr 1fr;gap:16px}} @media(max-width:720px){{.grid{{grid-template-columns:1fr}}}}
+.card{{background:#0d1520;border:1px solid #1e2a3a;border-radius:12px;padding:16px 18px;margin-bottom:16px}}
+.card h3{{margin:0 0 12px;font-size:14px;color:#c9d3df;font-weight:600}}
+.big{{font-size:34px;font-weight:800;color:#00d084}}
+.row{{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:13px}}
+.lbl{{width:150px;color:#c9d3df;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.bar{{flex:1;background:#152233;border-radius:6px;height:14px;overflow:hidden}}
+.fill{{height:100%;border-radius:6px}} .val{{width:40px;text-align:right;color:#8a96a6}}
+.chip{{display:inline-block;margin:3px 6px 3px 0;color:#c9d3df}} .chip b{{color:#00d084}}
+table{{width:100%;border-collapse:collapse;font-size:13px}} td{{border-bottom:1px solid #16202c;padding:7px 8px;vertical-align:top}}
+.q{{color:#e8ecf1}} .muted{{color:#5f6e7d}}
+th{{text-align:left;color:#8a96a6;font-size:12px;padding:6px 8px;border-bottom:1px solid #1e2a3a}}
+</style></head><body>
+<h1>🧠 Painel do Radar</h1>
+<div class='sub'>O que os usuários estão perguntando pra IA — {d['total']} conversas · {plano_html} · idiomas: {idioma_html}</div>
+
+<div class='card'><h3>Volume de conversas por dia (últimos 14)</h3>{vol_html}</div>
+
+<div class='grid'>
+<div class='card'><h3>🎯 Ativos que mais geram dúvida</h3>{barras(d['top_ativos'], '#00d084')}</div>
+<div class='card'><h3>🧩 Estratégias que mais geram dúvida</h3>{barras(d['top_estrategias'], '#ffb830')}</div>
+</div>
+
+<div class='card'><h3>💬 Temas recorrentes (palavras nas perguntas)</h3><div>{palavras_html}</div></div>
+
+<div class='card'><h3>🕐 Perguntas recentes (a dor do usuário, cru)</h3>
+<table><tr><th>Pergunta</th><th>Ativo</th><th>Plano</th><th>Quando</th></tr>{recentes_html}</table></div>
+
+<p class='muted' style='font-size:12px'>Fonte: radar_chat_log · histórico coletado a cada conversa · use pra virar FAQ, achar onde o usuário trava e onde a IA pode melhorar.</p>
+</body></html>"""
+    return HTMLResponse(html)
