@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.9 (chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.10 (trilha volta a ser FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -911,7 +911,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.9</span>
+    <span class="vtag">v9.10</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -924,38 +924,7 @@ body.modo-vitrine #vitrine{display:block}
   <button class="tbtn" id="tab-planos-btn" onclick="switchTab('planos')" data-i18n="nav.planos">💳 Planos</button>
   <button class="tbtn" id="tab-monitor-btn" onclick="switchTab('monitor')" data-i18n="nav.monitor">📡 Monitor</button>
   <button class="tbtn" id="tab-calendario-btn" onclick="switchTab('calendario')" data-i18n="nav.calendario">📅 Calendário</button>
-  <div class="spacer" style="display:flex;align-items:center;justify-content:center">
-    <div id="trilha-bar" style="display:none;width:100%;max-width:560px">
-      <div id="trilha-track" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:0 2px">
-        <div style="position:absolute;left:11px;right:11px;top:11px;height:2px;background:var(--border2);z-index:0"></div>
-        <div id="trilha-fill" style="position:absolute;left:11px;top:11px;height:2px;width:0;background:var(--green);z-index:0;transition:width .4s ease"></div>
-        <div class="trilha-pt" data-i="0" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">1</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Criar</span>
-        </div>
-        <div class="trilha-pt" data-i="1" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">2</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Testar</span>
-        </div>
-        <div class="trilha-pt" data-i="2" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">3</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Ajustar</span>
-        </div>
-        <div class="trilha-pt" data-i="3" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">4</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Enviar</span>
-        </div>
-        <div class="trilha-pt" data-i="4" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">5</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Conectar</span>
-        </div>
-        <div class="trilha-pt" data-i="5" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div class="trilha-dot" style="width:22px;height:22px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:10px;transition:all .2s ease">6</div>
-          <span class="trilha-lbl" style="font-size:9px;color:var(--muted);white-space:nowrap;line-height:1">Operar</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="spacer"></div>
   <div class="top-right">
   <button class="theme-icon" id="theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
   <div class="tsep"></div>
@@ -990,7 +959,39 @@ body.modo-vitrine #vitrine{display:block}
   </div><!-- /top-right -->
 </div><!-- /topbar -->
 
-<!-- Tooltip da trilha (solto no body; a trilha vive na linha do menu, no spacer) -->
+<!-- TRILHA DE PROGRESSO — faixa própria fina, abaixo do menu, igual em toda tela -->
+<div id="trilha-bar" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 16px">
+  <div id="trilha-track" style="position:relative;display:flex;justify-content:space-between;align-items:center;max-width:680px;margin:0 auto;padding:0 4px">
+    <div style="position:absolute;left:13px;right:13px;top:11px;height:2px;background:var(--border2);z-index:0"></div>
+    <div id="trilha-fill" style="position:absolute;left:13px;top:11px;height:2px;width:0;background:var(--green);z-index:0;transition:width .4s ease"></div>
+    <div class="trilha-pt" data-i="0" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">1</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Criar</span>
+    </div>
+    <div class="trilha-pt" data-i="1" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">2</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Testar</span>
+    </div>
+    <div class="trilha-pt" data-i="2" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">3</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Ajustar</span>
+    </div>
+    <div class="trilha-pt" data-i="3" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">4</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Enviar</span>
+    </div>
+    <div class="trilha-pt" data-i="4" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">5</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Conectar</span>
+    </div>
+    <div class="trilha-pt" data-i="5" style="position:relative;z-index:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="trilha-dot" style="width:23px;height:23px;border-radius:50%;background:var(--bg4);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:11px;transition:all .2s ease">6</div>
+      <span class="trilha-lbl" style="font-size:9.5px;color:var(--muted);white-space:nowrap;line-height:1">Operar</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip da trilha (solto no body; posicionado por viewport) -->
 <div id="trilha-tip" style="display:none;position:fixed;z-index:9999;max-width:300px;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
     <span id="trilha-tip-num" style="width:20px;height:20px;border-radius:50%;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">1</span>
@@ -2744,7 +2745,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.9';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.10';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
