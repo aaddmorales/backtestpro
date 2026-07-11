@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.23  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.24  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.23 — MAGIC NO SNAPSHOT: todo EA gerado passa a imprimir magic=<valor> na linha BOTTESTED_SNAPSHOT (injecao literal no _forcar_magic_mql5, funciona pro conversor testado E pra IA). E a identidade que o conector usa pra rotear o snapshot pro token certo. Conserta o falso Operar na trilha: sem magic, o conector nao sabia de qual bot era o snapshot e mandava pro token da sessao (fallback ambiguo) — bot fora do grafico acendia Operar. Com magic, roteamento e exato e bot que nao esta no grafico nunca pinga. REQUER reenviar o bot pelo Editor pra o .mq5 sair com magic, e conector v1.18 (roteamento estrito por magic). | 6.22 — IDENTIDADE ESTAVEL DO BOT: /conector/registrar reusa o token do bot ATIVO de mesmo nome (mesmo usuario) em vez de criar um novo a cada envio. O magic e derivado do token, entao reusando o token o magic NAO deriva — o EA que ja esta no grafico continua batendo com o token da sessao e a trilha/monitor reconhecem o bot. Corrige a trilha travar no Enviar mesmo com o bot no grafico (cada envio criava token/magic novo e o snapshot ia pro token errado). | 6.21 — ROTEAMENTO DE SNAPSHOT POR MAGIC: /conector/snapshot agora IGNORA snapshot cujo magic nao bate com o bot do token (magic e derivado do token, deterministico) — mata o falso positivo da trilha (Operar acendia pra bot que nao estava no grafico, pq o conector entregava o snapshot de OUTRO bot no token errado). /conector/tokens tambem devolve magic_number e simbolo, pro conector v1.16 rotear cada snapshot pro token certo (cada bot atualiza seu proprio dado vivo). | 6.20 — MULTI-BOT (rota /conector/tokens): dado um token valido, devolve os tokens de TODOS os bots do mesmo usuario, pro conector vigiar/validar todos ao mesmo tempo (um conector, varios bots). Resolve o dono pelo token; so bots ativos. Suporta o conector v1.15 (single-instance + loop multi-token) que conserta as multiplas janelas e a validacao pedindo o token errado. Seguranca: esta rota ENTREGA tokens (as outras fazem pop) — necessario pro multi-bot; exige token valido do proprio usuario. | 6.19 — ANCORA DE TEMPO: /usuario/progresso aceita 'desde' (ISO) — etapa 6 (operar) so conta ping POSTERIOR ao envio da sessao. Conserta a trilha inflar quando um bot novo pinga na hora (ou ping velho residual): agora so avanca pra operar quando o SINAL do bot lendo o grafico chega DEPOIS que voce enviou. | 6.18 — OPERAR = NO GRAFICO: etapa 6 agora acende quando o bot tem ping RECENTE (<3min) = esta montado no grafico emitindo snapshots (lendo o mercado) — nao mais so quando abre posicao. 5=conectou (pingou), 6=operando (no grafico ao vivo). Alinha com a jornada: enviar->MT5, conectar->pareado, operar->no grafico lendo. | 6.17 — TRILHA POR BOT: /usuario/progresso aceita bot_token opcional — etapas 5/6 (conectar/operar) olham SO esse bot (a trilha segue UM bot da estrategia atual, nao o historico da conta). Sem bot_token, comportamento antigo. | 6.16 — FIX trilha: /usuario/ isento do middleware de redirect (a rota /usuario/progresso nao e mais empurrada pro /app). | 6.15 — TRILHA DE PROGRESSO: nova rota /usuario/progresso calcula em que etapa da jornada o usuario esta, a partir de dados reais (backtests_historico=testou, conector_bots=enviou, ultimo_ping=conectou, posicoes_abertas=operando). Retorna a etapa MAXIMA alcancada. Alimenta a trilha fixa na barra superior do app (visivel em toda tela). | 6.14 — RADAR NO MENU (admin): botao 'Radar' aparece so pro admin no menu (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova. Nova rota /admin/radar/link: recebe o user_id logado, confere que e o admin e devolve a URL do painel JA com o token embutido — o token fica so no backend (env), NUNCA escrito no app.html (codigo-fonte publico). Fecha o acesso admin: visivel so pra mim, autenticado no backend, token nao vaza no front. | 6.13 — PAINEL DO RADAR (inteligencia do usuario): le o radar_chat_log (que ja grava cada conversa com a IA) e mostra os padroes num dashboard — ativos/estrategias que mais geram duvida, temas recorrentes (palavras nas perguntas), volume por dia e as perguntas recentes cruas. Vira bussola de produto (FAQ, onde o usuario trava, onde a IA pode melhorar). Endpoints /admin/radar/painel (HTML) e /admin/radar/insights (JSON), admin-only pelo BIBLIOTECA_ADMIN_TOKEN. | 6.12 — IA GERENCIADORA (o maestro): junta regime + padrao (OffMind) + estrutura (S/R) e traduz numa LEITURA acionavel por EVENTO, propondo entre as estrategias que o usuario JA APROVOU (nunca inventa gatilho). Read-only: vira sugestao no monitor, NAO comanda o bot (canal nuvem->EA segue fora de escopo por seguranca). Dispara so em momentos que importam (padrao formando + preco testando nivel; ou virada de regime) com cooldown de 20min — controle de custo e ruido. Deterministica e auditavel. Grava em detalhe_json.leitura e emite no feed do agente. Fecha o organismo: bot enxerga (zonas+candles) -> nuvem sintetiza (regime) -> cerebro reconhece (OffMind) -> gerente traduz e propoe. | 6.11 — OFFMIND AO VIVO: a nuvem passa a ENXERGAR o que o bot nao ve. Le os candles reais da corretora que o bot manda (chaves c1m..c4h no detalhe) e roda os detectores do OffMind sobre eles: padroes se FORMANDO na borda (mecanica 1m/5m/15m) + niveis de SUPORTE/RESISTENCIA sendo testados (estrutura 30m/60m/4h). Sobre o dado da CORRETORA (sintonia), puro (sem yfinance), so quando a leva de candles chega (~1x/min). Grava em detalhe_json.offmind junto do regime e das zonas. Primeiro pedaco do cerebro (OffMind) girando ao vivo. | 6.10 — REGIME (as duas juntas): o /conector/snapshot passa a SINTETIZAR o regime a partir das zonas cruas que o bot manda — tendencia_alta/tendencia_baixa/lateral + deteccao de possivel_virada quando os tempos rapidos (1m/5m/15m) viram contra os operacionais (5m/15m/60m/4h/D). Puro, sem yfinance, por-snapshot: usa o dado VIVO da corretora. Grava cru + sintetizado no mesmo detalhe_json e reaproveita a coluna ultima_direcao (que vinha vazia) pro monitor mostrar o regime por bot. Zero migracao de SQL, zero mudanca no conector. | 6.9 — VISÃO MULTI-TIMEFRAME: todo bot gerado passa a ENXERGAR e emitir o snapshot BOTTESTED_SNAPSHOT enriquecido — zona do preco no canal EMA20 High/Low em CADA timeframe (atuacao 5m/15m/60m/4h/D + virada 1m/5m/15m), preco/emaH/emaL/atr do TF operante, drawdown, conta, corretora e detalhe da posicao (lado/entrada/tp/sl/lote/idade). Emitido por TEMPO (~15s), nao por barra — conserta o D1 ficar offline e alimenta o organismo (regime-detector + disjuntor) em tempo real. Preenche as colunas dd/conta/corretora que ja existiam vazias e ativa as regras F1/F3 do agente. Injetado no pos-processador universal (conversor testado E IA), sem include, sem tocar na estrategia; a sintese de regime fica na nuvem (ler_direcao). Compativel 100%% com o parser atual do conector. | 6.8 — SELO BOTTESTED: todo bot gerado passa a carregar um painel de identidade on-chart — robo Fab vermelho + marca BotTested + nome do bot + dados vivos (preco/posicoes/saldo/lucro) + status colorido por estado (verde=lucro/compra, vermelho=prejuizo/venda, ambar=aguardando). Injetado no pos-processador universal (conversor testado E IA), so objetos de grafico (sem include), reposicionado abaixo do rotulo do simbolo — some a colisao do Comment() do TrailingBot. | 6.7 — SUBIR CONECTOR (confiável): o sinal de subir agora vai pro Supabase (qualquer worker vê), com a memória como atalho — o 'Entendi' sobe o conector quase na hora, sem depender de multi-worker. | 6.6 — SUBIR CONECTOR: /mt5/subir-conector (POST marca / GET lê-e-limpa) — o 'Entendi' da guia pede e o conector se traz pra frente sozinho, uma janela por vez. | 6.5 — MEUS BOTS: conector lista os bots do usuário pelo token (/conector/meus-bots), reinstala do .mq5 salvo na nuvem (/conector/bot/mq5), desinstala local e deleta (soft). /mt5/enviar passa a guardar o .mq5 no bot. | 6.4 — IDENTIDADE POR BOT: arquivo/EA no MT5 leva o NOME DO BOT (não o da estratégia) e o MAGIC vem do TOKEN (único por bot). Corrige colisão de nome/ordens no multi-bot, nos dois caminhos (/exportar/mql5 e /mt5/enviar)"
+API_VERSAO = "6.24 - CONECTAR SEPARADO DE OPERAR: etapa 5 (Conectar) acende com o heartbeat do conector (conector_visto_em, gravado no /mt5/pendente), sem exigir o bot no grafico (etapa 6 = Operar). Conserta: bot ja no MT5/conector mas trilha nao mudava pra Conectar. REQUER coluna conector_visto_em timestamptz. | 6.23 magic no snapshot | 6.22 identidade estavel | 6.21 guarda de magic | 6.20 multi-bot tokens | 6.19 ancora de tempo | ...(historico anterior nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11d-magic-no-snapshot"
+BUILD_TAG = "2026-07-11e-conectar-heartbeat"
 
 @app.get("/versao")
 def versao():
@@ -6256,8 +6256,23 @@ def usuario_progresso(user_id: str = "", bot_token: str = "", desde: str = ""):
                 except Exception:
                     marco = None
             for b in bots:
-                if b.get("ultimo_ping"):
+                # 5 CONECTAR: o conector pareou com este bot (heartbeat persistente
+                # conector_visto_em, gravado no /mt5/pendente) OU o bot já pingou um
+                # snapshot. NÃO exige o bot num gráfico — parear/validar no MT5 já
+                # conta como conectado (é o que o usuário espera ao ver 'aprovado no MT5').
+                cve = b.get("conector_visto_em")
+                conectado = False
+                if cve:
+                    try:
+                        vt = _dt.fromisoformat(str(cve).replace("Z", "+00:00"))
+                        conectado = (agora - vt).total_seconds() < OFFLINE_APOS_SEGUNDOS
+                    except Exception:
+                        conectado = False
+                if conectado or b.get("ultimo_ping"):
                     etapa = max(etapa, 5)  # conector pareou = conectou
+                # 6 OPERAR: bot lendo o gráfico ao vivo — ping RECENTE e POSTERIOR ao
+                # envio da sessão (o marco). Só aqui exige o bot no gráfico emitindo.
+                if b.get("ultimo_ping"):
                     try:
                         ping = _dt.fromisoformat(str(b["ultimo_ping"]).replace("Z", "+00:00"))
                         recente = (agora - ping).total_seconds() < OFFLINE_APOS_SEGUNDOS
@@ -8069,6 +8084,7 @@ def editor_analisar_oos(req: AnaliseOOSReq):
 import time as _time_mt5
 _MT5_JOBS = {}   # job_id -> {bot_token, filename, mq5, status, aprovado, log, ts}
 _MT5_POLLS = {}  # bot_token -> ts do último polling do conector (= conector online)
+_VISTO_DB = {}   # bot_token -> ts da última gravação de conector_visto_em (throttle DB)
 _MT5_RAISE = {}  # bot_token -> ts do pedido "trazer o conector pra frente" (Entendi na guia)
 
 
@@ -8203,7 +8219,22 @@ def mt5_enviar(req: MT5EnviarReq):
 def mt5_pendente(bot_token: str = ""):
     if not bot_token:
         return {"pendente": False}
-    _MT5_POLLS[bot_token] = _time_mt5.time()   # conector deu sinal de vida
+    agora_ts = _time_mt5.time()
+    _MT5_POLLS[bot_token] = agora_ts   # conector deu sinal de vida (em memória)
+    # HEARTBEAT PERSISTENTE (trilha etapa CONECTAR): o conector consulta esta rota
+    # a cada ~5s por token; gravamos conector_visto_em no bot (throttle ~30s) pra a
+    # trilha saber que o conector pareou com este bot — SEM depender do bot estar
+    # num gráfico (isso é a etapa OPERAR). Multi-worker-safe (vai pro Supabase).
+    if agora_ts - _VISTO_DB.get(bot_token, 0) > 30:
+        _VISTO_DB[bot_token] = agora_ts
+        try:
+            _sbp = _sb_admin()
+            if _sbp is not None:
+                _sbp.table("conector_bots").update(
+                    {"conector_visto_em": _dt.now(_tz.utc).isoformat()}
+                ).eq("bot_token", bot_token).execute()
+        except Exception:
+            pass
     cand = [(jid, j) for jid, j in _MT5_JOBS.items()
             if j.get("bot_token") == bot_token and j.get("status") == "validando"]
     if not cand:
