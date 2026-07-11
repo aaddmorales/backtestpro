@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.25  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.26  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -587,7 +587,7 @@ def gerar_sugestao_ia(wr, sharpe, dd, pf, retorno):
 _ROTAS_HTML = {"/", "/app", "/docs", "/redoc", "/openapi.json", "/versao", "/offmind/dias-tendencia"}
 # Prefixos de rotas de API que SEMPRE devolvem JSON, mesmo abertas no navegador
 # (não redireciona pro app-lock). Inclui a análise top-down e a tubulação do bot.
-_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/", "/conector/", "/admin/", "/usuario/")
+_PREFIXOS_API = ("/analise/", "/bot/", "/exportar/", "/babymachine/", "/offmind/", "/radar/", "/conector/", "/admin/", "/usuario/", "/presenca/")
 
 @app.middleware("http")
 async def _redirecionar_navegador(request: Request, call_next):
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.25 - CONECTAR robusto: etapa 5 acende com o heartbeat do conector via coluna conector_visto_em OU fallback em memoria _MT5_POLLS (funciona ja no deploy, mesmo antes de rodar o SQL; a coluna cobre multi-worker). Separado de OPERAR (que exige o bot no grafico). | 6.24 conectar via heartbeat | 6.23 magic no snapshot | 6.22 identidade estavel | 6.21 guarda de magic | 6.20 multi-bot tokens | ...(historico nos deploys)"
+API_VERSAO = "6.26 - MODULO PRESENCA (sensor de atividade): fonte unica de verdade do estado do bot (PARADO/CONECTADO/OPERANDO) a partir de 3 sinais (heartbeat=conector_visto_em, snapshot=ultimo_ping, parar=conector_parado_em). Reusavel p/ MT5 e Tryd. Rota /presenca/parar da corte IMEDIATO quando o conector para (trilha rebaixa na hora). /usuario/progresso usa a presenca nas etapas 5/6. REQUER coluna conector_parado_em timestamptz. Log [PRESENCA] nos logs do Railway. | 6.25 conectar robusto | 6.24 conectar heartbeat | 6.23 magic no snapshot | 6.22 identidade estavel | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11f-conectar-fallback"
+BUILD_TAG = "2026-07-11g-presenca"
 
 @app.get("/versao")
 def versao():
@@ -5680,6 +5680,78 @@ def estrategias_prontas(lang: str = "pt"):
 
 OFFLINE_APOS_SEGUNDOS = 180  # 3 min sem ping = offline
 
+# ════════════════════════════════════════════════════════════════════════════
+# ██  PRESENÇA — sensor de atividade (fonte de verdade do estado de um bot)  ██
+# ════════════════════════════════════════════════════════════════════════════
+# Bloco único e reusável: responde "o bot está PARADO / CONECTADO / OPERANDO?"
+# a partir de 3 sinais, independente da PLATAFORMA (MT5 hoje, Tryd amanhã):
+#   • heartbeat  -> coluna conector_visto_em   (o coletor/conector está vivo)
+#   • snapshot   -> coluna ultimo_ping          (o EA está no gráfico emitindo)
+#   • parar      -> coluna conector_parado_em   (aviso EXPLÍCITO de desconexão)
+# Estados:
+#   PARADO     = conector desligado (Parar apertado) ou sem sinal há tempo
+#   CONECTADO  = coletor vivo e pareado, mas o EA não está emitindo no gráfico
+#   OPERANDO   = EA no gráfico emitindo snapshot ao vivo
+# A plataforma (Tryd/MT5) só EMPURRA os 3 sinais; este bloco DECIDE o estado.
+# Corte imediato no Parar = o coletor manda o sinal 'parar'; os timeouts abaixo
+# são só rede de segurança pra queda sem aviso (crash/luz).
+_PRESENCA_JANELA_HB   = 40   # s sem heartbeat -> coletor caiu (deixa de CONECTADO)
+_PRESENCA_JANELA_SNAP = 90   # s sem snapshot novo -> não está OPERANDO
+_PRESENCA_THROTTLE_HB = 12   # s mínimos entre gravações do heartbeat no banco
+
+def _presenca_log(msg: str):
+    """Log dedicado do sensor de presença (prefixo grepável nos logs do Railway).
+    É por aqui que se enxerga a linha do tempo de qualquer bot: conectou, operou,
+    parou — com origem do sinal. Vale igual pra MT5 e Tryd."""
+    try:
+        import sys as _sys
+        print(f"[PRESENCA] {msg}", file=_sys.stderr, flush=True)
+    except Exception:
+        pass
+
+def _presenca_ts(v) -> float:
+    if not v:
+        return 0.0
+    try:
+        return _dt.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
+
+def _presenca_estado(bot: dict, agora_ts: float = None) -> str:
+    """PARADO / CONECTADO / OPERANDO a partir dos 3 sinais do bot (fonte única)."""
+    if agora_ts is None:
+        agora_ts = _dt.now(_tz.utc).timestamp()
+    hb    = _presenca_ts(bot.get("conector_visto_em"))
+    snap  = _presenca_ts(bot.get("ultimo_ping"))
+    parar = _presenca_ts(bot.get("conector_parado_em"))
+    # o Parar (se for o sinal mais recente) vence tudo -> corte imediato
+    if parar and parar >= max(hb, snap):
+        return "PARADO"
+    if snap and (agora_ts - snap) < _PRESENCA_JANELA_SNAP:
+        return "OPERANDO"
+    if hb and (agora_ts - hb) < _PRESENCA_JANELA_HB:
+        return "CONECTADO"
+    return "PARADO"
+
+def _presenca_etapa(bot: dict, marco, agora_dt) -> int:
+    """Traduz o estado de presença nas etapas 5/6 da trilha (0 = não acende).
+    OPERANDO só vira etapa 6 se o snapshot for POSTERIOR ao envio da sessão."""
+    est = _presenca_estado(bot, agora_dt.timestamp())
+    if est == "PARADO":
+        return 0
+    if est == "CONECTADO":
+        return 5
+    # OPERANDO
+    try:
+        ping = _dt.fromisoformat(str(bot.get("ultimo_ping")).replace("Z", "+00:00"))
+        if (marco is None) or (ping > marco):
+            return 6
+    except Exception:
+        pass
+    return 5  # emitindo, mas ping anterior ao envio desta sessão -> só conectado
+# ════════════════════════════════════════════════════════════════════════════
+
+
 # Cooldown anti-spam por regra (minutos)
 _AGENTE_COOLDOWN_MIN = {"F1": 60, "F2": 30, "F3": 15, "F4": 1440, "LEITURA": 20}
 
@@ -6256,43 +6328,11 @@ def usuario_progresso(user_id: str = "", bot_token: str = "", desde: str = ""):
                 except Exception:
                     marco = None
             for b in bots:
-                # 5 CONECTAR: o conector pareou com este bot (heartbeat persistente
-                # conector_visto_em, gravado no /mt5/pendente) OU o bot já pingou um
-                # snapshot. NÃO exige o bot num gráfico — parear/validar no MT5 já
-                # conta como conectado (é o que o usuário espera ao ver 'aprovado no MT5').
-                cve = b.get("conector_visto_em")
-                conectado = False
-                if cve:
-                    try:
-                        vt = _dt.fromisoformat(str(cve).replace("Z", "+00:00"))
-                        conectado = (agora - vt).total_seconds() < OFFLINE_APOS_SEGUNDOS
-                    except Exception:
-                        conectado = False
-                if not conectado:
-                    # FALLBACK sem depender da coluna nova: heartbeat em memória
-                    # (o conector consulta /mt5/pendente por token). Funciona já no
-                    # deploy, mesmo antes de rodar o SQL. (Em memória: robusto p/
-                    # 1 worker; a coluna conector_visto_em cobre o caso multi-worker.)
-                    try:
-                        _hb = _MT5_POLLS.get(b.get("bot_token"), 0)
-                        if _hb and (_time_mt5.time() - _hb) < OFFLINE_APOS_SEGUNDOS:
-                            conectado = True
-                    except Exception:
-                        pass
-                if conectado or b.get("ultimo_ping"):
-                    etapa = max(etapa, 5)  # conector pareou = conectou
-                # 6 OPERAR: bot lendo o gráfico ao vivo — ping RECENTE e POSTERIOR ao
-                # envio da sessão (o marco). Só aqui exige o bot no gráfico emitindo.
-                if b.get("ultimo_ping"):
-                    try:
-                        ping = _dt.fromisoformat(str(b["ultimo_ping"]).replace("Z", "+00:00"))
-                        recente = (agora - ping).total_seconds() < OFFLINE_APOS_SEGUNDOS
-                        # se há marco (envio da sessão), o ping tem que ser POSTERIOR a ele
-                        posterior = (marco is None) or (ping > marco)
-                        if recente and posterior:
-                            etapa = max(etapa, 6)  # bot lendo o gráfico ao vivo = operar
-                    except Exception:
-                        pass
+                # 5 CONECTAR / 6 OPERAR vêm do SENSOR DE PRESENÇA (fonte única).
+                # Estado PARADO não acende nada (trilha REBAIXA quando o bot para).
+                et = _presenca_etapa(b, marco, agora)
+                if et:
+                    etapa = max(etapa, et)
     except Exception:
         pass
     return {"etapa": etapa, "etapas_ok": list(range(1, etapa + 1))}
@@ -8236,7 +8276,7 @@ def mt5_pendente(bot_token: str = ""):
     # a cada ~5s por token; gravamos conector_visto_em no bot (throttle ~30s) pra a
     # trilha saber que o conector pareou com este bot — SEM depender do bot estar
     # num gráfico (isso é a etapa OPERAR). Multi-worker-safe (vai pro Supabase).
-    if agora_ts - _VISTO_DB.get(bot_token, 0) > 30:
+    if agora_ts - _VISTO_DB.get(bot_token, 0) > _PRESENCA_THROTTLE_HB:
         _VISTO_DB[bot_token] = agora_ts
         try:
             _sbp = _sb_admin()
@@ -8253,6 +8293,38 @@ def mt5_pendente(bot_token: str = ""):
     cand.sort(key=lambda x: x[1].get("ts", 0), reverse=True)
     jid, j = cand[0]
     return {"pendente": True, "job_id": jid, "codigo": j["mq5"], "filename": j["filename"]}
+
+
+class PresencaParar(BaseModel):
+    tokens: Optional[List[str]] = None
+    bot_token: Optional[str] = None   # compat: um só
+
+
+@app.post("/presenca/parar")
+def presenca_parar(req: PresencaParar):
+    """PRESENÇA — corte IMEDIATO: o coletor (conector/Tryd) avisa que PAROU. Marca
+    conector_parado_em = agora nos bots; como o Parar passa a ser o sinal mais
+    recente, a presença vira PARADO na hora e a trilha REBAIXA no próximo polling
+    (sem esperar timeout). Aceita lista de tokens (o conector monitora vários)."""
+    sb = _sb_admin()
+    if sb is None:
+        return {"ok": False, "erro": "supabase indisponivel"}
+    toks = [t for t in (req.tokens or []) if t]
+    if not toks and req.bot_token:
+        toks = [req.bot_token]
+    agora_iso = _dt.now(_tz.utc).isoformat()
+    n = 0
+    for t in toks:
+        try:
+            sb.table("conector_bots").update(
+                {"conector_parado_em": agora_iso}).eq("bot_token", t).execute()
+            _VISTO_DB.pop(t, None)     # zera o throttle do heartbeat
+            _MT5_POLLS.pop(t, None)    # limpa heartbeat em memória
+            n += 1
+        except Exception as _e:
+            _presenca_log(f"parar falhou p/ {str(t)[:8]}…: {_e}")
+    _presenca_log(f"PARAR sinalizado — {n}/{len(toks)} bot(s) marcados como parados")
+    return {"ok": True, "parados": n}
 
 
 @app.get("/mt5/conector-status")
