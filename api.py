@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.24  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.25  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.24 - CONECTAR SEPARADO DE OPERAR: etapa 5 (Conectar) acende com o heartbeat do conector (conector_visto_em, gravado no /mt5/pendente), sem exigir o bot no grafico (etapa 6 = Operar). Conserta: bot ja no MT5/conector mas trilha nao mudava pra Conectar. REQUER coluna conector_visto_em timestamptz. | 6.23 magic no snapshot | 6.22 identidade estavel | 6.21 guarda de magic | 6.20 multi-bot tokens | 6.19 ancora de tempo | ...(historico anterior nos deploys)"
+API_VERSAO = "6.25 - CONECTAR robusto: etapa 5 acende com o heartbeat do conector via coluna conector_visto_em OU fallback em memoria _MT5_POLLS (funciona ja no deploy, mesmo antes de rodar o SQL; a coluna cobre multi-worker). Separado de OPERAR (que exige o bot no grafico). | 6.24 conectar via heartbeat | 6.23 magic no snapshot | 6.22 identidade estavel | 6.21 guarda de magic | 6.20 multi-bot tokens | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11e-conectar-heartbeat"
+BUILD_TAG = "2026-07-11f-conectar-fallback"
 
 @app.get("/versao")
 def versao():
@@ -6268,6 +6268,17 @@ def usuario_progresso(user_id: str = "", bot_token: str = "", desde: str = ""):
                         conectado = (agora - vt).total_seconds() < OFFLINE_APOS_SEGUNDOS
                     except Exception:
                         conectado = False
+                if not conectado:
+                    # FALLBACK sem depender da coluna nova: heartbeat em memória
+                    # (o conector consulta /mt5/pendente por token). Funciona já no
+                    # deploy, mesmo antes de rodar o SQL. (Em memória: robusto p/
+                    # 1 worker; a coluna conector_visto_em cobre o caso multi-worker.)
+                    try:
+                        _hb = _MT5_POLLS.get(b.get("bot_token"), 0)
+                        if _hb and (_time_mt5.time() - _hb) < OFFLINE_APOS_SEGUNDOS:
+                            conectado = True
+                    except Exception:
+                        pass
                 if conectado or b.get("ultimo_ping"):
                     etapa = max(etapa, 5)  # conector pareou = conectou
                 # 6 OPERAR: bot lendo o gráfico ao vivo — ping RECENTE e POSTERIOR ao
