@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.27  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.28  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.27 - FIX presenca: o CONECTADO voltou a usar o fallback em memoria (_MT5_POLLS) alem da coluna conector_visto_em. Na v6.26 eu tirei o fallback e o Conectar parou de acender quando a coluna nao existe/heartbeat nao grava. Agora heartbeat = max(coluna, memoria) -> Conectar funciona com ou sem SQL (1 worker via memoria, multi-worker via coluna). | 6.26 modulo presenca | 6.25 conectar robusto | 6.24 conectar heartbeat | ...(historico nos deploys)"
+API_VERSAO = "6.28 - EA DA IA: (A) OPERAR RAPIDO - emite o 1o snapshot ja no OnInit (BTVisaoTick com g_btVisaoUlt=0 dispara na hora), sem esperar a vela; (B) INVALID STOPS - injeta subclasse BTTrade (troca CTrade trade;) que faz clamp de SL/TP pro nivel minimo de stops do ativo (BTCUSD etc.) antes de enviar - vale pra qualquer codigo da IA. Removidos os inserts de BTEvento no EA da IA (BTEvento nao existia la). REEMITIR o bot pra pegar o .mq5 novo. | 6.27 fix presenca fallback | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11h-presenca-fallback"
+BUILD_TAG = "2026-07-11i-ia-stops-oninit"
 
 @app.get("/versao")
 def versao():
@@ -3862,6 +3862,54 @@ bool BTSell(double lote, string sym, double preco, double sl, double tp, string 
 //----------------------------------------------------------------------"""
 
 
+# CLAMP DE STOPS PARA EA DA IA: os EAs gerados pela IA declaram "CTrade trade;".
+# Substituimos por uma SUBCLASSE que ajusta SL/TP pro nivel minimo de stops do
+# ativo (ex.: BTCUSD, onde 60*_Point vira $0,60 e a corretora rejeita) ANTES de
+# enviar. Como e chamada direta em objeto concreto (BTTrade trade;), trade.Buy/
+# trade.Sell passam pela versao com clamp — vale pra QUALQUER codigo da IA, sem
+# depender do formato do .mq5. Nao depende de BTEvento (loga o open por Print).
+# Se algum EA nao usar exatamente "CTrade trade;", nada e injetado (degrada seguro).
+_BT_TRADE_CLAMP_MQL5 = """//--- BotTested: CTrade com clamp de stops (evita "invalid stops") ------
+void BTAjustaStops(bool ehCompra, double preco, double &sl, double &tp)
+{
+   double pt  = _Point;
+   long   lvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   long   frz = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double distMin = (double)((lvl > frz ? lvl : frz) + 10) * pt;  // folga de 10 pts
+   if(ehCompra)
+   {
+      if(sl > 0.0 && preco - sl < distMin) sl = preco - distMin;
+      if(tp > 0.0 && tp - preco < distMin) tp = preco + distMin;
+   }
+   else
+   {
+      if(sl > 0.0 && sl - preco < distMin) sl = preco + distMin;
+      if(tp > 0.0 && preco - tp < distMin) tp = preco - distMin;
+   }
+   if(sl > 0.0) sl = NormalizeDouble(sl, _Digits);
+   if(tp > 0.0) tp = NormalizeDouble(tp, _Digits);
+}
+class BTTrade : public CTrade
+{
+public:
+   bool Buy(double volume, const string symbol=NULL, double price=0.0, double sl=0.0, double tp=0.0, const string comment="")
+   {
+      double p = (price > 0.0) ? price : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      BTAjustaStops(true, p, sl, tp);
+      Print("BOTTESTED_EVENTO|aberto|tipo=aberto|simbolo=", _Symbol, "|lado=BUY");
+      return CTrade::Buy(volume, symbol, price, sl, tp, comment);
+   }
+   bool Sell(double volume, const string symbol=NULL, double price=0.0, double sl=0.0, double tp=0.0, const string comment="")
+   {
+      double p = (price > 0.0) ? price : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      BTAjustaStops(false, p, sl, tp);
+      Print("BOTTESTED_EVENTO|aberto|tipo=aberto|simbolo=", _Symbol, "|lado=SELL");
+      return CTrade::Sell(volume, symbol, price, sl, tp, comment);
+   }
+};
+//----------------------------------------------------------------------"""
+
+
 # Selo BotTested: painel de identidade on-chart, injetado ANTES do OnInit em
 # TODO bot gerado (conversor testado E IA). Sem include — só objetos de gráfico,
 # então compila em qualquer EA. Reposicionado abaixo do rótulo do símbolo (some
@@ -4149,23 +4197,27 @@ def _instrumentar_log_mql5(codigo: str) -> str:
     """Insere no EA gerado, sem reescrever cada conversor: (a) evento em cada
     ordem, (b) o SELO de identidade on-chart e (c) a VISÃO multi-timeframe, que
     emite o snapshot enriquecido por TEMPO (~15s, não por barra). Nos EAs nativos
-    (com preâmbulo) também ajusta SL/TP pro stops level via wrappers BTBuy/BTSell.
-    A visão SUBSTITUI o antigo BTSnapshot por-barra — mais rico e sem o bug do
-    D1 offline."""
-    # fechamento de posição: marca evento pro log
-    codigo = codigo.replace("trade.PositionClose(_Symbol);",
-                            "BTEvento(\"fechado\",\"\"); trade.PositionClose(_Symbol);")
+    (com preâmbulo) ajusta SL/TP pro stops level via wrappers BTBuy/BTSell; nos
+    EAs da IA, via subclasse BTTrade (clamp de stops). A visão SUBSTITUI o antigo
+    BTSnapshot por-barra — mais rico e sem o bug do D1 offline."""
+    import re as _re
     if "//__BT_INJECT_WRAPPERS__" in codigo:
-        # EA nativo: troca as entradas pelas wrappers (logam evento + ajustam
-        # stops) e injeta as definições no marcador, DEPOIS dos replaces.
+        # EA NATIVO: BTEvento existe (preâmbulo). Close loga evento; entradas viram
+        # wrappers (logam + ajustam stops); injeta as definições no marcador.
+        codigo = codigo.replace("trade.PositionClose(_Symbol);",
+                                "BTEvento(\"fechado\",\"\"); trade.PositionClose(_Symbol);")
         codigo = codigo.replace("trade.Buy(",  "BTBuy(")
         codigo = codigo.replace("trade.Sell(", "BTSell(")
         codigo = codigo.replace("//__BT_INJECT_WRAPPERS__", _BT_WRAPPERS_MQL5, 1)
     else:
-        # EA da IA (sem preâmbulo): mantém o comportamento antigo (só loga o
-        # evento), sem wrappers — não dá pra garantir BTEvento/CTrade ali.
-        codigo = codigo.replace("trade.Buy(",  "BTEvento(\"aberto\",\"lado=BUY\");  trade.Buy(")
-        codigo = codigo.replace("trade.Sell(", "BTEvento(\"aberto\",\"lado=SELL\"); trade.Sell(")
+        # EA da IA: injeta a subclasse BTTrade (clamp de stops p/ evitar "invalid
+        # stops" em ativos tipo BTCUSD) trocando "CTrade trade;". A subclasse loga
+        # o open por Print (BTEvento NÃO existe no EA da IA). Se não achar o padrão
+        # "CTrade <nome>;", nada é injetado (degrada seguro, sem quebrar compilação).
+        _mct = _re.search(r"\bCTrade\s+(\w+)\s*;", codigo)
+        if _mct:
+            codigo = codigo.replace(_mct.group(0),
+                                    _BT_TRADE_CLAMP_MQL5 + "\nBTTrade " + _mct.group(1) + ";", 1)
 
     # ── SELO (identidade on-chart) + VISÃO (snapshot multi-timeframe) ─────
     # Injeta as funções dos dois ANTES do OnInit e chama Init/Tick/Deinit de
@@ -4179,9 +4231,10 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         codigo = _re.sub(r"int\s+OnInit\s*\(",
                          lambda m: _BT_PAINEL_MQL5 + "\n" + _BT_VISAO_MQL5 + "\n" + m.group(0),
                          codigo, count=1)
-        # 2) Init logo após a chave de abertura do OnInit
+        # 2) Init logo após a chave de abertura do OnInit + emite JÁ o 1º snapshot
+        #    (BTVisaoTick com g_btVisaoUlt=0 emite na hora) -> Operar acende em ~1 tick
         codigo = _re.sub(r"(int\s+OnInit\s*\([^)]*\)\s*\{)",
-                         lambda m: m.group(1) + "\n   BTPainelInit();\n   BTVisaoInit();",
+                         lambda m: m.group(1) + "\n   BTPainelInit();\n   BTVisaoInit();\n   BTVisaoTick();",
                          codigo, count=1)
         # 3) Tick no topo do OnTick (selo vivo + visão por tempo, antes de qualquer guard)
         codigo = _re.sub(r"(void\s+OnTick\s*\([^)]*\)\s*\{)",
