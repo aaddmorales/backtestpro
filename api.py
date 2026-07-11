@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.26  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.27  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.26 - MODULO PRESENCA (sensor de atividade): fonte unica de verdade do estado do bot (PARADO/CONECTADO/OPERANDO) a partir de 3 sinais (heartbeat=conector_visto_em, snapshot=ultimo_ping, parar=conector_parado_em). Reusavel p/ MT5 e Tryd. Rota /presenca/parar da corte IMEDIATO quando o conector para (trilha rebaixa na hora). /usuario/progresso usa a presenca nas etapas 5/6. REQUER coluna conector_parado_em timestamptz. Log [PRESENCA] nos logs do Railway. | 6.25 conectar robusto | 6.24 conectar heartbeat | 6.23 magic no snapshot | 6.22 identidade estavel | ...(historico nos deploys)"
+API_VERSAO = "6.27 - FIX presenca: o CONECTADO voltou a usar o fallback em memoria (_MT5_POLLS) alem da coluna conector_visto_em. Na v6.26 eu tirei o fallback e o Conectar parou de acender quando a coluna nao existe/heartbeat nao grava. Agora heartbeat = max(coluna, memoria) -> Conectar funciona com ou sem SQL (1 worker via memoria, multi-worker via coluna). | 6.26 modulo presenca | 6.25 conectar robusto | 6.24 conectar heartbeat | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11g-presenca"
+BUILD_TAG = "2026-07-11h-presenca-fallback"
 
 @app.get("/versao")
 def versao():
@@ -5721,7 +5721,15 @@ def _presenca_estado(bot: dict, agora_ts: float = None) -> str:
     """PARADO / CONECTADO / OPERANDO a partir dos 3 sinais do bot (fonte única)."""
     if agora_ts is None:
         agora_ts = _dt.now(_tz.utc).timestamp()
-    hb    = _presenca_ts(bot.get("conector_visto_em"))
+    # heartbeat: coluna conector_visto_em OU heartbeat em memória (_MT5_POLLS) — o
+    # fallback em memória faz o CONECTADO funcionar mesmo sem a coluna (1 worker);
+    # a coluna cobre o multi-worker. Usa o mais recente dos dois.
+    hb_db  = _presenca_ts(bot.get("conector_visto_em"))
+    try:
+        hb_mem = float(_MT5_POLLS.get(bot.get("bot_token"), 0) or 0)
+    except Exception:
+        hb_mem = 0.0
+    hb    = max(hb_db, hb_mem)
     snap  = _presenca_ts(bot.get("ultimo_ping"))
     parar = _presenca_ts(bot.get("conector_parado_em"))
     # o Parar (se for o sinal mais recente) vence tudo -> corte imediato
