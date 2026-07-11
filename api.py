@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.28  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.29  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.28 - EA DA IA: (A) OPERAR RAPIDO - emite o 1o snapshot ja no OnInit (BTVisaoTick com g_btVisaoUlt=0 dispara na hora), sem esperar a vela; (B) INVALID STOPS - injeta subclasse BTTrade (troca CTrade trade;) que faz clamp de SL/TP pro nivel minimo de stops do ativo (BTCUSD etc.) antes de enviar - vale pra qualquer codigo da IA. Removidos os inserts de BTEvento no EA da IA (BTEvento nao existia la). REEMITIR o bot pra pegar o .mq5 novo. | 6.27 fix presenca fallback | ...(historico nos deploys)"
+API_VERSAO = "6.29 - FIX invalid stops (IA via PositionOpen): a subclasse BTTrade agora tambem sobrescreve PositionOpen (nao so Buy/Sell) - a IA abria posicao por PositionOpen, que passava reto sem o clamp de stops. Agora Buy, Sell E PositionOpen ajustam SL/TP pro nivel minimo do ativo antes de enviar. REEMITIR o bot. | 6.28 EA da IA: operar rapido (OnInit) + clamp Buy/Sell | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11i-ia-stops-oninit"
+BUILD_TAG = "2026-07-11j-positionopen-clamp"
 
 @app.get("/versao")
 def versao():
@@ -3905,6 +3905,15 @@ public:
       BTAjustaStops(false, p, sl, tp);
       Print("BOTTESTED_EVENTO|aberto|tipo=aberto|simbolo=", _Symbol, "|lado=SELL");
       return CTrade::Sell(volume, symbol, price, sl, tp, comment);
+   }
+   // A IA às vezes abre via PositionOpen (não via Buy/Sell) — cobre esse caminho.
+   bool PositionOpen(const string symbol, ENUM_ORDER_TYPE order_type, double volume, double price, double sl, double tp, const string comment="")
+   {
+      bool ehCompra = (order_type==ORDER_TYPE_BUY || order_type==ORDER_TYPE_BUY_LIMIT || order_type==ORDER_TYPE_BUY_STOP);
+      double p = (price > 0.0) ? price : (ehCompra ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID));
+      BTAjustaStops(ehCompra, p, sl, tp);
+      Print("BOTTESTED_EVENTO|aberto|tipo=aberto|simbolo=", _Symbol, "|lado=", (ehCompra ? "BUY" : "SELL"));
+      return CTrade::PositionOpen(symbol, order_type, volume, price, sl, tp, comment);
    }
 };
 //----------------------------------------------------------------------"""
