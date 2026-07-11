@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.20 (PRESENCA/REBAIXAR: a trilha agora REFLETE o estado real — as etapas 5 (Conectar) e 6 (Operar/Monitorar) seguem a presenca ao vivo do backend e APAGAM quando o bot para. Removido o "nunca rebaixar" e o "para o polling ao operar" (era isso que travava a barra acesa mesmo apos apertar Parar). Pinta sempre max(marco local 1-4, presenca backend 5-6); polling 15s->8s p/ corte mais rapido. Comando dado = tela reflete (Parar corta na hora). v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -914,7 +914,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.19</span>
+    <span class="vtag">v9.20</span>
   </div>
   <div class="tsep"></div>
   <button class="tbtn active" id="tab-overview-btn" onclick="switchTab('overview')" data-i18n="nav.overview">Overview</button>
@@ -2018,6 +2018,11 @@ function ehAdmin(){ return usuarioAtual && usuarioAtual.id === BIB_ADMIN_USER_ID
 // Zera pra etapa 1 ao escolher uma estratégia na vitrine ou criar uma no Editor,
 // e avança conforme as ações: testar (2), enviar (4). Detalhe no hover.
 window.__trilhaEtapa = 1;
+// REBAIXAR (reflete o estado real): a trilha mostra max(marco local 1-4, presença
+// do backend 5-6). Os marcos locais (criar/testar/ajustar/enviar) nunca voltam;
+// as etapas 5/6 seguem a PRESENÇA ao vivo — se o bot para, elas APAGAM na hora.
+window.__trilhaLocalMax = 1;   // maior marco local já atingido (1..4)
+window.__backendEtapa = 0;     // etapa viva vinda do backend (presença: 0/5/6)
 (function(){
   var TRILHA = [
     {n:"1", t:"Criar ou escolher a estratégia", d:"Escolha uma estratégia pronta na vitrine ou crie a sua do zero no Editor, descrevendo em português — a IA gera o código pra você."},
@@ -2116,11 +2121,16 @@ window.__trilhaEtapa = 1;
   }
   // ── API pública da trilha (sessão local) ──
   // Zera pra etapa 1: chamado ao escolher/criar uma estratégia nova.
-  window.trilhaReset = function(){ window.__botTokenAtual = ''; window.__envioMarco = ''; pintar(1); };
-  // Avança pra uma etapa (só pra frente — nunca volta): testar=2, enviar=4, etc.
+  window.trilhaReset = function(){ window.__botTokenAtual = ''; window.__envioMarco = ''; window.__trilhaLocalMax = 1; window.__backendEtapa = 0; pintar(1); };
+  // repinta refletindo o estado REAL: max(marco local 1-4, presença backend 5-6).
+  window._repintarTrilha = function(){
+    var alvo = Math.max(window.__trilhaLocalMax || 1, window.__backendEtapa || 0);
+    pintar(alvo);
+  };
+  // Avança um MARCO LOCAL (só pra frente — criar/testar/enviar não voltam).
   window.trilhaAvancar = function(n){
-    var atual = window.__trilhaEtapa || 1;
-    if(n > atual) pintar(n);
+    if(n > (window.__trilhaLocalMax || 1)) window.__trilhaLocalMax = n;
+    window._repintarTrilha();
   };
   // Mostra/esconde a barra conforme login. Liga o polling do backend (etapas 5/6).
   window.checarTrilhaBackend = async function(){
@@ -2138,16 +2148,18 @@ window.__trilhaEtapa = 1;
       if(!r.ok) return;
       var d = await r.json();
       var etapaBackend = d.etapa || 1;
-      if(etapaBackend >= 5) window.trilhaAvancar(etapaBackend);
-      // etapa 6 (operando) = jornada do bot terminou → para o polling; o Monitor assume o pulso
-      if(etapaBackend >= 6 && window.pararPollingTrilha) window.pararPollingTrilha();
+      // presença ao vivo: 5=conectado, 6=operando; abaixo disso as etapas 5/6 APAGAM.
+      window.__backendEtapa = (etapaBackend >= 5) ? etapaBackend : 0;
+      window._repintarTrilha();
+      // NÃO paramos o polling ao operar — é ele que detecta quando o bot PARA
+      // (aí a trilha rebaixa). O Monitor tem o próprio pulso, independente disso.
     } catch(e){ /* silencioso */ }
   };
   var _trilhaPoll = null;
   window.iniciarPollingTrilha = function(){
     if(_trilhaPoll) return;
     window.checarTrilhaBackend();
-    _trilhaPoll = setInterval(function(){ window.checarTrilhaBackend(); }, 15000);
+    _trilhaPoll = setInterval(function(){ window.checarTrilhaBackend(); }, 8000);
   };
   window.pararPollingTrilha = function(){
     if(_trilhaPoll){ clearInterval(_trilhaPoll); _trilhaPoll = null; }
@@ -2809,7 +2821,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.19';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.20';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
