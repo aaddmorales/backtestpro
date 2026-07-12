@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.37  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12h-fim-ondeinit | Deploy: Railway
+#  BotTested API — v6.38  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12i-cache-geracao | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12h-fim-ondeinit"
+BUILD_TAG = "2026-07-12i-cache-geracao"
 
 @app.get("/versao")
 def versao():
@@ -8288,6 +8288,45 @@ REGRAS:
 - Responda APENAS com o código .mq5 puro. Sem crases, sem markdown, sem explicação, sem texto antes ou depois."""
 
 
+# ── CACHE DE GERAÇÃO (v6.38) — a validação estava lenta porque a IA regerava
+# o MESMO EA a cada envio (os bots da vitrine têm sempre o mesmo Python) e o
+# MetaEditor recompilava o que já tinha sido aprovado. O cache guarda o .mq5
+# NEUTRO (sem magic — o magic é re-injetado por bot) por hash do (código+sl+tp).
+# O ativo NÃO entra no hash: o EA usa _Symbol em runtime, o código não muda.
+# Em memória (reseta no deploy — aceitável: 1ª geração re-aquece o cache).
+_MQ5_GER_CACHE = {}          # hash -> {"mq5": str neutro, "aprovado": bool, "ts": float}
+_MQ5_GER_CACHE_MAX = 300
+
+
+def _mq5_hash_geracao(codigo_python, sl, tp) -> str:
+    base = f"{(codigo_python or '')[:6000]}|sl={sl}|tp={tp}"
+    return hashlib.sha1(base.encode("utf-8")).hexdigest()
+
+
+def _neutralizar_magic_mql5(codigo: str) -> str:
+    """Remove a identidade do bot do .mq5 pra cachear: tira o magic literal da
+    linha BOTTESTED_SNAPSHOT e zera o InpMagic pro placeholder. Na reutilização,
+    _forcar_magic_mql5 re-injeta o magic do NOVO bot (o guard dele exige que a
+    linha esteja sem magic — por isso a neutralização é obrigatória aqui)."""
+    import re as _re
+    if not codigo:
+        return codigo
+    codigo = _re.sub(r"BOTTESTED_SNAPSHOT\|magic=\d+\|", "BOTTESTED_SNAPSHOT|", codigo)
+    codigo = _re.sub(r"(InpMagic\s*=\s*)\d+", r"\g<1>20250", codigo, count=1)
+    return codigo
+
+
+def _mq5_cache_guardar(gen_hash: str, mq5_neutro: str):
+    try:
+        if len(_MQ5_GER_CACHE) >= _MQ5_GER_CACHE_MAX:
+            velho = min(_MQ5_GER_CACHE, key=lambda k: _MQ5_GER_CACHE[k].get("ts", 0))
+            _MQ5_GER_CACHE.pop(velho, None)
+        _MQ5_GER_CACHE[gen_hash] = {"mq5": mq5_neutro, "aprovado": False,
+                                    "ts": _time_mt5.time()}
+    except Exception:
+        pass
+
+
 def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
     chave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not chave or not (codigo_python or "").strip():
@@ -8298,6 +8337,17 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         sl = params.get("stop_loss", 60)
         tp = params.get("take_profit", 120)
         magic = int(params.get("magic", 0) or 0)
+        # CACHE (v6.38): mesmo código+sl+tp = mesmo EA. Pula a IA (~15-40s) e
+        # re-injeta só o magic deste bot. É o caso comum da vitrine.
+        gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
+        hit = _MQ5_GER_CACHE.get(gen_hash)
+        if hit and hit.get("mq5"):
+            hit["ts"] = _time_mt5.time()
+            texto = hit["mq5"]
+            if magic:
+                texto = _forcar_magic_mql5(texto, magic)
+            print(f"[mq5-cache] HIT {gen_hash[:10]} (aprovado={hit.get('aprovado')}) — IA pulada")
+            return texto
         instr_magic = (f"Declare EXATAMENTE: input long InpMagic = {magic}; e no OnInit chame "
                        f"trade.SetExpertMagicNumber(InpMagic); — este magic identifica ESTE bot, "
                        f"não invente outro.\n") if magic else ""
@@ -8321,6 +8371,10 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         # (NÃO instrumentar aqui: a injeção da VISÃO/#define quebrava a compilação
         # neste caminho. A velocidade e o clamp de stops são resolvidos pela
         # INSTRUÇÃO no prompt, que a IA segue de forma confiável e compila sempre.)
+        # guarda a versão NEUTRA no cache (v6.38) — o próximo envio do mesmo
+        # código pula a IA e só troca o magic.
+        if texto:
+            _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
         if magic:
             texto = _forcar_magic_mql5(texto, magic)
         return texto
@@ -8360,6 +8414,10 @@ def mt5_enviar(req: MT5EnviarReq):
     import uuid
     job_id = uuid.uuid4().hex[:16]
     filename = _nome_arquivo_bot(req.bot_nome, fallback=_mt5_slug(req.bot_nome)) + ".mq5"
+    # PRÉ-VALIDADO (v6.38): se este código (neutro) já foi APROVADO antes, o
+    # conector pode reportar o veredito na hora e compilar em segundo plano.
+    _gh = _mq5_hash_geracao(req.codigo, req.stop_loss, req.take_profit)
+    _pre_ok = bool((_MQ5_GER_CACHE.get(_gh) or {}).get("aprovado"))
     _MT5_JOBS[job_id] = {
         "bot_token": req.bot_token,
         "filename": filename,
@@ -8368,6 +8426,8 @@ def mt5_enviar(req: MT5EnviarReq):
         "status": "validando",
         "aprovado": None,
         "log": "",
+        "gen_hash": _gh,
+        "pre_validado": _pre_ok,
         "ts": _time_mt5.time(),
     }
     # guarda o .mq5 na nuvem pra o card "Meus bots" poder REINSTALAR sem regenerar.
@@ -8410,7 +8470,8 @@ def mt5_pendente(bot_token: str = ""):
         return {"pendente": False}
     cand.sort(key=lambda x: x[1].get("ts", 0), reverse=True)
     jid, j = cand[0]
-    return {"pendente": True, "job_id": jid, "codigo": j["mq5"], "filename": j["filename"]}
+    return {"pendente": True, "job_id": jid, "codigo": j["mq5"], "filename": j["filename"],
+            "pre_validado": bool(j.get("pre_validado"))}
 
 
 class PresencaParar(BaseModel):
@@ -8530,6 +8591,13 @@ def mt5_veredito(req: MT5VeredictoReq):
     j["status"] = "aprovado" if req.aprovado else "reprovado"
     j["aprovado"] = bool(req.aprovado)
     j["log"] = (req.log or "")[:4000]
+    # v6.38: aprovou no MT5 real -> marca o cache; próximos envios do MESMO
+    # código pulam a IA E o compile (pré-validado, veredito na hora).
+    try:
+        if req.aprovado and j.get("gen_hash") and j["gen_hash"] in _MQ5_GER_CACHE:
+            _MQ5_GER_CACHE[j["gen_hash"]]["aprovado"] = True
+    except Exception:
+        pass
     return {"ok": True}
 
 
