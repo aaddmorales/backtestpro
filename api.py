@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.33  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.34  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.33 - OPERAR ACENDE SEMPRE (grito de ligou no OnInit): a injecao do snapshot no OnInit ficou ROBUSTA - acha a assinatura e a PROXIMA chave { (ignorando comentario/quebra de linha) em vez de exigir o regex casar int OnInit()  {. Era isso que falhava em alguns bots (comentario entre ) e {), caindo por barra (60s). Agora o BTVisaoTick emite no exato momento do OK (OnInit) em TODO bot -> Operar em ~10-15s sempre. Nao depende mais da IA. REEMITIR. | 6.32 snapshot OnInit+timer (prompt) | ...(historico)"
+API_VERSAO = "6.34 - CAUSA RAIZ: o /mt5/enviar (caminho do CODIGO CUSTOM) chamava so o magic e NUNCA instrumentava - por isso VISAO (snapshot rapido) e clamp de stops nunca chegavam no bot custom (o que o usuario usa). Agora _gerar_mq5_de_codigo tambem chama _instrumentar_log_mql5. + BTAjustaStops agora usa o SPREAD como piso (BTCUSD reporta stops_level=0, entao o stop ficava colado no spread = invalid stops). Os DOIS problemas (velocidade + invalid stops) fecham com isso. REEMITIR. | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12d-oninit-robusto"
+BUILD_TAG = "2026-07-12e-instrumenta-custom-spread"
 
 @app.get("/versao")
 def versao():
@@ -3833,7 +3833,15 @@ void BTAjustaStops(bool ehCompra, double preco, double &sl, double &tp)
    double pt  = _Point;
    long   lvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
    long   frz = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   double distMin = (double)((lvl > frz ? lvl : frz) + 10) * pt;  // folga de 10 pts
+   double bidp = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double askp = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double spread = (askp > bidp) ? (askp - bidp) : (10 * pt);
+   // distancia minima = MAIOR entre o stops/freeze level e 3x o spread. Ativos como
+   // BTCUSD/indices reportam stops_level=0 mas REJEITAM stop dentro do spread -> o
+   // piso pelo spread resolve o "invalid stops". Vale pra qualquer ativo.
+   double dNivel  = (double)((lvl > frz ? lvl : frz) + 10) * pt;
+   double dSpread = spread * 3.0;
+   double distMin = (dNivel > dSpread) ? dNivel : dSpread;
    if(ehCompra)
    {
       if(sl > 0.0 && preco - sl < distMin) sl = preco - distMin;
@@ -3875,7 +3883,15 @@ void BTAjustaStops(bool ehCompra, double preco, double &sl, double &tp)
    double pt  = _Point;
    long   lvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
    long   frz = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   double distMin = (double)((lvl > frz ? lvl : frz) + 10) * pt;  // folga de 10 pts
+   double bidp = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double askp = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double spread = (askp > bidp) ? (askp - bidp) : (10 * pt);
+   // distancia minima = MAIOR entre o stops/freeze level e 3x o spread. Ativos como
+   // BTCUSD/indices reportam stops_level=0 mas REJEITAM stop dentro do spread -> o
+   // piso pelo spread resolve o "invalid stops". Vale pra qualquer ativo.
+   double dNivel  = (double)((lvl > frz ? lvl : frz) + 10) * pt;
+   double dSpread = spread * 3.0;
+   double distMin = (dNivel > dSpread) ? dNivel : dSpread;
    if(ehCompra)
    {
       if(sl > 0.0 && preco - sl < distMin) sl = preco - distMin;
@@ -8299,6 +8315,11 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
         texto = _re.sub(r"^```[a-zA-Z0-9]*\s*\n?", "", texto)
         texto = _re.sub(r"\n?```\s*$", "", texto).strip()
+        # FALTAVA: instrumentar tambem o caminho do CODIGO CUSTOM (antes so o
+        # caminho testado/do bot instrumentava). Aplica VISAO (snapshot rapido no
+        # OnInit) + clamp de stops (#define CTrade BTTrade) — o que faz o Operar
+        # acender rapido E as ordens abrirem sem "invalid stops".
+        texto = _instrumentar_log_mql5(texto)
         if magic:
             texto = _forcar_magic_mql5(texto, magic)
         return texto
