@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.36  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12g-snapshot-arquivo | Deploy: Railway
+#  BotTested API — v6.37  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12h-fim-ondeinit | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12g-snapshot-arquivo-fileflush"
+BUILD_TAG = "2026-07-12h-fim-ondeinit"
 
 @app.get("/versao")
 def versao():
@@ -8279,6 +8279,8 @@ Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
   void BTEnviarSnapshot(){ string bt_linha = "BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol; Print(bt_linha); int bt_h = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_h!=INVALID_HANDLE){ FileWriteString(bt_h, bt_linha+"\\n"); FileClose(bt_h); } }
   O arquivo bt_snap_<magic>.txt em MQL5/Files é ESSENCIAL: o log do MT5 tem buffer e às vezes atrasa minutos pra ir ao disco; o arquivo sai NA HORA (FileClose dá flush) e o BotTested Conector lê ele em ~1.5s. O Print continua junto (fallback + eventos).
   Chame BTEnviarSnapshot() em TRÊS lugares: (1) no FIM do OnInit (emite na hora que anexa ao gráfico); (2) dentro de void OnTimer(); e ative o timer no OnInit com EventSetTimer(10); (emite a cada 10s, independente de barra); (3) no OnDeinit chame EventKillTimer();. NÃO emita o snapshot só por barra nova — ele PRECISA sair no OnInit e no OnTimer, senão o monitoramento demora minutos pra acender.
+- FIM DE VIDA (o desligar do monitoramento depende disso): no OnDeinit, DEPOIS do EventKillTimer, inclua EXATAMENTE este bloco (copie como está): if(reason==REASON_REMOVE || reason==REASON_CHARTCLOSE || reason==REASON_PROGRAM){ int bt_f = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_f!=INVALID_HANDLE){ FileWriteString(bt_f, "BOTTESTED_FIM|magic="+IntegerToString((long)InpMagic)+"\\n"); FileClose(bt_f); } }
+  Isso avisa o BotTested Conector NA HORA que o bot saiu do gráfico (removido, gráfico fechado ou terminal fechando). IMPORTANTE: só nesses 3 reasons — troca de timeframe/símbolo (REASON_CHARTCHANGE) NÃO escreve o FIM, porque o OnInit roda de novo em seguida.
 
 
 REGRAS:
