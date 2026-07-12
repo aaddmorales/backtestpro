@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.34 (FIX BUG ANTIGO revelado pelo v9.33: o container #candle-chart tinha 380px mas o LightweightCharts e criado (e redimensionado) com height 470 — o canvas transbordava 90px por CIMA do bloco seguinte (antes era o topo vazio das key stats, ninguem via; com o edge card ali, comia o titulo). Container agora tem 470px + overflow:hidden. v9.33 (RESULTADO DIVIDIDO (teste de layout): o GRAFICO subiu — acima dele so o essencial (barra da estrategia + metricas + retorno + cards de capital); o cartao explicativo "Por que deu lucro com Win Rate baixo?" desceu pra logo DEPOIS do grafico, seguido das key stats, OOS e historico. Pra reverter: mover ${_cardEdgeWinRate(...)} de volta pra antes do CANDLE CHART. v9.32 (REMOVIDO o botao "Voltar a vitrine" da barra de contexto da estrategia — redundante com o botao Vitrine do menu (v9.25). A barra segue mostrando ESTRATEGIA EM TESTE + tags + Enviar Estrategia. voltarVitrine() continua existindo (menu e atalho do Radar usam). v9.31 (ORDEM FINAL do resultado: resultados/stats -> VALIDACAO OOS -> Historico de Trades por ULTIMO (o veredito de robustez fecha a analise; a lista de trades vira material de consulta no rodape). v9.30 (VALIDACAO OOS AUTOMATICA E NO FIM: (1) o botao "Validar meu codigo (out-of-sample)" saiu — validarCodigoOOS2(true) dispara SOZINHO ~700ms apos o resultado renderizar (modo auto sai em silencio se nao ha codigo custom); (2) o bloco ov-oos-box saiu do meio do resultado (antes do grafico) e foi pro FIM, depois do Historico de Trades — o usuario ve o resultado inteiro e a validacao fecha a leitura embaixo; (3) a oferta do Radar radarOfertaValidarCodigo (1.5s) saiu — redundante com o auto-run. v9.29 (BOAS-VINDAS DA IA no 1o login: modal central (#bv-ov, z 10500) onde a IA se APRESENTA digitando estilo prompt (4 paragrafos, cursor de bloco, botao Pular completa na hora) e o usuario pode CONVERSAR ali mesmo — mesmo motor do Radar (/radar/chat) e mesmo _radarChatHist, entao a conversa continua no 💬 depois. Uma vez por usuario (localStorage BT_IA_APRESENTOU_<uid>, marcado na abertura); ao fechar encadeia o onboarding antigo (onbVerificar). onLogin agora chama boasVindasVerificar. i18n bv.* nas 3 linguas. Mensagem respeita a regra da casa: historico medido, nao promessa. v9.28 (BARRA IA da Overview ESCONDIDA (display:none, nao apagada) — as funcoes migraram pro Editor; o elemento fica no DOM porque a vitrine rebinda o ia-run-btn, o voltarVitrine limpa o ia-hero-desc e rodarHero/gerarHeroIA leem dali. Fluxo intacto: card da vitrine auto-roda e re-rodadas usam o Rodar Backtest do painel esquerdo. Pra reativar: display:block. v9.27 (REMOVIDO o botao flutuante "Novo teste" da vitrine — redundante com o botao Overview do menu (v9.25), que ja abre o modo teste. O JS que referenciava a faixa e todo blindado com if(fx), entao nada quebra; atualizarFaixaNovoTeste vira so o sincronizador do menu Vitrine/Overview. v9.26 (FAIXA ADMIN: os botoes Estudo/Radar ADMIN sairam da linha principal do menu e desceram pra faixa propria (#admin-bar) abaixo do topbar, visivel SO pro admin (atualizarVisibilidadeAdmin liga a faixa inteira). A linha de cima fica limpa e num nivel so: abas + lua/idiomas/API Online/usuario. Pra usuarios normais a faixa nem existe e a trilha (sensor de atividades) sobe, colada no menu. v9.25 (MENU REORGANIZADO: Vitrine ganhou botao proprio (modo loja, via voltarVitrine) e Overview virou o modo teste/resultado (menuOverview -> sairVitrineParaTeste); atualizarMenuVitrineOv espelha o modo real no menu (chamado de atualizarFaixaNovoTeste, que roda em toda troca de modo/aba). Ordem: Vitrine · Overview · Editor · Monitor · Calendario · Planos · Estudo ADMIN · Radar ADMIN. REMOVIDOS do menu: Otimizacao, Templates e Rank — as telas continuam existindo; Otimizacao segue acessivel pelos botoes contextuais pos-backtest; o atalho Estrategias do Radar agora abre a Vitrine (apontava pra Templates). v9.24 (GUIA + BALAO COEXISTEM: a guia grande (#mt5-guia) subiu pra z-index 10000 (fica NA FRENTE); o balao da trilha (auto-dica) fica ATRAS e PERSISTE enquanto a guia esta aberta (clique na guia nao mata o balao; o auto-some espera a guia fechar). Quando a guia fecha (inclusive apos marcar nao mostrar mais), o balao segue por 15s + clique. Assim o balao e independente do checkbox da guia — o usuario nunca fica sem direcao. v9.23 (FIX auto-dica: a dica da etapa Conectar (e das que vem do backend por polling) sumia cedo demais - o hover compartilha o mesmo balao e o timer de esconder/o clique de refoco matava ela em ~180ms. Agora: LOCK (__tipLock) impede o hover-hide enquanto a auto-dica esta ativa; so fecha por clique DEPOIS de 600ms (evita o clique de refoco); auto-some de seguranca em 15s. v9.22 (AUTO-DICA NA TRILHA: quando uma etapa ACENDE (Ajustar 3, Enviar 4, Conectar 5, Monitorar na 6), a mensagem daquela etapa aparece SOZINHA (sem hover) guiando o proximo passo; some ao clicar em qualquer lugar (fora do balao); o hover continua funcionando por cima. So dispara no aumento da etapa, nao a cada repaint. Mensagem do Conectar reescrita pra apontar o proximo passo real (arraste pro grafico). v9.21 (BARRA ZERA EM NOVO RESULTADO: rodar QUALQUER backtest novo (rodarBacktest/rodarHero) agora chama trilhaReset antes de avancar — novo resultado = outro bot, entao a barra zera e passa a seguir o novo (limpa token/marco do bot anterior; o Monitor segue rastreando o que roda no MT5). Junto com os resets ja existentes (escolher na vitrine, gerar no editor). Principio: qualquer alteracao que gera um resultado novo reinicia a jornada. v9.20 (PRESENCA/REBAIXAR: a trilha agora REFLETE o estado real — as etapas 5 (Conectar) e 6 (Operar/Monitorar) seguem a presenca ao vivo do backend e APAGAM quando o bot para. Removido o "nunca rebaixar" e o "para o polling ao operar" (era isso que travava a barra acesa mesmo apos apertar Parar). Pinta sempre max(marco local 1-4, presenca backend 5-6); polling 15s->8s p/ corte mais rapido. Comando dado = tela reflete (Parar corta na hora). v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.35 (GRAFICO PRO: (1) controles -/+/enquadrar sairam de CIMA do candle e entraram na barra do cabecalho junto do 1M/3M/6M/1Y/All (funcoes globais chartZoomStep/chartFit operam no candleChart; Ctrl+roda continua); (2) LEGENDA OHLC no crosshair estilo TradingView — data + Abertura/Maxima/minima/Fechamento + variacao seguindo o mouse, ultimo candle como padrao; (3) marca dagua discreta ativo·TF no fundo; (4) calha do eixo de preco 80->60px. v9.34 (FIX BUG ANTIGO revelado pelo v9.33: o container #candle-chart tinha 380px mas o LightweightCharts e criado (e redimensionado) com height 470 — o canvas transbordava 90px por CIMA do bloco seguinte (antes era o topo vazio das key stats, ninguem via; com o edge card ali, comia o titulo). Container agora tem 470px + overflow:hidden. v9.33 (RESULTADO DIVIDIDO (teste de layout): o GRAFICO subiu — acima dele so o essencial (barra da estrategia + metricas + retorno + cards de capital); o cartao explicativo "Por que deu lucro com Win Rate baixo?" desceu pra logo DEPOIS do grafico, seguido das key stats, OOS e historico. Pra reverter: mover ${_cardEdgeWinRate(...)} de volta pra antes do CANDLE CHART. v9.32 (REMOVIDO o botao "Voltar a vitrine" da barra de contexto da estrategia — redundante com o botao Vitrine do menu (v9.25). A barra segue mostrando ESTRATEGIA EM TESTE + tags + Enviar Estrategia. voltarVitrine() continua existindo (menu e atalho do Radar usam). v9.31 (ORDEM FINAL do resultado: resultados/stats -> VALIDACAO OOS -> Historico de Trades por ULTIMO (o veredito de robustez fecha a analise; a lista de trades vira material de consulta no rodape). v9.30 (VALIDACAO OOS AUTOMATICA E NO FIM: (1) o botao "Validar meu codigo (out-of-sample)" saiu — validarCodigoOOS2(true) dispara SOZINHO ~700ms apos o resultado renderizar (modo auto sai em silencio se nao ha codigo custom); (2) o bloco ov-oos-box saiu do meio do resultado (antes do grafico) e foi pro FIM, depois do Historico de Trades — o usuario ve o resultado inteiro e a validacao fecha a leitura embaixo; (3) a oferta do Radar radarOfertaValidarCodigo (1.5s) saiu — redundante com o auto-run. v9.29 (BOAS-VINDAS DA IA no 1o login: modal central (#bv-ov, z 10500) onde a IA se APRESENTA digitando estilo prompt (4 paragrafos, cursor de bloco, botao Pular completa na hora) e o usuario pode CONVERSAR ali mesmo — mesmo motor do Radar (/radar/chat) e mesmo _radarChatHist, entao a conversa continua no 💬 depois. Uma vez por usuario (localStorage BT_IA_APRESENTOU_<uid>, marcado na abertura); ao fechar encadeia o onboarding antigo (onbVerificar). onLogin agora chama boasVindasVerificar. i18n bv.* nas 3 linguas. Mensagem respeita a regra da casa: historico medido, nao promessa. v9.28 (BARRA IA da Overview ESCONDIDA (display:none, nao apagada) — as funcoes migraram pro Editor; o elemento fica no DOM porque a vitrine rebinda o ia-run-btn, o voltarVitrine limpa o ia-hero-desc e rodarHero/gerarHeroIA leem dali. Fluxo intacto: card da vitrine auto-roda e re-rodadas usam o Rodar Backtest do painel esquerdo. Pra reativar: display:block. v9.27 (REMOVIDO o botao flutuante "Novo teste" da vitrine — redundante com o botao Overview do menu (v9.25), que ja abre o modo teste. O JS que referenciava a faixa e todo blindado com if(fx), entao nada quebra; atualizarFaixaNovoTeste vira so o sincronizador do menu Vitrine/Overview. v9.26 (FAIXA ADMIN: os botoes Estudo/Radar ADMIN sairam da linha principal do menu e desceram pra faixa propria (#admin-bar) abaixo do topbar, visivel SO pro admin (atualizarVisibilidadeAdmin liga a faixa inteira). A linha de cima fica limpa e num nivel so: abas + lua/idiomas/API Online/usuario. Pra usuarios normais a faixa nem existe e a trilha (sensor de atividades) sobe, colada no menu. v9.25 (MENU REORGANIZADO: Vitrine ganhou botao proprio (modo loja, via voltarVitrine) e Overview virou o modo teste/resultado (menuOverview -> sairVitrineParaTeste); atualizarMenuVitrineOv espelha o modo real no menu (chamado de atualizarFaixaNovoTeste, que roda em toda troca de modo/aba). Ordem: Vitrine · Overview · Editor · Monitor · Calendario · Planos · Estudo ADMIN · Radar ADMIN. REMOVIDOS do menu: Otimizacao, Templates e Rank — as telas continuam existindo; Otimizacao segue acessivel pelos botoes contextuais pos-backtest; o atalho Estrategias do Radar agora abre a Vitrine (apontava pra Templates). v9.24 (GUIA + BALAO COEXISTEM: a guia grande (#mt5-guia) subiu pra z-index 10000 (fica NA FRENTE); o balao da trilha (auto-dica) fica ATRAS e PERSISTE enquanto a guia esta aberta (clique na guia nao mata o balao; o auto-some espera a guia fechar). Quando a guia fecha (inclusive apos marcar nao mostrar mais), o balao segue por 15s + clique. Assim o balao e independente do checkbox da guia — o usuario nunca fica sem direcao. v9.23 (FIX auto-dica: a dica da etapa Conectar (e das que vem do backend por polling) sumia cedo demais - o hover compartilha o mesmo balao e o timer de esconder/o clique de refoco matava ela em ~180ms. Agora: LOCK (__tipLock) impede o hover-hide enquanto a auto-dica esta ativa; so fecha por clique DEPOIS de 600ms (evita o clique de refoco); auto-some de seguranca em 15s. v9.22 (AUTO-DICA NA TRILHA: quando uma etapa ACENDE (Ajustar 3, Enviar 4, Conectar 5, Monitorar na 6), a mensagem daquela etapa aparece SOZINHA (sem hover) guiando o proximo passo; some ao clicar em qualquer lugar (fora do balao); o hover continua funcionando por cima. So dispara no aumento da etapa, nao a cada repaint. Mensagem do Conectar reescrita pra apontar o proximo passo real (arraste pro grafico). v9.21 (BARRA ZERA EM NOVO RESULTADO: rodar QUALQUER backtest novo (rodarBacktest/rodarHero) agora chama trilhaReset antes de avancar — novo resultado = outro bot, entao a barra zera e passa a seguir o novo (limpa token/marco do bot anterior; o Monitor segue rastreando o que roda no MT5). Junto com os resets ja existentes (escolher na vitrine, gerar no editor). Principio: qualquer alteracao que gera um resultado novo reinicia a jornada. v9.20 (PRESENCA/REBAIXAR: a trilha agora REFLETE o estado real — as etapas 5 (Conectar) e 6 (Operar/Monitorar) seguem a presenca ao vivo do backend e APAGAM quando o bot para. Removido o "nunca rebaixar" e o "para o polling ao operar" (era isso que travava a barra acesa mesmo apos apertar Parar). Pinta sempre max(marco local 1-4, presenca backend 5-6); polling 15s->8s p/ corte mais rapido. Comando dado = tela reflete (Parar corta na hora). v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -914,7 +914,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.34</span>
+    <span class="vtag">v9.35</span>
   </div>
   <div class="tsep"></div>
   <!-- v9.25: menu reordenado — Vitrine (novo, modo loja) · Overview (modo teste) ·
@@ -3064,7 +3064,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.34';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.35';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -4214,7 +4214,7 @@ function renderSampleChart() {
     layout: { background:{type:'solid',color:bgColor}, textColor },
     grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor, minimumWidth: 80, scaleMargins:{top:0.12,bottom:0.12} },
+    rightPriceScale: { borderColor, minimumWidth: 60, scaleMargins:{top:0.12,bottom:0.12} },
     leftPriceScale: { visible:false },
     timeScale: { borderColor, timeVisible:false, secondsVisible:false, rightOffset:6, barSpacing:7 },
     handleScroll:false, handleScale:false,
@@ -4277,9 +4277,20 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
     layout: { background:{type:'solid',color:bgColor}, textColor },
     grid: { vertLines:{color:gridColor}, horzLines:{color:gridColor} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    // v9.35: marca d'água discreta com o contexto do teste (ativo · TF)
+    watermark: {
+      visible: true,
+      text: (function(){ try{
+        const a=(document.getElementById('ativo')||{}).value||'';
+        const tf=((document.getElementById('timeframe')||{}).value||'').toUpperCase();
+        return (a && tf) ? (a+' · '+tf) : '';
+      }catch(_){ return ''; } })(),
+      fontSize: 44, color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.045)',
+      horzAlign: 'center', vertAlign: 'center',
+    },
     rightPriceScale: {
       borderColor,
-      minimumWidth: 80,
+      minimumWidth: 60,
       autoScale: true,
       scaleMargins: { top: 0.12, bottom: 0.08 },
     },
@@ -4384,41 +4395,60 @@ function renderCandleChart(candlesData, markers, isLight, overlays) {
     chart.priceScale('right').applyOptions({ autoScale: true });
   };
 
-  // ── Controles de zoom sobre o gráfico (+ / − / ⛶) ──
+  // ── v9.35: controles de zoom foram pra BARRA do cabeçalho (nada flutuando
+  // sobre o candle). As funções globais operam no chart ativo (candleChart).
   container.style.position = 'relative';
   const old = container.querySelector('.chart-zoom-ctl');
   if (old) old.remove();
-  const ctl = document.createElement('div');
-  ctl.className = 'chart-zoom-ctl';
-  ctl.style.cssText = 'position:absolute;top:10px;right:90px;z-index:5;display:flex;gap:4px;';
-  const mkBtn = (txt, title, fn) => {
-    const b = document.createElement('button');
-    b.textContent = txt; b.title = title;
-    b.style.cssText = 'width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);background:rgba(14,17,23,0.85);color:#dde3ee;font-size:15px;font-weight:700;cursor:pointer;line-height:1;backdrop-filter:blur(4px)';
-    b.onmouseenter = () => b.style.borderColor = 'rgba(0,208,132,0.5)';
-    b.onmouseleave = () => b.style.borderColor = 'rgba(255,255,255,0.14)';
-    b.onclick = (e) => { e.stopPropagation(); fn(); };
-    return b;
-  };
-  const zoomStep = (mult) => {
-    const ts = chart.timeScale();
+  window.chartZoomStep = (mult) => {
+    if (!candleChart) return;
+    const ts = candleChart.timeScale();
     const bs = ts.options().barSpacing || 6;
     ts.applyOptions({ barSpacing: Math.min(60, Math.max(0.5, bs * mult)) });
-    chart.priceScale('right').applyOptions({ autoScale: true });
+    candleChart.priceScale('right').applyOptions({ autoScale: true });
   };
-  ctl.appendChild(mkBtn('−', 'Afastar (zoom out)', () => zoomStep(1/1.35)));
-  ctl.appendChild(mkBtn('+', 'Aproximar (zoom in)', () => zoomStep(1.35)));
-  ctl.appendChild(mkBtn('⛶', 'Enquadrar tudo (ou duplo clique)', () => {
-    chart.timeScale().fitContent();
-    chart.priceScale('right').applyOptions({ autoScale: true });
-  }));
-  container.appendChild(ctl);
+  window.chartFit = () => {
+    if (!candleChart) return;
+    candleChart.timeScale().fitContent();
+    candleChart.priceScale('right').applyOptions({ autoScale: true });
+  };
+
+  // ── v9.35: LEGENDA OHLC no crosshair (padrão de plataforma profissional) —
+  // data · Abertura/Máxima/Mínima/Fechamento · variação, seguindo o mouse;
+  // sem mouse, mostra o último candle.
+  const oldLg = container.querySelector('.chart-ohlc-legend');
+  if (oldLg) oldLg.remove();
+  const lg = document.createElement('div');
+  lg.className = 'chart-ohlc-legend';
+  lg.style.cssText = 'position:absolute;top:8px;left:10px;z-index:5;font-family:var(--mono);font-size:11px;color:'+(isLight?'#374151':'#aeb9cc')+';background:'+(isLight?'rgba(255,255,255,0.82)':'rgba(14,17,23,0.72)')+';padding:4px 9px;border-radius:6px;pointer-events:none;backdrop-filter:blur(3px);white-space:nowrap';
+  container.appendChild(lg);
+  const _fmtP = (v) => (v >= 100 ? v.toFixed(2) : v.toFixed(4));
+  const _lgHtml = (c) => {
+    if (!c || c.open == null) return '';
+    const up = c.close >= c.open;
+    const cor = up ? '#00d084' : '#ff4d6a';
+    const varPct = c.open ? ((c.close - c.open) / c.open) * 100 : 0;
+    let dt = '';
+    try {
+      const t = c.time;
+      dt = (typeof t === 'object') ? `${String(t.day).padStart(2,'0')}/${String(t.month).padStart(2,'0')}/${t.year}`
+                                   : new Date(t * 1000).toLocaleDateString(_dateLoc());
+    } catch(_){}
+    return `${dt}&nbsp;&nbsp;A <b style="color:${cor}">${_fmtP(c.open)}</b>&nbsp; M <b style="color:${cor}">${_fmtP(c.high)}</b>&nbsp; m <b style="color:${cor}">${_fmtP(c.low)}</b>&nbsp; F <b style="color:${cor}">${_fmtP(c.close)}</b>&nbsp; <b style="color:${cor}">${varPct>=0?'+':''}${varPct.toFixed(2)}%</b>`;
+  };
+  const _ultimo = candleFormatted[candleFormatted.length - 1];
+  lg.innerHTML = _lgHtml(_ultimo);
+  chart.subscribeCrosshairMove((param) => {
+    let c = null;
+    try { c = param && param.seriesData ? param.seriesData.get(candleSeries) : null; } catch(_){}
+    lg.innerHTML = _lgHtml(c || _ultimo);
+  });
 
   // Ctrl + roda do mouse = zoom no gráfico; roda sozinha = página rola normal
   container.onwheel = (e) => {
     if (!e.ctrlKey) return;            // sem Ctrl: deixa a página rolar
     e.preventDefault();
-    zoomStep(e.deltaY < 0 ? 1.2 : 1/1.2);
+    window.chartZoomStep(e.deltaY < 0 ? 1.2 : 1/1.2);
   };
 
   // Dica discreta de uso (some no primeiro zoom)
@@ -4631,6 +4661,13 @@ function renderOverview(d, params, relang) {
           <button class="zoom-btn" onclick="zoomChart('6m')">6M</button>
           <button class="zoom-btn" onclick="zoomChart('1y')">1Y</button>
           <button class="zoom-btn active" onclick="zoomChart('all')">All</button>
+        </div>
+        <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
+        <!-- v9.35: controles de zoom saíram de CIMA do candle e vieram pra barra -->
+        <div style="display:flex;gap:2px">
+          <button class="zoom-btn" onclick="chartZoomStep(1/1.35)" title="Afastar (Ctrl + roda também funciona)">−</button>
+          <button class="zoom-btn" onclick="chartZoomStep(1.35)" title="Aproximar (Ctrl + roda também funciona)">+</button>
+          <button class="zoom-btn" onclick="chartFit()" title="Enquadrar tudo (ou duplo clique no gráfico)">⛶</button>
         </div>
         <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
         <span style="font-size:9px;color:var(--muted)"><span style="color:var(--green)">▲ BUY</span> &nbsp; <span style="color:var(--red)">▼ SELL</span></span>
