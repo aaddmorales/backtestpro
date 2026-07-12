@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.29  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.30  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.29 - FIX invalid stops (IA via PositionOpen): a subclasse BTTrade agora tambem sobrescreve PositionOpen (nao so Buy/Sell) - a IA abria posicao por PositionOpen, que passava reto sem o clamp de stops. Agora Buy, Sell E PositionOpen ajustam SL/TP pro nivel minimo do ativo antes de enviar. REEMITIR o bot. | 6.28 EA da IA: operar rapido (OnInit) + clamp Buy/Sell | ...(historico nos deploys)"
+API_VERSAO = "6.30 - invalid stops A PROVA DE BALA: a subclasse BTTrade agora tambem sobrescreve OrderSend(request,result) - a IA abria a ordem montando o request na mao e chamando trade.OrderSend direto (4o caminho, alem de Buy/Sell/PositionOpen), que passava sem clamp. Agora TODO caminho de ordem do CTrade e clampado. Alem disso o prompt da IA passou a instruir respeitar SYMBOL_TRADE_STOPS_LEVEL na origem. REEMITIR. | 6.29 clamp PositionOpen | 6.28 operar rapido + clamp Buy/Sell | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-11j-positionopen-clamp"
+BUILD_TAG = "2026-07-12a-ordersend-clamp"
 
 @app.get("/versao")
 def versao():
@@ -3914,6 +3914,19 @@ public:
       BTAjustaStops(ehCompra, p, sl, tp);
       Print("BOTTESTED_EVENTO|aberto|tipo=aberto|simbolo=", _Symbol, "|lado=", (ehCompra ? "BUY" : "SELL"));
       return CTrade::PositionOpen(symbol, order_type, volume, price, sl, tp, comment);
+   }
+   // À PROVA DE BALA: TODA ordem do CTrade chamada direto no objeto passa por aqui
+   // (Buy/Sell/PositionOpen chamam OrderSend internamente na base; e a IA que monta
+   // o request na mão e chama trade.OrderSend(...) tambem cai aqui). Clampa o SL/TP
+   // do request antes de enviar — pega qualquer caminho que a IA use.
+   bool OrderSend(const MqlTradeRequest &request, MqlTradeResult &result)
+   {
+      MqlTradeRequest req = request;
+      bool ehCompra = (req.type==ORDER_TYPE_BUY || req.type==ORDER_TYPE_BUY_LIMIT || req.type==ORDER_TYPE_BUY_STOP);
+      double p = req.price;
+      if(p <= 0.0) p = ehCompra ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID);
+      BTAjustaStops(ehCompra, p, req.sl, req.tp);
+      return CTrade::OrderSend(req, result);
    }
 };
 //----------------------------------------------------------------------"""
@@ -8231,7 +8244,7 @@ Requisitos do EA:
 - Implemente OnInit(), OnDeinit() e OnTick() com a MESMA lógica de entrada/saída do Python.
 - Use as APIs corretas de MQL5: crie handles de indicadores no OnInit (iMA, iRSI, iBands, etc.) e leia com CopyBuffer no OnTick. NÃO use assinaturas antigas de MQL4.
 - Opere uma posição por vez (cheque PositionSelect(_Symbol)).
-- Stop e take em PONTOS: converta com _Point.
+- Stop e take em PONTOS: converta com _Point. MAS respeite a distância MÍNIMA do ativo: calcule dist_min = (SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) + 10) * _Point e NUNCA envie SL/TP mais perto do preço que dist_min (em ativos como BTCUSD, XAUUSD e índices, a distância mínima é grande — stops colados são REJEITADOS com 'invalid stops'). Ajuste o lado correto (compra: SL abaixo, TP acima; venda: inverso) e NormalizeDouble(_Digits) antes de enviar.
 
 Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
 - Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
