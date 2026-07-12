@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.40  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12k-candles-preview | Deploy: Railway
+#  BotTested API — v6.41  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12l-vitrine-sem-acoes | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.41 - VITRINE SEM ACOES + COMBO POSITIVO: (1) acoes (Magnificent 7, Acoes Pro, B3) FORA da vitrine — o bull de longo prazo (Google/Microsoft) distorcia as medias e nao e referencia estavel; a vitrine compara em Indices/Forex/Commodities/Cripto (acoes seguem no catalogo p/ teste manual); (2) o ranking de ativos agora EXIGE retorno positivo no combo robusto — card nao destaca ativo que sai negativo no clique; (3) cada estrategia expoe melhor_combo (ativo+periodo+timeframe+retorno medido) e o front v9.45 APLICA esse combo no auto-run do card — o teste do usuario reproduz a combinacao positiva medida na biblioteca; (4) medias dos cards = media SO dos ativos nao-acao (o Radar trabalha em cima). | 6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12k-candles-preview"
+BUILD_TAG = "2026-07-12l-vitrine-sem-acoes"
 
 @app.get("/versao")
 def versao():
@@ -7404,8 +7404,20 @@ def estrategias_vitrine(lang: str = "pt"):
     if sb is not None:
         try:
             rows = (sb.table("estudo_biblioteca")
-                    .select("estrategia_id,ativo,sharpe,profit_factor,retorno,win_rate,trades,forca,timeframe")
+                    .select("estrategia_id,ativo,sharpe,profit_factor,retorno,win_rate,trades,forca,timeframe,periodo")
                     .limit(8000).execute().data or [])
+            # ── SEM AÇÕES NA VITRINE (v6.41) ─────────────────────────────────
+            # Ações (Magnificent 7, Ações Pro, B3) ficam FORA da vitrine: o bull
+            # de longo prazo delas (Google/Microsoft etc.) distorce as médias e
+            # não é referência estável — os setores estão mudando. A vitrine
+            # compara a estratégia em Índices, Forex, Commodities e Cripto.
+            # (As ações continuam no catálogo pra quem quiser testar por conta.)
+            _CATS_ACOES = ("Magnificent 7", "Ações Pro", "B3 — Brasil")
+            _ATIVOS_ACOES = set()
+            for _cat in _CATS_ACOES:
+                for _a in CATALOGO_ATIVOS.get(_cat, []):
+                    _ATIVOS_ACOES.add(_a.get("nome"))
+            rows = [r for r in rows if r.get("ativo") not in _ATIVOS_ACOES]
             acc = {}
             por_ativo = {}   # estrategia_id -> {ativo -> {sh:[], n:int}}  (p/ ranking de ativos)
             for r in rows:
@@ -7428,7 +7440,10 @@ def estrategias_vitrine(lang: str = "pt"):
                     pa = por_ativo.setdefault(eid, {}).setdefault(ativo_nome, {"combos": []})
                     pa["combos"].append({"sh": float(r.get("sharpe") or 0),
                                          "trades": int(r.get("trades") or 0),
-                                         "tf": str(r.get("timeframe") or "").strip().lower()})
+                                         "tf": str(r.get("timeframe") or "").strip().lower(),
+                                         "periodo": str(r.get("periodo") or "").strip(),
+                                         "ret": float(r.get("retorno") or 0),
+                                         "wr": float(r.get("win_rate") or 0)})
             # top 3 ativos por estratégia
             # ── FILTRO DE ROBUSTEZ ──────────────────────────────────────────
             # Estratégias DIÁRIAS por natureza (leem o D1: Escalonada, Suporte&Resistência
@@ -7459,28 +7474,45 @@ def estrategias_vitrine(lang: str = "pt"):
                 "tendencia_diaria_piramide": ["BTC/USD"],   # Escalonada — decisão do dono
             }
             top_ativos_por_est = {}
+            _MELHOR_COMBO_EST = {}
             for eid, ativos in por_ativo.items():
                 tf_natural = _TF_NATURAL.get(eid)   # None p/ estratégias multi-timeframe
                 ranking = []
+                melhor_combo_do_ativo = {}
                 for ativo_nome, d in ativos.items():
                     combos = d["combos"]
                     if len(combos) < _MIN_BACKTESTS_ATIVO:
                         continue
                     if tf_natural:
                         # estratégia diária: só conta o combo do timeframe natural (D1)
-                        robustos = [c["sh"] for c in combos
+                        robustos = [c for c in combos
                                     if c["tf"] == tf_natural and c["trades"] >= _MIN_TRADES_COMBO]
                     else:
                         # multi-timeframe: melhor combo entre os que têm trades suficientes
-                        robustos = [c["sh"] for c in combos if c["trades"] >= _MIN_TRADES_COMBO]
+                        robustos = [c for c in combos if c["trades"] >= _MIN_TRADES_COMBO]
+                    # v6.41: combo precisa ter dado RETORNO POSITIVO — a vitrine não
+                    # pode destacar um ativo que, testado no clique, sai negativo.
+                    robustos = [c for c in robustos if c["ret"] > 0]
                     if not robustos:
                         continue
-                    sh_melhor = max(robustos)
-                    if sh_melhor < _PISO_SHARPE_ATIVO:
+                    melhor = max(robustos, key=lambda c: c["sh"])
+                    if melhor["sh"] < _PISO_SHARPE_ATIVO:
                         continue
-                    ranking.append((ativo_nome, sh_melhor, len(combos)))
+                    melhor_combo_do_ativo[ativo_nome] = melhor
+                    ranking.append((ativo_nome, melhor["sh"], len(combos)))
                 ranking.sort(key=lambda x: x[1], reverse=True)
                 auto = [nome for (nome, _sh, _n) in ranking[:3]]
+                # melhor combo do 1º ativo do card (fixo do dono tem prioridade se
+                # tiver combo robusto; senão cai pro 1º do ranking automático)
+                _prefer = (_ATIVOS_FIXOS_VITRINE.get(eid, []) + auto)
+                for _nome in _prefer:
+                    mc = melhor_combo_do_ativo.get(_nome)
+                    if mc:
+                        _MELHOR_COMBO_EST[eid] = {"ativo": _nome, "periodo": mc["periodo"],
+                                                  "timeframe": mc["tf"],
+                                                  "retorno": round(mc["ret"], 2),
+                                                  "win_rate": round(mc["wr"], 1)}
+                        break
                 fixos = _ATIVOS_FIXOS_VITRINE.get(eid, [])
                 if fixos:
                     # fixos na frente, sem duplicar, completa com o ranking até 3
@@ -7499,10 +7531,16 @@ def estrategias_vitrine(lang: str = "pt"):
                     "combos": a["n"],
                     "forte_pct": round(100 * a["forte"] / a["n"]) if a["n"] else 0,
                     "top_ativos": top_ativos_por_est.get(eid, []),
+                    "melhor_combo": _MELHOR_COMBO_EST.get(eid),
                 }
         except Exception as e:
             print(f"[vitrine] erro ao agregar: {e}")
 
+    # v6.41: fallback "mercados" dos cards também sai sem ações
+    _VITRINE_ACOES_OUT = set()
+    for _cat in ("Magnificent 7", "Ações Pro", "B3 — Brasil"):
+        for _a in CATALOGO_ATIVOS.get(_cat, []):
+            _VITRINE_ACOES_OUT.add(_a.get("nome"))
     itens = []
     for est in ESTRATEGIAS_PRONTAS:
         eid = est["id"]
@@ -7515,8 +7553,10 @@ def estrategias_vitrine(lang: str = "pt"):
             "tags": [_tag_loc(t, lang) for t in est.get("tags", [])],
             "categoria": _categoria_de(est.get("tags", [])),
             "nivel": _nivel_loc(est.get("nivel", ""), lang),
-            "mercados": est.get("mercados", []),
-            "top_ativos": (m.get("top_ativos") or est.get("mercados", [])),
+            "mercados": [x for x in est.get("mercados", []) if x not in _VITRINE_ACOES_OUT],
+            "top_ativos": ((m.get("top_ativos")
+                            or [x for x in est.get("mercados", []) if x not in _VITRINE_ACOES_OUT])[:3]),
+            "melhor_combo": m.get("melhor_combo"),
             "casa": bool(est.get("casa")),
             "codigo": est.get("codigo", ""),
             "sharpe_medio": m.get("sharpe_medio"),
