@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.32  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.33  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.32 - OPERAR ACENDE RAPIDO (sempre): mudei o prompt da IA - o snapshot agora e emitido no OnInit (na hora que anexa) + a cada 10s via EventSetTimer/OnTimer, em vez de \"uma vez por barra\" (que esperava fechar vela, ate 60-120s no M1). Isso nao depende da injecao do VISAO (regex fragil) - usa o snapshot obrigatorio que a IA sempre gera. Operar deve acender em ~10-15s em qualquer bot. REEMITIR. | 6.31 clamp via #define | 6.30 clamp OrderSend | ...(historico nos deploys)"
+API_VERSAO = "6.33 - OPERAR ACENDE SEMPRE (grito de ligou no OnInit): a injecao do snapshot no OnInit ficou ROBUSTA - acha a assinatura e a PROXIMA chave { (ignorando comentario/quebra de linha) em vez de exigir o regex casar int OnInit()  {. Era isso que falhava em alguns bots (comentario entre ) e {), caindo por barra (60s). Agora o BTVisaoTick emite no exato momento do OK (OnInit) em TODO bot -> Operar em ~10-15s sempre. Nao depende mais da IA. REEMITIR. | 6.32 snapshot OnInit+timer (prompt) | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12c-snapshot-oninit-timer"
+BUILD_TAG = "2026-07-12d-oninit-robusto"
 
 @app.get("/versao")
 def versao():
@@ -4256,20 +4256,27 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         codigo = _re.sub(r"int\s+OnInit\s*\(",
                          lambda m: _BT_PAINEL_MQL5 + "\n" + _BT_VISAO_MQL5 + "\n" + m.group(0),
                          codigo, count=1)
-        # 2) Init logo após a chave de abertura do OnInit + emite JÁ o 1º snapshot
-        #    (BTVisaoTick com g_btVisaoUlt=0 emite na hora) -> Operar acende em ~1 tick
-        codigo = _re.sub(r"(int\s+OnInit\s*\([^)]*\)\s*\{)",
-                         lambda m: m.group(1) + "\n   BTPainelInit();\n   BTVisaoInit();\n   BTVisaoTick();",
-                         codigo, count=1)
-        # 3) Tick no topo do OnTick (selo vivo + visão por tempo, antes de qualquer guard)
-        codigo = _re.sub(r"(void\s+OnTick\s*\([^)]*\)\s*\{)",
-                         lambda m: m.group(1) + "\n   BTPainelTick();\n   BTVisaoTick();",
-                         codigo, count=1)
-        # 4) Deinit, se existir (libera objetos do selo e handles da visão)
-        if _re.search(r"void\s+OnDeinit\s*\(", codigo):
-            codigo = _re.sub(r"(void\s+OnDeinit\s*\([^)]*\)\s*\{)",
-                             lambda m: m.group(1) + "\n   BTPainelDeinit();\n   BTVisaoDeinit();",
-                             codigo, count=1)
+        # 2/3/4) Injeta o "grito de ligou" (BTVisaoTick emite JÁ no OnInit, no exato
+        #    momento do OK) + o tick vivo + o deinit — achando o CORPO da função de
+        #    forma ROBUSTA: acha a assinatura, depois a PRÓXIMA chave { (ignorando
+        #    comentário, quebra de linha, formatação) e insere logo após ela. Não
+        #    depende mais do regex casar a assinatura inteira — era isso que fazia o
+        #    snapshot no OnInit FALHAR em alguns bots (comentário/quebra entre ) e {),
+        #    caindo pra o snapshot por barra (60s). Agora acende sempre em ~1 tick.
+        def _apos_chave(cod, assinatura, texto):
+            m = _re.search(assinatura, cod)
+            if not m:
+                return cod
+            i = cod.find("{", m.end())
+            if i < 0:
+                return cod
+            return cod[:i+1] + texto + cod[i+1:]
+        codigo = _apos_chave(codigo, r"int\s+OnInit\s*\(",
+                             "\n   BTPainelInit();\n   BTVisaoInit();\n   BTVisaoTick();")
+        codigo = _apos_chave(codigo, r"void\s+OnTick\s*\(",
+                             "\n   BTPainelTick();\n   BTVisaoTick();")
+        codigo = _apos_chave(codigo, r"void\s+OnDeinit\s*\(",
+                             "\n   BTPainelDeinit();\n   BTVisaoDeinit();")
     return codigo
 
 
