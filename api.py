@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.41  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12l-vitrine-sem-acoes | Deploy: Railway
+#  BotTested API — v6.42  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12m-hash-so-codigo | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.41 - VITRINE SEM ACOES + COMBO POSITIVO: (1) acoes (Magnificent 7, Acoes Pro, B3) FORA da vitrine — o bull de longo prazo (Google/Microsoft) distorcia as medias e nao e referencia estavel; a vitrine compara em Indices/Forex/Commodities/Cripto (acoes seguem no catalogo p/ teste manual); (2) o ranking de ativos agora EXIGE retorno positivo no combo robusto — card nao destaca ativo que sai negativo no clique; (3) cada estrategia expoe melhor_combo (ativo+periodo+timeframe+retorno medido) e o front v9.45 APLICA esse combo no auto-run do card — o teste do usuario reproduz a combinacao positiva medida na biblioteca; (4) medias dos cards = media SO dos ativos nao-acao (o Radar trabalha em cima). | 6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.42 - ESPELHO POR CODIGO (SL/TP fora do hash — ideia do dono): SL/TP sao inputs do .mq5, trocar o valor nao muda a compilacao -> o cache guarda o codigo NEUTRO (magic 20250, SL 60, TP 120) e _forcar_sl_tp_mql5 re-injeta o stop/take do usuario no HIT. Usuario ajustou SL/TP (sugestao mais comum do Radar) = envio CONTINUA relampago; so mudanca de CODIGO invalida o espelho. Rodar a rodada de aprovacao DEPOIS deste deploy (hashes antigos com sl/tp ficam orfaos — inofensivo). | 6.41 - VITRINE SEM ACOES + COMBO POSITIVO: (1) acoes (Magnificent 7, Acoes Pro, B3) FORA da vitrine — o bull de longo prazo (Google/Microsoft) distorcia as medias e nao e referencia estavel; a vitrine compara em Indices/Forex/Commodities/Cripto (acoes seguem no catalogo p/ teste manual); (2) o ranking de ativos agora EXIGE retorno positivo no combo robusto — card nao destaca ativo que sai negativo no clique; (3) cada estrategia expoe melhor_combo (ativo+periodo+timeframe+retorno medido) e o front v9.45 APLICA esse combo no auto-run do card — o teste do usuario reproduz a combinacao positiva medida na biblioteca; (4) medias dos cards = media SO dos ativos nao-acao (o Radar trabalha em cima). | 6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12l-vitrine-sem-acoes"
+BUILD_TAG = "2026-07-12m-hash-so-codigo"
 
 @app.get("/versao")
 def versao():
@@ -8371,14 +8371,14 @@ _MQ5_GER_CACHE = {}          # hash -> {"mq5": str neutro, "aprovado": bool, "ts
 _MQ5_GER_CACHE_MAX = 300
 
 
-def _mq5_hash_geracao(codigo_python, sl, tp) -> str:
-    # normaliza sl/tp como float (%g): "60" e "60.0" PRECISAM dar o mesmo hash —
-    # o front manda float, o aquecimento manda int.
-    try:
-        _sl, _tp = float(sl), float(tp)
-    except Exception:
-        _sl, _tp = 60.0, 120.0
-    base = f"{(codigo_python or '')[:6000]}|sl={_sl:g}|tp={_tp:g}"
+def _mq5_hash_geracao(codigo_python, sl=None, tp=None) -> str:
+    # v6.42: SL/TP FORA do hash (ideia do dono). Eles são `input` no .mq5 —
+    # trocar o valor de um input não muda a compilação — então o cache guarda o
+    # código NEUTRO e re-injeta o stop/take do usuário na hora (igual ao magic).
+    # Consequência: usuário ajustou SL/TP (a sugestão mais comum do Radar) e o
+    # envio CONTINUA relâmpago; só mudança de CÓDIGO exige validação completa.
+    # (sl/tp ficam na assinatura por compatibilidade; são ignorados.)
+    base = f"{(codigo_python or '')[:6000]}"
     return hashlib.sha1(base.encode("utf-8")).hexdigest()
 
 
@@ -8414,6 +8414,23 @@ def _neutralizar_magic_mql5(codigo: str) -> str:
         return codigo
     codigo = _re.sub(r"BOTTESTED_SNAPSHOT\|magic=\d+\|", "BOTTESTED_SNAPSHOT|", codigo)
     codigo = _re.sub(r"(InpMagic\s*=\s*)\d+", r"\g<1>20250", codigo, count=1)
+    # v6.42: SL/TP neutros no cache — re-injetados por bot no uso
+    codigo = _re.sub(r"(InpSL\s*=\s*)[\d.]+", r"\g<1>60.0", codigo, count=1)
+    codigo = _re.sub(r"(InpTP\s*=\s*)[\d.]+", r"\g<1>120.0", codigo, count=1)
+    return codigo
+
+
+def _forcar_sl_tp_mql5(codigo: str, sl, tp) -> str:
+    """v6.42 — injeta o stop/take do USUÁRIO no .mq5 vindo do cache (que guarda
+    os neutros 60/120). Só troca o valor default dos inputs — não altera lógica
+    nem compilação, por isso o espelho de validação continua valendo."""
+    import re as _re
+    try:
+        _sl, _tp = float(sl), float(tp)
+    except Exception:
+        return codigo
+    codigo = _re.sub(r"(InpSL\s*=\s*)[\d.]+", lambda m: m.group(1) + f"{_sl:g}", codigo, count=1)
+    codigo = _re.sub(r"(InpTP\s*=\s*)[\d.]+", lambda m: m.group(1) + f"{_tp:g}", codigo, count=1)
     return codigo
 
 
@@ -8478,6 +8495,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             texto = hit["mq5"]
             if magic:
                 texto = _forcar_magic_mql5(texto, magic)
+            texto = _forcar_sl_tp_mql5(texto, sl, tp)   # v6.42: SL/TP do usuário
             print(f"[mq5-cache] HIT {gen_hash[:10]} (aprovado={hit.get('aprovado')}) — IA pulada")
             return texto
         instr_magic = (f"Declare EXATAMENTE: input long InpMagic = {magic}; e no OnInit chame "
