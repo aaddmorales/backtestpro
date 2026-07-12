@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.31  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.32  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.31 - clamp de stops A PROVA DE BALA (via #define): em vez de trocar \"CTrade trade;\" (que dependia do nome da variavel e falhava quando a IA usava outro nome), agora injeta a subclasse BTTrade + \"#define CTrade BTTrade\" logo apos o include do Trade.mqh. A partir dai QUALQUER CTrade que a IA declare (qualquer nome) vira a subclasse com clamp pelo preprocessador. Cobre Buy/Sell/PositionOpen/OrderSend. REEMITIR. | 6.30 clamp OrderSend | 6.29 clamp PositionOpen | ...(historico nos deploys)"
+API_VERSAO = "6.32 - OPERAR ACENDE RAPIDO (sempre): mudei o prompt da IA - o snapshot agora e emitido no OnInit (na hora que anexa) + a cada 10s via EventSetTimer/OnTimer, em vez de \"uma vez por barra\" (que esperava fechar vela, ate 60-120s no M1). Isso nao depende da injecao do VISAO (regex fragil) - usa o snapshot obrigatorio que a IA sempre gera. Operar deve acender em ~10-15s em qualquer bot. REEMITIR. | 6.31 clamp via #define | 6.30 clamp OrderSend | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12b-define-ctrade-clamp"
+BUILD_TAG = "2026-07-12c-snapshot-oninit-timer"
 
 @app.get("/versao")
 def versao():
@@ -8252,7 +8252,10 @@ Requisitos do EA:
 Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
 - Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
 - Ao fechar: Print("BOTTESTED_EVENTO|fechado|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
-- Uma vez por barra nova: Print("BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol);
+- SNAPSHOT (o monitoramento depende disso — tem que sair RÁPIDO): defina uma função
+  void BTEnviarSnapshot(){ Print("BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol); }
+  e chame BTEnviarSnapshot() em TRÊS lugares: (1) no FIM do OnInit (emite na hora que anexa ao gráfico); (2) dentro de void OnTimer(); e ative o timer no OnInit com EventSetTimer(10); (emite a cada 10s, independente de barra); (3) no OnDeinit chame EventKillTimer();. NÃO emita o snapshot só por barra nova — ele PRECISA sair no OnInit e no OnTimer, senão o monitoramento demora minutos pra acender.
+
 
 REGRAS:
 - O código TEM que compilar no MetaEditor sem erros. Prefira o simples ao esperto.
