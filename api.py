@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.30  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.31  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.30 - invalid stops A PROVA DE BALA: a subclasse BTTrade agora tambem sobrescreve OrderSend(request,result) - a IA abria a ordem montando o request na mao e chamando trade.OrderSend direto (4o caminho, alem de Buy/Sell/PositionOpen), que passava sem clamp. Agora TODO caminho de ordem do CTrade e clampado. Alem disso o prompt da IA passou a instruir respeitar SYMBOL_TRADE_STOPS_LEVEL na origem. REEMITIR. | 6.29 clamp PositionOpen | 6.28 operar rapido + clamp Buy/Sell | ...(historico nos deploys)"
+API_VERSAO = "6.31 - clamp de stops A PROVA DE BALA (via #define): em vez de trocar \"CTrade trade;\" (que dependia do nome da variavel e falhava quando a IA usava outro nome), agora injeta a subclasse BTTrade + \"#define CTrade BTTrade\" logo apos o include do Trade.mqh. A partir dai QUALQUER CTrade que a IA declare (qualquer nome) vira a subclasse com clamp pelo preprocessador. Cobre Buy/Sell/PositionOpen/OrderSend. REEMITIR. | 6.30 clamp OrderSend | 6.29 clamp PositionOpen | ...(historico nos deploys)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12a-ordersend-clamp"
+BUILD_TAG = "2026-07-12b-define-ctrade-clamp"
 
 @app.get("/versao")
 def versao():
@@ -3929,6 +3929,7 @@ public:
       return CTrade::OrderSend(req, result);
    }
 };
+#define CTrade BTTrade
 //----------------------------------------------------------------------"""
 
 
@@ -4232,14 +4233,16 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         codigo = codigo.replace("trade.Sell(", "BTSell(")
         codigo = codigo.replace("//__BT_INJECT_WRAPPERS__", _BT_WRAPPERS_MQL5, 1)
     else:
-        # EA da IA: injeta a subclasse BTTrade (clamp de stops p/ evitar "invalid
-        # stops" em ativos tipo BTCUSD) trocando "CTrade trade;". A subclasse loga
-        # o open por Print (BTEvento NÃO existe no EA da IA). Se não achar o padrão
-        # "CTrade <nome>;", nada é injetado (degrada seguro, sem quebrar compilação).
-        _mct = _re.search(r"\bCTrade\s+(\w+)\s*;", codigo)
-        if _mct:
-            codigo = codigo.replace(_mct.group(0),
-                                    _BT_TRADE_CLAMP_MQL5 + "\nBTTrade " + _mct.group(1) + ";", 1)
+        # EA da IA: injeta o bloco de clamp (subclasse BTTrade + BTAjustaStops) LOGO
+        # APÓS o include do Trade.mqh, terminando com "#define CTrade BTTrade". A partir
+        # daí, QUALQUER "CTrade <nome>;" que a IA declare (com qualquer nome de variável)
+        # vira a subclasse com clamp pelo preprocessador — não depende mais de casar o
+        # nome. Conserta o "invalid stops" em qualquer código da IA. Se não achar o
+        # include (raríssimo), nada é injetado (degrada seguro, sem quebrar compilação).
+        _minc = _re.search(r"#include\s*<Trade[\\/]Trade\.mqh>", codigo)
+        if _minc:
+            codigo = codigo.replace(_minc.group(0),
+                                    _minc.group(0) + "\n" + _BT_TRADE_CLAMP_MQL5, 1)
 
     # ── SELO (identidade on-chart) + VISÃO (snapshot multi-timeframe) ─────
     # Injeta as funções dos dois ANTES do OnInit e chama Init/Tick/Deinit de
