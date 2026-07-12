@@ -1,5 +1,5 @@
 # ============================================================
-#  BotTested API — v6.34  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  BotTested API — v6.35  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
 #  Build: 2026-07-08c-painel-radar | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.34 - CAUSA RAIZ: o /mt5/enviar (caminho do CODIGO CUSTOM) chamava so o magic e NUNCA instrumentava - por isso VISAO (snapshot rapido) e clamp de stops nunca chegavam no bot custom (o que o usuario usa). Agora _gerar_mq5_de_codigo tambem chama _instrumentar_log_mql5. + BTAjustaStops agora usa o SPREAD como piso (BTCUSD reporta stops_level=0, entao o stop ficava colado no spread = invalid stops). Os DOIS problemas (velocidade + invalid stops) fecham com isso. REEMITIR. | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12e-instrumenta-custom-spread"
+BUILD_TAG = "2026-07-12f-reverte-instr-prompt-spread"
 
 @app.get("/versao")
 def versao():
@@ -8270,7 +8270,7 @@ Requisitos do EA:
 - Implemente OnInit(), OnDeinit() e OnTick() com a MESMA lógica de entrada/saída do Python.
 - Use as APIs corretas de MQL5: crie handles de indicadores no OnInit (iMA, iRSI, iBands, etc.) e leia com CopyBuffer no OnTick. NÃO use assinaturas antigas de MQL4.
 - Opere uma posição por vez (cheque PositionSelect(_Symbol)).
-- Stop e take em PONTOS: converta com _Point. MAS respeite a distância MÍNIMA do ativo: calcule dist_min = (SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) + 10) * _Point e NUNCA envie SL/TP mais perto do preço que dist_min (em ativos como BTCUSD, XAUUSD e índices, a distância mínima é grande — stops colados são REJEITADOS com 'invalid stops'). Ajuste o lado correto (compra: SL abaixo, TP acima; venda: inverso) e NormalizeDouble(_Digits) antes de enviar.
+- Stop e take em PONTOS: converta com _Point. MAS respeite a distância MÍNIMA — e ela NÃO é só o stops level (que em BTCUSD, índices e cripto costuma vir 0). Calcule usando também o SPREAD: double _sp = SymbolInfoDouble(_Symbol,SYMBOL_ASK) - SymbolInfoDouble(_Symbol,SYMBOL_BID); double _lvl = (SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL) + 10) * _Point; double dist_min = MathMax(_lvl, _sp * 3.0); — e NUNCA envie SL/TP mais perto do preço que dist_min. Se o SL/TP calculado ficar mais perto, empurre pra dist_min. Isso evita o 'invalid stops' (stop dentro do spread é rejeitado). Ajuste o lado correto (compra: SL abaixo, TP acima; venda: inverso) e NormalizeDouble(_Digits) antes de enviar.
 
 Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
 - Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
@@ -8315,11 +8315,9 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
         texto = _re.sub(r"^```[a-zA-Z0-9]*\s*\n?", "", texto)
         texto = _re.sub(r"\n?```\s*$", "", texto).strip()
-        # FALTAVA: instrumentar tambem o caminho do CODIGO CUSTOM (antes so o
-        # caminho testado/do bot instrumentava). Aplica VISAO (snapshot rapido no
-        # OnInit) + clamp de stops (#define CTrade BTTrade) — o que faz o Operar
-        # acender rapido E as ordens abrirem sem "invalid stops".
-        texto = _instrumentar_log_mql5(texto)
+        # (NÃO instrumentar aqui: a injeção da VISÃO/#define quebrava a compilação
+        # neste caminho. A velocidade e o clamp de stops são resolvidos pela
+        # INSTRUÇÃO no prompt, que a IA segue de forma confiável e compila sempre.)
         if magic:
             texto = _forcar_magic_mql5(texto, magic)
         return texto
