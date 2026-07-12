@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.38  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12i-cache-geracao | Deploy: Railway
+#  BotTested API — v6.39  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12j-cache-persistente-aquecer | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -604,9 +604,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12i-cache-geracao"
+BUILD_TAG = "2026-07-12j-cache-persistente-aquecer"
 
 @app.get("/versao")
 def versao():
@@ -8299,8 +8299,36 @@ _MQ5_GER_CACHE_MAX = 300
 
 
 def _mq5_hash_geracao(codigo_python, sl, tp) -> str:
-    base = f"{(codigo_python or '')[:6000]}|sl={sl}|tp={tp}"
+    # normaliza sl/tp como float (%g): "60" e "60.0" PRECISAM dar o mesmo hash —
+    # o front manda float, o aquecimento manda int.
+    try:
+        _sl, _tp = float(sl), float(tp)
+    except Exception:
+        _sl, _tp = 60.0, 120.0
+    base = f"{(codigo_python or '')[:6000]}|sl={_sl:g}|tp={_tp:g}"
     return hashlib.sha1(base.encode("utf-8")).hexdigest()
+
+
+def _mq5_cache_buscar(gen_hash: str):
+    """Memória primeiro; se não tiver, busca no Supabase (mq5_cache) e hidrata a
+    memória. Assim o cache SOBREVIVE a deploys e vale pra qualquer worker."""
+    e = _MQ5_GER_CACHE.get(gen_hash)
+    if e and e.get("mq5"):
+        return e
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            r = (sb.table("mq5_cache").select("mq5,aprovado")
+                 .eq("gen_hash", gen_hash).limit(1).execute())
+            if r.data and (r.data[0].get("mq5") or ""):
+                e = {"mq5": r.data[0]["mq5"], "aprovado": bool(r.data[0].get("aprovado")),
+                     "ts": _time_mt5.time()}
+                _MQ5_GER_CACHE[gen_hash] = e
+                return e
+    except Exception as _e:
+        try: print(f"[mq5-cache] busca supabase: {_e}")
+        except Exception: pass
+    return None
 
 
 def _neutralizar_magic_mql5(codigo: str) -> str:
@@ -8325,6 +8353,37 @@ def _mq5_cache_guardar(gen_hash: str, mq5_neutro: str):
                                     "ts": _time_mt5.time()}
     except Exception:
         pass
+    # persiste no Supabase (mq5_cache): sobrevive a deploy e vale entre workers.
+    # try/except isolado: sem a tabela, o cache em memória segue funcionando.
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            sb.table("mq5_cache").upsert({
+                "gen_hash": gen_hash, "mq5": mq5_neutro,
+                "atualizado_em": _dt.now(_tz.utc).isoformat(),
+            }, on_conflict="gen_hash").execute()
+    except Exception as _e:
+        try: print(f"[mq5-cache] upsert supabase: {_e}")
+        except Exception: pass
+
+
+def _mq5_cache_aprovar(gen_hash: str):
+    """Veredito aprovado no MT5 real -> marca memória + Supabase. A partir daqui
+    QUALQUER usuário que envie esse código ganha a validação relâmpago."""
+    try:
+        if gen_hash in _MQ5_GER_CACHE:
+            _MQ5_GER_CACHE[gen_hash]["aprovado"] = True
+    except Exception:
+        pass
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            sb.table("mq5_cache").update({
+                "aprovado": True, "atualizado_em": _dt.now(_tz.utc).isoformat(),
+            }).eq("gen_hash", gen_hash).execute()
+    except Exception as _e:
+        try: print(f"[mq5-cache] aprovar supabase: {_e}")
+        except Exception: pass
 
 
 def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
@@ -8340,7 +8399,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         # CACHE (v6.38): mesmo código+sl+tp = mesmo EA. Pula a IA (~15-40s) e
         # re-injeta só o magic deste bot. É o caso comum da vitrine.
         gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
-        hit = _MQ5_GER_CACHE.get(gen_hash)
+        hit = _mq5_cache_buscar(gen_hash)
         if hit and hit.get("mq5"):
             hit["ts"] = _time_mt5.time()
             texto = hit["mq5"]
@@ -8417,7 +8476,7 @@ def mt5_enviar(req: MT5EnviarReq):
     # PRÉ-VALIDADO (v6.38): se este código (neutro) já foi APROVADO antes, o
     # conector pode reportar o veredito na hora e compilar em segundo plano.
     _gh = _mq5_hash_geracao(req.codigo, req.stop_loss, req.take_profit)
-    _pre_ok = bool((_MQ5_GER_CACHE.get(_gh) or {}).get("aprovado"))
+    _pre_ok = bool((_mq5_cache_buscar(_gh) or {}).get("aprovado"))
     _MT5_JOBS[job_id] = {
         "bot_token": req.bot_token,
         "filename": filename,
@@ -8594,8 +8653,8 @@ def mt5_veredito(req: MT5VeredictoReq):
     # v6.38: aprovou no MT5 real -> marca o cache; próximos envios do MESMO
     # código pulam a IA E o compile (pré-validado, veredito na hora).
     try:
-        if req.aprovado and j.get("gen_hash") and j["gen_hash"] in _MQ5_GER_CACHE:
-            _MQ5_GER_CACHE[j["gen_hash"]]["aprovado"] = True
+        if req.aprovado and j.get("gen_hash"):
+            _mq5_cache_aprovar(j["gen_hash"])
     except Exception:
         pass
     return {"ok": True}
@@ -8607,6 +8666,92 @@ def mt5_status(job_id: str = ""):
     if not j:
         return {"status": "desconhecido"}
     return {"status": j.get("status"), "aprovado": j.get("aprovado"), "log": j.get("log", "")}
+
+
+# ── AQUECIMENTO DE FÁBRICA (v6.39) ─────────────────────────────────────────
+# Gera o .mq5 de TODAS as estratégias prontas UMA vez (sl/tp padrão 60/120) e
+# guarda no cache persistente. Depois do aquecimento + 1 rodada de aprovação
+# no MT5 (o admin envia cada uma 1x), NENHUM usuário paga a IA nem o compile:
+# a vitrine inteira valida em ~5-10s pra sempre. Admin-only, roda em background
+# (14 estratégias x ~20-40s de IA = alguns minutos; o status mostra o progresso).
+_MQ5_AQUECER = {"rodando": False, "feitas": 0, "total": 0, "erros": [], "inicio": 0.0}
+
+
+def _mq5_aquecer_worker():
+    try:
+        alvos = [e for e in ESTRATEGIAS_PRONTAS if (e.get("codigo") or "").strip()]
+        _MQ5_AQUECER.update(rodando=True, feitas=0, total=len(alvos),
+                            erros=[], inicio=_time_mt5.time())
+        for est in alvos:
+            cod = est["codigo"]
+            h = _mq5_hash_geracao(cod, 60, 120)
+            if _mq5_cache_buscar(h):
+                _MQ5_AQUECER["feitas"] += 1
+                print(f"[mq5-aquecer] {est.get('id')} já no cache ({h[:10]})")
+                continue
+            mq5 = _gerar_mq5_de_codigo(cod, {"ativo": "", "stop_loss": 60,
+                                             "take_profit": 120, "magic": 0})
+            if not mq5:
+                _MQ5_AQUECER["erros"].append(est.get("id") or "?")
+                print(f"[mq5-aquecer] FALHOU {est.get('id')}")
+            else:
+                print(f"[mq5-aquecer] gerado {est.get('id')} ({h[:10]})")
+            _MQ5_AQUECER["feitas"] += 1
+    except Exception as _e:
+        try: _MQ5_AQUECER["erros"].append(f"worker: {_e}")
+        except Exception: pass
+    finally:
+        _MQ5_AQUECER["rodando"] = False
+
+
+@app.post("/admin/mq5/aquecer")
+def admin_mq5_aquecer(token: str = ""):
+    """Dispara o aquecimento em background. Chame 1x após o deploy; acompanhe
+    em GET /admin/mq5/cache. Idempotente: estratégia já cacheada é pulada."""
+    tok_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not tok_certo or token != tok_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    if _MQ5_AQUECER["rodando"]:
+        return {"ok": False, "erro": "ja_rodando", **{k: _MQ5_AQUECER[k] for k in ("feitas", "total")}}
+    import threading as _th
+    _th.Thread(target=_mq5_aquecer_worker, daemon=True).start()
+    return {"ok": True, "msg": "aquecimento iniciado em background",
+            "estrategias": len([e for e in ESTRATEGIAS_PRONTAS if (e.get("codigo") or "").strip()])}
+
+
+@app.get("/admin/mq5/cache")
+def admin_mq5_cache(token: str = ""):
+    """Estado do cache de geração: progresso do aquecimento + entradas (memória
+    e Supabase) com hash curto, aprovado e idade. Admin-only."""
+    tok_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not tok_certo or token != tok_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    agora = _time_mt5.time()
+    mem = [{"hash": h[:10], "aprovado": bool(e.get("aprovado")),
+            "idade_s": int(agora - (e.get("ts") or agora))}
+           for h, e in list(_MQ5_GER_CACHE.items())]
+    db = {"total": None, "aprovados": None}
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            r = sb.table("mq5_cache").select("gen_hash,aprovado").execute()
+            rows = r.data or []
+            db = {"total": len(rows),
+                  "aprovados": sum(1 for x in rows if x.get("aprovado"))}
+    except Exception as _e:
+        db = {"erro": str(_e)[:120]}
+    # mapa estratégia -> hash/estado (pra conferir a vitrine de relance)
+    vitrine = []
+    for est in ESTRATEGIAS_PRONTAS:
+        cod = (est.get("codigo") or "").strip()
+        if not cod:
+            continue
+        h = _mq5_hash_geracao(cod, 60, 120)
+        e = _mq5_cache_buscar(h)
+        vitrine.append({"id": est.get("id"), "hash": h[:10],
+                        "cacheado": bool(e), "aprovado": bool(e and e.get("aprovado"))})
+    return {"aquecimento": dict(_MQ5_AQUECER), "memoria": {"total": len(mem)},
+            "supabase": db, "vitrine": vitrine}
 
 
 # ══════════════════════════════════════════════════════════════════════════
