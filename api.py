@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.39  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-12j-cache-persistente-aquecer | Deploy: Railway
+#  BotTested API — v6.40  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-12k-candles-preview | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -237,6 +237,39 @@ def baixar_dados(ativo: str, periodo: str, timeframe: str) -> pd.DataFrame:
         _DADOS_CACHE[chave] = (agora, df.copy())
 
     return df
+
+
+@app.get("/candles")
+def candles_preview(ativo: str = "", periodo: str = "2 anos", timeframe: str = "1d"):
+    """PRÉVIA (v6.40): velas puras pro gráfico da Overview reagir à barra lateral
+    SEM rodar backtest (mudou o ativo/TF/período -> o gráfico já mostra; o teste
+    vira ação separada). Reusa baixar_dados (cache em memória + retry do yfinance),
+    então trocar de ativo repetidamente não bombardeia o Yahoo. Read-only: não
+    grava nada, não gasta cota de teste do plano."""
+    if not (ativo or "").strip():
+        return {"ok": False, "erro": "sem_ativo", "candles": []}
+    try:
+        df = baixar_dados(ativo, periodo, timeframe)
+    except Exception as e:
+        return {"ok": False, "erro": str(e)[:200], "candles": []}
+    if df is None or getattr(df, "empty", True):
+        return {"ok": False, "erro": "sem_dados", "candles": []}
+    out = []
+    for ix, row in df.iterrows():
+        try:
+            t = int(ix.timestamp())
+        except Exception:
+            try:
+                t = int(pd.Timestamp(str(ix)).timestamp())
+            except Exception:
+                continue
+        try:
+            out.append({"t": t,
+                        "o": round(float(row["Open"]), 4), "h": round(float(row["High"]), 4),
+                        "l": round(float(row["Low"]), 4), "c": round(float(row["Close"]), 4)})
+        except Exception:
+            continue
+    return {"ok": True, "candles": out, "ativo": ativo, "timeframe": timeframe, "n": len(out)}
 
 def calcular_ema_channel(df: pd.DataFrame, period: int):
     df = df.copy()
@@ -604,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-12j-cache-persistente-aquecer"
+BUILD_TAG = "2026-07-12k-candles-preview"
 
 @app.get("/versao")
 def versao():
