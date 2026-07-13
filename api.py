@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.47  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-13a-monitor-leitura | Deploy: Railway
+#  BotTested API — v6.48  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-13b-confirmacao-contextual | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.47 - OLHOS DO MONITOR: GET /monitor/leitura devolve por bot a leitura ao vivo (zonas EMA20 H/L por TF, regime, padroes FORMANDO no 1m/5m/15m, topos/fundos sendo testados no 30m/60m/4h, ultima leitura da IA, candles 15m p/ mini-grafico) — tudo ja viajava no snapshot, a rota abre a janela pro front v9.48. | 6.46 - VISAO TOTAL (auditoria do teto de 1000 linhas do PostgREST): helper _sb_ler_paginado aplicado a TODOS os leitores que podem passar de 1000 linhas — (1) BabyMachine coletivo (lia so as 1000 primeiras linhas do backtests_historico com limit(5000) capado: aprendizado coletivo agora ve o banco INTEIRO); (2) contador de backtests do usuario (congelaria em 1000); (3) calendario economico (3 leitores). Leitores pequenos (radar slice 80, agente, conector) conferidos e ok. Com o v6.45 (vitrine), a IA/OffMind/BabyMachine passam a ter visao total do banco. | 6.45 - FIX CRITICO DA VITRINE (paginacao): o PostgREST/Supabase capa em ~1000 linhas por request mesmo com .limit(8000) — com a biblioteca 100% populada (6.720 linhas), a agregacao da vitrine enxergava so ~15% do banco e estrategias plenamente medidas caiam em [Em medicao]. Agora pagina com .range() em lotes de 1000 (teto 16k) e loga [vitrine] biblioteca: N linhas. | 6.44 - CURADORIA (revisao do dono): NASDAQ removido dos mercados da Suporte & Resistencia do Dia Anterior — medicao real: -15.8% PF 0.76 no NASDAQ vs +64.8% PF 1.52 no XAU/USD. | 6.43 - VITRINE NUNCA ENTREGA NEGATIVO AUTOMATICO: estrategia SEM combo positivo medido ganha flag medida=false, desce pro FIM da grade e o front v9.47 (a) troca o % do card por selo Em medicao (nao promete numero que nao pode reproduzir) e (b) NAO dispara o auto-run — carrega o codigo com aviso pro usuario configurar e testar. Com a biblioteca repopulada, os cards migram sozinhos pra medidos. | 6.42 - ESPELHO POR CODIGO (SL/TP fora do hash — ideia do dono): SL/TP sao inputs do .mq5, trocar o valor nao muda a compilacao -> o cache guarda o codigo NEUTRO (magic 20250, SL 60, TP 120) e _forcar_sl_tp_mql5 re-injeta o stop/take do usuario no HIT. Usuario ajustou SL/TP (sugestao mais comum do Radar) = envio CONTINUA relampago; so mudanca de CODIGO invalida o espelho. Rodar a rodada de aprovacao DEPOIS deste deploy (hashes antigos com sl/tp ficam orfaos — inofensivo). | 6.41 - VITRINE SEM ACOES + COMBO POSITIVO: (1) acoes (Magnificent 7, Acoes Pro, B3) FORA da vitrine — o bull de longo prazo (Google/Microsoft) distorcia as medias e nao e referencia estavel; a vitrine compara em Indices/Forex/Commodities/Cripto (acoes seguem no catalogo p/ teste manual); (2) o ranking de ativos agora EXIGE retorno positivo no combo robusto — card nao destaca ativo que sai negativo no clique; (3) cada estrategia expoe melhor_combo (ativo+periodo+timeframe+retorno medido) e o front v9.45 APLICA esse combo no auto-run do card — o teste do usuario reproduz a combinacao positiva medida na biblioteca; (4) medias dos cards = media SO dos ativos nao-acao (o Radar trabalha em cima). | 6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
+API_VERSAO = "6.48 - CONFIRMACAO CONTEXTUAL (Cap.1 da inteligencia dinamica): a cada snapshot com padrao FORMANDO, junta o cenario ao vivo (padrao+regime+zonas+nivel testando) com a estatistica HISTORICA do proprio padrao no ativo/TF (reusa analisar_padrao do OffMind, cache 24h por combo) e grava detalhe_json.confirmacao = score 0-100 transparente + veredito citavel (base 50, padrao x regime +-20, acerto hist +-18, amostra <20 trava teto 65 e e DITA). Regra da casa: ocorrencias medidas, nunca promessa; 1m sem loader = sem estatistica, dito honestamente. | 6.47 - OLHOS DO MONITOR: GET /monitor/leitura devolve por bot a leitura ao vivo (zonas EMA20 H/L por TF, regime, padroes FORMANDO no 1m/5m/15m, topos/fundos sendo testados no 30m/60m/4h, ultima leitura da IA, candles 15m p/ mini-grafico) — tudo ja viajava no snapshot, a rota abre a janela pro front v9.48. | 6.46 - VISAO TOTAL (auditoria do teto de 1000 linhas do PostgREST): helper _sb_ler_paginado aplicado a TODOS os leitores que podem passar de 1000 linhas — (1) BabyMachine coletivo (lia so as 1000 primeiras linhas do backtests_historico com limit(5000) capado: aprendizado coletivo agora ve o banco INTEIRO); (2) contador de backtests do usuario (congelaria em 1000); (3) calendario economico (3 leitores). Leitores pequenos (radar slice 80, agente, conector) conferidos e ok. Com o v6.45 (vitrine), a IA/OffMind/BabyMachine passam a ter visao total do banco. | 6.45 - FIX CRITICO DA VITRINE (paginacao): o PostgREST/Supabase capa em ~1000 linhas por request mesmo com .limit(8000) — com a biblioteca 100% populada (6.720 linhas), a agregacao da vitrine enxergava so ~15% do banco e estrategias plenamente medidas caiam em [Em medicao]. Agora pagina com .range() em lotes de 1000 (teto 16k) e loga [vitrine] biblioteca: N linhas. | 6.44 - CURADORIA (revisao do dono): NASDAQ removido dos mercados da Suporte & Resistencia do Dia Anterior — medicao real: -15.8% PF 0.76 no NASDAQ vs +64.8% PF 1.52 no XAU/USD. | 6.43 - VITRINE NUNCA ENTREGA NEGATIVO AUTOMATICO: estrategia SEM combo positivo medido ganha flag medida=false, desce pro FIM da grade e o front v9.47 (a) troca o % do card por selo Em medicao (nao promete numero que nao pode reproduzir) e (b) NAO dispara o auto-run — carrega o codigo com aviso pro usuario configurar e testar. Com a biblioteca repopulada, os cards migram sozinhos pra medidos. | 6.42 - ESPELHO POR CODIGO (SL/TP fora do hash — ideia do dono): SL/TP sao inputs do .mq5, trocar o valor nao muda a compilacao -> o cache guarda o codigo NEUTRO (magic 20250, SL 60, TP 120) e _forcar_sl_tp_mql5 re-injeta o stop/take do usuario no HIT. Usuario ajustou SL/TP (sugestao mais comum do Radar) = envio CONTINUA relampago; so mudanca de CODIGO invalida o espelho. Rodar a rodada de aprovacao DEPOIS deste deploy (hashes antigos com sl/tp ficam orfaos — inofensivo). | 6.41 - VITRINE SEM ACOES + COMBO POSITIVO: (1) acoes (Magnificent 7, Acoes Pro, B3) FORA da vitrine — o bull de longo prazo (Google/Microsoft) distorcia as medias e nao e referencia estavel; a vitrine compara em Indices/Forex/Commodities/Cripto (acoes seguem no catalogo p/ teste manual); (2) o ranking de ativos agora EXIGE retorno positivo no combo robusto — card nao destaca ativo que sai negativo no clique; (3) cada estrategia expoe melhor_combo (ativo+periodo+timeframe+retorno medido) e o front v9.45 APLICA esse combo no auto-run do card — o teste do usuario reproduz a combinacao positiva medida na biblioteca; (4) medias dos cards = media SO dos ativos nao-acao (o Radar trabalha em cima). | 6.40 - PREVIA DE VELAS: GET /candles (ativo, periodo, timeframe) devolve OHLC puro pro grafico da Overview reagir a barra lateral SEM backtest (reusa baixar_dados com cache; read-only, nao gasta cota). Front v9.41 escuta ativo/periodo/TF e atualiza o grafico com selo PREVIA. | 6.39 - CACHE PERSISTENTE + AQUECIMENTO DE FABRICA: o cache de geracao agora vive no Supabase (tabela mq5_cache, SQL abaixo) -> sobrevive a deploy e vale entre workers/usuarios. POST /admin/mq5/aquecer gera as 14 estrategias da vitrine em background (sl/tp padrao 60/120); GET /admin/mq5/cache mostra o progresso e o estado por estrategia. Depois do aquecimento + 1 rodada de aprovacao no MT5 do admin, a vitrine INTEIRA valida em ~5-10s pra QUALQUER usuario, pra sempre. FIX: hash normaliza sl/tp como float (60 e 60.0 davam hashes diferentes). SQL: CREATE TABLE IF NOT EXISTS mq5_cache (gen_hash text PRIMARY KEY, mq5 text NOT NULL, aprovado boolean DEFAULT false, criado_em timestamptz DEFAULT now(), atualizado_em timestamptz DEFAULT now()); ALTER TABLE mq5_cache ENABLE ROW LEVEL SECURITY; | 6.38 - VALIDACAO RAPIDA (cache de geracao): mesmo codigo+sl/tp = mesmo EA -> a IA (~15-40s, o vilao da validacao) so roda na 1a vez; repeticoes (vitrine!) pegam o .mq5 do cache NEUTRO e so re-injetam o magic. Codigo ja APROVADO antes vira pre_validado: o conector v1.27 instala, reporta o veredito NA HORA e compila em 2o plano (gera o .ex5). Validacao repetida cai de ~25-55s pra ~5-10s. Cache em memoria (reseta no deploy; 1a geracao re-aquece). | 6.37 - FIM DE VIDA NO ONDEINIT (desligar consistente): o prompt agora manda o EA escrever BOTTESTED_FIM no bt_snap_<magic>.txt quando REMOVIDO do grafico (REASON_REMOVE/CHARTCLOSE/PROGRAM; troca de TF nao conta) -> o conector v1.26 sinaliza a parada NA HORA (corte ~5-12s; era erratico ate 3min7s porque o conector reenviava snapshot VELHO do cache e segurava o OPERANDO dentro da janela de 90s). REEMITIR o bot. | 6.36 - SNAPSHOT EM ARQUIVO DEDICADO (velocidade CONSISTENTE do Operar): o prompt agora manda a IA gravar a MESMA linha BOTTESTED_SNAPSHOT num arquivo bt_snap_<magic>.txt em MQL5/Files com flush imediato (FileClose), alem do Print no log. Mata o buffering do log do MT5 (a causa do 22s-2min15s: a linha existia mas demorava a ir pro disco). O conector v1.24 le esse arquivo a cada 1.5s (log vira fallback p/ bots antigos + eventos). Mudanca SO no prompt (nada injetado -> compila sempre, mesma licao da v6.35). REEMITIR o bot pra ganhar o arquivo. | 6.35 - REVERTE a instrumentacao do caminho custom (v6.34 injetava VISAO/#define no /mt5/enviar e QUEBRAVA a compilacao -> nao passava na validacao). Agora os DOIS problemas sao resolvidos so pelo PROMPT (compila sempre, a IA segue): (1) velocidade = snapshot no OnInit + OnTimer(10s); (2) invalid stops = dist_min agora usa MathMax(stops_level, spread*3) em vez de so o stops_level (que e 0 no BTCUSD). Bots voltam a validar. REEMITIR. | 6.34 (revertido) | 6.33 oninit robusto | ...(historico)"
 # Marcador de build: muda a cada deploy para confirmarmos no /versao o que está live.
-BUILD_TAG = "2026-07-13a-monitor-leitura"
+BUILD_TAG = "2026-07-13b-confirmacao-contextual"
 
 @app.get("/versao")
 def versao():
@@ -6127,6 +6127,98 @@ def conector_registrar(req: ConectorRegistrar):
 _BT_ZONAS_ANCORA = ("z60", "z240", "zD")   # tendência estabelecida (top-down)
 _BT_ZONAS_FAST   = ("z1", "z5", "z15")     # lideram a virada
 
+# ═══ CAPÍTULO 1 DA INTELIGÊNCIA DINÂMICA (v6.48): CONFIRMAÇÃO CONTEXTUAL ═══
+# O bot vê o cenário se formando (padrão + regime + zonas + nível); esta camada
+# pergunta ao NOSSO banco o que esse cenário significou historicamente e devolve
+# um veredito citável + score transparente. Regra da casa: ocorrências MEDIDAS,
+# nunca promessa; amostra pequena é dita como amostra pequena.
+_CONFIRM_CACHE = {}                 # (ativo_catalogo, tf, padrao) -> {"stats", "ts"}
+_CONFIRM_TTL_S = 24 * 3600          # estatística de padrão muda devagar: 1x/dia basta
+_CONFIRM_TF_PERIODO = {"5m": "6 meses", "15m": "6 meses", "30m": "6 meses",
+                       "1h": "1 ano", "4h": "2 anos", "1d": "2 anos"}
+
+
+def _confirm_stats_padrao(ativo_catalogo: str, tf: str, padrao: str):
+    """Estatística histórica do padrão neste ativo/TF — computada 1x/dia por
+    combo (cache) reusando a MESMA engine do OffMind (analisar_padrao, alvo/stop
+    por ATR). Devolve {ocorrencias, acerto_5v, acerto_10v} ou None (ex.: 1m não
+    tem loader — sem estatística é sem estatística, não se inventa)."""
+    if tf not in _CONFIRM_TF_PERIODO or padrao not in PADROES_OFFMIND:
+        return None
+    chave = (ativo_catalogo, tf, padrao)
+    ag = _time_mt5.time()
+    hit = _CONFIRM_CACHE.get(chave)
+    if hit and (ag - hit["ts"]) < _CONFIRM_TTL_S:
+        return hit["stats"]
+    try:
+        df = baixar_dados(ativo_catalogo, _CONFIRM_TF_PERIODO[tf], tf)
+        if df is None or len(df) < 60:
+            return None
+        r = analisar_padrao(df, PADROES_OFFMIND[padrao]["fn"], [5, 10])
+        hz = {h["horizonte"]: h for h in r.get("por_horizonte", [])}
+        stats = {"ocorrencias": int(r.get("total_ocorrencias") or 0),
+                 "acerto_5v": (hz.get(5) or {}).get("taxa_acerto"),
+                 "acerto_10v": (hz.get(10) or {}).get("taxa_acerto"),
+                 "medidas_5v": (hz.get(5) or {}).get("ocorrencias_medidas") or 0}
+        _CONFIRM_CACHE[chave] = {"stats": stats, "ts": ag}
+        return stats
+    except Exception as _e:
+        print(f"[confirmacao] stats {chave}: {_e}")
+        return None
+
+
+def _confirmacao_contextual(det: dict, simbolo: str):
+    """Junta os dois lados: o cenário que o bot está vendo AGORA + o que o banco
+    mediu sobre ele. Score 0-100 transparente e explicado no próprio veredito:
+    base 50 · alinhamento padrão×regime ±20 · acerto histórico ±18 · estratégia
+    mapeada com PF>1 no ativo ±8 · amostra <20 trava o teto em 65."""
+    om = det.get("offmind") or {}
+    padroes = om.get("padroes") or []
+    regime = det.get("regime") or {}
+    if not padroes:
+        return None                          # sem padrão formando, nada a confirmar
+    p = padroes[0]                           # o padrão mais rápido em formação
+    ativo_cat = _MT5_PARA_CATALOGO.get((simbolo or "").upper().replace("/", ""))
+    estado = str(regime.get("estado") or "").lower()
+    dir_p = str(p.get("direcao") or "").lower()
+    a_favor = None
+    if estado in ("compra", "alta") or estado in ("venda", "baixa"):
+        favoravel = ("alta" in dir_p or "compra" in dir_p) if estado in ("compra", "alta") \
+                    else ("baixa" in dir_p or "venda" in dir_p)
+        a_favor = bool(favoravel)
+    stats = _confirm_stats_padrao(ativo_cat, p.get("tf"), p.get("padrao")) if ativo_cat else None
+    testando = [e for e in (om.get("estrutura") or []) if e.get("testando")]
+    score = 50.0
+    partes = []
+    if a_favor is True:
+        score += 20; partes.append("padrão a favor do regime (+20)")
+    elif a_favor is False:
+        score -= 20; partes.append("padrão CONTRA o regime (-20)")
+    if stats and stats.get("acerto_5v") is not None:
+        aj = max(-18.0, min(18.0, (float(stats["acerto_5v"]) - 50.0) * 0.6))
+        score += aj
+        partes.append(f"acerto histórico 5v {stats['acerto_5v']:.0f}% ({aj:+.0f})")
+    if testando:
+        partes.append(f"testando nível de {testando[0].get('tf')}")
+    amostra_pequena = bool(stats and (stats.get("medidas_5v") or 0) < 20)
+    if amostra_pequena:
+        score = min(score, 65.0)
+        partes.append("amostra pequena (teto 65)")
+    score = int(round(max(0.0, min(100.0, score))))
+    if stats:
+        veredito = (f"{p.get('nome') or p.get('padrao')} no {p.get('tf')}: medido "
+                    f"{stats.get('medidas_5v', 0)}x neste ativo/TF, "
+                    f"{(stats.get('acerto_5v') or 0):.0f}% confirmou em 5 velas"
+                    + (" — amostra pequena" if amostra_pequena else ""))
+    else:
+        veredito = (f"{p.get('nome') or p.get('padrao')} no {p.get('tf')}: sem estatística "
+                    f"histórica disponível pra este ativo/TF — leitura só estrutural")
+    return {"score": score, "veredito": veredito, "fatores": partes,
+            "contexto": {"padrao": p.get("padrao"), "tf": p.get("tf"),
+                         "direcao": p.get("direcao"), "regime": regime.get("estado"),
+                         "testando_nivel": bool(testando)}}
+
+
 def _regime_das_zonas(det: dict) -> Optional[dict]:
     """Recebe o detalhe do snapshot (zonas como strings acima/dentro/abaixo/?).
     Devolve {regime, estado, virada, confianca, ...} ou None se não há âncora
@@ -6354,6 +6446,14 @@ def conector_snapshot(snap: ConectorSnapshot):
         except Exception as _e:
             import sys as _sys
             print(f"[offmind vivo] {_e}", file=_sys.stderr)
+    # ── CONFIRMAÇÃO CONTEXTUAL (v6.48): cenário de agora × banco histórico ──
+    try:
+        conf = _confirmacao_contextual(det, snap.simbolo)
+        if conf:
+            det["confirmacao"] = conf
+    except Exception as _e:
+        import sys as _sys
+        print(f"[confirmacao] {_e}", file=_sys.stderr)
     # reaproveita a coluna ultima_direcao/direcao_d1 (vinha vazia) pro estado do regime
     direcao_final = (regime or {}).get("estado") or snap.direcao_d1
     # ── IA GERENCIADORA: leitura acionável por EVENTO (com cooldown) ──
@@ -6578,6 +6678,7 @@ def monitor_leitura(user_id: str):
             "padroes": om.get("padroes") or [],
             "estrutura": [e for e in (om.get("estrutura") or []) if e.get("testando")][:4],
             "leitura": (det.get("leitura") or {}).get("texto"),
+            "confirmacao": det.get("confirmacao"),
             "candles15": c15[-14:],
         })
     return {"bots": saida}
