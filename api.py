@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.58  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-14e-visao-no-envio | Deploy: Railway
+#  BotTested API — v6.59  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-14f-faxina-chaves | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-14e-visao-no-envio"
+BUILD_TAG = "2026-07-14f-faxina-chaves"
 
 @app.get("/versao")
 def versao():
@@ -4298,13 +4298,46 @@ def _instrumentar_log_mql5(codigo: str) -> str:
     # EA gerado, junto com todas as chamadas e o EventSetTimer(N); (que ativa
     # o timer com essa função). Também mata qualquer Print direto de linha
     # "BOTTESTED_SNAPSHOT|" — só BTVisaoTick (injetada abaixo) pode emitir.
-    _padroes_funcoes = [
-        r"void\s+(?:BT)?EnviarSnapshot\s*\([^)]*\)\s*\{[^}]*\}",
-        r"void\s+BotTestedSnapshot\s*\([^)]*\)\s*\{[^}]*\}",
-        r"void\s+Snapshot\s*\([^)]*\)\s*\{[^}]*BOTTESTED_SNAPSHOT[^}]*\}",
-    ]
-    for _pat in _padroes_funcoes:
-        codigo = _re.sub(_pat, "", codigo, flags=_re.DOTALL)
+    # v6.59 — REMOÇÃO COM CONTAGEM DE CHAVES. O regex antigo ([^}]*) não
+    # atravessa chave aninhada: função de snapshot com if/FileOpen dentro era
+    # cortada no PRIMEIRO } e o EA ficava com chaves órfãs → NÃO COMPILAVA.
+    # Foi a causa dos "4x não aprovado": o 1º envio cacheava o .mq5 mutilado
+    # e os seguintes serviam o mesmo arquivo. Mesma técnica brace-aware que o
+    # bloco do OnTimer (abaixo) já usava — agora pra toda função removida.
+    def _bt_remover_funcao(cod, assinatura, exigir=""):
+        pos = 0
+        while True:
+            m = _re.search(assinatura, cod[pos:])
+            if not m:
+                return cod
+            ini = pos + m.start()
+            fim_assin = pos + m.end()
+            i = cod.find("{", fim_assin)
+            # só remove DEFINIÇÃO: entre a assinatura e a { só pode haver
+            # espaço/quebra (protege forward declaration "void X();")
+            if i < 0 or cod[fim_assin:i].strip():
+                pos = fim_assin
+                continue
+            depth, j = 0, i
+            while j < len(cod):
+                if cod[j] == '{':
+                    depth += 1
+                elif cod[j] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            if depth != 0:
+                return cod          # fonte já quebrado: não piora
+            corpo = cod[i:j+1]
+            if exigir and exigir not in corpo:
+                pos = j + 1         # não é a função-alvo: segue adiante
+                continue
+            cod = cod[:ini] + cod[j+1:]
+            pos = ini               # pode existir outra igual adiante
+    codigo = _bt_remover_funcao(codigo, r"void\s+(?:BT)?EnviarSnapshot\s*\([^)]*\)")
+    codigo = _bt_remover_funcao(codigo, r"void\s+BotTestedSnapshot\s*\([^)]*\)")
+    codigo = _bt_remover_funcao(codigo, r"void\s+Snapshot\s*\([^)]*\)", exigir="BOTTESTED_SNAPSHOT")
     # remove CHAMADAS a essas funções (vira linha vazia — não quebra sintaxe)
     codigo = _re.sub(r"[ \t]*(?:BT)?EnviarSnapshot\s*\(\s*\)\s*;", "", codigo)
     codigo = _re.sub(r"[ \t]*BotTestedSnapshot\s*\(\s*\)\s*;", "", codigo)
@@ -4384,6 +4417,13 @@ def _instrumentar_log_mql5(codigo: str) -> str:
                              "\n   BTPainelTick();\n   BTVisaoTick();")
         codigo = _apos_chave(codigo, r"void\s+OnDeinit\s*\(",
                              "\n   BTPainelDeinit();\n   BTVisaoDeinit();")
+    # v6.59: sentinela — se algo deixar chave órfã, grita no log do Railway
+    if codigo.count("{") != codigo.count("}"):
+        try:
+            print("[instrumentar] AVISO: chaves desbalanceadas pós-instrumentação "
+                  f"({{={codigo.count('{')} }}={codigo.count('}')}) — .mq5 NÃO vai compilar")
+        except Exception:
+            pass
     return codigo
 
 
