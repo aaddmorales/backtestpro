@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.59  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-14f-faxina-chaves | Deploy: Railway
+#  BotTested API — v6.54  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-14a-invalidar-cache | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-14f-faxina-chaves"
+BUILD_TAG = "2026-07-14a-invalidar-cache"
 
 @app.get("/versao")
 def versao():
@@ -4289,81 +4289,6 @@ def _instrumentar_log_mql5(codigo: str) -> str:
     EAs da IA, via subclasse BTTrade (clamp de stops). A visão SUBSTITUI o antigo
     BTSnapshot por-barra — mais rico e sem o bug do D1 offline."""
     import re as _re
-
-    # ── v6.55b — FAXINA DEFENSIVA (o prompt não é o suficiente) ────────────
-    # A IA às vezes inventa uma função própria de snapshot mesmo o prompt não
-    # pedindo. Se isso acontecer, ela ganha do BTVisaoTick (roda antes) e o
-    # snapshot rico não aparece. Aqui removemos qualquer função "BTEnviarSnapshot",
-    # "EnviarSnapshot", "BotTestedSnapshot" (variantes que a IA já inventou) do
-    # EA gerado, junto com todas as chamadas e o EventSetTimer(N); (que ativa
-    # o timer com essa função). Também mata qualquer Print direto de linha
-    # "BOTTESTED_SNAPSHOT|" — só BTVisaoTick (injetada abaixo) pode emitir.
-    # v6.59 — REMOÇÃO COM CONTAGEM DE CHAVES. O regex antigo ([^}]*) não
-    # atravessa chave aninhada: função de snapshot com if/FileOpen dentro era
-    # cortada no PRIMEIRO } e o EA ficava com chaves órfãs → NÃO COMPILAVA.
-    # Foi a causa dos "4x não aprovado": o 1º envio cacheava o .mq5 mutilado
-    # e os seguintes serviam o mesmo arquivo. Mesma técnica brace-aware que o
-    # bloco do OnTimer (abaixo) já usava — agora pra toda função removida.
-    def _bt_remover_funcao(cod, assinatura, exigir=""):
-        pos = 0
-        while True:
-            m = _re.search(assinatura, cod[pos:])
-            if not m:
-                return cod
-            ini = pos + m.start()
-            fim_assin = pos + m.end()
-            i = cod.find("{", fim_assin)
-            # só remove DEFINIÇÃO: entre a assinatura e a { só pode haver
-            # espaço/quebra (protege forward declaration "void X();")
-            if i < 0 or cod[fim_assin:i].strip():
-                pos = fim_assin
-                continue
-            depth, j = 0, i
-            while j < len(cod):
-                if cod[j] == '{':
-                    depth += 1
-                elif cod[j] == '}':
-                    depth -= 1
-                    if depth == 0:
-                        break
-                j += 1
-            if depth != 0:
-                return cod          # fonte já quebrado: não piora
-            corpo = cod[i:j+1]
-            if exigir and exigir not in corpo:
-                pos = j + 1         # não é a função-alvo: segue adiante
-                continue
-            cod = cod[:ini] + cod[j+1:]
-            pos = ini               # pode existir outra igual adiante
-    codigo = _bt_remover_funcao(codigo, r"void\s+(?:BT)?EnviarSnapshot\s*\([^)]*\)")
-    codigo = _bt_remover_funcao(codigo, r"void\s+BotTestedSnapshot\s*\([^)]*\)")
-    codigo = _bt_remover_funcao(codigo, r"void\s+Snapshot\s*\([^)]*\)", exigir="BOTTESTED_SNAPSHOT")
-    # remove CHAMADAS a essas funções (vira linha vazia — não quebra sintaxe)
-    codigo = _re.sub(r"[ \t]*(?:BT)?EnviarSnapshot\s*\(\s*\)\s*;", "", codigo)
-    codigo = _re.sub(r"[ \t]*BotTestedSnapshot\s*\(\s*\)\s*;", "", codigo)
-    # mata Print direto de BOTTESTED_SNAPSHOT (linha inteira, se a IA fez inline)
-    codigo = _re.sub(r"[ \t]*Print(?:Format)?\s*\([^;]*BOTTESTED_SNAPSHOT[^;]*\)\s*;", "", codigo)
-    # remove EventSetTimer da IA — a instrumentação usa OnTick, não precisa timer
-    codigo = _re.sub(r"[ \t]*EventSetTimer\s*\(\s*\d+\s*\)\s*;", "", codigo)
-    codigo = _re.sub(r"[ \t]*EventKillTimer\s*\(\s*\)\s*;", "", codigo)
-    # remove função OnTimer inteira que a IA tenha criado só pra emitir snapshot
-    # (se ela contiver BOTTESTED, é do velho snapshot; se não, deixa)
-    _m = _re.search(r"void\s+OnTimer\s*\([^)]*\)\s*\{", codigo)
-    if _m:
-        # acha o } que fecha e vê se tinha BOTTESTED
-        i = _m.end() - 1
-        depth = 0
-        j = i
-        while j < len(codigo):
-            if codigo[j] == '{': depth += 1
-            elif codigo[j] == '}':
-                depth -= 1
-                if depth == 0:
-                    corpo = codigo[i:j+1]
-                    if "BOTTESTED" in corpo:
-                        codigo = codigo[:_m.start()] + codigo[j+1:]
-                    break
-            j += 1
     if "//__BT_INJECT_WRAPPERS__" in codigo:
         # EA NATIVO: BTEvento existe (preâmbulo). Close loga evento; entradas viram
         # wrappers (logam + ajustam stops); injeta as definições no marcador.
@@ -4417,13 +4342,6 @@ def _instrumentar_log_mql5(codigo: str) -> str:
                              "\n   BTPainelTick();\n   BTVisaoTick();")
         codigo = _apos_chave(codigo, r"void\s+OnDeinit\s*\(",
                              "\n   BTPainelDeinit();\n   BTVisaoDeinit();")
-    # v6.59: sentinela — se algo deixar chave órfã, grita no log do Railway
-    if codigo.count("{") != codigo.count("}"):
-        try:
-            print("[instrumentar] AVISO: chaves desbalanceadas pós-instrumentação "
-                  f"({{={codigo.count('{')} }}={codigo.count('}')}) — .mq5 NÃO vai compilar")
-        except Exception:
-            pass
     return codigo
 
 
@@ -8874,7 +8792,10 @@ Requisitos do EA:
 Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
 - Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
 - Ao fechar: Print("BOTTESTED_EVENTO|fechado|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
-- SNAPSHOT: NÃO defina nenhuma função de snapshot. NÃO chame nada de snapshot. NÃO configure EventSetTimer para snapshot. A plataforma injeta AUTOMATICAMENTE no seu OnInit/OnTick/OnDeinit uma função BTVisaoTick() que emite o BOTTESTED_SNAPSHOT enriquecido (com zonas multi-TF, regime, canal EMA, lucro, tfop, preço) e grava no arquivo bt_snap_<magic>.txt. Você não precisa fazer NADA além de garantir que OnInit, OnTick e OnDeinit existam como funções normais.
+- SNAPSHOT (o monitoramento depende disso — tem que sair RÁPIDO): defina EXATAMENTE esta função (copie como está, sem mudar nome de arquivo nem flags):
+  void BTEnviarSnapshot(){ string bt_linha = "BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol; Print(bt_linha); int bt_h = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_h!=INVALID_HANDLE){ FileWriteString(bt_h, bt_linha+"\\n"); FileClose(bt_h); } }
+  O arquivo bt_snap_<magic>.txt em MQL5/Files é ESSENCIAL: o log do MT5 tem buffer e às vezes atrasa minutos pra ir ao disco; o arquivo sai NA HORA (FileClose dá flush) e o BotTested Conector lê ele em ~1.5s. O Print continua junto (fallback + eventos).
+  Chame BTEnviarSnapshot() em TRÊS lugares: (1) no FIM do OnInit (emite na hora que anexa ao gráfico); (2) dentro de void OnTimer(); e ative o timer no OnInit com EventSetTimer(10); (emite a cada 10s, independente de barra); (3) no OnDeinit chame EventKillTimer();. NÃO emita o snapshot só por barra nova — ele PRECISA sair no OnInit e no OnTimer, senão o monitoramento demora minutos pra acender.
 - FIM DE VIDA (o desligar do monitoramento depende disso): no OnDeinit, DEPOIS do EventKillTimer, inclua EXATAMENTE este bloco (copie como está): if(reason==REASON_REMOVE || reason==REASON_CHARTCLOSE || reason==REASON_PROGRAM){ int bt_f = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_f!=INVALID_HANDLE){ FileWriteString(bt_f, "BOTTESTED_FIM|magic="+IntegerToString((long)InpMagic)+"\\n"); FileClose(bt_f); } }
   Isso avisa o BotTested Conector NA HORA que o bot saiu do gráfico (removido, gráfico fechado ou terminal fechando). IMPORTANTE: só nesses 3 reasons — troca de timeframe/símbolo (REASON_CHARTCHANGE) NÃO escreve o FIM, porque o OnInit roda de novo em seguida.
 
@@ -9016,11 +8937,6 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         if hit and hit.get("mq5"):
             hit["ts"] = _time_mt5.time()
             texto = hit["mq5"]
-            # v6.58: DEFESA contra cache legado — entrada sem a VISÃO (BTVisaoTick)
-            # é instrumentada agora e regravada. Entradas novas já nascem prontas.
-            if "BTVisaoTick" not in texto:
-                texto = _instrumentar_log_mql5(texto)
-                _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
             if magic:
                 texto = _forcar_magic_mql5(texto, magic)
             texto = _forcar_sl_tp_mql5(texto, sl, tp)   # v6.42: SL/TP do usuário
@@ -9046,17 +8962,12 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
         texto = "".join(b.get("text", "") for b in r.json().get("content", [])).strip()
         texto = _re.sub(r"^```[a-zA-Z0-9]*\s*\n?", "", texto)
         texto = _re.sub(r"\n?```\s*$", "", texto).strip()
-        # v6.58 — INSTRUMENTAR AQUI (causa-raiz do snapshot mudo no /mt5/enviar):
-        # este caminho NUNCA chamava _instrumentar_log_mql5 — o comentário antigo
-        # ("a injeção quebrava a compilação") era da era v6.35. A injeção atual é
-        # DEFENSIVA (SELO+VISÃO só se achar OnInit; clamp só se achar o include;
-        # busca de chave robusta) e foi validada na v6.56 contra EA real da IA.
-        # Sem isto, v6.55/v6.56 não tinham efeito algum neste fluxo: o prompt
-        # parou de pedir snapshot E a VISÃO nunca era injetada → EA sem snapshot
-        # nenhum (BOTTESTED_03 provou: EventKillTimer órfão = faxina nunca rodou).
-        # O cache guarda a versão NEUTRA já INSTRUMENTADA — HIT herda a visão.
+        # (NÃO instrumentar aqui: a injeção da VISÃO/#define quebrava a compilação
+        # neste caminho. A velocidade e o clamp de stops são resolvidos pela
+        # INSTRUÇÃO no prompt, que a IA segue de forma confiável e compila sempre.)
+        # guarda a versão NEUTRA no cache (v6.38) — o próximo envio do mesmo
+        # código pula a IA e só troca o magic.
         if texto:
-            texto = _instrumentar_log_mql5(texto)
             _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
         if magic:
             texto = _forcar_magic_mql5(texto, magic)
@@ -9388,8 +9299,8 @@ def admin_mq5_invalidar(estrategia_id: str = "", token: str = ""):
         raise HTTPException(status_code=400, detail="estratégia sem código")
     gen_hash = _mq5_hash_geracao(codigo)
     removidos = {"memoria": False, "supabase": False}
-    if gen_hash in _MQ5_GER_CACHE:
-        _MQ5_GER_CACHE.pop(gen_hash, None)
+    if gen_hash in _MQ5_CACHE:
+        _MQ5_CACHE.pop(gen_hash, None)
         removidos["memoria"] = True
     try:
         sb = _sb_admin()
