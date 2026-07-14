@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.54  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-14a-invalidar-cache | Deploy: Railway
+#  BotTested API — v6.56  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-14c-faxina-snapshot | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-14a-invalidar-cache"
+BUILD_TAG = "2026-07-14c-faxina-snapshot"
 
 @app.get("/versao")
 def versao():
@@ -4289,6 +4289,48 @@ def _instrumentar_log_mql5(codigo: str) -> str:
     EAs da IA, via subclasse BTTrade (clamp de stops). A visão SUBSTITUI o antigo
     BTSnapshot por-barra — mais rico e sem o bug do D1 offline."""
     import re as _re
+
+    # ── v6.55b — FAXINA DEFENSIVA (o prompt não é o suficiente) ────────────
+    # A IA às vezes inventa uma função própria de snapshot mesmo o prompt não
+    # pedindo. Se isso acontecer, ela ganha do BTVisaoTick (roda antes) e o
+    # snapshot rico não aparece. Aqui removemos qualquer função "BTEnviarSnapshot",
+    # "EnviarSnapshot", "BotTestedSnapshot" (variantes que a IA já inventou) do
+    # EA gerado, junto com todas as chamadas e o EventSetTimer(N); (que ativa
+    # o timer com essa função). Também mata qualquer Print direto de linha
+    # "BOTTESTED_SNAPSHOT|" — só BTVisaoTick (injetada abaixo) pode emitir.
+    _padroes_funcoes = [
+        r"void\s+(?:BT)?EnviarSnapshot\s*\([^)]*\)\s*\{[^}]*\}",
+        r"void\s+BotTestedSnapshot\s*\([^)]*\)\s*\{[^}]*\}",
+        r"void\s+Snapshot\s*\([^)]*\)\s*\{[^}]*BOTTESTED_SNAPSHOT[^}]*\}",
+    ]
+    for _pat in _padroes_funcoes:
+        codigo = _re.sub(_pat, "", codigo, flags=_re.DOTALL)
+    # remove CHAMADAS a essas funções (vira linha vazia — não quebra sintaxe)
+    codigo = _re.sub(r"[ \t]*(?:BT)?EnviarSnapshot\s*\(\s*\)\s*;", "", codigo)
+    codigo = _re.sub(r"[ \t]*BotTestedSnapshot\s*\(\s*\)\s*;", "", codigo)
+    # mata Print direto de BOTTESTED_SNAPSHOT (linha inteira, se a IA fez inline)
+    codigo = _re.sub(r"[ \t]*Print(?:Format)?\s*\([^;]*BOTTESTED_SNAPSHOT[^;]*\)\s*;", "", codigo)
+    # remove EventSetTimer da IA — a instrumentação usa OnTick, não precisa timer
+    codigo = _re.sub(r"[ \t]*EventSetTimer\s*\(\s*\d+\s*\)\s*;", "", codigo)
+    codigo = _re.sub(r"[ \t]*EventKillTimer\s*\(\s*\)\s*;", "", codigo)
+    # remove função OnTimer inteira que a IA tenha criado só pra emitir snapshot
+    # (se ela contiver BOTTESTED, é do velho snapshot; se não, deixa)
+    _m = _re.search(r"void\s+OnTimer\s*\([^)]*\)\s*\{", codigo)
+    if _m:
+        # acha o } que fecha e vê se tinha BOTTESTED
+        i = _m.end() - 1
+        depth = 0
+        j = i
+        while j < len(codigo):
+            if codigo[j] == '{': depth += 1
+            elif codigo[j] == '}':
+                depth -= 1
+                if depth == 0:
+                    corpo = codigo[i:j+1]
+                    if "BOTTESTED" in corpo:
+                        codigo = codigo[:_m.start()] + codigo[j+1:]
+                    break
+            j += 1
     if "//__BT_INJECT_WRAPPERS__" in codigo:
         # EA NATIVO: BTEvento existe (preâmbulo). Close loga evento; entradas viram
         # wrappers (logam + ajustam stops); injeta as definições no marcador.
@@ -8792,10 +8834,7 @@ Requisitos do EA:
 Monitoramento BotTested (OBRIGATÓRIO — o conector lê estas linhas do log):
 - Ao abrir: Print("BOTTESTED_EVENTO|aberto|"+(ehCompra?"BUY":"SELL")+"|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
 - Ao fechar: Print("BOTTESTED_EVENTO|fechado|"+_Symbol+"|preco="+DoubleToString(preco,_Digits));
-- SNAPSHOT (o monitoramento depende disso — tem que sair RÁPIDO): defina EXATAMENTE esta função (copie como está, sem mudar nome de arquivo nem flags):
-  void BTEnviarSnapshot(){ string bt_linha = "BOTTESTED_SNAPSHOT|equity="+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+"|balance="+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+"|posicoes="+IntegerToString(PositionsTotal())+"|simbolo="+_Symbol; Print(bt_linha); int bt_h = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_h!=INVALID_HANDLE){ FileWriteString(bt_h, bt_linha+"\\n"); FileClose(bt_h); } }
-  O arquivo bt_snap_<magic>.txt em MQL5/Files é ESSENCIAL: o log do MT5 tem buffer e às vezes atrasa minutos pra ir ao disco; o arquivo sai NA HORA (FileClose dá flush) e o BotTested Conector lê ele em ~1.5s. O Print continua junto (fallback + eventos).
-  Chame BTEnviarSnapshot() em TRÊS lugares: (1) no FIM do OnInit (emite na hora que anexa ao gráfico); (2) dentro de void OnTimer(); e ative o timer no OnInit com EventSetTimer(10); (emite a cada 10s, independente de barra); (3) no OnDeinit chame EventKillTimer();. NÃO emita o snapshot só por barra nova — ele PRECISA sair no OnInit e no OnTimer, senão o monitoramento demora minutos pra acender.
+- SNAPSHOT: NÃO defina nenhuma função de snapshot. NÃO chame nada de snapshot. NÃO configure EventSetTimer para snapshot. A plataforma injeta AUTOMATICAMENTE no seu OnInit/OnTick/OnDeinit uma função BTVisaoTick() que emite o BOTTESTED_SNAPSHOT enriquecido (com zonas multi-TF, regime, canal EMA, lucro, tfop, preço) e grava no arquivo bt_snap_<magic>.txt. Você não precisa fazer NADA além de garantir que OnInit, OnTick e OnDeinit existam como funções normais.
 - FIM DE VIDA (o desligar do monitoramento depende disso): no OnDeinit, DEPOIS do EventKillTimer, inclua EXATAMENTE este bloco (copie como está): if(reason==REASON_REMOVE || reason==REASON_CHARTCLOSE || reason==REASON_PROGRAM){ int bt_f = FileOpen("bt_snap_"+IntegerToString((long)InpMagic)+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ); if(bt_f!=INVALID_HANDLE){ FileWriteString(bt_f, "BOTTESTED_FIM|magic="+IntegerToString((long)InpMagic)+"\\n"); FileClose(bt_f); } }
   Isso avisa o BotTested Conector NA HORA que o bot saiu do gráfico (removido, gráfico fechado ou terminal fechando). IMPORTANTE: só nesses 3 reasons — troca de timeframe/símbolo (REASON_CHARTCHANGE) NÃO escreve o FIM, porque o OnInit roda de novo em seguida.
 
