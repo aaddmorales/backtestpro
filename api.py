@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.53  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-13g-fix-simbolo-flutuante | Deploy: Railway
+#  BotTested API — v6.54  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-14a-invalidar-cache | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-13g-fix-simbolo-flutuante"
+BUILD_TAG = "2026-07-14a-invalidar-cache"
 
 @app.get("/versao")
 def versao():
@@ -9272,6 +9272,47 @@ def _mq5_aquecer_worker():
         except Exception: pass
     finally:
         _MQ5_AQUECER["rodando"] = False
+
+
+@app.delete("/admin/mq5/invalidar")
+def admin_mq5_invalidar(estrategia_id: str = "", token: str = ""):
+    """v6.54 — INVALIDAR CACHE DE UMA ESTRATÉGIA. Remove o .mq5 cacheado
+    (memória + Supabase) da estratégia indicada; o próximo envio dela regenera
+    do zero com o PROMPT ATUAL, herdando os campos ricos do snapshot (zonas,
+    regime, offmind, lucro, tfop). Admin-only. Uso pro loop de fechamento:
+    identificamos que os EAs atuais no MT5 emitem snapshot esqueleto — cache
+    foi feito antes da v6.36. Invalidar + reenviar 1 bot = teste do loop.
+
+    curl -X DELETE 'https://.../admin/mq5/invalidar?estrategia_id=tripla_media_9_21_50&token=SEU_TOKEN'
+    """
+    tok_certo = os.getenv("BIBLIOTECA_ADMIN_TOKEN", "")
+    if not tok_certo or token != tok_certo:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    eid = (estrategia_id or "").strip()
+    if not eid:
+        raise HTTPException(status_code=400, detail="estrategia_id obrigatório")
+    est = next((e for e in ESTRATEGIAS_PRONTAS if e.get("id") == eid), None)
+    if est is None:
+        raise HTTPException(status_code=404, detail=f"estratégia '{eid}' não existe")
+    codigo = (est.get("codigo") or "").strip()
+    if not codigo:
+        raise HTTPException(status_code=400, detail="estratégia sem código")
+    gen_hash = _mq5_hash_geracao(codigo)
+    removidos = {"memoria": False, "supabase": False}
+    if gen_hash in _MQ5_CACHE:
+        _MQ5_CACHE.pop(gen_hash, None)
+        removidos["memoria"] = True
+    try:
+        sb = _sb_admin()
+        if sb is not None:
+            r = sb.table("mq5_cache").delete().eq("gen_hash", gen_hash).execute()
+            removidos["supabase"] = bool(r.data)
+    except Exception as e:
+        return {"ok": True, "estrategia_id": eid, "hash": gen_hash[:10],
+                "removidos": removidos, "aviso": f"supabase: {e}"}
+    return {"ok": True, "estrategia_id": eid, "hash": gen_hash[:10],
+            "removidos": removidos,
+            "proximo_passo": "reenvie um bot com esta estratégia — a IA regenera com o prompt novo"}
 
 
 @app.post("/admin/mq5/aquecer")
