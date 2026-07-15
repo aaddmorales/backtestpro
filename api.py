@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.64  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
-#  Build: 2026-07-15d-validacao-informativa | Deploy: Railway
+#  BotTested API — v6.60  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 604, e no /versao)
+#  Build: 2026-07-14g-selo-enum | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.64 - VALIDAÇÃO NÃO-BLOQUEANTE (decisão do Adriano 15/jul, após reprovações com EA comprovadamente limpo — suspeita: veredito se perdendo no _MT5_JOBS em memória/multi-worker, a pendência conhecida): o gate de compilação NÃO trava mais a entrega — reprovação vira aviso no job + log REAL do compilador registrado (últimos 10) em /admin/mt5/vereditos?token= e no stderr do Railway. Religar gate: env MT5_VALIDACAO_BLOQUEANTE=1. Cache só marca aprovado com veredito real positivo. Objetivo: destravar o produto AGORA e coletar os logs verdadeiros pra reconstruir a validação do zero com dados. | 6.63 - COMPAT MQL4→MQL5 (blindagem de classe): a IA às vezes gera Ask/Bid/Point/Digits (pré-definidas do MQL4, inexistentes no MQL5) → undeclared identifier → reprovação (caso real BOTTESTED_07: AbrirCompra/AbrirVenda com Ask/Bid; geração é não-determinística — o BOTTESTED_06 tinha saído certo). Camada 1: _instrumentar_log_mql5 detecta identificador MQL4 NU e não-declarado e injeta #define de compatibilidade após o include (token-based, não toca strings/_Point/_Digits). Camada 2: proibição explícita no prompt _mq5_system. | 6.62 - FIX LITERAL DA VISÃO (causa das reprovações da v6.61): _BT_VISAO_MQL5 é string Python NORMAL — o backslash-n do FileWriteString virava quebra de linha REAL ao carregar e o .mq5 saía com string literal cortada no meio (aspas ímpares no BTvGravar) = erro de compilação em TODA geração. Trocado por FileWrite (FILE_TXT termina a linha sozinho, zero escape). REGRA NOVA: nenhum backslash dentro de template MQL5; regressão agora valida aspas pareadas linha a linha no template CARREGADO. | 6.61 - OLHO AO VIVO + FICHA DE DECISÃO (peças 1+2 do plano, checklist do trader do Adriano): (1) template VISÃO de produção agora manda CANDLES da corretora — mecânica c1m/c5m/c15m (10 velas OHLCV com tick volume) + estrutura c30m/c60m/c4h (12 velas OHLC) a cada 4ª emissão (~60s), + Bollinger 20/2 (bbp posição %% / bbl largura %%), + snapshot também por ARQUIVO bt_snap_<magic>.txt (canal rápido do conector v1.24+, sem buffer do jornal); (2) _bt_parse_candles aceita OHLCV; (3) FICHA DE DECISÃO _ficha_decisao consolida o checklist: tendência/a_favor, S/R + espaço em ATRs, volume presente/seco, padrão + banco (confirmação), Bollinger, R:R pela estrutura, macro reservado, checklist sim/não + faltando + resumo citável — gravada em detalhe_json.ficha e cacheada; (4) endpoint GET /visao/ficha?bot_token= (porta da peça 3: EA consulta via WebRequest e decide local); (5) FIX: a_favor da confirmação comparava com \"alta\"/\"baixa\" mas regime emite \"tendencia_alta\" — o ±20 do alinhamento nunca disparou; agora substring. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-15d-validacao-informativa"
+BUILD_TAG = "2026-07-14g-selo-enum"
 
 @app.get("/versao")
 def versao():
@@ -4159,8 +4159,6 @@ _BT_VISAO_MQL5 = """//----------------------------------------------------------
 #define BT_VEMA_PER  20          // periodo do canal EMA High/Low
 int hVH1,hVL1, hVH5,hVL5, hVH15,hVL15, hVH60,hVL60, hVH240,hVL240, hVHD,hVLD;
 int hVHc,hVLc, hVATR;
-int hVBB = INVALID_HANDLE;      // Bollinger 20/2 no TF operacional (v6.61)
-int g_btVisaoNc = 0;            // contador de emissoes (candles a cada 4a)
 datetime g_btVisaoUlt = 0;
 double   g_btPicoEq   = 0;
 string BTvD(double v){ return DoubleToString(v,_Digits); }
@@ -4227,48 +4225,11 @@ void BTVisaoInit()
    hVHc =iMA(_Symbol,_Period,BT_VEMA_PER,0,MODE_EMA,PRICE_HIGH);
    hVLc =iMA(_Symbol,_Period,BT_VEMA_PER,0,MODE_EMA,PRICE_LOW);
    hVATR=iATR(_Symbol,_Period,14);
-   hVBB =iBands(_Symbol,_Period,20,0,2.0,PRICE_CLOSE);
 }
 void BTVisaoDeinit()
 {
-   int hs[16]={hVH1,hVL1,hVH5,hVL5,hVH15,hVL15,hVH60,hVL60,hVH240,hVL240,hVHD,hVLD,hVHc,hVLc,hVATR,hVBB};
-   for(int i=0;i<16;i++) if(hs[i]!=INVALID_HANDLE) IndicatorRelease(hs[i]);
-}
-string BTvCandles(ENUM_TIMEFRAMES tf,int n,bool comVol)
-{
-   // Janela OHLC(V) da CORRETORA — a comida do OffMind ao vivo (v6.61).
-   // r[0] = vela mais ANTIGA, r[q-1] = vela ATUAL (a que esta SE FORMANDO).
-   MqlRates r[];
-   int q = CopyRates(_Symbol, tf, 0, n, r);
-   if(q < 2) return "";
-   string s = "";
-   for(int i=0;i<q;i++)
-   {
-      if(i>0) s += ";";
-      s += DoubleToString(r[i].open,_Digits)+","+DoubleToString(r[i].high,_Digits)+","
-         + DoubleToString(r[i].low,_Digits)+","+DoubleToString(r[i].close,_Digits);
-      if(comVol) s += ","+IntegerToString((long)r[i].tick_volume);
-   }
-   return s;
-}
-void BTvGravar(string linha)
-{
-   // Canal por ARQUIVO (conector v1.24+ le em <=1.5s; o log do MT5 tem buffer
-   // de minutos e trunca linha longa). Nome usa o magic literal da propria linha.
-   string mg = "0";
-   int p = StringFind(linha, "magic=");
-   if(p >= 0)
-   {
-      int f = StringFind(linha, "|", p);
-      if(f < 0) f = StringLen(linha);
-      mg = StringSubstr(linha, p+6, f-(p+6));
-   }
-   int h = FileOpen("bt_snap_"+mg+".txt", FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ);
-   if(h != INVALID_HANDLE)
-   {
-      FileWrite(h, linha);   // FILE_TXT: FileWrite ja termina a linha (sem escape)
-      FileClose(h);
-   }
+   int hs[15]={hVH1,hVL1,hVH5,hVL5,hVH15,hVL15,hVH60,hVL60,hVH240,hVL240,hVHD,hVLD,hVHc,hVLc,hVATR};
+   for(int i=0;i<15;i++) if(hs[i]!=INVALID_HANDLE) IndicatorRelease(hs[i]);
 }
 void BTVisaoTick()
 {
@@ -4284,19 +4245,6 @@ void BTVisaoTick()
    double emaHc = BTvValor(hVHc);
    double emaLc = BTvValor(hVLc);
    double atr   = BTvValor(hVATR);
-   double bbSup=0,bbInf=0,bbMid=0,bbp=0,bbl=0;
-   {
-      double bs[],bi[],bm[];
-      if(CopyBuffer(hVBB,1,0,1,bs)>0) bbSup=bs[0];
-      if(CopyBuffer(hVBB,2,0,1,bi)>0) bbInf=bi[0];
-      if(CopyBuffer(hVBB,0,0,1,bm)>0) bbMid=bm[0];
-   }
-   if(bbSup>bbInf && bbInf>0)
-   {
-      bbp = (preco-bbInf)/(bbSup-bbInf)*100.0;
-      if(bbp<0) bbp=0; if(bbp>100) bbp=100;
-   }
-   if(bbMid>0) bbl = (bbSup-bbInf)/bbMid*100.0;
    double eq  = AccountInfoDouble(ACCOUNT_EQUITY);
    double bal = AccountInfoDouble(ACCOUNT_BALANCE);
    double ml  = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
@@ -4327,23 +4275,7 @@ void BTVisaoTick()
       dd,conta,corretora,BTvTF(_Period),BTvD(preco),BTvD(emaHc),BTvD(emaLc),BTvD(atr),
       z1,z5,z15,z60,z240,zD,
       lado,BTvD(entrada),BTvD(tp),BTvD(sl),lote,(int)idade);
-   // OLHO AO VIVO (v6.61): janelas de candles — mecanica (1m/5m/15m, OHLCV)
-   // e estrutura (30m/60m/4h, OHLC) a cada 4a emissao (~60s). A 1a emissao
-   // ja vai completa (grito de ligou com visao inteira).
-   g_btVisaoNc++;
-   string cjan = "";
-   if(g_btVisaoNc == 1 || (g_btVisaoNc % 4) == 0)
-   {
-      cjan = "|c1m="+BTvCandles(PERIOD_M1,10,true)
-           + "|c5m="+BTvCandles(PERIOD_M5,10,true)
-           + "|c15m="+BTvCandles(PERIOD_M15,10,true)
-           + "|c30m="+BTvCandles(PERIOD_M30,12,false)
-           + "|c60m="+BTvCandles(PERIOD_H1,12,false)
-           + "|c4h="+BTvCandles(PERIOD_H4,12,false);
-   }
-   linha = linha + StringFormat("|bbp=%.1f|bbl=%.2f", bbp, bbl) + cjan;
    Print(linha);
-   BTvGravar(linha);
 }
 //----------------------------------------------------------------------
 """
@@ -4451,34 +4383,6 @@ def _instrumentar_log_mql5(codigo: str) -> str:
         if _minc:
             codigo = codigo.replace(_minc.group(0),
                                     _minc.group(0) + "\n" + _BT_TRADE_CLAMP_MQL5, 1)
-
-    # ── v6.63: COMPAT MQL4→MQL5 (blindagem contra a IA escorregar pro MQL4) ──
-    # A IA às vezes usa Ask/Bid/Point/Digits (pré-definidas do MQL4, INEXISTENTES
-    # no MQL5) → 'undeclared identifier' e reprovação (caso real: BOTTESTED_07,
-    # AbrirCompra com Ask). Se o identificador aparece NU no código e NÃO é
-    # declarado pelo próprio EA, injeta um #define de compatibilidade no topo.
-    # #define é token-based: não toca strings, comentários nem _Point/_Digits.
-    _compat_map = (
-        ("Ask",    "#define Ask    SymbolInfoDouble(_Symbol,SYMBOL_ASK)"),
-        ("Bid",    "#define Bid    SymbolInfoDouble(_Symbol,SYMBOL_BID)"),
-        ("Point",  "#define Point  _Point"),
-        ("Digits", "#define Digits _Digits"),
-    )
-    _defs = []
-    for _ident, _linha_def in _compat_map:
-        _usa = _re.search(r"\b" + _ident + r"\b", codigo)
-        _declara = _re.search(r"\b(?:double|int|long|string|bool)\s+" + _ident + r"\b", codigo)
-        _ja_define = ("#define " + _ident) in codigo
-        if _usa and not _declara and not _ja_define:
-            _defs.append(_linha_def)
-    if _defs:
-        _bloco = ("\n// BotTested compat MQL4->MQL5 (identificadores do MQL4 detectados no codigo)\n"
-                  + "\n".join(_defs) + "\n")
-        _minc2 = _re.search(r"#include\s*<Trade[\\/]Trade\.mqh>", codigo)
-        if _minc2:
-            codigo = codigo.replace(_minc2.group(0), _minc2.group(0) + _bloco, 1)
-        else:
-            codigo = _bloco + codigo
 
     # ── SELO (identidade on-chart) + VISÃO (snapshot multi-timeframe) ─────
     # Injeta as funções dos dois ANTES do OnInit e chama Init/Tick/Deinit de
@@ -6465,12 +6369,8 @@ def _confirmacao_contextual(det: dict, simbolo: str):
     estado = str(regime.get("estado") or "").lower()
     dir_p = str(p.get("direcao") or "").lower()
     a_favor = None
-    # v6.61 FIX: o regime emite "tendencia_alta"/"possivel_virada_baixa" etc —
-    # a comparação exata com "alta"/"compra" nunca casava e o ±20 do alinhamento
-    # padrão×regime NUNCA disparou. Agora casa por substring (virada conta a
-    # direção NASCENTE, que é a intenção do alinhamento).
-    if "alta" in estado or "baixa" in estado:
-        favoravel = ("alta" in dir_p or "compra" in dir_p) if "alta" in estado \
+    if estado in ("compra", "alta") or estado in ("venda", "baixa"):
+        favoravel = ("alta" in dir_p or "compra" in dir_p) if estado in ("compra", "alta") \
                     else ("baixa" in dir_p or "venda" in dir_p)
         a_favor = bool(favoravel)
     stats = _confirm_stats_padrao(ativo_cat, p.get("tf"), p.get("padrao")) if ativo_cat else None
@@ -6553,31 +6453,21 @@ _BT_TF_MECANICA  = (("c1m", "1m"), ("c5m", "5m"), ("c15m", "15m"))     # gatilho
 _BT_TF_ESTRUTURA = (("c30m", "30m"), ("c60m", "60m"), ("c4h", "4h"))   # fundo/topo
 
 def _bt_parse_candles(s):
-    """'o,h,l,c[,v];...' → DataFrame Open/High/Low/Close[/Volume] (cronológico).
-    v6.61: aceita 5º campo (tick volume) — os TFs de mecânica mandam OHLCV;
-    os de estrutura seguem OHLC. Detectores usam OHLC; Volume alimenta a ficha."""
+    """'o,h,l,c;o,h,l,c;...' → DataFrame Open/High/Low/Close (cronológico)."""
     if not isinstance(s, str) or not s.strip():
         return None
-    linhas, com_vol = [], False
+    linhas = []
     for parte in s.split(";"):
         vs = parte.split(",")
-        if len(vs) not in (4, 5):
+        if len(vs) != 4:
             continue
         try:
-            vals = [float(x) for x in vs]
+            linhas.append([float(x) for x in vs])
         except Exception:
             continue
-        if len(vals) == 5:
-            com_vol = True
-        else:
-            vals.append(float("nan"))
-        linhas.append(vals)
     if len(linhas) < 2:
         return None
-    df = pd.DataFrame(linhas, columns=["Open", "High", "Low", "Close", "Volume"])
-    if not com_vol:
-        df = df.drop(columns=["Volume"])
-    return df
+    return pd.DataFrame(linhas, columns=["Open", "High", "Low", "Close"])
 
 def _bt_niveis_sr(df, tol_frac=0.0015, min_toques=2, max_niveis=3):
     """Níveis horizontais (suporte pelos mínimos, resistência pelos máximos)
@@ -6708,147 +6598,6 @@ def _leitura_ao_vivo(gat: dict, regime: Optional[dict], offmind: Optional[dict],
             "estrategias_sugeridas": ests, "texto": texto}
 
 
-# ═══ FICHA DE DECISÃO (v6.61) — o checklist do trader, respondido pela nuvem ═══
-# Diretriz do Adriano (15/jul): o raciocínio que um trader faz ANTES de apertar o
-# botão, consolidado num objeto único que o bot consulta e a IA cita. Campos:
-# TENDÊNCIA (regime + a favor?) · S/R + ESPAÇO (em ATRs) · VOLUME · PADRÃO+BANCO
-# (casamento com a base medida — confirmação contextual) · BOLLINGER · R:R pela
-# estrutura · MACRO (reservado). Honesto: sem dado = None e entra em "faltando".
-_FICHA_CACHE = {}   # bot_token -> {"ficha", "ts", "simbolo"} (memória; Supabase é o fallback)
-
-def _ficha_num(det, k):
-    try:
-        v = det.get(k)
-        return float(v) if v not in (None, "", "?") else None
-    except Exception:
-        return None
-
-def _ficha_decisao(det: dict, simbolo: str):
-    if not isinstance(det, dict):
-        return None
-    import math as _m
-    regime = det.get("regime") or {}
-    om     = det.get("offmind") or {}
-    conf   = det.get("confirmacao")
-    preco  = _ficha_num(det, "preco")
-    atr    = _ficha_num(det, "atr")
-    faltando = []
-    # ── TENDÊNCIA (D1/H4 = âncora 60m/4h/D do regime) ──
-    estado = (str(regime.get("estado") or "").lower() or None)
-    dir_reg = "alta" if (estado and "alta" in estado) else ("baixa" if (estado and "baixa" in estado) else None)
-    tendencia = {"estado": estado, "confianca": regime.get("confianca"),
-                 "virada": bool(regime.get("virada"))} if estado else None
-    if not tendencia:
-        faltando.append("regime")
-    # ── PADRÃO + BANCO (casamento: o que está SE FORMANDO × o que foi MEDIDO) ──
-    padroes = om.get("padroes") or []
-    p0 = padroes[0] if padroes else None
-    padrao = None
-    if p0:
-        padrao = {"padrao": p0.get("padrao"), "nome": p0.get("nome"),
-                  "tf": p0.get("tf"), "direcao": p0.get("direcao")}
-        if conf:
-            padrao["banco"] = {"score": conf.get("score"), "veredito": conf.get("veredito")}
-    else:
-        faltando.append("padrao_formando")
-    a_favor = None
-    if p0 and dir_reg:
-        a_favor = (dir_reg in str(p0.get("direcao") or "").lower())
-    # ── S/R + ESPAÇO (barreiras em ATRs; espaço = caminho livre na direção) ──
-    niveis = om.get("estrutura") or []
-    res_acima = sup_abaixo = None
-    if preco is not None and niveis:
-        try:
-            rs = [float(n["nivel"]) for n in niveis if n.get("tipo") == "resistencia" and float(n["nivel"]) > preco]
-            ss = [float(n["nivel"]) for n in niveis if n.get("tipo") == "suporte" and float(n["nivel"]) < preco]
-            if rs: res_acima = min(rs)
-            if ss: sup_abaixo = max(ss)
-        except Exception:
-            pass
-    dist_res_atr = dist_sup_atr = None
-    if atr and atr > 0 and preco is not None:
-        if res_acima is not None:
-            dist_res_atr = round((res_acima - preco) / atr, 2)
-        if sup_abaixo is not None:
-            dist_sup_atr = round((preco - sup_abaixo) / atr, 2)
-    espaco = None
-    if dir_reg == "alta" and dist_res_atr is not None:
-        espaco = bool(dist_res_atr >= 1.5)
-    elif dir_reg == "baixa" and dist_sup_atr is not None:
-        espaco = bool(dist_sup_atr >= 1.5)
-    sr = {"resistencia_acima": res_acima, "suporte_abaixo": sup_abaixo,
-          "dist_resistencia_atr": dist_res_atr, "dist_suporte_atr": dist_sup_atr,
-          "testando": [e for e in niveis if e.get("testando")][:2], "espaco": espaco}
-    if res_acima is None and sup_abaixo is None:
-        faltando.append("estrutura_sr")
-    # ── VOLUME (tick volume do 5m: última vela × média da janela) ──
-    volume = None
-    df5 = _bt_parse_candles(det.get("c5m"))
-    if df5 is not None and "Volume" in getattr(df5, "columns", []) and len(df5) >= 5:
-        vols = [v for v in df5["Volume"].tolist() if not _m.isnan(v)]
-        if len(vols) >= 5:
-            ult = vols[-1]
-            med = sum(vols[:-1]) / max(1, len(vols) - 1)
-            if med > 0:
-                rz = ult / med
-                volume = {"razao": round(rz, 2),
-                          "leitura": "presente" if rz >= 1.2 else ("seco" if rz < 0.6 else "normal")}
-    if volume is None:
-        faltando.append("volume")
-    # ── BOLLINGER (20/2 no TF operacional; posição do preço + largura) ──
-    bbp = _ficha_num(det, "bbp"); bbl = _ficha_num(det, "bbl")
-    bollinger = None
-    if bbp is not None:
-        pos = "banda_superior" if bbp >= 80 else ("banda_inferior" if bbp <= 20 else "meio")
-        bollinger = {"posicao_pct": bbp, "largura_pct": bbl, "leitura": pos}
-    else:
-        faltando.append("bollinger")
-    # ── R:R ESTIMADO pela estrutura (alvo = barreira à frente; risco = a de trás) ──
-    rr = None
-    if dir_reg == "alta" and dist_res_atr and dist_sup_atr and dist_sup_atr > 0:
-        rr = round(dist_res_atr / dist_sup_atr, 2)
-    elif dir_reg == "baixa" and dist_sup_atr and dist_res_atr and dist_res_atr > 0:
-        rr = round(dist_sup_atr / dist_res_atr, 2)
-    # ── CHECKLIST (as perguntas do trader, respondidas sim/não/None) ──
-    checklist = {
-        "tendencia_definida": bool(dir_reg),
-        "a_favor_da_tendencia": a_favor,
-        "espaco_para_andar": espaco,
-        "volume_presente": (volume or {}).get("leitura") == "presente" if volume else None,
-        "padrao_com_referencia_no_banco": bool(p0 and conf),
-        "rr_minimo_1para2": (rr >= 2.0) if rr is not None else None,
-    }
-    ficha = {
-        "v": 1, "simbolo": simbolo, "tendencia": tendencia, "a_favor": a_favor,
-        "sr": sr, "volume": volume, "padrao": padrao, "bollinger": bollinger,
-        "rr_estimado": rr, "macro": {"status": "nao_configurado"},
-        "checklist": checklist, "faltando": faltando,
-    }
-    # resumo citável (uma linha, formato do checklist do Adriano)
-    partes = []
-    if tendencia:
-        partes.append(f"regime={estado}({tendencia.get('confianca')})")
-    if a_favor is not None:
-        partes.append("a_favor=" + ("sim" if a_favor else "NAO"))
-    if dist_res_atr is not None:
-        partes.append(f"resistencia_acima={dist_res_atr}ATR")
-    if dist_sup_atr is not None:
-        partes.append(f"suporte_abaixo={dist_sup_atr}ATR")
-    if espaco is not None:
-        partes.append("espaco=" + ("sim" if espaco else "nao"))
-    if volume:
-        partes.append(f"volume={volume['leitura']}")
-    if padrao:
-        partes.append(f"padrao={padrao.get('padrao')}@{padrao.get('tf')}"
-                      + (f" score={padrao['banco']['score']}" if padrao.get("banco") else ""))
-    if bollinger:
-        partes.append(f"bollinger={bollinger['leitura']}")
-    if rr is not None:
-        partes.append(f"RR~{rr}")
-    ficha["resumo"] = " | ".join(partes) if partes else "sem leitura suficiente"
-    return ficha
-
-
 @app.post("/conector/snapshot")
 def conector_snapshot(snap: ConectorSnapshot):
     """Recebe snapshot read-only do conector. Atualiza ping, grava e roda o agente."""
@@ -6892,17 +6641,6 @@ def conector_snapshot(snap: ConectorSnapshot):
     except Exception as _e:
         import sys as _sys
         print(f"[confirmacao] {_e}", file=_sys.stderr)
-    # ── FICHA DE DECISÃO (v6.61): consolida o checklist quando a leva de candles chega ──
-    if any(k in det for k, _ in _BT_TF_MECANICA):
-        try:
-            ficha = _ficha_decisao(det, snap.simbolo)
-            if ficha:
-                det["ficha"] = ficha
-                _FICHA_CACHE[snap.bot_token] = {"ficha": ficha, "ts": _time_mt5.time(),
-                                                "simbolo": snap.simbolo}
-        except Exception as _e:
-            import sys as _sys
-            print(f"[ficha] {_e}", file=_sys.stderr)
     # reaproveita a coluna ultima_direcao/direcao_d1 (vinha vazia) pro estado do regime
     direcao_final = (regime or {}).get("estado") or snap.direcao_d1
     # ── IA GERENCIADORA: leitura acionável por EVENTO (com cooldown) ──
@@ -6943,36 +6681,6 @@ def conector_snapshot(snap: ConectorSnapshot):
         raise HTTPException(status_code=500, detail=f"Erro ao gravar snapshot: {e}")
     novas = _agente_bloco_f(sb, user_id, bot, snap)
     return {"ok": True, "sugestoes_novas": novas}
-
-
-@app.get("/visao/ficha")
-def visao_ficha(bot_token: str = ""):
-    """FICHA DE DECISÃO do bot — porta da peça 3 do olho vivo: o EA consulta
-    via WebRequest GET no momento do gatilho e DECIDE LOCALMENTE (read-only,
-    a nuvem nunca comanda). Também serve o front/maestro. A ficha é recalculada
-    a cada leva de candles (~1x/min)."""
-    if not bot_token:
-        raise HTTPException(status_code=400, detail="bot_token obrigatório")
-    hit = _FICHA_CACHE.get(bot_token)
-    if hit and (_time_mt5.time() - hit["ts"]) < 300:
-        return {"ok": True, "fonte": "memoria",
-                "idade_s": int(_time_mt5.time() - hit["ts"]),
-                "simbolo": hit.get("simbolo"), "ficha": hit["ficha"]}
-    # fallback: última gravação no Supabase (sobrevive a restart e multi-worker)
-    sb = _sb_admin()
-    if sb is not None:
-        try:
-            r = (sb.table("conector_snapshots").select("detalhe_json,simbolo")
-                   .eq("bot_token", bot_token).order("id", desc=True).limit(3).execute())
-            for row in (r.data or []):
-                f = (row.get("detalhe_json") or {}).get("ficha")
-                if f:
-                    return {"ok": True, "fonte": "supabase",
-                            "simbolo": row.get("simbolo"), "ficha": f}
-        except Exception as _e:
-            print(f"[ficha endpoint] {_e}")
-    return {"ok": False, "erro": "sem_ficha_ainda",
-            "dica": "a ficha nasce na próxima leva de candles do bot (EA gerado com api v6.61+)"}
 
 
 @app.post("/conector/evento")
@@ -9134,11 +8842,6 @@ def editor_analisar_oos(req: AnaliseOOSReq):
 # ════════════════════════════════════════════════════════════════════════════
 import time as _time_mt5
 _MT5_JOBS = {}   # job_id -> {bot_token, filename, mq5, status, aprovado, log, ts}
-# v6.64 — VALIDAÇÃO NÃO-BLOQUEANTE (decisão do Adriano, 15/jul): o gate de
-# compilação NÃO trava mais a entrega. Reprovação vira AVISO + log registrado.
-# Pra religar o gate quando a validação for reconstruída: env MT5_VALIDACAO_BLOQUEANTE=1.
-_MT5_VALIDACAO_BLOQUEANTE = os.environ.get("MT5_VALIDACAO_BLOQUEANTE", "0") == "1"
-_MT5_VEREDITOS = []   # últimos vereditos REAIS do compilador (diagnóstico p/ reconstruir o gate)
 _MT5_POLLS = {}  # bot_token -> ts do último polling do conector (= conector online)
 _VISTO_DB = {}   # bot_token -> ts da última gravação de conector_visto_em (throttle DB)
 _MT5_RAISE = {}  # bot_token -> ts do pedido "trazer o conector pra frente" (Entendi na guia)
@@ -9164,7 +8867,7 @@ Requisitos do EA:
 - Comece com #property strict e #include <Trade/Trade.mqh>; use um objeto CTrade para abrir/fechar posições.
 - Declare inputs (input) para os parâmetros (períodos de indicadores, stop, take).
 - Implemente OnInit(), OnDeinit() e OnTick() com a MESMA lógica de entrada/saída do Python.
-- Use as APIs corretas de MQL5: crie handles de indicadores no OnInit (iMA, iRSI, iBands, etc.) e leia com CopyBuffer no OnTick. NÃO use assinaturas antigas de MQL4. PROIBIDO usar as pré-definidas do MQL4: Ask, Bid, Point, Digits — elas NÃO EXISTEM em MQL5 e o código não compila. Use SymbolInfoDouble(_Symbol,SYMBOL_ASK), SymbolInfoDouble(_Symbol,SYMBOL_BID), _Point e _Digits.
+- Use as APIs corretas de MQL5: crie handles de indicadores no OnInit (iMA, iRSI, iBands, etc.) e leia com CopyBuffer no OnTick. NÃO use assinaturas antigas de MQL4.
 - Opere uma posição por vez (cheque PositionSelect(_Symbol)).
 - Stop e take em PONTOS: converta com _Point. MAS respeite a distância MÍNIMA — e ela NÃO é só o stops level (que em BTCUSD, índices e cripto costuma vir 0). Calcule usando também o SPREAD: double _sp = SymbolInfoDouble(_Symbol,SYMBOL_ASK) - SymbolInfoDouble(_Symbol,SYMBOL_BID); double _lvl = (SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL) + 10) * _Point; double dist_min = MathMax(_lvl, _sp * 3.0); — e NUNCA envie SL/TP mais perto do preço que dist_min. Se o SL/TP calculado ficar mais perto, empurre pra dist_min. Isso evita o 'invalid stops' (stop dentro do spread é rejeitado). Ajuste o lado correto (compra: SL abaixo, TP acima; venda: inverso) e NormalizeDouble(_Digits) antes de enviar.
 
@@ -9603,27 +9306,8 @@ def mt5_veredito(req: MT5VeredictoReq):
     j = _MT5_JOBS.get(req.job_id)
     if not j:
         return {"ok": False, "erro": "job_inexistente"}
-    # v6.64: registra SEMPRE o veredito REAL do compilador (últimos 10) — é o
-    # insumo pra reconstruir a validação do zero com dados, não adivinhação.
-    _MT5_VEREDITOS.append({"ts": _time_mt5.time(), "job_id": req.job_id,
-                           "filename": j.get("filename"),
-                           "aprovado_real": bool(req.aprovado),
-                           "log": (req.log or "")[:4000]})
-    del _MT5_VEREDITOS[:-10]
-    if not req.aprovado:
-        import sys as _sys
-        print(f"[mt5 veredito] REPROVADO {j.get('filename')} — log do compilador:\n"
-              f"{(req.log or '')[:4000]}", file=_sys.stderr)
-    if req.aprovado or not _MT5_VALIDACAO_BLOQUEANTE:
-        # entrega SEGUE: reprovação vira aviso; o erro real (se houver) aparece
-        # no MetaEditor do usuário e fica guardado em /admin/mt5/vereditos.
-        j["status"] = "aprovado"
-        j["aprovado"] = True
-        if not req.aprovado:
-            j["aviso"] = "compilacao reprovou no conector — entrega liberada (gate informativo)"
-    else:
-        j["status"] = "reprovado"
-        j["aprovado"] = False
+    j["status"] = "aprovado" if req.aprovado else "reprovado"
+    j["aprovado"] = bool(req.aprovado)
     j["log"] = (req.log or "")[:4000]
     # v6.38: aprovou no MT5 real -> marca o cache; próximos envios do MESMO
     # código pulam a IA E o compile (pré-validado, veredito na hora).
@@ -9640,19 +9324,7 @@ def mt5_status(job_id: str = ""):
     j = _MT5_JOBS.get(job_id)
     if not j:
         return {"status": "desconhecido"}
-    return {"status": j.get("status"), "aprovado": j.get("aprovado"),
-            "aviso": j.get("aviso"), "log": j.get("log", "")}
-
-
-@app.get("/admin/mt5/vereditos")
-def admin_mt5_vereditos(token: str = ""):
-    """v6.64 — últimos vereditos REAIS do compilador (com log completo).
-    É aqui que se lê o que o metaeditor disse de cada envio, sem depender de
-    print do usuário. Base de dados pra reconstruir a validação do zero."""
-    if token != os.environ.get("BIBLIOTECA_ADMIN_TOKEN", ""):
-        raise HTTPException(status_code=403, detail="Token inválido")
-    return {"ok": True, "bloqueante": _MT5_VALIDACAO_BLOQUEANTE,
-            "vereditos": list(reversed(_MT5_VEREDITOS))}
+    return {"status": j.get("status"), "aprovado": j.get("aprovado"), "log": j.get("log", "")}
 
 
 # ── AQUECIMENTO DE FÁBRICA (v6.39) ─────────────────────────────────────────
