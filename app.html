@@ -1,5 +1,5 @@
 <!--
-  BotTested Frontend — v9.54 (PULSO VIVO NO MONITOR: (1) LED VERDE PULSANDO no card quando o bot esta ONLINE — batimento cardiaco lento (~1.6s) via animacao CSS pulse-green; comunica 'sinal ao vivo' sem competir com o ambar 'em trade'. (2) BOTAO MONITOR no menu superior PULSA em AMBAR quando qualquer bot do usuario esta com posicao aberta — visivel em QUALQUER aba (nao so no Monitor). Polling global leve /monitor/geral a cada 30s enquanto o usuario esta logado (verificarBotsEmTrade); acende _MENU_MON_TRADE ao detectar em_trade>0, apaga ao voltar pra 0. Chamada tambem no login (imediato) e no logout (para). Se o Monitor esta aberto, o proprio ciclo do atualizarMonitorGeral aproveita e atualiza o botao — nao duplica requests desnecessarios. (3) VTAG (v9.53) e APP_VERSAO tinham ficado congelados desde a v9.51 — LICAO da entrega passada, agora atualizados junto com o comentario e o BUILD_TAG. v9.53 (MONITOR PROFISSIONAL — FASE 1/4: LINHA LARGA DO BOT. O card grande e quadrado morreu — cada bot agora e uma LINHA HORIZONTAL de altura fixa (~170px) com 4 ZONAS em grid: (Z1 270px) grafico do TF que o bot roda no MT5; (Z2 230px) DADOS VIVOS resumidos — simbolo/TF/regime/entradas hoje/flutuante/posicoes/drawdown; (Z3 1fr) CONSCIENCIA RESUMIDA — as duas vozes lado a lado: BOT (executor) e IA (mentor) em texto curto; (Z4 210px) SINAIS DO MOMENTO — padroes se formando + niveis testando + score de confirmacao. 3-4 bots cabem em uma tela 1080p (era 1). Sem scroll infinito. LED 'em trade' agora e a borda inteira do card ambar+glow. ARQUITETURA COCKPIT: no fullscreen (⛶), o layout se transforma — gride vira 2 colunas x 2 linhas (chart 40% + dados / chat 60% que ocupa a coluna inteira). A Zona 3 no fullscreen vira o container do CHAT VIVO em duas vozes (Fase 2 preenche com narrativa continua letra-por-letra via /monitor/narrativa quando algo relevante acontece — gatilhos, nao polling). Placeholder 'chat vivo entre BOT e IA chegando na proxima versao' visivel so em fullscreen. Fim do bloco 'Leitura ao vivo' redundante (o Z3 do card ja e isso, resumido). v9.52 (MONITOR ESPELHA O MT5 (nao o card): PRINCIPIO ARQUITETURAL — o card da Vitrine e onde o bot NASCE (estrategia/codigo); o MT5 e onde o bot VIVE (ativo real do grafico, timeframe real). O Monitor passa a mostrar SO o que vem do snapshot ao vivo do MT5 — nunca o simbolo/direcao/dd/pos do conector_bots (que era a intencao do envio). MUDANCAS: (1) card renderiza simbolo/drawdown/posicoes com id + placeholder '—'; atualizarLeituraMonitor sobrescreve com dado ao vivo do MT5 a cada 15s (bug do EURUSD aparecendo em bot que roda BTCUSD morreu). (2) removidos do card os campos 'Direcao D1' (redundante — regime aparece na LIVE READING) e 'Padrao' (idem); Equity so no bloco VIVO. (3) sidebar da esquerda (.col-left) e direita (.col-right) escondidas na aba Monitor via body.tab-monitor — nao faziam sentido ali, poluiam. (4) auditoria identifica o bot: '<b>BOT_NOME</b> · ABRIU BUY @ preco' em vez de so ABRIU (par da api v6.66 que grava bot_nome no evento e faz fallback por simbolo pra eventos velhos). (5) ordem dos bots: em trade primeiro, depois online, depois offline — quem esta operando aparece no topo. (6) regime 'LATERAL 0' virou 'LATERAL · 45% conf' se >0, ou so 'LATERAL' se 0 (nao mostra mais numero solto sem contexto). (7) delay do atualizarLeituraMonitor pos-carregarBots caiu de 400ms pra 60ms — flicker do simbolo vazio virou imperceptivel. v9.51 (MONITOR FIEL AO DESENHO DO DONO: (1) UMA fileira de largura inteira por bot (bots-grid 1 coluna); (2) grafico do bot NA ESQUERDA — candles do TF que o usuario arrastou no MT5 (candles_op da api v6.51) com canal EMA20 H/L tracejado e linha de preco, SVG viewBox responsivo; nesse tamanho e referencia, no ⛶ o CSS .mon-card:fullscreen expande pra 62vh com colunas 46/54; (3) barras da performance geral com NOME do bot embaixo — da pra ver qual bot performa melhor em tempo real; (4) mobile colapsa pra 1 coluna. v9.50 (MONITOR 2.0 (par da api v6.49), layout do dono melhorado: (1) PERFORMANCE GERAL no topo — equity/balance/flutuante totais, operando, em trade, barras de flutuante por bot; (2) AUDITORIA viva — feed de cada entrada/saida (hora, ABRIU/FECHOU, BUY/SELL, simbolo, preco); (3) por bot: LED ambar EM TRADE, numeros vivos (balance/equity/flutuante colorido), as DUAS VOZES lado a lado (🤖 Leitura do Bot = narracao mecanica do executor; 🛰 Leitura da IA = leitura+confirmacao), botao ⛶ fullscreen POR CARD (requestFullscreen no .mon-card). Tudo no ciclo de 15s. v9.49 (CONFIRMACAO CONTEXTUAL na Leitura ao Vivo (par da api v6.48): quando ha padrao formando, o painel mostra o SCORE 0-100 (verde >=65, ambar 45-64, vermelho <45) + o veredito citavel do banco ("Engolfo no 5m: medido 42x neste ativo/TF, 68% confirmou em 5 velas"). E a juncao dos dois lados da inteligencia dinamica visivel pro usuario. v9.48 (LEITURA AO VIVO NO MONITOR (par da api v6.47): cada card de bot ganha o painel do que o bot esta ENXERGANDO — regua de zonas do canal EMA20 H/L por TF (1m 5m 15m 1H 4H D com ▲▪▼), regime sintetizado (+ badge de virada), padroes se FORMANDO (OffMind 1m/5m/15m), topos/fundos sendo TESTADOS (30m/60m/4h), mini-candles 15m em SVG e a ultima leitura da IA em italico. Poll 15s enquanto a aba Monitor esta ativa (atualizarLeituraMonitor). v9.47 (VITRINE NUNCA ENTREGA NEGATIVO AUTOMATICO (par da api v6.43): card sem melhor_combo mostra selo "🧪 Em medicao" no lugar do % (nao promete o que nao reproduz) e o clique NAO dispara auto-run — carrega o codigo + aviso ambar no estado vazio pro usuario configurar e rodar. Cards medidos continuam com auto-run do combo positivo. i18n vit.medindo* 3 linguas. v9.46 (AVISO DO ESPELHO no envio (par da api v6.42): o modal Validando informa se o envio sera RELAMPAGO (codigo identico ao da vitrine ja aprovado) ou COMPLETO (codigo alterado/proprio, so na 1a vez). SL/TP nao contam — sao inputs re-injetados pelo backend. codigoOriginal guardado no _estrategiaAtiva ao escolher o card. i18n mt5.espelho* nas 3 linguas. v9.45 (CARD DA VITRINE APLICA O MELHOR COMBO (par da api v6.41): ao escolher uma estrategia, alem do ativo, o PERIODO e o TIMEFRAME dos selects passam a ser os do melhor_combo POSITIVO medido na biblioteca — o auto-run reproduz a combinacao que a vitrine anuncia (fim do card bonito + teste negativo por defaults aleatorios). Guardas: so aplica se a option existir nos selects. v9.44 (ORDEM DOS IDIOMAS na barra superior: EN · ES · PT (era PT · EN · ES). So HTML reordenado; setLang e o idioma salvo seguem gerindo o active. v9.43 (POLIMENTO DO GRAFICO: (1) botao "Tudo" REMOVIDO da JANELA — o grafico ja abre com o historico inteiro enquadrado e o duplo clique refaz, era redundante; (2) SAIDA VISIVEL do fullscreen — botao fixo "✕ Sair da tela cheia" no canto sup. direito, visivel SO em tela cheia (#chart-wrap:fullscreen), clica e volta (alem do ESC e do ⛶). v9.42 (REGUA DE VELAS 100% FUNCIONAL: TF menor que o do dado deixou de ficar apagado — clicar nele TROCA o timeframe de verdade (sincroniza os botoes da barra lateral + #timeframe) e busca as velas via previa /candles; TF igual/maior segue reagregando localmente (D/S/M). setChartAgg roteia pelo rank; chartTrocarTfBase faz a ponte regua->sidebar. v9.41 (PREVIA AO VIVO no grafico: mudou ativo/periodo/timeframe na barra lateral -> o grafico atualiza NA HORA via GET /candles (api v6.40), sem rodar teste. Debounce 350ms + sequencia anti-corrida (troca rapida descarta resposta velha); titulo marca PREVIA em ambar (as metricas em cima seguem do ultimo teste); regua de VELAS segue o TF novo; prévia vem sem trades/overlays. Rodar o teste volta tudo ao normal (render fresh sobrescreve). v9.40 (BOTAO ⛶ = TELA CHEIA DE VERDADE: fazia "enquadrar tudo" e, com a janela ja em Tudo, clicar nao mudava nada — parecia quebrado. Agora usa a Fullscreen API no #chart-wrap (toolbar + candle juntos), o grafico redimensiona pra viewport inteira (alturas dinamicas no ResizeObserver e nos separadores), ESC ou ⛶ de novo sai e restaura 470px. O "enquadrar" virou DUPLO CLIQUE no grafico (tooltip atualizado). v9.39 (REGUA DE VELAS ESPELHA O PAINEL: o grupo VELAS agora mostra 5m 15m 30m 1H 4H D + S M (mesma regua do sidebar + semanal/mensal). TFs MENORES que o do teste ficam desabilitados/apagados (vela nao desagrega — teste em 1D nao vira 5m); o TF do teste nasce aceso. Buckets intradiarios novos (_CHART_TF_SEG): teste em 5m agrega pra 15m/30m/1H/4H alem de D/S/M. Estado interno deixou de ser "base": _chartTfBase = TF do teste. v9.38 (GRAFICO LIMPO ESTILO MT5: (1) setas de BUY/SELL ESCONDIDAS por flag window._CHART_MOSTRAR_TRADES=false (nas velas D/S/M viravam pilhas; reativar = true) + legenda BUY/SELL e "…+ Operacoes" sairam do cabecalho; (2) marca dagua do ativo mais VISIVEL (opacidade 0.045 -> 0.11); (3) SEPARADORES DE PERIODO estilo MT5 — canvas overlay com linhas verticais tracejadas nas viradas de dia/mes/ano, granularidade adaptativa ao zoom (>550d=anos, >40d=meses, senao dias), redesenhado em pan/zoom/resize. v9.37 (ESCALA ESTILO MT5: (1) scaleMargins 12/8% -> 4/4% — os candles preenchem o painel vertical como no MetaTrader, ajuste do usuario vira minimo; (2) rightOffset 12 -> 3 barras (no mensal, 12 barras vazias comiam 1/3 do grafico a direita); (3) FIX legenda OHLC mostrava "Invalid Date" com velas de tempo string (YYYY-MM-DD -> dd/mm/aaaa). v9.36 (SELETOR DO GRAFICO REPENSADO: (1) JANELA com rotulos claros ("1M" lia-se 1 minuto — agora "1 mes/3 meses/6 meses/1 ano/Tudo", i18n 3 linguas) e botoes MAIORES (20->27px, fonte 10->12); (2) NOVO grupo VELAS: Teste/D/S/M reagrega os candles do teste em diario/semanal(ISO seg)/mensal direto no grafico (_chartResample; trades apontam pro inicio do bucket; overlays EMA/SMA so na visao base pra nao enganar; teste novo volta pro base); (3) zoomChart escopado no grupo JANELA. v9.35 (GRAFICO PRO: (1) controles -/+/enquadrar sairam de CIMA do candle e entraram na barra do cabecalho junto do 1M/3M/6M/1Y/All (funcoes globais chartZoomStep/chartFit operam no candleChart; Ctrl+roda continua); (2) LEGENDA OHLC no crosshair estilo TradingView — data + Abertura/Maxima/minima/Fechamento + variacao seguindo o mouse, ultimo candle como padrao; (3) marca dagua discreta ativo·TF no fundo; (4) calha do eixo de preco 80->60px. v9.34 (FIX BUG ANTIGO revelado pelo v9.33: o container #candle-chart tinha 380px mas o LightweightCharts e criado (e redimensionado) com height 470 — o canvas transbordava 90px por CIMA do bloco seguinte (antes era o topo vazio das key stats, ninguem via; com o edge card ali, comia o titulo). Container agora tem 470px + overflow:hidden. v9.33 (RESULTADO DIVIDIDO (teste de layout): o GRAFICO subiu — acima dele so o essencial (barra da estrategia + metricas + retorno + cards de capital); o cartao explicativo "Por que deu lucro com Win Rate baixo?" desceu pra logo DEPOIS do grafico, seguido das key stats, OOS e historico. Pra reverter: mover ${_cardEdgeWinRate(...)} de volta pra antes do CANDLE CHART. v9.32 (REMOVIDO o botao "Voltar a vitrine" da barra de contexto da estrategia — redundante com o botao Vitrine do menu (v9.25). A barra segue mostrando ESTRATEGIA EM TESTE + tags + Enviar Estrategia. voltarVitrine() continua existindo (menu e atalho do Radar usam). v9.31 (ORDEM FINAL do resultado: resultados/stats -> VALIDACAO OOS -> Historico de Trades por ULTIMO (o veredito de robustez fecha a analise; a lista de trades vira material de consulta no rodape). v9.30 (VALIDACAO OOS AUTOMATICA E NO FIM: (1) o botao "Validar meu codigo (out-of-sample)" saiu — validarCodigoOOS2(true) dispara SOZINHO ~700ms apos o resultado renderizar (modo auto sai em silencio se nao ha codigo custom); (2) o bloco ov-oos-box saiu do meio do resultado (antes do grafico) e foi pro FIM, depois do Historico de Trades — o usuario ve o resultado inteiro e a validacao fecha a leitura embaixo; (3) a oferta do Radar radarOfertaValidarCodigo (1.5s) saiu — redundante com o auto-run. v9.29 (BOAS-VINDAS DA IA no 1o login: modal central (#bv-ov, z 10500) onde a IA se APRESENTA digitando estilo prompt (4 paragrafos, cursor de bloco, botao Pular completa na hora) e o usuario pode CONVERSAR ali mesmo — mesmo motor do Radar (/radar/chat) e mesmo _radarChatHist, entao a conversa continua no 💬 depois. Uma vez por usuario (localStorage BT_IA_APRESENTOU_<uid>, marcado na abertura); ao fechar encadeia o onboarding antigo (onbVerificar). onLogin agora chama boasVindasVerificar. i18n bv.* nas 3 linguas. Mensagem respeita a regra da casa: historico medido, nao promessa. v9.28 (BARRA IA da Overview ESCONDIDA (display:none, nao apagada) — as funcoes migraram pro Editor; o elemento fica no DOM porque a vitrine rebinda o ia-run-btn, o voltarVitrine limpa o ia-hero-desc e rodarHero/gerarHeroIA leem dali. Fluxo intacto: card da vitrine auto-roda e re-rodadas usam o Rodar Backtest do painel esquerdo. Pra reativar: display:block. v9.27 (REMOVIDO o botao flutuante "Novo teste" da vitrine — redundante com o botao Overview do menu (v9.25), que ja abre o modo teste. O JS que referenciava a faixa e todo blindado com if(fx), entao nada quebra; atualizarFaixaNovoTeste vira so o sincronizador do menu Vitrine/Overview. v9.26 (FAIXA ADMIN: os botoes Estudo/Radar ADMIN sairam da linha principal do menu e desceram pra faixa propria (#admin-bar) abaixo do topbar, visivel SO pro admin (atualizarVisibilidadeAdmin liga a faixa inteira). A linha de cima fica limpa e num nivel so: abas + lua/idiomas/API Online/usuario. Pra usuarios normais a faixa nem existe e a trilha (sensor de atividades) sobe, colada no menu. v9.25 (MENU REORGANIZADO: Vitrine ganhou botao proprio (modo loja, via voltarVitrine) e Overview virou o modo teste/resultado (menuOverview -> sairVitrineParaTeste); atualizarMenuVitrineOv espelha o modo real no menu (chamado de atualizarFaixaNovoTeste, que roda em toda troca de modo/aba). Ordem: Vitrine · Overview · Editor · Monitor · Calendario · Planos · Estudo ADMIN · Radar ADMIN. REMOVIDOS do menu: Otimizacao, Templates e Rank — as telas continuam existindo; Otimizacao segue acessivel pelos botoes contextuais pos-backtest; o atalho Estrategias do Radar agora abre a Vitrine (apontava pra Templates). v9.24 (GUIA + BALAO COEXISTEM: a guia grande (#mt5-guia) subiu pra z-index 10000 (fica NA FRENTE); o balao da trilha (auto-dica) fica ATRAS e PERSISTE enquanto a guia esta aberta (clique na guia nao mata o balao; o auto-some espera a guia fechar). Quando a guia fecha (inclusive apos marcar nao mostrar mais), o balao segue por 15s + clique. Assim o balao e independente do checkbox da guia — o usuario nunca fica sem direcao. v9.23 (FIX auto-dica: a dica da etapa Conectar (e das que vem do backend por polling) sumia cedo demais - o hover compartilha o mesmo balao e o timer de esconder/o clique de refoco matava ela em ~180ms. Agora: LOCK (__tipLock) impede o hover-hide enquanto a auto-dica esta ativa; so fecha por clique DEPOIS de 600ms (evita o clique de refoco); auto-some de seguranca em 15s. v9.22 (AUTO-DICA NA TRILHA: quando uma etapa ACENDE (Ajustar 3, Enviar 4, Conectar 5, Monitorar na 6), a mensagem daquela etapa aparece SOZINHA (sem hover) guiando o proximo passo; some ao clicar em qualquer lugar (fora do balao); o hover continua funcionando por cima. So dispara no aumento da etapa, nao a cada repaint. Mensagem do Conectar reescrita pra apontar o proximo passo real (arraste pro grafico). v9.21 (BARRA ZERA EM NOVO RESULTADO: rodar QUALQUER backtest novo (rodarBacktest/rodarHero) agora chama trilhaReset antes de avancar — novo resultado = outro bot, entao a barra zera e passa a seguir o novo (limpa token/marco do bot anterior; o Monitor segue rastreando o que roda no MT5). Junto com os resets ja existentes (escolher na vitrine, gerar no editor). Principio: qualquer alteracao que gera um resultado novo reinicia a jornada. v9.20 (PRESENCA/REBAIXAR: a trilha agora REFLETE o estado real — as etapas 5 (Conectar) e 6 (Operar/Monitorar) seguem a presenca ao vivo do backend e APAGAM quando o bot para. Removido o "nunca rebaixar" e o "para o polling ao operar" (era isso que travava a barra acesa mesmo apos apertar Parar). Pinta sempre max(marco local 1-4, presenca backend 5-6); polling 15s->8s p/ corte mais rapido. Comando dado = tela reflete (Parar corta na hora). v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
+  BotTested Frontend — v9.55 (FASE 2/4 — COCKPIT DE ANALISE CRUZADA (par da api v6.67): expandir um bot (⛶) abre o COCKPIT — nao mais chat de duas vozes, e sim TRES BLOCOS ao vivo: (A) LEITURA DO BOT (verde) — narracao mecanica curta do EA, atualiza direto do snapshot; (B) ANALISE DA IA (roxa) — analise contextual da plataforma, IA absorveu o banco de padroes medidos como conhecimento proprio (fala como analista experiente, nao como sistema consultando tabela); (C) VEREDITO CONJUNTO (embaixo, largura inteira) — sintese cruzada em 1 linha, cor por sinal: verde=alinhados, ambar=divergencia, roxo=adicao, cinza=neutro/observacao. ARQUITETURA: (1) fullscreenchange dispara cockpitIniciar(botId); (2) polling de 6s: GET /monitor/analise pega analises novas + POST /monitor/analise/tick dispara geracao se merecer; (3) analise nova = fade out do antigo (400ms) + escrita letra-por-letra do novo (Bloco B e C, com ritmo humano — 22ms/char e pausas em pontuacao); (4) Bloco A atualiza direto sem efeito (e o texto curto do EA que ja rola no snapshot); (5) selo 'ha Xs' no Bloco B mostra frescor da analise. Fase 1 (chat de duas vozes) foi descartada — cockpit de 3 blocos e o formato correto pra analise cruzada, nao conversa sequencial. v9.54 (PULSO VIVO NO MONITOR: (1) LED VERDE PULSANDO no card quando o bot esta ONLINE — batimento cardiaco lento (~1.6s) via animacao CSS pulse-green; comunica 'sinal ao vivo' sem competir com o ambar 'em trade'. (2) BOTAO MONITOR no menu superior PULSA em AMBAR quando qualquer bot do usuario esta com posicao aberta — visivel em QUALQUER aba (nao so no Monitor). Polling global leve /monitor/geral a cada 30s enquanto o usuario esta logado (verificarBotsEmTrade); acende _MENU_MON_TRADE ao detectar em_trade>0, apaga ao voltar pra 0. Chamada tambem no login (imediato) e no logout (para). Se o Monitor esta aberto, o proprio ciclo do atualizarMonitorGeral aproveita e atualiza o botao — nao duplica requests desnecessarios. (3) VTAG (v9.53) e APP_VERSAO tinham ficado congelados desde a v9.51 — LICAO da entrega passada, agora atualizados junto com o comentario e o BUILD_TAG. v9.53 (MONITOR PROFISSIONAL — FASE 1/4: LINHA LARGA DO BOT. O card grande e quadrado morreu — cada bot agora e uma LINHA HORIZONTAL de altura fixa (~170px) com 4 ZONAS em grid: (Z1 270px) grafico do TF que o bot roda no MT5; (Z2 230px) DADOS VIVOS resumidos — simbolo/TF/regime/entradas hoje/flutuante/posicoes/drawdown; (Z3 1fr) CONSCIENCIA RESUMIDA — as duas vozes lado a lado: BOT (executor) e IA (mentor) em texto curto; (Z4 210px) SINAIS DO MOMENTO — padroes se formando + niveis testando + score de confirmacao. 3-4 bots cabem em uma tela 1080p (era 1). Sem scroll infinito. LED 'em trade' agora e a borda inteira do card ambar+glow. ARQUITETURA COCKPIT: no fullscreen (⛶), o layout se transforma — gride vira 2 colunas x 2 linhas (chart 40% + dados / chat 60% que ocupa a coluna inteira). A Zona 3 no fullscreen vira o container do CHAT VIVO em duas vozes (Fase 2 preenche com narrativa continua letra-por-letra via /monitor/narrativa quando algo relevante acontece — gatilhos, nao polling). Placeholder 'chat vivo entre BOT e IA chegando na proxima versao' visivel so em fullscreen. Fim do bloco 'Leitura ao vivo' redundante (o Z3 do card ja e isso, resumido). v9.52 (MONITOR ESPELHA O MT5 (nao o card): PRINCIPIO ARQUITETURAL — o card da Vitrine e onde o bot NASCE (estrategia/codigo); o MT5 e onde o bot VIVE (ativo real do grafico, timeframe real). O Monitor passa a mostrar SO o que vem do snapshot ao vivo do MT5 — nunca o simbolo/direcao/dd/pos do conector_bots (que era a intencao do envio). MUDANCAS: (1) card renderiza simbolo/drawdown/posicoes com id + placeholder '—'; atualizarLeituraMonitor sobrescreve com dado ao vivo do MT5 a cada 15s (bug do EURUSD aparecendo em bot que roda BTCUSD morreu). (2) removidos do card os campos 'Direcao D1' (redundante — regime aparece na LIVE READING) e 'Padrao' (idem); Equity so no bloco VIVO. (3) sidebar da esquerda (.col-left) e direita (.col-right) escondidas na aba Monitor via body.tab-monitor — nao faziam sentido ali, poluiam. (4) auditoria identifica o bot: '<b>BOT_NOME</b> · ABRIU BUY @ preco' em vez de so ABRIU (par da api v6.66 que grava bot_nome no evento e faz fallback por simbolo pra eventos velhos). (5) ordem dos bots: em trade primeiro, depois online, depois offline — quem esta operando aparece no topo. (6) regime 'LATERAL 0' virou 'LATERAL · 45% conf' se >0, ou so 'LATERAL' se 0 (nao mostra mais numero solto sem contexto). (7) delay do atualizarLeituraMonitor pos-carregarBots caiu de 400ms pra 60ms — flicker do simbolo vazio virou imperceptivel. v9.51 (MONITOR FIEL AO DESENHO DO DONO: (1) UMA fileira de largura inteira por bot (bots-grid 1 coluna); (2) grafico do bot NA ESQUERDA — candles do TF que o usuario arrastou no MT5 (candles_op da api v6.51) com canal EMA20 H/L tracejado e linha de preco, SVG viewBox responsivo; nesse tamanho e referencia, no ⛶ o CSS .mon-card:fullscreen expande pra 62vh com colunas 46/54; (3) barras da performance geral com NOME do bot embaixo — da pra ver qual bot performa melhor em tempo real; (4) mobile colapsa pra 1 coluna. v9.50 (MONITOR 2.0 (par da api v6.49), layout do dono melhorado: (1) PERFORMANCE GERAL no topo — equity/balance/flutuante totais, operando, em trade, barras de flutuante por bot; (2) AUDITORIA viva — feed de cada entrada/saida (hora, ABRIU/FECHOU, BUY/SELL, simbolo, preco); (3) por bot: LED ambar EM TRADE, numeros vivos (balance/equity/flutuante colorido), as DUAS VOZES lado a lado (🤖 Leitura do Bot = narracao mecanica do executor; 🛰 Leitura da IA = leitura+confirmacao), botao ⛶ fullscreen POR CARD (requestFullscreen no .mon-card). Tudo no ciclo de 15s. v9.49 (CONFIRMACAO CONTEXTUAL na Leitura ao Vivo (par da api v6.48): quando ha padrao formando, o painel mostra o SCORE 0-100 (verde >=65, ambar 45-64, vermelho <45) + o veredito citavel do banco ("Engolfo no 5m: medido 42x neste ativo/TF, 68% confirmou em 5 velas"). E a juncao dos dois lados da inteligencia dinamica visivel pro usuario. v9.48 (LEITURA AO VIVO NO MONITOR (par da api v6.47): cada card de bot ganha o painel do que o bot esta ENXERGANDO — regua de zonas do canal EMA20 H/L por TF (1m 5m 15m 1H 4H D com ▲▪▼), regime sintetizado (+ badge de virada), padroes se FORMANDO (OffMind 1m/5m/15m), topos/fundos sendo TESTADOS (30m/60m/4h), mini-candles 15m em SVG e a ultima leitura da IA em italico. Poll 15s enquanto a aba Monitor esta ativa (atualizarLeituraMonitor). v9.47 (VITRINE NUNCA ENTREGA NEGATIVO AUTOMATICO (par da api v6.43): card sem melhor_combo mostra selo "🧪 Em medicao" no lugar do % (nao promete o que nao reproduz) e o clique NAO dispara auto-run — carrega o codigo + aviso ambar no estado vazio pro usuario configurar e rodar. Cards medidos continuam com auto-run do combo positivo. i18n vit.medindo* 3 linguas. v9.46 (AVISO DO ESPELHO no envio (par da api v6.42): o modal Validando informa se o envio sera RELAMPAGO (codigo identico ao da vitrine ja aprovado) ou COMPLETO (codigo alterado/proprio, so na 1a vez). SL/TP nao contam — sao inputs re-injetados pelo backend. codigoOriginal guardado no _estrategiaAtiva ao escolher o card. i18n mt5.espelho* nas 3 linguas. v9.45 (CARD DA VITRINE APLICA O MELHOR COMBO (par da api v6.41): ao escolher uma estrategia, alem do ativo, o PERIODO e o TIMEFRAME dos selects passam a ser os do melhor_combo POSITIVO medido na biblioteca — o auto-run reproduz a combinacao que a vitrine anuncia (fim do card bonito + teste negativo por defaults aleatorios). Guardas: so aplica se a option existir nos selects. v9.44 (ORDEM DOS IDIOMAS na barra superior: EN · ES · PT (era PT · EN · ES). So HTML reordenado; setLang e o idioma salvo seguem gerindo o active. v9.43 (POLIMENTO DO GRAFICO: (1) botao "Tudo" REMOVIDO da JANELA — o grafico ja abre com o historico inteiro enquadrado e o duplo clique refaz, era redundante; (2) SAIDA VISIVEL do fullscreen — botao fixo "✕ Sair da tela cheia" no canto sup. direito, visivel SO em tela cheia (#chart-wrap:fullscreen), clica e volta (alem do ESC e do ⛶). v9.42 (REGUA DE VELAS 100% FUNCIONAL: TF menor que o do dado deixou de ficar apagado — clicar nele TROCA o timeframe de verdade (sincroniza os botoes da barra lateral + #timeframe) e busca as velas via previa /candles; TF igual/maior segue reagregando localmente (D/S/M). setChartAgg roteia pelo rank; chartTrocarTfBase faz a ponte regua->sidebar. v9.41 (PREVIA AO VIVO no grafico: mudou ativo/periodo/timeframe na barra lateral -> o grafico atualiza NA HORA via GET /candles (api v6.40), sem rodar teste. Debounce 350ms + sequencia anti-corrida (troca rapida descarta resposta velha); titulo marca PREVIA em ambar (as metricas em cima seguem do ultimo teste); regua de VELAS segue o TF novo; prévia vem sem trades/overlays. Rodar o teste volta tudo ao normal (render fresh sobrescreve). v9.40 (BOTAO ⛶ = TELA CHEIA DE VERDADE: fazia "enquadrar tudo" e, com a janela ja em Tudo, clicar nao mudava nada — parecia quebrado. Agora usa a Fullscreen API no #chart-wrap (toolbar + candle juntos), o grafico redimensiona pra viewport inteira (alturas dinamicas no ResizeObserver e nos separadores), ESC ou ⛶ de novo sai e restaura 470px. O "enquadrar" virou DUPLO CLIQUE no grafico (tooltip atualizado). v9.39 (REGUA DE VELAS ESPELHA O PAINEL: o grupo VELAS agora mostra 5m 15m 30m 1H 4H D + S M (mesma regua do sidebar + semanal/mensal). TFs MENORES que o do teste ficam desabilitados/apagados (vela nao desagrega — teste em 1D nao vira 5m); o TF do teste nasce aceso. Buckets intradiarios novos (_CHART_TF_SEG): teste em 5m agrega pra 15m/30m/1H/4H alem de D/S/M. Estado interno deixou de ser "base": _chartTfBase = TF do teste. v9.38 (GRAFICO LIMPO ESTILO MT5: (1) setas de BUY/SELL ESCONDIDAS por flag window._CHART_MOSTRAR_TRADES=false (nas velas D/S/M viravam pilhas; reativar = true) + legenda BUY/SELL e "…+ Operacoes" sairam do cabecalho; (2) marca dagua do ativo mais VISIVEL (opacidade 0.045 -> 0.11); (3) SEPARADORES DE PERIODO estilo MT5 — canvas overlay com linhas verticais tracejadas nas viradas de dia/mes/ano, granularidade adaptativa ao zoom (>550d=anos, >40d=meses, senao dias), redesenhado em pan/zoom/resize. v9.37 (ESCALA ESTILO MT5: (1) scaleMargins 12/8% -> 4/4% — os candles preenchem o painel vertical como no MetaTrader, ajuste do usuario vira minimo; (2) rightOffset 12 -> 3 barras (no mensal, 12 barras vazias comiam 1/3 do grafico a direita); (3) FIX legenda OHLC mostrava "Invalid Date" com velas de tempo string (YYYY-MM-DD -> dd/mm/aaaa). v9.36 (SELETOR DO GRAFICO REPENSADO: (1) JANELA com rotulos claros ("1M" lia-se 1 minuto — agora "1 mes/3 meses/6 meses/1 ano/Tudo", i18n 3 linguas) e botoes MAIORES (20->27px, fonte 10->12); (2) NOVO grupo VELAS: Teste/D/S/M reagrega os candles do teste em diario/semanal(ISO seg)/mensal direto no grafico (_chartResample; trades apontam pro inicio do bucket; overlays EMA/SMA so na visao base pra nao enganar; teste novo volta pro base); (3) zoomChart escopado no grupo JANELA. v9.35 (GRAFICO PRO: (1) controles -/+/enquadrar sairam de CIMA do candle e entraram na barra do cabecalho junto do 1M/3M/6M/1Y/All (funcoes globais chartZoomStep/chartFit operam no candleChart; Ctrl+roda continua); (2) LEGENDA OHLC no crosshair estilo TradingView — data + Abertura/Maxima/minima/Fechamento + variacao seguindo o mouse, ultimo candle como padrao; (3) marca dagua discreta ativo·TF no fundo; (4) calha do eixo de preco 80->60px. v9.34 (FIX BUG ANTIGO revelado pelo v9.33: o container #candle-chart tinha 380px mas o LightweightCharts e criado (e redimensionado) com height 470 — o canvas transbordava 90px por CIMA do bloco seguinte (antes era o topo vazio das key stats, ninguem via; com o edge card ali, comia o titulo). Container agora tem 470px + overflow:hidden. v9.33 (RESULTADO DIVIDIDO (teste de layout): o GRAFICO subiu — acima dele so o essencial (barra da estrategia + metricas + retorno + cards de capital); o cartao explicativo "Por que deu lucro com Win Rate baixo?" desceu pra logo DEPOIS do grafico, seguido das key stats, OOS e historico. Pra reverter: mover ${_cardEdgeWinRate(...)} de volta pra antes do CANDLE CHART. v9.32 (REMOVIDO o botao "Voltar a vitrine" da barra de contexto da estrategia — redundante com o botao Vitrine do menu (v9.25). A barra segue mostrando ESTRATEGIA EM TESTE + tags + Enviar Estrategia. voltarVitrine() continua existindo (menu e atalho do Radar usam). v9.31 (ORDEM FINAL do resultado: resultados/stats -> VALIDACAO OOS -> Historico de Trades por ULTIMO (o veredito de robustez fecha a analise; a lista de trades vira material de consulta no rodape). v9.30 (VALIDACAO OOS AUTOMATICA E NO FIM: (1) o botao "Validar meu codigo (out-of-sample)" saiu — validarCodigoOOS2(true) dispara SOZINHO ~700ms apos o resultado renderizar (modo auto sai em silencio se nao ha codigo custom); (2) o bloco ov-oos-box saiu do meio do resultado (antes do grafico) e foi pro FIM, depois do Historico de Trades — o usuario ve o resultado inteiro e a validacao fecha a leitura embaixo; (3) a oferta do Radar radarOfertaValidarCodigo (1.5s) saiu — redundante com o auto-run. v9.29 (BOAS-VINDAS DA IA no 1o login: modal central (#bv-ov, z 10500) onde a IA se APRESENTA digitando estilo prompt (4 paragrafos, cursor de bloco, botao Pular completa na hora) e o usuario pode CONVERSAR ali mesmo — mesmo motor do Radar (/radar/chat) e mesmo _radarChatHist, entao a conversa continua no 💬 depois. Uma vez por usuario (localStorage BT_IA_APRESENTOU_<uid>, marcado na abertura); ao fechar encadeia o onboarding antigo (onbVerificar). onLogin agora chama boasVindasVerificar. i18n bv.* nas 3 linguas. Mensagem respeita a regra da casa: historico medido, nao promessa. v9.28 (BARRA IA da Overview ESCONDIDA (display:none, nao apagada) — as funcoes migraram pro Editor; o elemento fica no DOM porque a vitrine rebinda o ia-run-btn, o voltarVitrine limpa o ia-hero-desc e rodarHero/gerarHeroIA leem dali. Fluxo intacto: card da vitrine auto-roda e re-rodadas usam o Rodar Backtest do painel esquerdo. Pra reativar: display:block. v9.27 (REMOVIDO o botao flutuante "Novo teste" da vitrine — redundante com o botao Overview do menu (v9.25), que ja abre o modo teste. O JS que referenciava a faixa e todo blindado com if(fx), entao nada quebra; atualizarFaixaNovoTeste vira so o sincronizador do menu Vitrine/Overview. v9.26 (FAIXA ADMIN: os botoes Estudo/Radar ADMIN sairam da linha principal do menu e desceram pra faixa propria (#admin-bar) abaixo do topbar, visivel SO pro admin (atualizarVisibilidadeAdmin liga a faixa inteira). A linha de cima fica limpa e num nivel so: abas + lua/idiomas/API Online/usuario. Pra usuarios normais a faixa nem existe e a trilha (sensor de atividades) sobe, colada no menu. v9.25 (MENU REORGANIZADO: Vitrine ganhou botao proprio (modo loja, via voltarVitrine) e Overview virou o modo teste/resultado (menuOverview -> sairVitrineParaTeste); atualizarMenuVitrineOv espelha o modo real no menu (chamado de atualizarFaixaNovoTeste, que roda em toda troca de modo/aba). Ordem: Vitrine · Overview · Editor · Monitor · Calendario · Planos · Estudo ADMIN · Radar ADMIN. REMOVIDOS do menu: Otimizacao, Templates e Rank — as telas continuam existindo; Otimizacao segue acessivel pelos botoes contextuais pos-backtest; o atalho Estrategias do Radar agora abre a Vitrine (apontava pra Templates). v9.24 (GUIA + BALAO COEXISTEM: a guia grande (#mt5-guia) subiu pra z-index 10000 (fica NA FRENTE); o balao da trilha (auto-dica) fica ATRAS e PERSISTE enquanto a guia esta aberta (clique na guia nao mata o balao; o auto-some espera a guia fechar). Quando a guia fecha (inclusive apos marcar nao mostrar mais), o balao segue por 15s + clique. Assim o balao e independente do checkbox da guia — o usuario nunca fica sem direcao. v9.23 (FIX auto-dica: a dica da etapa Conectar (e das que vem do backend por polling) sumia cedo demais - o hover compartilha o mesmo balao e o timer de esconder/o clique de refoco matava ela em ~180ms. Agora: LOCK (__tipLock) impede o hover-hide enquanto a auto-dica esta ativa; so fecha por clique DEPOIS de 600ms (evita o clique de refoco); auto-some de seguranca em 15s. v9.22 (AUTO-DICA NA TRILHA: quando uma etapa ACENDE (Ajustar 3, Enviar 4, Conectar 5, Monitorar na 6), a mensagem daquela etapa aparece SOZINHA (sem hover) guiando o proximo passo; some ao clicar em qualquer lugar (fora do balao); o hover continua funcionando por cima. So dispara no aumento da etapa, nao a cada repaint. Mensagem do Conectar reescrita pra apontar o proximo passo real (arraste pro grafico). v9.21 (BARRA ZERA EM NOVO RESULTADO: rodar QUALQUER backtest novo (rodarBacktest/rodarHero) agora chama trilhaReset antes de avancar — novo resultado = outro bot, entao a barra zera e passa a seguir o novo (limpa token/marco do bot anterior; o Monitor segue rastreando o que roda no MT5). Junto com os resets ja existentes (escolher na vitrine, gerar no editor). Principio: qualquer alteracao que gera um resultado novo reinicia a jornada. v9.20 (PRESENCA/REBAIXAR: a trilha agora REFLETE o estado real — as etapas 5 (Conectar) e 6 (Operar/Monitorar) seguem a presenca ao vivo do backend e APAGAM quando o bot para. Removido o "nunca rebaixar" e o "para o polling ao operar" (era isso que travava a barra acesa mesmo apos apertar Parar). Pinta sempre max(marco local 1-4, presenca backend 5-6); polling 15s->8s p/ corte mais rapido. Comando dado = tela reflete (Parar corta na hora). v9.19 (TRILHA fim: a linha Operar->Monitorar agora ACENDE em AMBAR (#ffb830) quando o bot opera — antes o ultimo trecho ficava cinza/morto porque o fill verde travava em 5/6 e nunca cobria a 7a bolinha. A bolinha 'Monitorar' (📡) vira AMBAR com contorno PRETO por dentro (inset ring) + pulso ambar = estado 'ao vivo', visualmente distinto do verde da jornada concluida. Puramente visual: os dados ja chegavam (etapa>=6), so faltava pintar a ultima perna. v9.18: FIX DEFINITIVO menu sumia: body agora e flex-column — topbar e trilha (flex-shrink:0) ficam fixos no topo por natureza, .main (flex:1) ocupa o resto. Sem calculo de altura fragil. O menu nunca mais e cortado, em nenhuma tela/scroll. v9.17: O layout usa body overflow:hidden + .main height:100vh-46px (topbar sempre fixo); a trilha somava altura e empurrava o conteudo pra fora — agora body.com-trilha desconta +42px no .main, entao o menu nunca rola e a navegacao esta sempre acessivel. FIX trilha inflava com envio FALHADO: trilhaAvancar(4) saiu do inicio de enviarProMT5 e foi pro ponto de SUCESSO (status aprovado) — envio recusado nao avanca mais. Marco de tempo so no envio aprovado. checarTrilhaBackend so roda se ha marco confirmado. v9.15: guarda o MARCO de tempo do envio (__envioMarco) e manda 'desde' pro backend — etapa 6/7 so acende quando o bot manda sinal do grafico DEPOIS do envio desta sessao. Reset limpa token+marco. trilha segue UM bot (bot_token da sessao, some no reset); 7a bolinha 'Monitorar' (📡) acende e PISCA quando o bot opera (etapa 6), clicavel -> abre o Monitor; para o polling ao operar (Monitor assume o pulso). TRILHA HIBRIDA: etapas 1-4 local (instantaneo), 5 CONECTAR e 6 OPERAR vem do backend (/usuario/progresso le ultimo_ping e posicoes_abertas do conector). Polling a cada 15s + rajada apos enviar. Nunca rebaixa (mostra o maximo local vs backend). v9.12 FIX: botao travava em 'Gerando…' porque gerarTokenEditor referenciava o botao antigo 'ed-btn-token' (removido) e quebrava — agora blindado com if(btn). Botao renomeado pra 'Enviar' (alinhado com etapa 4 da trilha). UM CLIQUE: botao 'Enviar' faz tudo (registra bot + gera token + envia/valida) — antes eram 2 cliques. Token continua na tela pra copiar; 'Enviar novamente' vira acao secundaria. trilha FAIXA PROPRIA fina abaixo do menu (estavel e igual em TODA tela — dentro do menu ela quebrava o layout na aba Editor por causa do flex-wrap do topbar). chamada 'Crie o nome do seu Bot' em destaque (verde) logo apos o titulo Enviar pro MT5, guiando o usuario a nomear o bot. PROXIMO PASSO: botao 'Enviar Estrategia →' aparece na barra de resultado depois do teste (etapa 3), leva o usuario pra aba Editor e rola ate a secao Enviar pro MT5 com foco no campo de nome — resolve o 'e agora, pra onde vou?'. Some ao enviar (etapa 4) ou resetar. Trilha COMPACTA integrada na linha do menu (ocupa o espaco vazio do topbar, mais profissional) — bolinhas menores + rotulos, mesma logica; tooltip solto (position:fixed) posicionado por viewport. v9.6 FIX tooltip da trilha: balao nao some mais quando o mouse vai ate ele — delay de 180ms ao sair + mantem aberto se o mouse estiver sobre o balao; z-index alto. Trilha da ESTRATEGIA ATUAL (sessao local): ZERA pra etapa 1 ao escolher estrategia na vitrine (escolherEstrategiaVitrine) ou criar no editor (gerarBotIA); AVANCA ao testar (rodarBacktest/rodarHero->3) e enviar pro MT5 (enviarProMT5->4). Nao depende mais do backend nem reseta ao trocar de aba. v9.4 FIX: a trilha nao aparecia porque checava window.usuarioAtual, mas usuarioAtual e 'let' (nao vira window.prop) — agora usa a var direto. Trilha de progresso FIXA na barra superior, visível em TODA tela: 6 etapas (Criar→Testar→Ajustar→Enviar→Conectar→Operar) que ACENDEM conforme o andamento real do usuário (rota /usuario/progresso lê backtests/bots/pings). Detalhe de cada etapa aparece no hover da bolinha. Atualiza no login e ao trocar de aba). v9.2 (era trilha estática na Overview, agora movida pro topo). v9.1 (Radar no menu: botão '🛰️ Radar ADMIN' aparece só pro admin (mesmo mecanismo da aba Estudo, por user_id) e abre o Painel do Radar em aba nova via /admin/radar/link — token entregue pelo backend, nunca escrito aqui no front). v9.0: o 'Entendi' da guia avisa a nuvem (/mt5/subir-conector) pra o conector se trazer pra frente sozinho — uma janela por vez. v8.9: pós-aprovado: janela-guia com o Navigator do MT5 (Expert Advisors→bot→Refresh), nome real do bot, aviso de fechar/reabrir e checkbox 'não mostrar mais'; abre 3.5s após o ✅. v8.8: modal 'Validando pro MT5' com o Fab animado + frases girando (Gerando→Compilando→Validando); v8.7 Enviar pro MT5 v2: detecta na hora se o conector está online (/mt5/conector-status), ABRE o conector sozinho via protocolo bottested:// se estiver fechado, espera ele conectar e segue; sem conector, instrução clara em vez de 2min de spinner; v8.6: blindagem do chat
   v5.8: rebrand BotBacktest→BotTested; vitrine: ativos na frente do card; estrategia Piramide→Escalonada
   v5.6: modal de auth sem X + abas segmented control com contorno verde
   v5.5: fundo do modal de auth = fundo de velas da landing
@@ -879,11 +879,84 @@ select option{background:#141920}
 .mon-card:fullscreen .mon-zona{border:1px solid var(--border);border-radius:12px;background:var(--bg3)}
 .mon-card:fullscreen .mon-z-chart{grid-area:chart;min-height:340px}
 .mon-card:fullscreen .mon-z-dados{grid-area:dados}
-.mon-card:fullscreen .mon-z-mente{grid-area:chat;padding:16px 20px;overflow-y:auto}
+.mon-card:fullscreen .mon-z-mente{grid-area:chat;padding:0;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2)}
 .mon-card:fullscreen .mon-z-sinais{display:none}
-.mon-card:fullscreen .bot-chart-svg{height:auto !important;min-height:280px;max-height:calc(100vh - 200px)}
-.mon-fs-hint{display:none;padding:14px 20px;color:var(--muted);font-size:12px;font-style:italic;border-top:1px dashed var(--border2);text-align:center;background:rgba(0,0,0,0.15)}
-.mon-card:fullscreen .mon-fs-hint{display:block}
+.mon-card:fullscreen .bot-chart-svg{height:auto !important;min-height:280px;max-height:calc(100vh - 260px)}
+/* ══════ v9.55 — COCKPIT DE ANALISE CRUZADA (fullscreen) ══════ */
+/* Fora do fullscreen, a Zona 3 mantem as 2 vozes RESUMIDAS (Fase 1). Dentro
+   do fullscreen, elas escondem e aparecem os 3 blocos do cockpit. */
+.mon-cockpit{display:none;flex-direction:column;height:100%;overflow:hidden}
+.mon-card:fullscreen .mon-cockpit{display:flex}
+.mon-card:fullscreen .mon-voz{display:none}
+/* Header do cockpit — titulo + selo "ao vivo" */
+.mon-cock-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 20px;border-bottom:1px solid var(--border);
+  background:rgba(0,0,0,0.22);flex-shrink:0
+}
+.mon-cock-titulo{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--text);letter-spacing:.03em}
+.mon-cock-live{
+  display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;color:var(--green);
+  letter-spacing:.09em;padding:3px 9px;background:rgba(0,208,132,0.1);border-radius:5px;text-transform:uppercase
+}
+.mon-cock-live::before{
+  content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:mon-led-pulse-green 1.6s ease-in-out infinite
+}
+/* Corpo — grid 2 blocos empilhados (A em cima, B embaixo), veredito FIXO no rodape */
+.mon-cock-corpo{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px 0;gap:14px;min-height:0
+}
+.mon-cock-bloco{
+  border-radius:11px;padding:14px 18px;overflow:hidden;
+  transition:opacity .4s ease, transform .4s ease;
+  display:flex;flex-direction:column;gap:6px
+}
+.mon-cock-bloco.fade-out{opacity:0;transform:translateY(6px)}
+.mon-cock-bloco-titulo{
+  display:flex;align-items:baseline;gap:9px;font-size:9.5px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px
+}
+.mon-cock-bloco-fresc{font-size:9.5px;color:var(--muted);font-weight:600;letter-spacing:.03em;margin-left:auto;font-family:var(--mono)}
+.mon-cock-bloco-txt{font-size:13.5px;line-height:1.6;color:var(--text)}
+.mon-cock-bloco-txt.digitando::after{
+  content:"▊";display:inline-block;margin-left:2px;color:var(--muted2);
+  animation:mon-cursor-blink 0.9s steps(2) infinite
+}
+@keyframes mon-cursor-blink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+/* Bloco A — leitura do BOT (verde, executor mecanico) */
+.mon-cock-a{background:rgba(0,208,132,0.06);border:1px solid rgba(0,208,132,0.25);border-left:3px solid var(--green);flex-shrink:0}
+.mon-cock-a .mon-cock-bloco-titulo{color:var(--green)}
+/* Bloco B — analise da IA (roxa, mentora contextual). ROLA se ultrapassar */
+.mon-cock-b{background:rgba(157,111,255,0.07);border:1px solid rgba(157,111,255,0.28);border-left:3px solid var(--purple);flex:1;min-height:0;overflow-y:auto}
+.mon-cock-b .mon-cock-bloco-titulo{color:var(--purple)}
+.mon-cock-b .mon-cock-bloco-txt{font-style:italic}
+.mon-cock-b::-webkit-scrollbar{width:5px}
+.mon-cock-b::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* Bloco C — veredito conjunto (largura inteira, cor por sinal) */
+.mon-cock-c{
+  padding:14px 20px;border-top:1px solid var(--border);background:rgba(0,0,0,0.22);
+  display:flex;align-items:center;gap:13px;flex-shrink:0;font-size:14px;font-weight:600;line-height:1.4;
+  transition:background .5s ease, border-color .5s ease
+}
+.mon-cock-c-ic{font-size:20px;flex-shrink:0}
+.mon-cock-c-txt.digitando::after{
+  content:"▊";display:inline-block;margin-left:2px;color:currentColor;opacity:.6;
+  animation:mon-cursor-blink 0.9s steps(2) infinite
+}
+/* Cores por sinal (aplicadas na classe mon-cock-c-<sinal>) */
+.mon-cock-c-alinhado{background:rgba(0,208,132,0.12);border-top-color:rgba(0,208,132,0.5);color:var(--green)}
+.mon-cock-c-divergente{background:rgba(255,184,48,0.13);border-top-color:rgba(255,184,48,0.55);color:var(--amber,#ffb830)}
+.mon-cock-c-adicao{background:rgba(157,111,255,0.12);border-top-color:rgba(157,111,255,0.5);color:var(--purple)}
+.mon-cock-c-neutro{background:rgba(140,150,170,0.1);border-top-color:var(--border2);color:var(--muted2)}
+/* Estado vazio (cockpit acabou de abrir, nada analisado ainda) */
+.mon-cock-vazio{
+  color:var(--muted);font-size:12.5px;font-style:italic;text-align:center;padding:36px 22px;
+  display:flex;flex-direction:column;align-items:center;gap:10px
+}
+.mon-cock-vazio-ic{font-size:30px;opacity:.5}
+/* Some com o placeholder da Fase 1 (era so texto de espera) */
+.mon-fs-hint{display:none !important}
 /* Mobile: colapsa as 4 zonas em 1 coluna */
 @media (max-width: 900px){
   .mon-body{grid-template-columns:1fr}
@@ -1032,7 +1105,7 @@ body.modo-vitrine #vitrine{display:block}
       </svg>
     </div>
     <span style="font-family:'Syne',system-ui,sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;color:#fff;"><span style="color:#ffb830;">Bot</span><span style="color:#ffffff;">Tested</span></span>
-    <span class="vtag">v9.54</span>
+    <span class="vtag">v9.55</span>
   </div>
   <div class="tsep"></div>
   <!-- v9.25: menu reordenado — Vitrine (novo, modo loja) · Overview (modo teste) ·
@@ -3217,7 +3290,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v9.54';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v9.55';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 let lastResult = null;
 let lastIACode = null;
@@ -7070,20 +7143,242 @@ async function carregarBots(){
             </div>
             <div id="conf-${b.id}" style="display:none"></div>
           </div>
-          <!-- Placeholder pro modo expandido (Fase 2 preenche com chat vivo) -->
-          <div class="mon-fs-hint">💬 Chat vivo entre BOT e IA · histórico completo do bot · raio-X · auto-diagnóstico — chegando na Fase 2.</div>
+          <!-- v9.55: COCKPIT DE ANALISE CRUZADA — 3 blocos (BOT/IA/VEREDITO).
+               Renderiza só no fullscreen (CSS controla display). -->
+          <div class="mon-cockpit" data-cockpit-bot="${b.id}">
+            <div class="mon-cock-head">
+              <div class="mon-cock-titulo">🎯 <span>${b.nome || 'Bot'} · análise cruzada em tempo real</span></div>
+              <span class="mon-cock-live">AO VIVO</span>
+            </div>
+            <div class="mon-cock-corpo">
+              <!-- BLOCO A: LEITURA DO BOT (executor, do EA no MT5) -->
+              <div class="mon-cock-bloco mon-cock-a">
+                <div class="mon-cock-bloco-titulo">🤖 <span>Leitura do bot</span></div>
+                <div class="mon-cock-bloco-txt" id="cock-a-${b.id}">
+                  <span style="color:var(--muted);font-style:italic">aguardando leitura do MT5…</span>
+                </div>
+              </div>
+              <!-- BLOCO B: ANALISE DA IA (mentora contextual da plataforma) -->
+              <div class="mon-cock-bloco mon-cock-b">
+                <div class="mon-cock-bloco-titulo">🛰 <span>Análise da IA</span><span class="mon-cock-bloco-fresc" id="cock-b-fresc-${b.id}"></span></div>
+                <div class="mon-cock-bloco-txt" id="cock-b-${b.id}">
+                  <div class="mon-cock-vazio" id="cock-vazio-${b.id}">
+                    <div class="mon-cock-vazio-ic">🤖 · 🛰</div>
+                    <div>a IA vai começar a analisar quando algo relevante acontecer no gráfico.<br>fica de olho.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- BLOCO C: VEREDITO CONJUNTO (síntese, cor por sinal) -->
+            <div class="mon-cock-c mon-cock-c-neutro" id="cock-c-${b.id}">
+              <span class="mon-cock-c-ic" id="cock-c-ic-${b.id}">·</span>
+              <span class="mon-cock-c-txt" id="cock-c-txt-${b.id}"></span>
+            </div>
+          </div>
         </div>
       </div>`;
     }).join('');
   }catch(e){ console.log('bots erro', e); }
 }
-// v9.53 — expande o cockpit do bot (fullscreen). Fase 2: o chat vivo entre
-// BOT e IA vai preencher a Zona 3 aqui dentro.
+// v9.53 — expande o cockpit do bot (fullscreen). v9.55: dispara o cockpit de análise cruzada.
 function expandirBot(id){
   const card = document.querySelector('.mon-card[data-bot-id="' + id + '"]');
   if (!card) return;
   try { card.requestFullscreen(); } catch(e) { try { card.webkitRequestFullscreen(); } catch(_) {} }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v9.55 — COCKPIT DE ANALISE CRUZADA (par da api v6.67)
+//
+// 3 blocos ao vivo no fullscreen:
+//  A. LEITURA DO BOT — atualiza direto do snapshot (texto do EA, curto)
+//  B. ANALISE DA IA  — vem do backend, escreve letra-por-letra
+//  C. VEREDITO      — sintese cruzada, escreve letra-por-letra, cor por sinal
+//
+// Polling de 6s enquanto fullscreen aberto:
+//   GET  /monitor/analise?bot_id=X&desde=<ts>  -> analises novas
+//   POST /monitor/analise/tick                 -> dispara geracao se merecer
+// ═══════════════════════════════════════════════════════════════════════
+
+let _cockpitBotId = null;
+let _cockpitTimer = null;
+let _cockpitUltimoTs = null;
+let _cockpitDigitando = false;
+let _cockpitFila = [];
+
+function _cockpitEl(prefix){
+  if (!_cockpitBotId) return null;
+  return document.getElementById(prefix + _cockpitBotId);
+}
+
+function _cockpitAtualizarBlocoA(){
+  // Bloco A: leitura do BOT (texto curto do EA). Puxa do _botsAtuais
+  // (mesma fonte que a Zona 3 no modo colapsado ja usa).
+  if (!_cockpitBotId || !Array.isArray(_botsAtuais)) return;
+  const b = _botsAtuais.find(x => x.id === _cockpitBotId);
+  const el = _cockpitEl('cock-a-');
+  if (!el) return;
+  const txt = b && b.online ? (b.narracao_bot || 'sem leitura ainda') : 'bot offline';
+  el.textContent = txt;
+}
+
+function _cockpitFrescor(iso){
+  try {
+    const d = Date.now() - new Date(iso).getTime();
+    const s = Math.round(d / 1000);
+    if (s < 60) return 'há ' + s + 's';
+    const m = Math.round(s / 60);
+    return 'há ' + m + 'min';
+  } catch(_){ return ''; }
+}
+
+function _cockpitAplicarSinalVeredito(sinal){
+  const c = _cockpitEl('cock-c-');
+  if (!c) return;
+  c.classList.remove('mon-cock-c-alinhado','mon-cock-c-divergente','mon-cock-c-adicao','mon-cock-c-neutro');
+  c.classList.add('mon-cock-c-' + (sinal || 'neutro'));
+  const ic = _cockpitEl('cock-c-ic-');
+  if (ic){
+    ic.textContent = {alinhado:'✓', divergente:'⚠', adicao:'ℹ', neutro:'·'}[sinal] || '·';
+  }
+}
+
+function _cockpitDigitar(alvo, texto, cbFim){
+  // Escrita letra-por-letra com ritmo humano (pausa em pontuacao)
+  if (!alvo) { if (cbFim) cbFim(); return; }
+  alvo.classList.add('digitando');
+  alvo.textContent = '';
+  let i = 0;
+  const step = () => {
+    if (!alvo || !alvo.isConnected){ if (cbFim) cbFim(); return; }
+    i = Math.min(texto.length, i + 1);
+    alvo.textContent = texto.slice(0, i);
+    if (i < texto.length){
+      const c = texto[i - 1] || '';
+      const wait = /[\.\?!]/.test(c) ? 140 : (/[,;:]/.test(c) ? 70 : 22);
+      setTimeout(step, wait);
+    } else {
+      alvo.classList.remove('digitando');
+      if (cbFim) cbFim();
+    }
+  };
+  step();
+}
+
+async function _cockpitRenderAnalise(anl, digitar){
+  // Renderiza uma analise: fade out do antigo (se ha), fade in do novo,
+  // digita bloco B, depois bloco C (com cor do sinal).
+  // Some com o placeholder "vazio" se ainda estiver la
+  const vazio = _cockpitEl('cock-vazio-');
+  if (vazio) vazio.remove();
+  const eb = _cockpitEl('cock-b-');
+  const ec = _cockpitEl('cock-c-txt-');
+  const fresc = _cockpitEl('cock-b-fresc-');
+  // aplica cor do sinal ANTES de digitar veredito
+  _cockpitAplicarSinalVeredito(anl.sinal);
+  if (fresc) fresc.textContent = _cockpitFrescor(anl.ts);
+  const texto_b = String(anl.analise_ia || '');
+  const texto_c = String(anl.veredito || '');
+  if (!digitar){
+    if (eb) eb.textContent = texto_b;
+    if (ec) ec.textContent = texto_c;
+    return;
+  }
+  await new Promise(res => _cockpitDigitar(eb, texto_b, res));
+  // pausa curta antes do veredito, respiro natural
+  await new Promise(r => setTimeout(r, 260));
+  await new Promise(res => _cockpitDigitar(ec, texto_c, res));
+}
+
+async function _cockpitDigitarFila(){
+  if (_cockpitDigitando || !_cockpitFila.length) return;
+  _cockpitDigitando = true;
+  while (_cockpitFila.length){
+    const anl = _cockpitFila.shift();
+    if (anl && anl.ts) _cockpitUltimoTs = anl.ts;
+    await _cockpitRenderAnalise(anl, true);
+    // se ha mais na fila, mini pausa entre analises
+    if (_cockpitFila.length) await new Promise(r => setTimeout(r, 500));
+  }
+  _cockpitDigitando = false;
+}
+
+async function _cockpitTick(){
+  if (!_cockpitBotId || !usuarioAtual) return;
+  _cockpitAtualizarBlocoA();
+  // atualiza selo de frescor mesmo sem analise nova
+  const fresc = _cockpitEl('cock-b-fresc-');
+  if (fresc && _cockpitUltimoTs) fresc.textContent = _cockpitFrescor(_cockpitUltimoTs);
+  // 1. pega analises novas
+  try {
+    const qs = 'bot_id=' + _cockpitBotId + (_cockpitUltimoTs ? '&desde=' + encodeURIComponent(_cockpitUltimoTs) : '');
+    const r = await fetch(API + '/monitor/analise?' + qs);
+    if (r.ok){
+      const d = await r.json();
+      (d.analises || []).forEach(a => _cockpitFila.push(a));
+      if (_cockpitFila.length) _cockpitDigitarFila();
+    }
+  } catch(_){}
+  // 2. dispara tick no backend (decide se analisa) — fire-and-forget
+  try {
+    fetch(API + '/monitor/analise/tick', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: usuarioAtual.id, bot_id: _cockpitBotId})
+    }).catch(()=>{});
+  } catch(_){}
+}
+
+async function cockpitIniciar(botId){
+  cockpitParar();
+  _cockpitBotId = botId;
+  _cockpitUltimoTs = null;
+  _cockpitFila = [];
+  _cockpitDigitando = false;
+  _cockpitAtualizarBlocoA();
+  // carrega historico existente SEM efeito de digitacao (e passado, ja aconteceu)
+  try {
+    const r = await fetch(API + '/monitor/analise?bot_id=' + botId);
+    if (r.ok){
+      const d = await r.json();
+      const analises = d.analises || [];
+      // Renderiza so a mais recente (o cockpit mostra 1 analise por vez, e a atual)
+      if (analises.length){
+        const ultima = analises[analises.length - 1];
+        _cockpitUltimoTs = ultima.ts;
+        await _cockpitRenderAnalise(ultima, false);
+      }
+    }
+  } catch(_){}
+  _cockpitTimer = setInterval(_cockpitTick, 6000);
+  setTimeout(_cockpitTick, 300);
+}
+
+function cockpitParar(){
+  if (_cockpitTimer){ clearInterval(_cockpitTimer); _cockpitTimer = null; }
+  _cockpitBotId = null;
+  _cockpitFila = [];
+  _cockpitDigitando = false;
+}
+
+// Fullscreenchange liga/desliga o cockpit
+document.addEventListener('fullscreenchange', () => {
+  const el = document.fullscreenElement;
+  if (el && el.classList && el.classList.contains('mon-card')){
+    const bid = parseInt(el.getAttribute('data-bot-id') || '0', 10);
+    if (bid) cockpitIniciar(bid);
+  } else {
+    cockpitParar();
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  const el = document.webkitFullscreenElement || document.fullscreenElement;
+  if (el && el.classList && el.classList.contains('mon-card')){
+    const bid = parseInt(el.getAttribute('data-bot-id') || '0', 10);
+    if (bid) cockpitIniciar(bid);
+  } else {
+    cockpitParar();
+  }
+});
 async function excluirBot(id){
   if(!(usuarioAtual&&usuarioAtual.id)) return;
   const bot = _botsAtuais.find(x=>x.id===id);
