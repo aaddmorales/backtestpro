@@ -6824,6 +6824,8 @@ async function marcarLida(id){
 // ── Monitor: bots ──
 let _pollBots = null;
 let _botsAtuais = [];
+let _leituraCacheBot = {};   // v9.55 fix: bot_id -> ultima leitura de /monitor/leitura
+                              // (narracao_bot, regime, padroes etc — dados que /conector/bots nao tem)
 function iniciarPollingBots(){ pararPollingBots(); _pollBots = setInterval(carregarBots, 20000); }
 function pararPollingBots(){ if(_pollBots){ clearInterval(_pollBots); _pollBots=null; } }
 // ═══ v9.48: LEITURA AO VIVO no Monitor — o que o bot está ENXERGANDO ═══════
@@ -6956,6 +6958,8 @@ async function atualizarLeituraMonitor(){
     const d = await r.json();
     // v9.53 — atualiza os IDs da linha larga (4 zonas). O layout muda em CSS
     // quando o card entra em fullscreen (cockpit); os dados são os mesmos.
+    // v9.55 fix: guarda a leitura completa por bot pro cockpit acessar
+    (d.bots || []).forEach(b => { if (b && b.id) _leituraCacheBot[b.id] = b; });
     (d.bots || []).forEach(b => {
       // ═══ ZONA 1: gráfico do TF que o bot roda ═══
       const bc = document.getElementById('botchart-' + b.id);
@@ -7222,14 +7226,27 @@ function _cockpitEl(prefix){
 }
 
 function _cockpitAtualizarBlocoA(){
-  // Bloco A: leitura do BOT (texto curto do EA). Puxa do _botsAtuais
-  // (mesma fonte que a Zona 3 no modo colapsado ja usa).
-  if (!_cockpitBotId || !Array.isArray(_botsAtuais)) return;
-  const b = _botsAtuais.find(x => x.id === _cockpitBotId);
+  // Bloco A: leitura do BOT (texto curto do EA). v9.55 FIX: puxa do
+  // _leituraCacheBot (populado por atualizarLeituraMonitor a cada 15s),
+  // NAO do _botsAtuais (que so tem os dados basicos de /conector/bots).
+  if (!_cockpitBotId) return;
+  const b = _leituraCacheBot[_cockpitBotId];
   const el = _cockpitEl('cock-a-');
   if (!el) return;
-  const txt = b && b.online ? (b.narracao_bot || 'sem leitura ainda') : 'bot offline';
-  el.textContent = txt;
+  if (!b){
+    el.innerHTML = '<span style="color:var(--muted);font-style:italic">aguardando leitura do MT5…</span>';
+    return;
+  }
+  if (!b.online){
+    el.innerHTML = '<span style="color:var(--muted);font-style:italic">bot offline</span>';
+    return;
+  }
+  const txt = b.narracao_bot;
+  if (txt){
+    el.textContent = txt;
+  } else {
+    el.innerHTML = '<span style="color:var(--muted);font-style:italic">aguardando leitura do MT5…</span>';
+  }
 }
 
 function _cockpitFrescor(iso){
@@ -7315,6 +7332,18 @@ async function _cockpitDigitarFila(){
 
 async function _cockpitTick(){
   if (!_cockpitBotId || !usuarioAtual) return;
+  // v9.55 fix: redesenha grafico do card em fullscreen a cada tick (o
+  // atualizarLeituraMonitor tambem faz, mas nem sempre bate no ritmo do polling)
+  try {
+    const b = _leituraCacheBot[_cockpitBotId];
+    if (b) {
+      const bc = document.getElementById('botchart-' + _cockpitBotId);
+      if (bc && b.online) {
+        const svg = _botChartSvg(b.candles_op, b.ema_h, b.ema_l, b.preco, b.tf_op);
+        if (svg) bc.innerHTML = svg;
+      }
+    }
+  } catch(_){}
   _cockpitAtualizarBlocoA();
   // atualiza selo de frescor mesmo sem analise nova
   const fresc = _cockpitEl('cock-b-fresc-');
