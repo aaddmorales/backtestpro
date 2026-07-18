@@ -6839,10 +6839,67 @@ function _zonaChip(tf, z){
   const sim = z === 'acima' ? '▲' : (z === 'abaixo' ? '▼' : (z === 'dentro' ? '▪' : '·'));
   return '<span title="' + tf + ': ' + (z || 'sem dado') + '" style="display:inline-flex;flex-direction:column;align-items:center;min-width:26px;padding:3px 4px;border:1px solid ' + cor + ';border-radius:6px;background:' + bg + '"><b style="font-size:10px;color:' + cor + '">' + sim + '</b><span style="font-size:8px;color:var(--muted)">' + tf + '</span></span>';
 }
-function _botChartSvg(c, emaH, emaL, preco, tf){
+// v9.55b — CANAL VISUAL (fallback quando o EA não emite candles crus).
+// Desenha o corredor EMA H/L com a bolinha do preço posicionada dentro,
+// cor de fundo pelo regime, e chips com padrões/níveis. Comunica "onde o
+// bot está no canal" sem depender de candles crus. É o que existe quando o
+// snapshot do EA vem rico em valores agregados mas sem c1m/c5m/c15m.
+function _botCanalConceitual(emaH, emaL, preco, tf, regime, padroes, estrutura){
+  if (emaH == null || emaL == null) return '';
+  const W = 320, H = 150;
+  let hi = Math.max(emaH, emaL);
+  let lo = Math.min(emaH, emaL);
+  if (preco != null){ hi = Math.max(hi, preco); lo = Math.min(lo, preco); }
+  const rng = (hi - lo) || 1; hi += rng * 0.15; lo -= rng * 0.15;
+  const y = p => H - ((p - lo) / (hi - lo)) * H;
+  const est = String((regime && (regime.estado || regime.regime)) || '').toLowerCase();
+  const corRegime = est.includes('alta') || est.includes('compra') ? 'rgba(0,208,132,0.10)'
+                  : est.includes('baixa') || est.includes('venda') ? 'rgba(255,80,80,0.10)'
+                  : 'rgba(140,150,170,0.08)';
+  const corBorda = est.includes('alta') || est.includes('compra') ? 'rgba(0,208,132,0.30)'
+                 : est.includes('baixa') || est.includes('venda') ? 'rgba(255,80,80,0.30)'
+                 : 'rgba(140,150,170,0.30)';
+  let s = '<svg class="bot-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:140px;display:block">';
+  const yH = y(emaH), yL = y(emaL);
+  const yCanalTop = Math.min(yH, yL), yCanalBot = Math.max(yH, yL);
+  s += '<rect x="0" y="' + yCanalTop + '" width="' + (W - 60) + '" height="' + (yCanalBot - yCanalTop) + '" fill="' + corRegime + '" stroke="' + corBorda + '" stroke-width="1"/>';
+  s += '<line x1="0" y1="' + yH + '" x2="' + (W - 60) + '" y2="' + yH + '" stroke="#e8c34a" stroke-width="1" stroke-dasharray="4,3" opacity="0.85"/>';
+  s += '<text x="' + (W - 56) + '" y="' + (yH + 3) + '" font-size="10" fill="#e8c34a" font-family="monospace" font-weight="600">EMA H ' + Number(emaH).toFixed(2) + '</text>';
+  s += '<line x1="0" y1="' + yL + '" x2="' + (W - 60) + '" y2="' + yL + '" stroke="#e8c34a" stroke-width="1" stroke-dasharray="4,3" opacity="0.85"/>';
+  s += '<text x="' + (W - 56) + '" y="' + (yL + 3) + '" font-size="10" fill="#e8c34a" font-family="monospace" font-weight="600">EMA L ' + Number(emaL).toFixed(2) + '</text>';
+  if (preco != null){
+    const yp = y(preco);
+    s += '<line x1="0" y1="' + yp + '" x2="' + (W - 60) + '" y2="' + yp + '" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,2" opacity="0.9"/>';
+    s += '<circle cx="' + (W - 60 - 12) + '" cy="' + yp + '" r="4" fill="var(--green)"><animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite"/></circle>';
+    s += '<text x="' + (W - 56) + '" y="' + (yp + 3) + '" font-size="10.5" fill="var(--green)" font-family="monospace" font-weight="700">' + Number(preco).toFixed(2) + '</text>';
+  }
+  s += '</svg>';
+  const chips = [];
+  (padroes || []).slice(0, 2).forEach(p => {
+    const nome = p.nome || p.padrao || '';
+    const dir = p.direcao ? (String(p.direcao).includes('alta') || String(p.direcao).includes('compra') ? ' ▲' : ' ▼') : '';
+    chips.push('<span style="display:inline-block;padding:1.5px 6px;border-radius:4px;border:1px solid rgba(157,111,255,0.5);color:var(--purple);font-size:9.5px;margin-right:4px">' + nome + ' · ' + p.tf + dir + '</span>');
+  });
+  (estrutura || []).slice(0, 2).forEach(nv => {
+    const ic = (nv.tipo === 'resistencia' || nv.tipo === 'topo') ? '⛰' : '🕳';
+    chips.push('<span style="display:inline-block;padding:1.5px 6px;border-radius:4px;border:1px solid rgba(255,184,48,0.5);color:var(--amber,#ffb830);font-size:9.5px;margin-right:4px">' + ic + ' ' + nv.tf + (nv.nivel != null ? ' ' + Number(nv.nivel).toFixed(2) : '') + '</span>');
+  });
+  const estLabel = est ? est.toUpperCase().replace(/_/g, ' ') : '';
+  const rodape = '<div style="font-size:9.5px;color:var(--muted);text-align:center;margin-top:3px;font-family:var(--mono);letter-spacing:.03em">'
+    + (tf ? tf.toUpperCase() + ' · ' : '')
+    + 'CANAL EMA20'
+    + (estLabel ? ' · <span style="color:var(--muted2);font-weight:600">' + estLabel + '</span>' : '')
+    + '</div>';
+  const chipsHtml = chips.length ? '<div style="text-align:center;margin-top:5px;line-height:1.5">' + chips.join('') + '</div>' : '';
+  return s + rodape + chipsHtml;
+}
+
+function _botChartSvg(c, emaH, emaL, preco, tf, regime, padroes, estrutura){
   // v9.51: o gráfico da fileira — candles do TF de operação com o canal EMA20
   // H/L (linhas tracejadas) e a linha do preço. viewBox = escala no fullscreen.
-  if (!c || c.length < 3) return '';
+  // v9.55b: se não tem candles crus (EA não emite), cai no CANAL CONCEITUAL
+  // com os dados que já existem no snapshot (EMAs, preço, regime, padrões).
+  if (!c || c.length < 3) return _botCanalConceitual(emaH, emaL, preco, tf, regime, padroes, estrutura);
   const W = 320, H = 150, padR = 44;
   let hi = -Infinity, lo = Infinity;
   c.forEach(v => { hi = Math.max(hi, v[1]); lo = Math.min(lo, v[2]); });
@@ -6964,9 +7021,10 @@ async function atualizarLeituraMonitor(){
       // ═══ ZONA 1: gráfico do TF que o bot roda ═══
       const bc = document.getElementById('botchart-' + b.id);
       if (bc){
-        const svg = _botChartSvg(b.candles_op, b.ema_h, b.ema_l, b.preco, b.tf_op);
+        // v9.55b: passa regime/padroes/estrutura pro canal visual funcionar como fallback
+        const svg = _botChartSvg(b.candles_op, b.ema_h, b.ema_l, b.preco, b.tf_op, b.regime, b.padroes, b.estrutura);
         if (b.online && svg){ bc.innerHTML = svg; }
-        else if (b.online){ bc.innerHTML = '<div class="mon-z-chart-wait">aguardando velas do MT5…</div>'; }
+        else if (b.online){ bc.innerHTML = '<div class="mon-z-chart-wait">aguardando dados do MT5…</div>'; }
         else { bc.innerHTML = '<div class="mon-z-chart-wait">bot offline</div>'; }
       }
       // ═══ ZONA 2: dados vivos ═══
@@ -7332,14 +7390,16 @@ async function _cockpitDigitarFila(){
 
 async function _cockpitTick(){
   if (!_cockpitBotId || !usuarioAtual) return;
-  // v9.55 fix: redesenha grafico do card em fullscreen a cada tick (o
-  // atualizarLeituraMonitor tambem faz, mas nem sempre bate no ritmo do polling)
+  // v9.55 fix: forca refresh do cache de leitura no ritmo do cockpit (6s),
+  // pra Bloco A e grafico ficarem em sincro com o polling do Monitor (15s)
+  try { await atualizarLeituraMonitor(); } catch(_){}
   try {
     const b = _leituraCacheBot[_cockpitBotId];
     if (b) {
       const bc = document.getElementById('botchart-' + _cockpitBotId);
       if (bc && b.online) {
-        const svg = _botChartSvg(b.candles_op, b.ema_h, b.ema_l, b.preco, b.tf_op);
+        // v9.55b: passa regime/padroes/estrutura pro canal visual funcionar como fallback
+        const svg = _botChartSvg(b.candles_op, b.ema_h, b.ema_l, b.preco, b.tf_op, b.regime, b.padroes, b.estrutura);
         if (svg) bc.innerHTML = svg;
       }
     }
@@ -7373,6 +7433,10 @@ async function cockpitIniciar(botId){
   _cockpitUltimoTs = null;
   _cockpitFila = [];
   _cockpitDigitando = false;
+  // v9.55 fix: garante que o cache de leitura esta populado ANTES de tentar
+  // renderizar o Bloco A. Sem isso, se o cockpit abre nos primeiros segundos
+  // no Monitor, o cache pode estar vazio.
+  try { await atualizarLeituraMonitor(); } catch(_){}
   _cockpitAtualizarBlocoA();
   // carrega historico existente SEM efeito de digitacao (e passado, ja aconteceu)
   try {
