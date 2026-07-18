@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.67  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
-#  Build: 2026-07-17a-analise-cruzada | Deploy: Railway
+#  BotTested API — v6.68  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
+#  Build: 2026-07-18a-candles-reais | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.68 - CANDLES REAIS + MOMENTUM SEMANTICO POR TF (par da app v9.56): (1) EA instrumentado agora emite candles OHLC de 5m/15m/60m/4h no snapshot via BTvCandles(tf,18) + CopyRates. Formato compacto O,H,L,C separado por ponto-e-virgula, ate 18 velas por TF. Snapshot cresce ~1.8KB mas Print MQL5 suporta ate 4KB por linha. (2) Backend calcula RESUMO SEMANTICO por TF via _momentum_semantico(candles_str): traduz OHLC crus em texto descritivo — quantas velas de alta/baixa, corpos crescentes/estaveis/encolhendo, posicao do preco no range recente, variacao da ultima vela. Passa isso pra IA como momentum_tfs (nao candles crus — economiza tokens). (3) Prompt IA refinado modo MENTOR HUMANO: reforca linguagem descritiva fluida (o 15m ganhou forca nas ultimas velas mas o 4h ainda esta lateral) em vez de listagem tecnica. (4) Grafico do cockpit volta a mostrar CANDLES REAIS renderizados (canal visual v9.55b continua fallback). ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra testar. | 6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-17a-analise-cruzada"
+BUILD_TAG = "2026-07-18a-candles-reais"
 
 @app.get("/versao")
 def versao():
@@ -4162,6 +4162,20 @@ int hVHc,hVLc, hVATR;
 datetime g_btVisaoUlt = 0;
 double   g_btPicoEq   = 0;
 string BTvD(double v){ return DoubleToString(v,_Digits); }
+string BTvCandles(ENUM_TIMEFRAMES tf, int qtd)
+{
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int cop = CopyRates(_Symbol, tf, 0, qtd, rates);
+   if(cop < 1) return "";
+   string out = "";
+   for(int i = cop - 1; i >= 0; i--)
+   {
+      if(i < cop - 1) out += ";";
+      out += BTvD(rates[i].open) + "," + BTvD(rates[i].high) + "," + BTvD(rates[i].low) + "," + BTvD(rates[i].close);
+   }
+   return out;
+}
 string BTvTF(ENUM_TIMEFRAMES tf)
 {
    switch(tf)
@@ -4266,15 +4280,22 @@ void BTVisaoTick()
       datetime ot = (datetime)PositionGetInteger(POSITION_TIME);
       idade   = (long)((TimeCurrent()-ot)/60);
    }
+   // v6.68 — candles OHLC dos 4 TFs (5m/15m/60m/4h), 18 velas cada
+   string c5m  = BTvCandles(PERIOD_M5,  18);
+   string c15m = BTvCandles(PERIOD_M15, 18);
+   string c60m = BTvCandles(PERIOD_H1,  18);
+   string c4h  = BTvCandles(PERIOD_H4,  18);
    string linha = StringFormat(
       "BOTTESTED_SNAPSHOT|equity=%.2f|balance=%.2f|margem_livre=%.2f|posicoes=%d|lucro=%.2f|simbolo=%s"
       "|dd=%.2f|conta=%s|corretora=%s|tfop=%s|preco=%s|emaH=%s|emaL=%s|atr=%s"
       "|z1=%s|z5=%s|z15=%s|z60=%s|z240=%s|zD=%s"
-      "|lado=%s|entrada=%s|tp=%s|sl=%s|lote=%.2f|idade=%d",
+      "|lado=%s|entrada=%s|tp=%s|sl=%s|lote=%.2f|idade=%d"
+      "|c5m=%s|c15m=%s|c60m=%s|c4h=%s",
       eq,bal,ml,pos,lucro,_Symbol,
       dd,conta,corretora,BTvTF(_Period),BTvD(preco),BTvD(emaHc),BTvD(emaLc),BTvD(atr),
       z1,z5,z15,z60,z240,zD,
-      lado,BTvD(entrada),BTvD(tp),BTvD(sl),lote,(int)idade);
+      lado,BTvD(entrada),BTvD(tp),BTvD(sl),lote,(int)idade,
+      c5m,c15m,c60m,c4h);
    Print(linha);
 }
 //----------------------------------------------------------------------
@@ -6244,11 +6265,20 @@ def _analisar_ia(ctx, gatilho="status"):
             "'no histórico deste ativo' é ok, 'outros traders' não é;\n"
             "(5) se um dado vier null/ausente, simplesmente não fale dele.\n\n"
             "COMO CRUZAR AS DUAS LEITURAS:\n"
-            "Você recebe 'narracao_mecanica' (o que o EA reportou — texto curto factual do MT5) "
+            "Você recebe narracao_mecanica (o que o EA reportou — texto curto factual do MT5) "
             "e os dados crus do momento (preço, EMAs, regime por TF, padrões, estrutura, confirmação). "
             "Sua ANÁLISE deve dialogar com o que o BOT vê, acrescentando contexto que ele SOZINHO não "
-            "teria (histórico, outros TFs, níveis, força estatística). E o VEREDITO conclui se as "
-            "duas visões:\n"
+            "teria (histórico, outros TFs, níveis, força estatística).\n\n"
+            "MOMENTUM POR TIMEFRAME — SEU TRUNFO DE MENTOR HUMANO:\n"
+            "O campo momentum_tfs traz descrições curtas do momentum recente de cada TF principal "
+            "(5m, 15m, 60m, 4h). Ex.: 5m=3 velas de alta consecutivas, corpos crescentes / 4h=alternancia "
+            "(2 de alta / 2 de baixa), corpos encolhendo. USE isso pra SOAR COMO MENTOR EXPERIENTE, "
+            "descrevendo NATURALMENTE — o 15m ganhou força nas últimas velas mas o 4h ainda está lateral, "
+            "os TFs curtos aceleraram enquanto o 4h continua indeciso, divergência entre TFs: 5m puxando "
+            "pra cima, 60m estagnou. NUNCA liste como relatório técnico (5m: alta / 15m: neutro / ...) "
+            "— isso é frio. VARIE quais TFs você menciona, use os que fazem sentido pro momento — não é "
+            "obrigatório citar todos.\n\n"
+            "E o VEREDITO conclui se as duas visões:\n"
             "  - 'alinhado' -> BOT e contexto histórico apontam pra mesma direção;\n"
             "  - 'divergente' -> BOT vê uma coisa, contexto sugere outra;\n"
             "  - 'adicao' -> BOT está neutro/esperando, IA acrescenta info relevante que ele não "
@@ -6327,7 +6357,9 @@ def _analisar_por_gatilho(sb, bot_id, user_id, gatilho,
                 "estrutura": leitura_atual.get("estrutura"),
                 "zonas": leitura_atual.get("zonas"),
                 "confirmacao": leitura_atual.get("confirmacao"),
-                # A leitura mecânica do bot é o "BOT falou X" que a IA vai cruzar
+                # v6.68 — resumo semantico por TF (mentor humano descritivo)
+                "momentum_tfs": leitura_atual.get("momentum_tfs"),
+                # A leitura mecanica do bot e o "BOT falou X" que a IA vai cruzar
                 "narracao_mecanica": leitura_atual.get("narracao_bot"),
             }
         if ctx_extra:
@@ -7092,6 +7124,72 @@ class AnlTickIn(BaseModel):
     bot_id: int
 
 
+def _momentum_semantico(candles_str):
+    """v6.68 — traduz string de candles "O,H,L,C;O,H,L,C;..." em RESUMO
+    SEMANTICO curto pra IA usar como mentor humano. Nao passa candles crus
+    (custaria tokens caros); passa uma leitura descritiva do momentum
+    recente daquele TF: forca, direcao, corpo, extremos."""
+    try:
+        cs = []
+        for parte in str(candles_str or "").split(";"):
+            vs = parte.split(",")
+            if len(vs) == 4:
+                try: cs.append([float(x) for x in vs])
+                except Exception: pass
+        n = len(cs)
+        if n < 3: return None
+        ult = cs[-5:] if n >= 5 else cs
+        altas = sum(1 for v in ult if v[3] > v[0])
+        baixas = sum(1 for v in ult if v[3] < v[0])
+        doji = len(ult) - altas - baixas
+        if len(ult) >= 4:
+            corpo_ini = sum(abs(v[3] - v[0]) for v in ult[:2]) / 2
+            corpo_fim = sum(abs(v[3] - v[0]) for v in ult[-2:]) / 2
+            if corpo_fim > corpo_ini * 1.3: tendencia_corpo = "crescentes"
+            elif corpo_fim < corpo_ini * 0.7: tendencia_corpo = "encolhendo"
+            else: tendencia_corpo = "estaveis"
+        else:
+            tendencia_corpo = "estaveis"
+        highs = [v[1] for v in cs]
+        lows  = [v[2] for v in cs]
+        rng_hi = max(highs); rng_lo = min(lows)
+        preco = cs[-1][3]
+        if rng_hi > rng_lo:
+            pos_pct = (preco - rng_lo) / (rng_hi - rng_lo)
+            if pos_pct > 0.75: posicao = "proximo do topo do range recente"
+            elif pos_pct < 0.25: posicao = "proximo do fundo do range recente"
+            else: posicao = "no meio do range recente"
+        else:
+            posicao = "range apertado"
+        if altas >= 4 and baixas == 0:
+            recentes = f"{altas} velas de alta consecutivas, corpos {tendencia_corpo}"
+        elif baixas >= 4 and altas == 0:
+            recentes = f"{baixas} velas de baixa consecutivas, corpos {tendencia_corpo}"
+        elif altas >= 3 and baixas <= 1:
+            recentes = f"predominancia de alta ({altas} de {len(ult)}), corpos {tendencia_corpo}"
+        elif baixas >= 3 and altas <= 1:
+            recentes = f"predominancia de baixa ({baixas} de {len(ult)}), corpos {tendencia_corpo}"
+        elif doji >= 2:
+            recentes = f"indecisao - {doji} dojis nas ultimas {len(ult)}"
+        else:
+            recentes = f"alternancia ({altas} de alta / {baixas} de baixa), corpos {tendencia_corpo}"
+        ultima = cs[-1]
+        ult_desc = None
+        if ultima[0] > 0:
+            var_pct = (ultima[3] - ultima[0]) / ultima[0] * 100
+            if abs(var_pct) < 0.05:
+                ult_desc = "ultima vela quase parada"
+            elif var_pct > 0:
+                ult_desc = f"ultima vela fechou em alta ({var_pct:+.2f}% vs abertura)"
+            else:
+                ult_desc = f"ultima vela fechou em baixa ({var_pct:+.2f}% vs abertura)"
+        out = {"velas": n, "recentes": recentes, "posicao": posicao}
+        if ult_desc: out["ultima"] = ult_desc
+        return out
+    except Exception:
+        return None
+
+
 def _anl_ler_leitura(sb, user_id, bot_id):
     """Reaproveita o shape do /monitor/leitura, mas 1 bot só. Rápido."""
     try:
@@ -7126,6 +7224,12 @@ def _anl_ler_leitura(sb, user_id, bot_id):
             "zonas": zonas,
             "confirmacao": det.get("confirmacao"),
             "narracao_bot": _narracao_bot(det, s),
+            "momentum_tfs": {
+                tf: _momentum_semantico(det.get(chave))
+                for chave, tf in (("c5m", "5m"), ("c15m", "15m"),
+                                  ("c60m", "60m"), ("c4h", "4h"))
+                if _momentum_semantico(det.get(chave))
+            },
         }
     except Exception:
         return None
