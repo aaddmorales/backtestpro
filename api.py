@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.78  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
-#  Build: 2026-07-19c-strategy-v2 | Deploy: Railway
+#  BotTested API — v6.79  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
+#  Build: 2026-07-19d-range-cockpit | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.78 - TREND DAY ADAPTATIVO (v2 TF-aware da Escalonada) + inclui v6.77 (BM dedup): a estrategia Tendencia Diaria Escalonada foi desenhada pra 1d — o BOTTESTED_13 rodando em 5m gerou piramidacao descontrolada. NOVA ESTRATEGIA na Vitrine (tendencia_dia_adaptativa - Trend Day Adaptativo) com regras TF-aware: (1) Trailing adaptativo por TF: M1=0.05%, M5=0.15%, M15=0.35%, M30=0.60%, H1=0.90%, H4=1.20%, D1=1.50%; (2) Cooldown adaptativo por TF: M1=12 barras, M5=6, M15=4, M30=3, H1=2, H4=2, D1=1 — evita piramidacao spam; (3) Espacamento minimo entre entradas: 0.7 x ATR — so piramida se preco realmente avancou; (4) PosicaoFecharTodas() fecha TODAS as posicoes em loop; (5) Trailing coletivo: quando ativa, fecha o pacote INTEIRO; (6) Saida defensiva por 2 velas vermelhas consecutivas; (7) Saida por rompimento canal EMA_L fecha TUDO. Registrada em _mql5_generators + vitrine_catalogo + i18n pt/en/es. v1 continua na Vitrine pra bots existentes. Inclui tambem v6.77: BabyMachine dedup de aberturas por janela de 30s. | 6.76 - BABYMACHINE OPERACOES REAIS (Sessao 6A - coleta pura): a BabyMachine que ate hoje so coletava BACKTESTS ganha novo dominio - OPERACOES REAIS ao vivo do MT5. ARQUITETURA: (1) tabela babymachine_operacoes (SQL v6.76) - irma de backtests_historico, guarda contexto_entrada (JSONB: regime + offmind + momentum_tfs + confirmacao + veredito_ia), decisao (JSONB: direcao + entrada + stop + alvo + cenario + confluencias + explicacao) e resultado (JSONB: preco_saida + pnl + tempo_ativo); (2) 3 fontes alimentam - detector_auto, detector_copiloto, estrategia_compilada; (3) fluxo detector - INSERT pendente + comando_id -> /mt5/comando/confirmar marca aberta + ticket -> /conector/evento tipo=fechado marca fechada (FIFO por bot); (4) fluxo estrategia compilada - /conector/evento tipo=aberto sem pendente cria linha aberta + contexto do ultimo snapshot -> fechado marca fechada; (5) endpoint POST /babymachine/operacoes - filtros e agregados. Base pra aba Learning Machine (Sessao 6B); (6) TTL 90 dias via _bm_operacoes_limpar_antigas() throttle 6h; (7) NON-BLOCKING - falha na coleta nunca quebra detector/comando/evento. Inclui tambem v6.75 (config persistente): coluna config_operacional em conector_bots pra sobreviver Railway restart. ZERO UI - UI vem na Sessao 6B. | 6.74 - DETECTOR AUTOMATICO DE OPORTUNIDADE (Sessao 3 do loop fechado): a inteligencia que construimos passa a produzir sinais executaveis. ARQUITETURA: (1) roda 24/7 no /conector/snapshot (a cada 15s enquanto EA emite) — cockpit fechado nao trava a operacao; (2) detector deterministico: le fatos ja calculados (offmind + regime + momentum + confirmacao) e determina direcao potencial (long/short) por padrao — pullback em tendencia, reversao em nivel testado; (3) niveis reais: entrada, stop, alvos calculados dos niveis S/R clustered do offmind (nao inventa); (4) confluencia 0-100: soma regime alinhado (+20), 4h a favor (+15), padrao formal (+15), toques do nivel (+10/+15), confirmacao historica (+8/+15), momentum recente (+10), veredito alinhado (+10). Traduz em ESTRELAS 1-5; (5) 3 modos por bot (memoria): observar (nada), copiloto (dispara oportunidade pra UI), automatico (cria comando via /mt5/comando); (6) 3 sensibilidades: conservador (>=4 estrelas), moderado (>=3), agressivo (>=2); (7) circuit breakers: pausado, ja tem posicao, cooldown 60s, max operacoes/dia (default 10), drawdown maximo/dia (default 5%); (8) narrador IA (Haiku, ~$0.0005) SO quando oportunidade passa do limiar — barato; ENDPOINTS: GET/POST /monitor/bot/{id}/config, GET /monitor/bot/{id}/oportunidades, POST /monitor/oportunidade/{id}/executar (copiloto). Estado em memoria — Sessao 6 migra pra tabela quando construir dashboard. Fail-safe: se Railway reinicia, todos os bots voltam pra observar. UI de fato vem na Sessao 4. | 6.73 - CANAL DE COMANDO CLOUD->EA (Sessao 1 do loop fechado): a plataforma deixa de ser read-only. ARQUITETURA: (1) tabela mt5_comandos guarda fila de ordens que a cloud manda pro EA (buy/sell/close/close_all/mover_sl/mover_tp/cancelar); (2) POST /mt5/comando cria comando (validacao de bot online, limite 20/dia por bot, retorno com id); (3) GET /mt5/comando/pendente?bot_token=X conector PY faz poll, marca linha como entregue e retorna o mais antigo pendente; (4) POST /mt5/comando/confirmar EA confirma execucao com ticket/preco real ou falha; (5) GET /mt5/comandos?bot_id=X&limite=20 lista pro cockpit mostrar historico. CIRCUIT BREAKERS iniciais: bot deve estar online (ultimo_ping < 45s), max 20 comandos/dia por bot, comandos velhos (>60s pendentes) viram expirado automatico via _mt5_expirar_comandos(). Conector PY ainda nao mexido — contrato documentado, integracao na proxima sessao. EA (MQL5) ganha BTLerComando() injetada que le arquivo bt_cmd_<magic>.txt do conector e executa. ACAO POS-DEPLOY: (1) rodar v6.73_mt5_comandos.sql no Supabase ANTES; (2) invalidar mq5_cache; (3) reenviar bot. | 6.72 - VOLUME NOS CANDLES (preparacao pro grafico com barras de volume no estilo MT5): (1) BTvCandles MQL5 agora inclui tick_volume no fim de cada candle: formato passou de O,H,L,C para O,H,L,C,V. Snapshot cresce ~0.4KB mas continua bem abaixo do limite do Print MQL5 (4KB). (2) _bt_parse_candles e _parse_candles_para_lista ficaram RETROCOMPATIVEIS: aceitam 4 ou 5 valores por candle. Bots velhos (v6.71 e anteriores) continuam funcionando sem volume; bots novos ganham volume automatico. (3) DataFrame do backend ganha coluna Volume quando disponivel; frontend consome via campo v de cada candle. ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra ver volume no grafico do cockpit. Bots antigos continuam com gráfico sem volume ate serem reenviados. | 6.71 - BOT LE OFFMIND (fix arquitetural): a v6.70 do BOT analitico ignorava o offmind ja processado pelo EA (padroes formais engolfo/martelo/estrela cadente/3verdes/3vermelhas + niveis S/R clustered com N toques e marca de testando) e reinventava deteccao mais fraca com swing highs/lows crus de janela 2. AGORA: (1) _analisar_bot_tecnica aceita offmind como parametro; (2) integra padroes_formais e niveis_sendo_testados e niveis_proximos aos fatos passados pra IA; (3) prompt do BOT ensina que niveis com 2+ toques testados AGORA = DUPLO TOPO/FUNDO se formando, e a NARRAR estrutura de mercado antes de swing highs/lows; (4) swing highs/lows antigos permanecem como complemento (nao substitui estrutura formal). Resultado esperado: o BOT vira a citar \"duplo topo se formando em X com 2 toques no 15m\" e \"suporte em Y defendido 3 vezes segurando\". | 6.70 - BOT ANALITICO (Caminho C hibrido): o BOT deixa de ser uma frase-template morta e vira ANALISTA TECNICO real. ARQUITETURA: (1) _analisar_bot_tecnica(candles) DETERMINISTICO — detecta swing highs e swing lows (topos e fundos por janela de 2), padrao da ultima vela (marubozu, doji, martelo, estrela cadente, engolfo de alta/baixa), momentum das ultimas 3 velas, distancia pra romper EMAs, posicao no range das velas visiveis, gatilho concreto de proxima entrada. Nada de opiniao — so o que esta observavel no grafico. (2) _narrar_bot_analitico(fatos) — passa esses fatos pra Haiku formatar em VOZ DE SNIPER (temperatura 0.4, direto, tecnico, sempre com precos concretos). Prompt PROIBE contextualizar com historico ou outros TFs (isso e papel da IA MENTOR no outro quadro). (3) CACHE de 30s por bot_token com assinatura de fatos: se nada relevante mudou, reusa o texto — economiza tokens quando o grafico esta parado. (4) FALLBACK: sem candles ou IA indisponivel cai no _narracao_bot antigo (template morto). Nunca vazio. (5) _bot_narracao_hibrida orquestra tudo, e chamado no lugar de _narracao_bot em /monitor/leitura e _anl_ler_leitura. CUSTO: +1 chamada Haiku por bot ativo por ate 30s = ~$0.001/bot/30s = ~$3/dia por bot rodando 24h. Cache reduz drasticamente quando grafico esta parado. | 6.69 - OFFLINE RAPIDO (fix dos 5 minutos): (1) OFFLINE_APOS_SEGUNDOS caiu de 180s (3 min) para 45s. O EA emite snapshot a cada 15s, entao 45s = 3 ciclos perdidos = com toda certeza offline. Sem essa mudanca, remover EA do MT5 demorava ate 3 min pra card virar offline. (2) BTVisaoDeinit (injetado no OnDeinit do EA) agora EMITE Print(BOTTESTED_FIM|magic=X|motivo=Y) quando o EA e removido do grafico. Serve como sinal explicito de fim de vida — pode ser processado pelo conector PY (se souber) ou fica no log de auditoria. Independente disso, o timeout de 45s ja garante que o bot vira offline rapido. (3) /conector/evento agora aceita tipo=fim: se o conector PY souber processar BOTTESTED_FIM e mandar como evento, o backend zera ultimo_ping IMEDIATAMENTE (bot vira offline em segundos, nem espera os 45s). Cenario tipico: EA removido -> BTVisaoDeinit emite Print BOTTESTED_FIM -> conector PY detecta (se souber) e chama /conector/evento tipo=fim -> backend zera ultimo_ping -> bot offline imediato. Fallback: timeout 45s. | 6.68 - CANDLES REAIS + MOMENTUM SEMANTICO POR TF (par da app v9.56): (1) EA instrumentado agora emite candles OHLC de 5m/15m/60m/4h no snapshot via BTvCandles(tf,18) + CopyRates. Formato compacto O,H,L,C separado por ponto-e-virgula, ate 18 velas por TF. Snapshot cresce ~1.8KB mas Print MQL5 suporta ate 4KB por linha. (2) Backend calcula RESUMO SEMANTICO por TF via _momentum_semantico(candles_str): traduz OHLC crus em texto descritivo — quantas velas de alta/baixa, corpos crescentes/estaveis/encolhendo, posicao do preco no range recente, variacao da ultima vela. Passa isso pra IA como momentum_tfs (nao candles crus — economiza tokens). (3) Prompt IA refinado modo MENTOR HUMANO: reforca linguagem descritiva fluida (o 15m ganhou forca nas ultimas velas mas o 4h ainda esta lateral) em vez de listagem tecnica. (4) Grafico do cockpit volta a mostrar CANDLES REAIS renderizados (canal visual v9.55b continua fallback). ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra testar. | 6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.79 - RANGE/LATERALIZACAO + RAIO-X DO COCKPIT (Sessao A do diferencial de informacao, par da app v9.73): o sistema passa a NOMEAR o estado do mercado em vez de so listar pecas. CONTEXTO: BOTTESTED_14 em BTCUSD 15m passou horas numa acumulacao classica (suporte forte x resistencia forte, preco batendo e voltando) e nem BOT nem IA nomearam o estado; quando rompeu pra baixo, nada disparou — existia detector de VELA e de NIVEL, nao existia detector de ESTADO. AGORA: (1) _detectar_range_lateral: detector deterministico de LATERALIZACAO no TF de operacao — dois extremos com 2+ toques cada e >=75% das velas presas entre eles; sai com topo/fundo/altura em pts e em ATRs, velas presas, toques por extremo, posicao %, e PROJECOES de rompimento por measured move (teto+altura / fundo-altura); estados dentro|rompeu_cima|rompeu_baixo (fechamento alem da tolerancia; 'confirmado' com 2 fechamentos fora); range consumido (>140% da projecao) some sozinho. (2) fatos do BOT ganham range_lateral + atr_pts; a assinatura do cache de narracao inclui o estado do range (rompimento re-narra NA HORA); prompt do BOT ensina a ABRIR a leitura nomeando a acumulacao (dentro do range = sem trade; gatilho = fechamento fora; citar fundo/teto/projecoes) e a anunciar ROMPIMENTO como fato principal com invalidacao = voltar pro range. A IA do cockpit (mesmos fatos) herda o range de graca. (3) Detector de oportunidade ganha o Caso 0 rompimento_range_alta/baixa: entrada no preco, stop de volta pro nivel rompido, ALVO1 = projecao da altura (measured move), alvo2 = +50%% da altura; +15 de confluencia 'Rompimento de lateralizacao'. Funciona nos DOIS lados — acumulacao rompe pra onde quiser. (4) RAIO-X DO COCKPIT: /monitor/leitura devolve campo extras por bot via _extras_cockpit — CANAL EMA20 H/L (largura em pts/%%/ATRs, posicao do preco no canal 0-100, distancia pra romper cada lado), ATR do TF em pontos, RANGE completo com projecoes, e ESCADA DE NIVEIS (3 resistencias acima + 3 suportes abaixo com TF, toques e distancia em pts = corredor livre). Tudo deterministico, custo ZERO de IA — a IA so narra por cima de numeros ja calculados. Regra da casa mantida: geometria e historico medidos, nunca promessa. | 6.78 - TREND DAY ADAPTATIVO (v2 TF-aware da Escalonada) + inclui v6.77 (BM dedup): a estrategia Tendencia Diaria Escalonada foi desenhada pra 1d — o BOTTESTED_13 rodando em 5m gerou piramidacao descontrolada. NOVA ESTRATEGIA na Vitrine (tendencia_dia_adaptativa - Trend Day Adaptativo) com regras TF-aware: (1) Trailing adaptativo por TF: M1=0.05%, M5=0.15%, M15=0.35%, M30=0.60%, H1=0.90%, H4=1.20%, D1=1.50%; (2) Cooldown adaptativo por TF: M1=12 barras, M5=6, M15=4, M30=3, H1=2, H4=2, D1=1 — evita piramidacao spam; (3) Espacamento minimo entre entradas: 0.7 x ATR — so piramida se preco realmente avancou; (4) PosicaoFecharTodas() fecha TODAS as posicoes em loop; (5) Trailing coletivo: quando ativa, fecha o pacote INTEIRO; (6) Saida defensiva por 2 velas vermelhas consecutivas; (7) Saida por rompimento canal EMA_L fecha TUDO. Registrada em _mql5_generators + vitrine_catalogo + i18n pt/en/es. v1 continua na Vitrine pra bots existentes. Inclui tambem v6.77: BabyMachine dedup de aberturas por janela de 30s. | 6.76 - BABYMACHINE OPERACOES REAIS (Sessao 6A - coleta pura): a BabyMachine que ate hoje so coletava BACKTESTS ganha novo dominio - OPERACOES REAIS ao vivo do MT5. ARQUITETURA: (1) tabela babymachine_operacoes (SQL v6.76) - irma de backtests_historico, guarda contexto_entrada (JSONB: regime + offmind + momentum_tfs + confirmacao + veredito_ia), decisao (JSONB: direcao + entrada + stop + alvo + cenario + confluencias + explicacao) e resultado (JSONB: preco_saida + pnl + tempo_ativo); (2) 3 fontes alimentam - detector_auto, detector_copiloto, estrategia_compilada; (3) fluxo detector - INSERT pendente + comando_id -> /mt5/comando/confirmar marca aberta + ticket -> /conector/evento tipo=fechado marca fechada (FIFO por bot); (4) fluxo estrategia compilada - /conector/evento tipo=aberto sem pendente cria linha aberta + contexto do ultimo snapshot -> fechado marca fechada; (5) endpoint POST /babymachine/operacoes - filtros e agregados. Base pra aba Learning Machine (Sessao 6B); (6) TTL 90 dias via _bm_operacoes_limpar_antigas() throttle 6h; (7) NON-BLOCKING - falha na coleta nunca quebra detector/comando/evento. Inclui tambem v6.75 (config persistente): coluna config_operacional em conector_bots pra sobreviver Railway restart. ZERO UI - UI vem na Sessao 6B. | 6.74 - DETECTOR AUTOMATICO DE OPORTUNIDADE (Sessao 3 do loop fechado): a inteligencia que construimos passa a produzir sinais executaveis. ARQUITETURA: (1) roda 24/7 no /conector/snapshot (a cada 15s enquanto EA emite) — cockpit fechado nao trava a operacao; (2) detector deterministico: le fatos ja calculados (offmind + regime + momentum + confirmacao) e determina direcao potencial (long/short) por padrao — pullback em tendencia, reversao em nivel testado; (3) niveis reais: entrada, stop, alvos calculados dos niveis S/R clustered do offmind (nao inventa); (4) confluencia 0-100: soma regime alinhado (+20), 4h a favor (+15), padrao formal (+15), toques do nivel (+10/+15), confirmacao historica (+8/+15), momentum recente (+10), veredito alinhado (+10). Traduz em ESTRELAS 1-5; (5) 3 modos por bot (memoria): observar (nada), copiloto (dispara oportunidade pra UI), automatico (cria comando via /mt5/comando); (6) 3 sensibilidades: conservador (>=4 estrelas), moderado (>=3), agressivo (>=2); (7) circuit breakers: pausado, ja tem posicao, cooldown 60s, max operacoes/dia (default 10), drawdown maximo/dia (default 5%); (8) narrador IA (Haiku, ~$0.0005) SO quando oportunidade passa do limiar — barato; ENDPOINTS: GET/POST /monitor/bot/{id}/config, GET /monitor/bot/{id}/oportunidades, POST /monitor/oportunidade/{id}/executar (copiloto). Estado em memoria — Sessao 6 migra pra tabela quando construir dashboard. Fail-safe: se Railway reinicia, todos os bots voltam pra observar. UI de fato vem na Sessao 4. | 6.73 - CANAL DE COMANDO CLOUD->EA (Sessao 1 do loop fechado): a plataforma deixa de ser read-only. ARQUITETURA: (1) tabela mt5_comandos guarda fila de ordens que a cloud manda pro EA (buy/sell/close/close_all/mover_sl/mover_tp/cancelar); (2) POST /mt5/comando cria comando (validacao de bot online, limite 20/dia por bot, retorno com id); (3) GET /mt5/comando/pendente?bot_token=X conector PY faz poll, marca linha como entregue e retorna o mais antigo pendente; (4) POST /mt5/comando/confirmar EA confirma execucao com ticket/preco real ou falha; (5) GET /mt5/comandos?bot_id=X&limite=20 lista pro cockpit mostrar historico. CIRCUIT BREAKERS iniciais: bot deve estar online (ultimo_ping < 45s), max 20 comandos/dia por bot, comandos velhos (>60s pendentes) viram expirado automatico via _mt5_expirar_comandos(). Conector PY ainda nao mexido — contrato documentado, integracao na proxima sessao. EA (MQL5) ganha BTLerComando() injetada que le arquivo bt_cmd_<magic>.txt do conector e executa. ACAO POS-DEPLOY: (1) rodar v6.73_mt5_comandos.sql no Supabase ANTES; (2) invalidar mq5_cache; (3) reenviar bot. | 6.72 - VOLUME NOS CANDLES (preparacao pro grafico com barras de volume no estilo MT5): (1) BTvCandles MQL5 agora inclui tick_volume no fim de cada candle: formato passou de O,H,L,C para O,H,L,C,V. Snapshot cresce ~0.4KB mas continua bem abaixo do limite do Print MQL5 (4KB). (2) _bt_parse_candles e _parse_candles_para_lista ficaram RETROCOMPATIVEIS: aceitam 4 ou 5 valores por candle. Bots velhos (v6.71 e anteriores) continuam funcionando sem volume; bots novos ganham volume automatico. (3) DataFrame do backend ganha coluna Volume quando disponivel; frontend consome via campo v de cada candle. ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra ver volume no grafico do cockpit. Bots antigos continuam com gráfico sem volume ate serem reenviados. | 6.71 - BOT LE OFFMIND (fix arquitetural): a v6.70 do BOT analitico ignorava o offmind ja processado pelo EA (padroes formais engolfo/martelo/estrela cadente/3verdes/3vermelhas + niveis S/R clustered com N toques e marca de testando) e reinventava deteccao mais fraca com swing highs/lows crus de janela 2. AGORA: (1) _analisar_bot_tecnica aceita offmind como parametro; (2) integra padroes_formais e niveis_sendo_testados e niveis_proximos aos fatos passados pra IA; (3) prompt do BOT ensina que niveis com 2+ toques testados AGORA = DUPLO TOPO/FUNDO se formando, e a NARRAR estrutura de mercado antes de swing highs/lows; (4) swing highs/lows antigos permanecem como complemento (nao substitui estrutura formal). Resultado esperado: o BOT vira a citar \"duplo topo se formando em X com 2 toques no 15m\" e \"suporte em Y defendido 3 vezes segurando\". | 6.70 - BOT ANALITICO (Caminho C hibrido): o BOT deixa de ser uma frase-template morta e vira ANALISTA TECNICO real. ARQUITETURA: (1) _analisar_bot_tecnica(candles) DETERMINISTICO — detecta swing highs e swing lows (topos e fundos por janela de 2), padrao da ultima vela (marubozu, doji, martelo, estrela cadente, engolfo de alta/baixa), momentum das ultimas 3 velas, distancia pra romper EMAs, posicao no range das velas visiveis, gatilho concreto de proxima entrada. Nada de opiniao — so o que esta observavel no grafico. (2) _narrar_bot_analitico(fatos) — passa esses fatos pra Haiku formatar em VOZ DE SNIPER (temperatura 0.4, direto, tecnico, sempre com precos concretos). Prompt PROIBE contextualizar com historico ou outros TFs (isso e papel da IA MENTOR no outro quadro). (3) CACHE de 30s por bot_token com assinatura de fatos: se nada relevante mudou, reusa o texto — economiza tokens quando o grafico esta parado. (4) FALLBACK: sem candles ou IA indisponivel cai no _narracao_bot antigo (template morto). Nunca vazio. (5) _bot_narracao_hibrida orquestra tudo, e chamado no lugar de _narracao_bot em /monitor/leitura e _anl_ler_leitura. CUSTO: +1 chamada Haiku por bot ativo por ate 30s = ~$0.001/bot/30s = ~$3/dia por bot rodando 24h. Cache reduz drasticamente quando grafico esta parado. | 6.69 - OFFLINE RAPIDO (fix dos 5 minutos): (1) OFFLINE_APOS_SEGUNDOS caiu de 180s (3 min) para 45s. O EA emite snapshot a cada 15s, entao 45s = 3 ciclos perdidos = com toda certeza offline. Sem essa mudanca, remover EA do MT5 demorava ate 3 min pra card virar offline. (2) BTVisaoDeinit (injetado no OnDeinit do EA) agora EMITE Print(BOTTESTED_FIM|magic=X|motivo=Y) quando o EA e removido do grafico. Serve como sinal explicito de fim de vida — pode ser processado pelo conector PY (se souber) ou fica no log de auditoria. Independente disso, o timeout de 45s ja garante que o bot vira offline rapido. (3) /conector/evento agora aceita tipo=fim: se o conector PY souber processar BOTTESTED_FIM e mandar como evento, o backend zera ultimo_ping IMEDIATAMENTE (bot vira offline em segundos, nem espera os 45s). Cenario tipico: EA removido -> BTVisaoDeinit emite Print BOTTESTED_FIM -> conector PY detecta (se souber) e chama /conector/evento tipo=fim -> backend zera ultimo_ping -> bot offline imediato. Fallback: timeout 45s. | 6.68 - CANDLES REAIS + MOMENTUM SEMANTICO POR TF (par da app v9.56): (1) EA instrumentado agora emite candles OHLC de 5m/15m/60m/4h no snapshot via BTvCandles(tf,18) + CopyRates. Formato compacto O,H,L,C separado por ponto-e-virgula, ate 18 velas por TF. Snapshot cresce ~1.8KB mas Print MQL5 suporta ate 4KB por linha. (2) Backend calcula RESUMO SEMANTICO por TF via _momentum_semantico(candles_str): traduz OHLC crus em texto descritivo — quantas velas de alta/baixa, corpos crescentes/estaveis/encolhendo, posicao do preco no range recente, variacao da ultima vela. Passa isso pra IA como momentum_tfs (nao candles crus — economiza tokens). (3) Prompt IA refinado modo MENTOR HUMANO: reforca linguagem descritiva fluida (o 15m ganhou forca nas ultimas velas mas o 4h ainda esta lateral) em vez de listagem tecnica. (4) Grafico do cockpit volta a mostrar CANDLES REAIS renderizados (canal visual v9.55b continua fallback). ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra testar. | 6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-19c-strategy-v2"
+BUILD_TAG = "2026-07-19d-range-cockpit"
 
 @app.get("/versao")
 def versao():
@@ -7208,6 +7208,20 @@ def _detectar_direcao_potencial(fatos, leitura):
     regime_str = str(fatos.get("regime") or "").upper()
     testando = fatos.get("niveis_sendo_testados") or []
     padroes = fatos.get("padroes_formais") or []
+    # Caso 0 (v6.79): ROMPIMENTO DE RANGE/LATERALIZACAO — o gatilho mais
+    # classico. Acumulacao rompe pra qualquer lado; entrada no rompimento,
+    # stop de volta pro nivel rompido, alvo = projecao da altura (measured move).
+    rng = fatos.get("range_lateral") or {}
+    if rng.get("estado") == "rompeu_cima" and rng.get("topo"):
+        return {"direcao": "long", "cenario": "rompimento_range_alta",
+                "gatilho_ref": {"tipo": "resistencia", "nivel": rng.get("topo"),
+                                "toques": rng.get("toques_topo")},
+                "range": rng}
+    if rng.get("estado") == "rompeu_baixo" and rng.get("fundo"):
+        return {"direcao": "short", "cenario": "rompimento_range_baixa",
+                "gatilho_ref": {"tipo": "suporte", "nivel": rng.get("fundo"),
+                                "toques": rng.get("toques_fundo")},
+                "range": rng}
     # Caso 1: pullback em tendencia
     if "ALTA" in regime_str and testando:
         for nv in testando:
@@ -7299,6 +7313,15 @@ def _calcular_niveis_operacao(direcao_info, fatos):
         else:
             alvo1 = entrada - risco * 1.5
         alvo2 = entrada - risco * 2.0
+    # v6.79 — ROMPIMENTO DE RANGE: alvo1 = projecao da altura (measured move);
+    # alvo2 estende +50%% da altura. Sobrepoe os alvos genericos acima.
+    _rng_mm = direcao_info.get("range") or {}
+    if str(direcao_info.get("cenario") or "").startswith("rompimento_range") and _rng_mm:
+        _alt = float(_rng_mm.get("altura_pts") or 0)
+        if direcao == "long" and _rng_mm.get("proj_alta"):
+            alvo1 = float(_rng_mm["proj_alta"]); alvo2 = alvo1 + _alt * 0.5
+        elif direcao == "short" and _rng_mm.get("proj_baixa"):
+            alvo1 = float(_rng_mm["proj_baixa"]); alvo2 = alvo1 - _alt * 0.5
     rr = abs(alvo1 - entrada) / risco if risco > 0 else 0
     if rr < 1.0:
         return None  # R:R menor que 1:1 nao vale
@@ -7325,6 +7348,14 @@ def _calcular_confluencias(direcao_info, fatos, leitura, veredito=None):
     if (dir_pt == "alta" and "ALTA" in regime_str) or (dir_pt == "baixa" and "BAIXA" in regime_str):
         score += 20
         lista.append({"peso": 20, "titulo": "Regime alinhado", "detalhe": f"TF de operacao em {regime_str}"})
+    # +15 (v6.79) rompimento de lateralizacao: range medido com toques nos dois extremos
+    if str(direcao_info.get("cenario") or "").startswith("rompimento_range"):
+        _rng_cf = direcao_info.get("range") or {}
+        score += 15
+        lista.append({"peso": 15, "titulo": "Rompimento de lateralizacao",
+                      "detalhe": (f"Range de {_rng_cf.get('altura_pts')} pts rompido "
+                                  f"(fundo {_rng_cf.get('toques_fundo')}x · teto {_rng_cf.get('toques_topo')}x toques"
+                                  + (", confirmado" if _rng_cf.get("confirmado") else "") + ")")})
     # +15 TF maior (4h) alinhado via momentum semantico
     momentum_tfs = (leitura or {}).get("momentum_tfs") or {}
     m4h = momentum_tfs.get("4h") or {}
@@ -8766,6 +8797,212 @@ def _detectar_padrao_ultima_vela(cs):
     return None
 
 
+
+# ════════════════════════════════════════════════════════════════════════════
+#  v6.79 — DETECTOR DE LATERALIZAÇÃO (RANGE) + RAIO-X DO COCKPIT
+#
+#  Lição do BOTTESTED_14 (BTCUSD 15m): o pipeline enxergava as PEÇAS (suporte
+#  com N toques, resistência com M toques, preço no meio) mas não NOMEAVA o
+#  QUADRO — lateralização clássica: bate no suporte, volta pro canal, bate de
+#  novo, sem sair do lugar. E quando o range rompeu, nada disparou. Estas
+#  funções são a camada de CONCLUSÃO: detectam o estado, medem o tamanho do
+#  canal e projetam o rompimento por measured move (geometria, não promessa).
+#  Tudo determinístico — custo zero de IA.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _atr_de_candles(cs, period=14):
+    """v6.79 — ATR simples (média do True Range) da lista [{o,h,l,c}].
+    Retorna em pontos do ativo, ou None se não há velas suficientes."""
+    if not cs or len(cs) < 3:
+        return None
+    trs = []
+    for i in range(1, len(cs)):
+        h, l, pc = cs[i]["h"], cs[i]["l"], cs[i - 1]["c"]
+        trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+    janela = trs[-period:] if len(trs) > period else trs
+    if not janela:
+        return None
+    return sum(janela) / len(janela)
+
+
+def _detectar_range_lateral(cs, atr=None, preco=None):
+    """v6.79 — detector determinístico de LATERALIZAÇÃO no TF de operação.
+
+    NÚCLEO + CAUDA: o range é medido num NÚCLEO de velas (a janela menos até
+    3 velas finais); a CAUDA (velas finais + vela atual) é classificada contra
+    ele. Sem isso, a própria vela do rompimento redefinia o extremo na leitura
+    seguinte e o range 'sumia' — impossível anunciar rompimento confirmado.
+
+    Critérios do núcleo (conservadores de propósito):
+      - teto = cluster das máximas; fundo = cluster das mínimas
+        (toque = encostar a 18%% da altura do extremo — tolerância RELATIVA
+        ao range, funciona igual em BTC 64k e EURUSD 1.08);
+      - 2+ toques em CADA extremo;
+      - >= 75%% das velas do núcleo FECHARAM dentro;
+      - altura sã: >= 0.7×ATR e <= 8×ATR (nem ruído, nem o gráfico inteiro).
+
+    Estado pela vela ATUAL: dentro | rompeu_cima | rompeu_baixo (fechamento
+    além do limiar = máx(0.35×ATR, 8%% da altura)); 'confirmado' quando uma
+    vela FECHADA anterior também está fora do mesmo lado. Projeções por
+    measured move (teto+altura / fundo-altura). Rompimento que já percorreu
+    >140%% da projeção deixa de ser reportado — virou história. Puro, sem I/O."""
+    try:
+        if not cs or len(cs) < 8:
+            return None
+        base = cs[:-1]
+        if preco is None:
+            preco = cs[-1]["c"]
+        preco = float(preco)
+
+        def _medir_nucleo(nucleo):
+            highs = [v["h"] for v in nucleo]
+            lows = [v["l"] for v in nucleo]
+            teto_raw, fundo_raw = max(highs), min(lows)
+            altura_raw = teto_raw - fundo_raw
+            if altura_raw <= 0:
+                return None
+            tol_toque = altura_raw * 0.18
+            hs = [h for h in highs if h >= teto_raw - tol_toque]
+            ls = [l for l in lows if l <= fundo_raw + tol_toque]
+            if len(hs) < 2 or len(ls) < 2:
+                return None
+            teto = sum(hs) / len(hs)
+            fundo = sum(ls) / len(ls)
+            altura = teto - fundo
+            if altura <= 0:
+                return None
+            if atr:
+                if altura < 0.7 * atr or altura > 8 * atr:
+                    return None
+            elif altura > preco * 0.04:
+                return None
+            marg = altura * 0.10
+            dentro = sum(1 for v in nucleo if (fundo - marg) <= v["c"] <= (teto + marg))
+            if dentro < 0.75 * len(nucleo):
+                return None
+            return {"teto": teto, "fundo": fundo, "altura": altura,
+                    "toques_topo": len(hs), "toques_fundo": len(ls),
+                    "velas_dentro": dentro, "velas_total": len(nucleo)}
+
+        # tenta núcleo inteiro; se falhar, tira até 3 velas finais (a cauda do
+        # rompimento) e tenta de novo — o range continua existindo como
+        # referência mesmo depois de 1-3 velas fora dele.
+        med = None
+        cauda = []
+        for k in (0, 1, 2, 3):
+            nucleo = base[:-k] if k else base
+            if len(nucleo) < 7:
+                break
+            med = _medir_nucleo(nucleo)
+            if med:
+                cauda = base[len(nucleo):]
+                break
+        if not med:
+            return None
+        teto, fundo, altura = med["teto"], med["fundo"], med["altura"]
+        lim = max(float(atr or 0) * 0.35, altura * 0.08)
+        c_atual = float(cs[-1]["c"])
+        estado, confirmado, avanco = "dentro", False, None
+        fora_cima = [v for v in cauda if v["c"] > teto + lim]
+        fora_baixo = [v for v in cauda if v["c"] < fundo - lim]
+        if c_atual > teto + lim:
+            estado = "rompeu_cima"
+            confirmado = bool(fora_cima)
+            avanco = int(round((c_atual - teto) / altura * 100))
+        elif c_atual < fundo - lim:
+            estado = "rompeu_baixo"
+            confirmado = bool(fora_baixo)
+            avanco = int(round((fundo - c_atual) / altura * 100))
+        elif fora_cima or fora_baixo:
+            # cauda fechou fora mas a vela atual voltou pra dentro: rompimento
+            # que falhou (fakeout). O range segue valendo — reporta como dentro.
+            estado = "dentro"
+        if avanco is not None and avanco > 140:
+            return None  # rompimento antigo, projeção consumida — range virou história
+        pos_pct = int(round((preco - fundo) / altura * 100))
+        pos_pct = max(-50, min(150, pos_pct))
+        return {
+            "ativo": True,
+            "topo": round(teto, 4), "fundo": round(fundo, 4),
+            "altura_pts": round(altura, 4),
+            "altura_atr": round(altura / atr, 2) if atr else None,
+            "toques_topo": med["toques_topo"], "toques_fundo": med["toques_fundo"],
+            "velas_dentro": med["velas_dentro"], "velas_total": med["velas_total"],
+            "posicao_pct": pos_pct,
+            "estado": estado, "confirmado": confirmado,
+            "avanco_rompimento_pct": avanco,
+            "proj_alta": round(teto + altura, 4),
+            "proj_baixa": round(fundo - altura, 4),
+        }
+    except Exception:
+        return None
+
+
+def _extras_cockpit(det, s):
+    """v6.79 — RAIO-X DO MERCADO: números determinísticos que o snapshot já
+    carrega, expostos pro usuário como informação de primeira classe:
+      canal  — largura do canal EMA20 H/L (pts / %% / ×ATR), posição do preço
+               no canal, distância pra romper cada lado;
+      atr    — quanto o mercado anda em média por vela do TF (régua honesta);
+      range  — lateralização detectada + projeções de rompimento;
+      níveis — escada S/R do offmind: 3 acima + 3 abaixo com toques e
+               distância em pts (corredor livre até o próximo obstáculo).
+    Custo zero de IA. NON-BLOCKING: qualquer falha devolve None."""
+    try:
+        if not isinstance(det, dict) or not det:
+            return None
+        tf_op = str(det.get("tfop") or "").lower()
+        chave_op = {"1m": "c1m", "5m": "c5m", "15m": "c15m", "30m": "c30m",
+                    "60m": "c60m", "1h": "c60m", "4h": "c4h", "1d": "c4h"}.get(tf_op, "c15m")
+        cs = _parse_candles_para_lista(det.get(chave_op) or det.get("c15m"))
+        if len(cs) < 5:
+            return None
+        def _f(v):
+            try:
+                return float(v)
+            except Exception:
+                return None
+        preco = _f(det.get("preco")) or cs[-1]["c"]
+        ema_h, ema_l = _f(det.get("emaH")), _f(det.get("emaL"))
+        atr = _atr_de_candles(cs)
+        canal = None
+        if ema_h is not None and ema_l is not None and ema_h > ema_l and preco:
+            larg = ema_h - ema_l
+            canal = {
+                "ema_h": round(ema_h, 4), "ema_l": round(ema_l, 4),
+                "largura_pts": round(larg, 4),
+                "largura_pct": round(larg / preco * 100, 3),
+                "largura_atr": round(larg / atr, 2) if atr else None,
+                "posicao_pct": int(round((preco - ema_l) / larg * 100)),
+                "dist_romper_cima": round(ema_h - preco, 4) if preco < ema_h else None,
+                "dist_romper_baixo": round(preco - ema_l, 4) if preco > ema_l else None,
+            }
+        rng = _detectar_range_lateral(cs, atr, preco)
+        acima, abaixo = [], []
+        for e in ((det.get("offmind") or {}).get("estrutura") or []):
+            nv = _f(e.get("nivel"))
+            if nv is None or not preco:
+                continue
+            item = {"tf": e.get("tf"), "tipo": e.get("tipo"),
+                    "nivel": round(nv, 4), "toques": e.get("toques"),
+                    "dist_pts": round(abs(nv - preco), 4),
+                    "testando": bool(e.get("testando"))}
+            (acima if nv >= preco else abaixo).append(item)
+        acima.sort(key=lambda x: x["nivel"])
+        abaixo.sort(key=lambda x: -x["nivel"])
+        corredor = None
+        if acima or abaixo:
+            corredor = {"livre_cima": acima[0]["dist_pts"] if acima else None,
+                        "livre_baixo": abaixo[0]["dist_pts"] if abaixo else None}
+        return {"tf": tf_op or None,
+                "atr_pts": round(atr, 4) if atr else None,
+                "canal": canal, "range": rng,
+                "niveis_acima": acima[:3], "niveis_abaixo": abaixo[:3],
+                "corredor": corredor}
+    except Exception:
+        return None
+
+
 def _analisar_bot_tecnica(candles_str, ema_h, ema_l, preco, regime, posicoes, offmind=None):
     """v6.70 -> v6.71 — o BOT como analista técnico. Prioriza o OFFMIND (que
     já detecta padrões e níveis S/R clustered com múltiplos toques via
@@ -8874,6 +9111,15 @@ def _analisar_bot_tecnica(candles_str, ema_h, ema_l, preco, regime, posicoes, of
                      "nivel": e.get("nivel"), "toques": e.get("toques")}
                     for e in proximos
                 ]
+    # v6.79 — DETECTOR DE LATERALIZAÇÃO: mercado preso entre dois níveis é um
+    # ESTADO que o bot precisa nomear (acumulação); o rompimento dele é o
+    # gatilho mais clássico que existe. Projeção = altura do range (geometria).
+    atr_v = _atr_de_candles(cs)
+    if atr_v:
+        fatos["atr_pts"] = round(atr_v, 4)
+    rng = _detectar_range_lateral(cs, atr_v, preco_f)
+    if rng:
+        fatos["range_lateral"] = rng
     return fatos
 
 
@@ -8897,7 +9143,8 @@ def _bot_assinatura(fatos):
     pos_range = fatos.get("preco_no_range_pct") or 0
     # arredonda pos_range em blocos de 10% pra não invalidar por pequenas
     pos_range_b = int(pos_range / 10) * 10
-    return f"{reg}|{pos}|{pad}|{mom}|{pos_range_b}"
+    rng = (fatos.get("range_lateral") or {}).get("estado") or ""
+    return f"{reg}|{pos}|{pad}|{mom}|{pos_range_b}|{rng}"
 
 
 def _narrar_bot_analitico(fatos, tf_op, bot_token):
@@ -8938,6 +9185,18 @@ def _narrar_bot_analitico(fatos, tf_op, bot_token):
             "alvos técnicos.\n"
             "- topos_recentes e fundos_recentes são swing highs/lows brutos (janela pequena). Use SÓ se não tiver "
             "níveis do offmind — são complemento, não estrutura primária.\n\n"
+            "LATERALIZAÇÃO (campo range_lateral) — QUANDO PRESENTE, É O FATO PRINCIPAL:\n"
+            "- estado='dentro': o mercado está PRESO num range (acumulação clássica: bate num extremo, volta, "
+            "bate de novo, sem sair do lugar). ABRA a leitura nomeando isso: 'LATERALIZAÇÃO: N velas presas "
+            "entre FUNDO (X toques) e TETO (Y toques) — range de Z pts'. Dentro do range NÃO há trade — diga "
+            "isso com todas as letras. O gatilho é o FECHAMENTO fora, pra qualquer lado: rompimento acima do "
+            "teto projeta proj_alta; perda do fundo projeta proj_baixa (projeção = altura do range, geometria, "
+            "não promessa). SEMPRE cite fundo, teto e as duas projeções em preço.\n"
+            "- estado='rompeu_cima' ou 'rompeu_baixo': ANUNCIE O ROMPIMENTO como manchete: 'ROMPEU o range de "
+            "N pts pra baixo — fechou em X abaixo do fundo Y (Z toques); projeção da altura aponta W'. Se "
+            "confirmado=true, diga 'confirmado com 2 fechamentos fora'. Invalidação = fechar de volta DENTRO "
+            "do range. avanco_rompimento_pct diz quanto da projeção já andou — se alto (>70), avise que boa "
+            "parte do movimento projetado já aconteceu.\n\n"
             "REGRAS:\n"
             "(1) 2 a 4 frases curtas, máx ~360 caracteres, sem markdown, sem crases;\n"
             "(2) tom DIRETO, TÉCNICO, sniper — não use 'talvez', 'pode ser', 'tende'. Use frases "
@@ -9318,6 +9577,9 @@ def monitor_leitura(user_id: str):
             "candles_op": c_op[-18:],
             "ema_h": _f(det.get("emaH")), "ema_l": _f(det.get("emaL")),
             "preco": _f(det.get("preco")),
+            # v6.79 — RAIO-X DO MERCADO: canal, ATR, range de lateralizacao e
+            # escada de niveis. Deterministico, custo zero de IA.
+            "extras": _extras_cockpit(det, s),
         })
     return {"bots": saida}
 
