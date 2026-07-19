@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API — v6.74  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
-#  Build: 2026-07-18g-detector-oportunidade | Deploy: Railway
+#  BotTested API — v6.76  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
+#  Build: 2026-07-19a-babymachine-real | Deploy: Railway
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
@@ -637,9 +637,9 @@ async def _redirecionar_navegador(request: Request, call_next):
     return await call_next(request)
 
 
-API_VERSAO = "6.74 - DETECTOR AUTOMATICO DE OPORTUNIDADE (Sessao 3 do loop fechado): a inteligencia que construimos passa a produzir sinais executaveis. ARQUITETURA: (1) roda 24/7 no /conector/snapshot (a cada 15s enquanto EA emite) — cockpit fechado nao trava a operacao; (2) detector deterministico: le fatos ja calculados (offmind + regime + momentum + confirmacao) e determina direcao potencial (long/short) por padrao — pullback em tendencia, reversao em nivel testado; (3) niveis reais: entrada, stop, alvos calculados dos niveis S/R clustered do offmind (nao inventa); (4) confluencia 0-100: soma regime alinhado (+20), 4h a favor (+15), padrao formal (+15), toques do nivel (+10/+15), confirmacao historica (+8/+15), momentum recente (+10), veredito alinhado (+10). Traduz em ESTRELAS 1-5; (5) 3 modos por bot (memoria): observar (nada), copiloto (dispara oportunidade pra UI), automatico (cria comando via /mt5/comando); (6) 3 sensibilidades: conservador (>=4 estrelas), moderado (>=3), agressivo (>=2); (7) circuit breakers: pausado, ja tem posicao, cooldown 60s, max operacoes/dia (default 10), drawdown maximo/dia (default 5%); (8) narrador IA (Haiku, ~$0.0005) SO quando oportunidade passa do limiar — barato; ENDPOINTS: GET/POST /monitor/bot/{id}/config, GET /monitor/bot/{id}/oportunidades, POST /monitor/oportunidade/{id}/executar (copiloto). Estado em memoria — Sessao 6 migra pra tabela quando construir dashboard. Fail-safe: se Railway reinicia, todos os bots voltam pra observar. UI de fato vem na Sessao 4. | 6.73 - CANAL DE COMANDO CLOUD->EA (Sessao 1 do loop fechado): a plataforma deixa de ser read-only. ARQUITETURA: (1) tabela mt5_comandos guarda fila de ordens que a cloud manda pro EA (buy/sell/close/close_all/mover_sl/mover_tp/cancelar); (2) POST /mt5/comando cria comando (validacao de bot online, limite 20/dia por bot, retorno com id); (3) GET /mt5/comando/pendente?bot_token=X conector PY faz poll, marca linha como entregue e retorna o mais antigo pendente; (4) POST /mt5/comando/confirmar EA confirma execucao com ticket/preco real ou falha; (5) GET /mt5/comandos?bot_id=X&limite=20 lista pro cockpit mostrar historico. CIRCUIT BREAKERS iniciais: bot deve estar online (ultimo_ping < 45s), max 20 comandos/dia por bot, comandos velhos (>60s pendentes) viram expirado automatico via _mt5_expirar_comandos(). Conector PY ainda nao mexido — contrato documentado, integracao na proxima sessao. EA (MQL5) ganha BTLerComando() injetada que le arquivo bt_cmd_<magic>.txt do conector e executa. ACAO POS-DEPLOY: (1) rodar v6.73_mt5_comandos.sql no Supabase ANTES; (2) invalidar mq5_cache; (3) reenviar bot. | 6.72 - VOLUME NOS CANDLES (preparacao pro grafico com barras de volume no estilo MT5): (1) BTvCandles MQL5 agora inclui tick_volume no fim de cada candle: formato passou de O,H,L,C para O,H,L,C,V. Snapshot cresce ~0.4KB mas continua bem abaixo do limite do Print MQL5 (4KB). (2) _bt_parse_candles e _parse_candles_para_lista ficaram RETROCOMPATIVEIS: aceitam 4 ou 5 valores por candle. Bots velhos (v6.71 e anteriores) continuam funcionando sem volume; bots novos ganham volume automatico. (3) DataFrame do backend ganha coluna Volume quando disponivel; frontend consome via campo v de cada candle. ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra ver volume no grafico do cockpit. Bots antigos continuam com gráfico sem volume ate serem reenviados. | 6.71 - BOT LE OFFMIND (fix arquitetural): a v6.70 do BOT analitico ignorava o offmind ja processado pelo EA (padroes formais engolfo/martelo/estrela cadente/3verdes/3vermelhas + niveis S/R clustered com N toques e marca de testando) e reinventava deteccao mais fraca com swing highs/lows crus de janela 2. AGORA: (1) _analisar_bot_tecnica aceita offmind como parametro; (2) integra padroes_formais e niveis_sendo_testados e niveis_proximos aos fatos passados pra IA; (3) prompt do BOT ensina que niveis com 2+ toques testados AGORA = DUPLO TOPO/FUNDO se formando, e a NARRAR estrutura de mercado antes de swing highs/lows; (4) swing highs/lows antigos permanecem como complemento (nao substitui estrutura formal). Resultado esperado: o BOT vira a citar \"duplo topo se formando em X com 2 toques no 15m\" e \"suporte em Y defendido 3 vezes segurando\". | 6.70 - BOT ANALITICO (Caminho C hibrido): o BOT deixa de ser uma frase-template morta e vira ANALISTA TECNICO real. ARQUITETURA: (1) _analisar_bot_tecnica(candles) DETERMINISTICO — detecta swing highs e swing lows (topos e fundos por janela de 2), padrao da ultima vela (marubozu, doji, martelo, estrela cadente, engolfo de alta/baixa), momentum das ultimas 3 velas, distancia pra romper EMAs, posicao no range das velas visiveis, gatilho concreto de proxima entrada. Nada de opiniao — so o que esta observavel no grafico. (2) _narrar_bot_analitico(fatos) — passa esses fatos pra Haiku formatar em VOZ DE SNIPER (temperatura 0.4, direto, tecnico, sempre com precos concretos). Prompt PROIBE contextualizar com historico ou outros TFs (isso e papel da IA MENTOR no outro quadro). (3) CACHE de 30s por bot_token com assinatura de fatos: se nada relevante mudou, reusa o texto — economiza tokens quando o grafico esta parado. (4) FALLBACK: sem candles ou IA indisponivel cai no _narracao_bot antigo (template morto). Nunca vazio. (5) _bot_narracao_hibrida orquestra tudo, e chamado no lugar de _narracao_bot em /monitor/leitura e _anl_ler_leitura. CUSTO: +1 chamada Haiku por bot ativo por ate 30s = ~$0.001/bot/30s = ~$3/dia por bot rodando 24h. Cache reduz drasticamente quando grafico esta parado. | 6.69 - OFFLINE RAPIDO (fix dos 5 minutos): (1) OFFLINE_APOS_SEGUNDOS caiu de 180s (3 min) para 45s. O EA emite snapshot a cada 15s, entao 45s = 3 ciclos perdidos = com toda certeza offline. Sem essa mudanca, remover EA do MT5 demorava ate 3 min pra card virar offline. (2) BTVisaoDeinit (injetado no OnDeinit do EA) agora EMITE Print(BOTTESTED_FIM|magic=X|motivo=Y) quando o EA e removido do grafico. Serve como sinal explicito de fim de vida — pode ser processado pelo conector PY (se souber) ou fica no log de auditoria. Independente disso, o timeout de 45s ja garante que o bot vira offline rapido. (3) /conector/evento agora aceita tipo=fim: se o conector PY souber processar BOTTESTED_FIM e mandar como evento, o backend zera ultimo_ping IMEDIATAMENTE (bot vira offline em segundos, nem espera os 45s). Cenario tipico: EA removido -> BTVisaoDeinit emite Print BOTTESTED_FIM -> conector PY detecta (se souber) e chama /conector/evento tipo=fim -> backend zera ultimo_ping -> bot offline imediato. Fallback: timeout 45s. | 6.68 - CANDLES REAIS + MOMENTUM SEMANTICO POR TF (par da app v9.56): (1) EA instrumentado agora emite candles OHLC de 5m/15m/60m/4h no snapshot via BTvCandles(tf,18) + CopyRates. Formato compacto O,H,L,C separado por ponto-e-virgula, ate 18 velas por TF. Snapshot cresce ~1.8KB mas Print MQL5 suporta ate 4KB por linha. (2) Backend calcula RESUMO SEMANTICO por TF via _momentum_semantico(candles_str): traduz OHLC crus em texto descritivo — quantas velas de alta/baixa, corpos crescentes/estaveis/encolhendo, posicao do preco no range recente, variacao da ultima vela. Passa isso pra IA como momentum_tfs (nao candles crus — economiza tokens). (3) Prompt IA refinado modo MENTOR HUMANO: reforca linguagem descritiva fluida (o 15m ganhou forca nas ultimas velas mas o 4h ainda esta lateral) em vez de listagem tecnica. (4) Grafico do cockpit volta a mostrar CANDLES REAIS renderizados (canal visual v9.55b continua fallback). ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra testar. | 6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
+API_VERSAO = "6.76 - BABYMACHINE OPERACOES REAIS (Sessao 6A - coleta pura): a BabyMachine que ate hoje so coletava BACKTESTS ganha novo dominio - OPERACOES REAIS ao vivo do MT5. ARQUITETURA: (1) tabela babymachine_operacoes (SQL v6.76) - irma de backtests_historico, guarda contexto_entrada (JSONB: regime + offmind + momentum_tfs + confirmacao + veredito_ia), decisao (JSONB: direcao + entrada + stop + alvo + cenario + confluencias + explicacao) e resultado (JSONB: preco_saida + pnl + tempo_ativo); (2) 3 fontes alimentam - detector_auto, detector_copiloto, estrategia_compilada; (3) fluxo detector - INSERT pendente + comando_id -> /mt5/comando/confirmar marca aberta + ticket -> /conector/evento tipo=fechado marca fechada (FIFO por bot); (4) fluxo estrategia compilada - /conector/evento tipo=aberto sem pendente cria linha aberta + contexto do ultimo snapshot -> fechado marca fechada; (5) endpoint POST /babymachine/operacoes - filtros e agregados. Base pra aba Learning Machine (Sessao 6B); (6) TTL 90 dias via _bm_operacoes_limpar_antigas() throttle 6h; (7) NON-BLOCKING - falha na coleta nunca quebra detector/comando/evento. Inclui tambem v6.75 (config persistente): coluna config_operacional em conector_bots pra sobreviver Railway restart. ZERO UI - UI vem na Sessao 6B. | 6.74 - DETECTOR AUTOMATICO DE OPORTUNIDADE (Sessao 3 do loop fechado): a inteligencia que construimos passa a produzir sinais executaveis. ARQUITETURA: (1) roda 24/7 no /conector/snapshot (a cada 15s enquanto EA emite) — cockpit fechado nao trava a operacao; (2) detector deterministico: le fatos ja calculados (offmind + regime + momentum + confirmacao) e determina direcao potencial (long/short) por padrao — pullback em tendencia, reversao em nivel testado; (3) niveis reais: entrada, stop, alvos calculados dos niveis S/R clustered do offmind (nao inventa); (4) confluencia 0-100: soma regime alinhado (+20), 4h a favor (+15), padrao formal (+15), toques do nivel (+10/+15), confirmacao historica (+8/+15), momentum recente (+10), veredito alinhado (+10). Traduz em ESTRELAS 1-5; (5) 3 modos por bot (memoria): observar (nada), copiloto (dispara oportunidade pra UI), automatico (cria comando via /mt5/comando); (6) 3 sensibilidades: conservador (>=4 estrelas), moderado (>=3), agressivo (>=2); (7) circuit breakers: pausado, ja tem posicao, cooldown 60s, max operacoes/dia (default 10), drawdown maximo/dia (default 5%); (8) narrador IA (Haiku, ~$0.0005) SO quando oportunidade passa do limiar — barato; ENDPOINTS: GET/POST /monitor/bot/{id}/config, GET /monitor/bot/{id}/oportunidades, POST /monitor/oportunidade/{id}/executar (copiloto). Estado em memoria — Sessao 6 migra pra tabela quando construir dashboard. Fail-safe: se Railway reinicia, todos os bots voltam pra observar. UI de fato vem na Sessao 4. | 6.73 - CANAL DE COMANDO CLOUD->EA (Sessao 1 do loop fechado): a plataforma deixa de ser read-only. ARQUITETURA: (1) tabela mt5_comandos guarda fila de ordens que a cloud manda pro EA (buy/sell/close/close_all/mover_sl/mover_tp/cancelar); (2) POST /mt5/comando cria comando (validacao de bot online, limite 20/dia por bot, retorno com id); (3) GET /mt5/comando/pendente?bot_token=X conector PY faz poll, marca linha como entregue e retorna o mais antigo pendente; (4) POST /mt5/comando/confirmar EA confirma execucao com ticket/preco real ou falha; (5) GET /mt5/comandos?bot_id=X&limite=20 lista pro cockpit mostrar historico. CIRCUIT BREAKERS iniciais: bot deve estar online (ultimo_ping < 45s), max 20 comandos/dia por bot, comandos velhos (>60s pendentes) viram expirado automatico via _mt5_expirar_comandos(). Conector PY ainda nao mexido — contrato documentado, integracao na proxima sessao. EA (MQL5) ganha BTLerComando() injetada que le arquivo bt_cmd_<magic>.txt do conector e executa. ACAO POS-DEPLOY: (1) rodar v6.73_mt5_comandos.sql no Supabase ANTES; (2) invalidar mq5_cache; (3) reenviar bot. | 6.72 - VOLUME NOS CANDLES (preparacao pro grafico com barras de volume no estilo MT5): (1) BTvCandles MQL5 agora inclui tick_volume no fim de cada candle: formato passou de O,H,L,C para O,H,L,C,V. Snapshot cresce ~0.4KB mas continua bem abaixo do limite do Print MQL5 (4KB). (2) _bt_parse_candles e _parse_candles_para_lista ficaram RETROCOMPATIVEIS: aceitam 4 ou 5 valores por candle. Bots velhos (v6.71 e anteriores) continuam funcionando sem volume; bots novos ganham volume automatico. (3) DataFrame do backend ganha coluna Volume quando disponivel; frontend consome via campo v de cada candle. ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra ver volume no grafico do cockpit. Bots antigos continuam com gráfico sem volume ate serem reenviados. | 6.71 - BOT LE OFFMIND (fix arquitetural): a v6.70 do BOT analitico ignorava o offmind ja processado pelo EA (padroes formais engolfo/martelo/estrela cadente/3verdes/3vermelhas + niveis S/R clustered com N toques e marca de testando) e reinventava deteccao mais fraca com swing highs/lows crus de janela 2. AGORA: (1) _analisar_bot_tecnica aceita offmind como parametro; (2) integra padroes_formais e niveis_sendo_testados e niveis_proximos aos fatos passados pra IA; (3) prompt do BOT ensina que niveis com 2+ toques testados AGORA = DUPLO TOPO/FUNDO se formando, e a NARRAR estrutura de mercado antes de swing highs/lows; (4) swing highs/lows antigos permanecem como complemento (nao substitui estrutura formal). Resultado esperado: o BOT vira a citar \"duplo topo se formando em X com 2 toques no 15m\" e \"suporte em Y defendido 3 vezes segurando\". | 6.70 - BOT ANALITICO (Caminho C hibrido): o BOT deixa de ser uma frase-template morta e vira ANALISTA TECNICO real. ARQUITETURA: (1) _analisar_bot_tecnica(candles) DETERMINISTICO — detecta swing highs e swing lows (topos e fundos por janela de 2), padrao da ultima vela (marubozu, doji, martelo, estrela cadente, engolfo de alta/baixa), momentum das ultimas 3 velas, distancia pra romper EMAs, posicao no range das velas visiveis, gatilho concreto de proxima entrada. Nada de opiniao — so o que esta observavel no grafico. (2) _narrar_bot_analitico(fatos) — passa esses fatos pra Haiku formatar em VOZ DE SNIPER (temperatura 0.4, direto, tecnico, sempre com precos concretos). Prompt PROIBE contextualizar com historico ou outros TFs (isso e papel da IA MENTOR no outro quadro). (3) CACHE de 30s por bot_token com assinatura de fatos: se nada relevante mudou, reusa o texto — economiza tokens quando o grafico esta parado. (4) FALLBACK: sem candles ou IA indisponivel cai no _narracao_bot antigo (template morto). Nunca vazio. (5) _bot_narracao_hibrida orquestra tudo, e chamado no lugar de _narracao_bot em /monitor/leitura e _anl_ler_leitura. CUSTO: +1 chamada Haiku por bot ativo por ate 30s = ~$0.001/bot/30s = ~$3/dia por bot rodando 24h. Cache reduz drasticamente quando grafico esta parado. | 6.69 - OFFLINE RAPIDO (fix dos 5 minutos): (1) OFFLINE_APOS_SEGUNDOS caiu de 180s (3 min) para 45s. O EA emite snapshot a cada 15s, entao 45s = 3 ciclos perdidos = com toda certeza offline. Sem essa mudanca, remover EA do MT5 demorava ate 3 min pra card virar offline. (2) BTVisaoDeinit (injetado no OnDeinit do EA) agora EMITE Print(BOTTESTED_FIM|magic=X|motivo=Y) quando o EA e removido do grafico. Serve como sinal explicito de fim de vida — pode ser processado pelo conector PY (se souber) ou fica no log de auditoria. Independente disso, o timeout de 45s ja garante que o bot vira offline rapido. (3) /conector/evento agora aceita tipo=fim: se o conector PY souber processar BOTTESTED_FIM e mandar como evento, o backend zera ultimo_ping IMEDIATAMENTE (bot vira offline em segundos, nem espera os 45s). Cenario tipico: EA removido -> BTVisaoDeinit emite Print BOTTESTED_FIM -> conector PY detecta (se souber) e chama /conector/evento tipo=fim -> backend zera ultimo_ping -> bot offline imediato. Fallback: timeout 45s. | 6.68 - CANDLES REAIS + MOMENTUM SEMANTICO POR TF (par da app v9.56): (1) EA instrumentado agora emite candles OHLC de 5m/15m/60m/4h no snapshot via BTvCandles(tf,18) + CopyRates. Formato compacto O,H,L,C separado por ponto-e-virgula, ate 18 velas por TF. Snapshot cresce ~1.8KB mas Print MQL5 suporta ate 4KB por linha. (2) Backend calcula RESUMO SEMANTICO por TF via _momentum_semantico(candles_str): traduz OHLC crus em texto descritivo — quantas velas de alta/baixa, corpos crescentes/estaveis/encolhendo, posicao do preco no range recente, variacao da ultima vela. Passa isso pra IA como momentum_tfs (nao candles crus — economiza tokens). (3) Prompt IA refinado modo MENTOR HUMANO: reforca linguagem descritiva fluida (o 15m ganhou forca nas ultimas velas mas o 4h ainda esta lateral) em vez de listagem tecnica. (4) Grafico do cockpit volta a mostrar CANDLES REAIS renderizados (canal visual v9.55b continua fallback). ACAO POS-DEPLOY: invalidar mq5_cache e reenviar 1 bot pra testar. | 6.67 - COCKPIT DE ANALISE CRUZADA no Monitor (par da app v9.55): expandir um bot abre o COCKPIT — layout de 3 blocos: (A) LEITURA DO BOT (mecanica, do EA), (B) ANALISE DA IA (contextual + banco absorvido), (C) VEREDITO CONJUNTO (sintese cruzada). Nao e chat de duas vozes conversando; e DOIS PARECERES INDEPENDENTES sobre o mesmo momento e a SINTESE do cruzamento. UMA chamada de IA por rodada devolve JSON com 3 campos: analise_ia, veredito, sinal. Sinal e alinhado|divergente|adicao|neutro — o front pinta a cor. ARQUITETURA: (1) _ANL_HIST em memoria por bot (ate 30 analises); (2) GET /monitor/analise devolve analises novas desde timestamp; (3) POST /monitor/analise/tick decide se analisa: assinatura mudou OU >90s de silencio OU evento ABRIU/FECHOU (imediato, prioridade); respeita cooldown de 30s pra gatilhos de status (evento ignora cooldown). (4) IA ABSORVE o campo confirmacao (banco de padroes medidos v6.48) como conhecimento proprio — narra padroes historicos deste ativo sem citar tabela ou banco. Custo: cockpit fechado = zero. Aberto = ~US 0.001 por analise. | 6.66 - AUDITORIA (par da app v9.52): (1) /conector/evento passa a gravar bot_token e bot_nome DENTRO do detalhe_json do evento em agente_eventos — a partir daqui todo ABRIU/FECHOU no Monitor sai como \"BOTTESTED_10 · ABRIU BUY @ 64020\" em vez de só \"ABRIU @ 64020\" (fim do \"qual bot fez essa operação?\"). (2) /monitor/eventos enriquece cada linha com bot_nome: pega do detalhe_json (eventos novos) ou faz FALLBACK casando por símbolo com os bots do usuário (eventos velhos gravados antes desta versão continuam legíveis). Zero mudança de schema — bot_nome vive dentro do JSONB detalhe_json que já existia. | 6.65 - FONTE ÚNICA DA VERDADE (fim da classe do fantasma de 15/jul): (1) _MQ5_GER_CACHE (camada de memória do cache mq5) MORREU — _mq5_cache_buscar/guardar/aprovar agora falam SÓ com a tabela mq5_cache no Supabase; DELETE FROM mq5_cache mata o cache DE VERDADE, em todos os workers, sem restart (era a memória consultada ANTES do Supabase que manteve a geração envenenada da v6.61 viva o dia inteiro). (2) _MT5_JOBS (dict em memória) MORREU — jobs de validação vivem na tabela NOVA mt5_jobs (criar/pendente/presenca/veredito/status todos via Supabase): elimina o risco multi-worker (job invisível entre workers = F4 do MAPA_PIPELINE) e o job sobrevive a deploy/restart. Limpeza de jobs >1h roda no banco com throttle de 5min. _MT5_POLLS/_VISTO_DB/_MT5_RAISE continuam em memória de propósito (telemetria rápida/throttle; a verdade deles já estava no Supabase). REQUER: rodar o SQL da tabela mt5_jobs ANTES do deploy. | 6.60 - FIX ENUM DO SELO (o último erro de compilação — achado pelo compile.log real do BOTTESTED_05): BTPainelInit usava MQLInfoString(MQL5_PROGRAM_NAME), identificador que não existe no ENUM_MQL_INFO_STRING → error 262 cannot convert enum. Corrigido pra MQL_PROGRAM_NAME. Provavelmente a causa original do 'a injeção quebrava a compilação' da era v6.35. AÇÃO PÓS-DEPLOY: limpar mq5_cache (o envio do BOTTESTED_05 recacheou o selo com o enum errado) e reenviar 1 bot. | 6.59 - FAXINA BRACE-AWARE (fix dos 4x reprovados na compilação): o regex de remoção de função ([^}]*) não atravessa chave aninhada — snapshot da IA com if/FileOpen dentro era cortado no primeiro } e o EA saía com chaves órfãs = não compila; o 1º envio cacheava o .mq5 mutilado e os envios seguintes serviam o mesmo (por isso 4x idêntico). Agora a remoção conta chaves (mesma técnica do bloco OnTimer), protege forward declaration e há sentinela de chaves desbalanceadas no log. AÇÃO PÓS-DEPLOY: invalidar o cache da estratégia (entrada mutilada congelada) e reenviar. | 6.58 - CAUSA-RAIZ FINAL do snapshot mudo: _gerar_mq5_de_codigo (fluxo /mt5/enviar) NUNCA chamava _instrumentar_log_mql5 — comentário da era v6.35 dizia que a injeção quebrava compilação, mas a injeção atual é defensiva e foi validada na v6.56. Por isso v6.55/v6.56 não mudaram nada nesse fluxo (prompt sem snapshot + visão nunca injetada = EA mudo; BOTTESTED_03 provou, EventKillTimer órfão no OnDeinit = faxina nunca rodou). Agora: gera → instrumenta (faxina+SELO+VISÃO) → cacheia neutro instrumentado; HIT sem BTVisaoTick instrumenta e regrava (defesa contra cache legado). | 6.57 - FIX /admin/mq5/invalidar: o handler referenciava _MQ5_CACHE, variável que nunca existiu (o dict real é _MQ5_GER_CACHE, ~linha 8853) — NameError -> 500 em toda invalidação. Corrigido pra _MQ5_GER_CACHE (memória) + delete no Supabase por gen_hash (já certo). | 6.56 - FAXINA DEFENSIVA: v6.55 removeu a INSTRUÇÃO do prompt mas a IA reinventava a função sozinha (ainda saía snapshot mínimo). Agora _instrumentar_log_mql5 REMOVE via regex qualquer função BTEnviarSnapshot/Snapshot/etc inventada pela IA + chamadas + Print direto + EventSetTimer (a instrumentação nossa usa OnTick, não precisa timer). Só BTVisaoTick pode emitir BOTTESTED_SNAPSHOT. Precisa reinvalidar cache e reenviar. | 6.55 - FIX DA RAIZ (loop fechado): o prompt ordenava a IA a definir e chamar uma BTEnviarSnapshot() MÍNIMA (só equity+balance+posicoes+simbolo), que competia com — e vencia — a BTVisaoTick() rica que a instrumentação injeta. Prompt agora PROÍBE a IA de definir/chamar snapshot: a instrumentação faz sozinha em OnInit/OnTick/OnDeinit. EAs regenerados a partir daqui emitem o snapshot RICO. Ação: invalidar caches e reenviar. | 6.54 - INVALIDAR CACHE DO ESPELHO (loop de fechamento — sessão de acabamento): DELETE /admin/mq5/invalidar?estrategia_id=<id>&token=<> remove o .mq5 cacheado (memória + Supabase) de UMA estratégia; próximo envio dela regenera do zero com o PROMPT ATUAL (snapshot rico c/ zonas, regime, offmind, lucro, tfop, canal EMA). Uso: EAs atuais no MT5 emitem esqueleto porque cache é pré-v6.36. Invalidar UMA estratégia + reenviar 1 bot = teste do loop ponta-a-ponta. | 6.53 - FIX SIMBOLO E FLUTUANTE NO MONITOR: (1) o simbolo do card vem do SNAPSHOT (que o EA le do _Symbol do grafico) — nao mais do conector_bots.simbolo (que era o do momento do envio, ex: US30 aparecendo num bot rodando em XAUUSD/BTCUSD); (2) flutuante NULL nao vira mais 0.0 no front (o +0,00 com posicoes>0 era isso); le detalhe.lucro como fallback se o parser antigo nao preencheu a coluna. | 6.52 - PRESENCA EM LOTE (fix de escala do conector). | 6.51 - MONITOR grafico do bot. | 6.50 - DUAS ESTRATEGIAS NOVAS. | 6.49 - MONITOR 2.0. | 6.48 - CONFIRMACAO CONTEXTUAL. | 6.47 - OLHOS DO MONITOR. | 6.46 - VISAO TOTAL. | 6.45 - FIX VITRINE paginacao. | 6.44 - CURADORIA sr_dia_anterior. | 6.43 - VITRINE sem negativo. | 6.42 - ESPELHO POR CODIGO. | 6.41 - VITRINE SEM ACOES. | 6.40 - PREVIA DE VELAS. | 6.39 - CACHE PERSISTENTE. | 6.38 - VALIDACAO RAPIDA. | 6.37 - FIM DE VIDA NO ONDEINIT. | 6.36 - SNAPSHOT EM ARQUIVO. | 6.35 - REVERTE instrumentacao custom. | (historico completo no git)"
 
-BUILD_TAG = "2026-07-18g-detector-oportunidade"
+BUILD_TAG = "2026-07-19a-babymachine-real"
 
 @app.get("/versao")
 def versao():
@@ -968,6 +968,55 @@ def babymachine_contador(params: BabyMachineContadorParams):
         return {"total": total}
     except Exception:
         return {"total": 0}
+
+
+class BabyMachineOperacoesParams(BaseModel):
+    bot_id: Optional[int] = None
+    user_id: Optional[str] = None
+    dias: Optional[int] = 7
+    limite: Optional[int] = 100
+
+
+@app.post("/babymachine/operacoes")
+def babymachine_operacoes(params: BabyMachineOperacoesParams):
+    """v6.76 — retorna operacoes reais registradas pela BabyMachine.
+    Filtros: bot_id, user_id, ultimos N dias. Ordenacao por ts_criada desc.
+    Base pra aba Learning Machine (Sessao 6B)."""
+    try:
+        sb = _sb_admin()
+        if sb is None:
+            return {"operacoes": [], "total": 0}
+        dias = max(1, min(365, int(params.dias or 7)))
+        limite = max(1, min(500, int(params.limite or 100)))
+        desde = (_dt.now(_tz.utc) - timedelta(days=dias)).isoformat()
+        q = (sb.table("babymachine_operacoes")
+             .select("id,bot_id,bot_nome,ativo,timeframe,fonte,status,"
+                     "oportunidade_id,comando_id,ticket_mt5,"
+                     "contexto_entrada,decisao,resultado,"
+                     "ts_criada,ts_entrada,ts_saida")
+             .gte("ts_criada", desde)
+             .order("ts_criada", desc=True)
+             .limit(limite))
+        if params.bot_id:
+            q = q.eq("bot_id", int(params.bot_id))
+        if params.user_id:
+            q = q.eq("user_id", params.user_id)
+        dados = q.execute().data or []
+        total = len(dados)
+        return {
+            "operacoes": dados,
+            "total": total,
+            "por_status": {
+                "pendente": sum(1 for d in dados if d.get("status") == "pendente"),
+                "aberta":   sum(1 for d in dados if d.get("status") == "aberta"),
+                "fechada":  sum(1 for d in dados if d.get("status") == "fechada"),
+                "orfa":     sum(1 for d in dados if d.get("status") == "orfa"),
+            },
+        }
+    except Exception as e:
+        import sys, traceback
+        print(f"ERRO BM_OPERACOES: {e}\n{traceback.format_exc()}", file=sys.stderr)
+        return {"operacoes": [], "total": 0, "erro": str(e)}
 
 
 @app.post("/babymachine/analisar")
@@ -6541,6 +6590,290 @@ def _analisar_por_gatilho(sb, bot_id, user_id, gatilho,
 
 
 # ════════════════════════════════════════════════════════════════════════════
+#  v6.76 — BABYMACHINE: OPERAÇÕES REAIS (Sessão 6A — coleta)
+#
+#  Estende a BabyMachine (que hoje coleta backtests em backtests_historico)
+#  pra registrar operações REAIS ao vivo do MT5 na tabela nova
+#  babymachine_operacoes. Alimentada por 3 fontes:
+#    (1) detector automático — cria linha 'pendente' quando decide entrar
+#    (2) EA da estratégia compilada — cria linha 'aberta' via /conector/evento
+#    (3) fechamento (qualquer fonte) — /conector/evento tipo=fechado
+#
+#  Non-blocking em TUDO: falha na coleta nunca quebra detector, comando ou
+#  evento. Logs sempre.
+# ════════════════════════════════════════════════════════════════════════════
+
+_BM_LIMPAR_THROTTLE = {"ultimo": 0.0}
+
+
+def _bm_limpar_throttled(sb):
+    """Chama _bm_operacoes_limpar_antigas() no máximo 1x por 6h."""
+    import time
+    agora = time.time()
+    if agora - _BM_LIMPAR_THROTTLE["ultimo"] < 21600:  # 6h
+        return
+    _BM_LIMPAR_THROTTLE["ultimo"] = agora
+    try:
+        sb.rpc("_bm_operacoes_limpar_antigas").execute()
+    except Exception as _e:
+        try: print(f"[bm limpar] {_e}")
+        except Exception: pass
+
+
+def _bm_extrair_contexto(bot, leitura, veredito):
+    """Captura o contexto do momento da entrada. Sempre parcial — pega o que
+    tiver disponível. Serve como 'foto' do cenário pra a BabyMachine aprender."""
+    ctx = {}
+    if leitura and isinstance(leitura, dict):
+        reg = leitura.get("regime") or {}
+        ctx["regime"] = str(reg.get("estado") or reg.get("regime") or "").upper()
+        ctx["preco"] = leitura.get("preco")
+        ctx["tfop"] = leitura.get("tf_op")
+        # padrões formais + estrutura do offmind
+        ctx["padroes_formais"] = leitura.get("padroes") or []
+        # confirmação histórica (banco existente)
+        conf = leitura.get("confirmacao") or {}
+        if isinstance(conf, dict):
+            ctx["confirmacao_score"] = conf.get("score")
+            ctx["confirmacao_veredito"] = conf.get("veredito")
+        # momentum semântico por TF
+        ctx["momentum_tfs"] = leitura.get("momentum_tfs") or {}
+    if veredito and isinstance(veredito, dict):
+        ctx["veredito_ia"] = {
+            "sinal": veredito.get("sinal"),
+            "veredito": veredito.get("veredito"),
+        }
+    return ctx
+
+
+def _bm_registrar_do_detector(sb, bot, oportunidade, leitura, veredito, comando_id, fonte):
+    """Chamada quando o detector cria um comando via /mt5/comando.
+    fonte: 'detector_auto' | 'detector_copiloto'.
+    Cria linha status='pendente'. Vira 'aberta' quando o EA confirma
+    execução (via _bm_marcar_aberta_por_comando)."""
+    if not sb or not bot or not oportunidade: return
+    try:
+        contexto = _bm_extrair_contexto(bot, leitura, veredito)
+        decisao = {
+            "direcao":       oportunidade.get("direcao"),
+            "cenario":       oportunidade.get("cenario"),
+            "entrada":       oportunidade.get("entrada"),
+            "stop":          oportunidade.get("stop"),
+            "alvo1":         oportunidade.get("alvo1"),
+            "alvo2":         oportunidade.get("alvo2"),
+            "score":         oportunidade.get("score"),
+            "estrelas":      oportunidade.get("estrelas"),
+            "confluencias":  oportunidade.get("confluencias"),
+            "explicacao":    oportunidade.get("explicacao"),
+        }
+        linha = {
+            "user_id":          bot.get("user_id"),
+            "bot_id":           bot.get("id"),
+            "bot_nome":         bot.get("nome") or "",
+            "ativo":            bot.get("simbolo") or "",
+            "timeframe":        bot.get("timeframe") or "",
+            "fonte":            fonte,
+            "status":           "pendente",
+            "oportunidade_id":  oportunidade.get("id"),
+            "comando_id":       comando_id,
+            "contexto_entrada": contexto,
+            "decisao":          decisao,
+        }
+        sb.table("babymachine_operacoes").insert(linha).execute()
+        _bm_limpar_throttled(sb)
+    except Exception as _e:
+        try: print(f"[bm registrar detector] {_e}")
+        except Exception: pass
+
+
+def _bm_marcar_aberta_por_comando(sb, comando_id, resultado_conf):
+    """Chamada em /mt5/comando/confirmar. Se havia linha pendente pro
+    comando, atualiza pra status='aberta' com ticket_mt5 e ts_entrada."""
+    if not sb or not comando_id: return
+    try:
+        ticket = None
+        preco_real = None
+        if isinstance(resultado_conf, dict):
+            ticket = resultado_conf.get("ticket") or resultado_conf.get("order")
+            preco_real = resultado_conf.get("preco_real") or resultado_conf.get("price")
+        upd = {
+            "status":     "aberta",
+            "ts_entrada": _dt.now(_tz.utc).isoformat(),
+        }
+        if ticket:      upd["ticket_mt5"] = int(ticket)
+        # anexa preço real na decisão sem sobrescrever
+        try:
+            atual = (sb.table("babymachine_operacoes").select("decisao")
+                     .eq("comando_id", comando_id).limit(1).execute().data or [])
+            if atual:
+                dec = dict(atual[0].get("decisao") or {})
+                if preco_real:
+                    dec["preco_real_entrada"] = preco_real
+                upd["decisao"] = dec
+        except Exception:
+            pass
+        sb.table("babymachine_operacoes").update(upd).eq("comando_id", comando_id).execute()
+    except Exception as _e:
+        try: print(f"[bm marcar aberta] {_e}")
+        except Exception: pass
+
+
+def _bm_registrar_estrategia_compilada(sb, bot, det, evento_id):
+    """Chamada em /conector/evento tipo=aberto quando NÃO há operação
+    pendente pra casar (EA da estratégia compilada abriu por conta).
+    Cria linha status='aberta' com fonte='estrategia_compilada'."""
+    if not sb or not bot: return
+    try:
+        # tenta puxar leitura recente pra ter contexto
+        leitura = None
+        try:
+            leitura = _anl_ler_leitura(sb, bot.get("user_id"), bot.get("id"))
+        except Exception:
+            pass
+        contexto = _bm_extrair_contexto(bot, leitura, None)
+        # decisão inferida do detalhe do evento (o EA só manda "lado=BUY/SELL")
+        lado = str((det or {}).get("lado") or "").upper()
+        direcao = "long" if lado == "BUY" else ("short" if lado == "SELL" else "desconhecida")
+        decisao = {
+            "direcao":  direcao,
+            "cenario":  "estrategia_compilada",
+            "detalhe_ea": det or {},
+        }
+        linha = {
+            "user_id":          bot.get("user_id"),
+            "bot_id":           bot.get("id"),
+            "bot_nome":         bot.get("nome") or "",
+            "ativo":            bot.get("simbolo") or "",
+            "timeframe":        bot.get("timeframe") or "",
+            "fonte":            "estrategia_compilada",
+            "status":           "aberta",
+            "evento_id_abriu":  evento_id,
+            "contexto_entrada": contexto,
+            "decisao":          decisao,
+            "ts_entrada":       _dt.now(_tz.utc).isoformat(),
+        }
+        sb.table("babymachine_operacoes").insert(linha).execute()
+        _bm_limpar_throttled(sb)
+    except Exception as _e:
+        try: print(f"[bm registrar EA] {_e}")
+        except Exception: pass
+
+
+def _bm_processar_abertura(sb, bot, det, evento_id):
+    """Roteador de /conector/evento tipo=aberto:
+      - Se há linha pendente do detector pra este bot, marca como aberta
+      - Senão, cria linha nova com fonte='estrategia_compilada'
+    FIFO por bot pra casamento (o mais antigo pendente ganha)."""
+    if not sb or not bot: return
+    try:
+        pendentes = (sb.table("babymachine_operacoes")
+                     .select("id, comando_id")
+                     .eq("bot_id", bot.get("id"))
+                     .eq("status", "pendente")
+                     .order("ts_criada")
+                     .limit(1)
+                     .execute().data or [])
+        if pendentes:
+            # casou — atualiza pra aberta
+            upd = {
+                "status":          "aberta",
+                "ts_entrada":      _dt.now(_tz.utc).isoformat(),
+                "evento_id_abriu": evento_id,
+            }
+            sb.table("babymachine_operacoes").update(upd).eq("id", pendentes[0]["id"]).execute()
+        else:
+            # estratégia compilada abriu sozinha
+            _bm_registrar_estrategia_compilada(sb, bot, det, evento_id)
+    except Exception as _e:
+        try: print(f"[bm abertura] {_e}")
+        except Exception: pass
+
+
+def _bm_processar_fechamento(sb, bot, det, evento_id):
+    """/conector/evento tipo=fechado. Fecha a operação ABERTA mais antiga
+    desse bot (FIFO). Calcula pnl se der (detalhe geralmente traz preço)."""
+    if not sb or not bot: return
+    try:
+        abertas = (sb.table("babymachine_operacoes")
+                   .select("id, decisao, ts_entrada")
+                   .eq("bot_id", bot.get("id"))
+                   .eq("status", "aberta")
+                   .order("ts_entrada")
+                   .limit(1)
+                   .execute().data or [])
+        if not abertas:
+            # órfã — fechou sem entrada registrada (perdemos o hook)
+            try:
+                sb.table("babymachine_operacoes").insert({
+                    "user_id":         bot.get("user_id"),
+                    "bot_id":          bot.get("id"),
+                    "bot_nome":        bot.get("nome") or "",
+                    "ativo":           bot.get("simbolo") or "",
+                    "fonte":           "estrategia_compilada",
+                    "status":          "orfa",
+                    "evento_id_fechou": evento_id,
+                    "resultado":       {"detalhe_ea": det or {}, "motivo": "fechou sem abertura registrada"},
+                    "ts_saida":        _dt.now(_tz.utc).isoformat(),
+                }).execute()
+            except Exception:
+                pass
+            return
+        op = abertas[0]
+        ts_saida = _dt.now(_tz.utc)
+        # calcula tempo ativo se possível
+        tempo_seg = None
+        try:
+            ts_ent = _dt.fromisoformat(str(op.get("ts_entrada") or "").replace("Z", "+00:00"))
+            tempo_seg = int((ts_saida - ts_ent).total_seconds())
+        except Exception:
+            pass
+        # tenta extrair preço/pnl do detalhe (o EA pode ou não mandar)
+        preco_saida = None
+        pnl_pts = None
+        pnl_pct = None
+        try:
+            det_low = {str(k).lower(): v for k, v in (det or {}).items()}
+            for chave in ("preco_saida", "preco", "price", "close_price"):
+                if chave in det_low and det_low[chave] is not None:
+                    preco_saida = float(det_low[chave])
+                    break
+            for chave in ("pnl", "profit", "lucro"):
+                if chave in det_low and det_low[chave] is not None:
+                    pnl_pts = float(det_low[chave])
+                    break
+            # se tem entrada + saída, calcula pnl_pts se ainda não veio
+            if preco_saida is not None:
+                dec = op.get("decisao") or {}
+                entrada = dec.get("preco_real_entrada") or dec.get("entrada")
+                if entrada is not None:
+                    dir_op = str(dec.get("direcao") or "").lower()
+                    delta = (preco_saida - float(entrada)) if dir_op == "long" else (float(entrada) - preco_saida)
+                    if pnl_pts is None:
+                        pnl_pts = round(delta, 4)
+                    if float(entrada) != 0:
+                        pnl_pct = round(delta / float(entrada) * 100, 4)
+        except Exception:
+            pass
+        resultado = {
+            "preco_saida":     preco_saida,
+            "pnl_pts":         pnl_pts,
+            "pnl_pct":         pnl_pct,
+            "tempo_ativo_seg": tempo_seg,
+            "detalhe_ea":      det or {},
+        }
+        upd = {
+            "status":           "fechada",
+            "ts_saida":         ts_saida.isoformat(),
+            "evento_id_fechou": evento_id,
+            "resultado":        resultado,
+        }
+        sb.table("babymachine_operacoes").update(upd).eq("id", op["id"]).execute()
+    except Exception as _e:
+        try: print(f"[bm fechamento] {_e}")
+        except Exception: pass
+
+
+# ════════════════════════════════════════════════════════════════════════════
 #  v6.74 — DETECTOR AUTOMATICO DE OPORTUNIDADE (Sessao 3 do loop fechado)
 #
 #  Roda 24/7 no /conector/snapshot (a cada 15s enquanto o EA emite). Analisa
@@ -7034,6 +7367,14 @@ def _executar_oportunidade_auto(sb, bot, oport, config):
         st["ops_hoje"] = int(st.get("ops_hoje") or 0) + 1
         st["ultima_op_ts"] = time.time()
         _CIRCUIT_STATE[bot.get("id")] = st
+        # v6.76 — BabyMachine registra a decisao com contexto (non-blocking)
+        try:
+            _leit_bm = _anl_ler_leitura(sb, bot.get("user_id"), bot.get("id"))
+            _bm_registrar_do_detector(sb, bot, oport, _leit_bm, None,
+                                      cmd.get("id"), "detector_auto")
+        except Exception as _e2:
+            try: print(f"[bm auto] {_e2}")
+            except Exception: pass
     except Exception as _e:
         try: print(f"[auto comando] {_e}")
         except Exception: pass
@@ -7689,6 +8030,14 @@ def monitor_oportunidade_executar(oport_id: str, inp: OportExecutarIn):
         st["ops_hoje"] = int(st.get("ops_hoje") or 0) + 1
         st["ultima_op_ts"] = time.time()
         _CIRCUIT_STATE[bot.get("id")] = st
+        # v6.76 — BabyMachine registra a decisao do copiloto (non-blocking)
+        try:
+            _leit_bm = _anl_ler_leitura(sb, bot.get("user_id"), bot.get("id"))
+            _bm_registrar_do_detector(sb, bot, oport, _leit_bm, None,
+                                      cmd.get("id"), "detector_copiloto")
+        except Exception as _e2:
+            try: print(f"[bm copiloto] {_e2}")
+            except Exception: pass
         return {"ok": True, "comando_id": cmd.get("id"), "oportunidade": oport}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"erro ao executar: {e}")
@@ -7887,6 +8236,12 @@ def mt5_comando_confirmar(inp: MT5ComandoConfirmIn):
         }).eq("id", inp.comando_id).execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"erro ao confirmar: {e}")
+    # v6.76 — se comando executou com sucesso, BabyMachine marca pendente como aberta
+    if inp.sucesso:
+        try: _bm_marcar_aberta_por_comando(sb, inp.comando_id, inp.resultado or {})
+        except Exception as _e:
+            try: print(f"[bm confirmar] {_e}")
+            except Exception: pass
     return {"ok": True, "status": novo_status}
 
 
@@ -7924,13 +8279,27 @@ def conector_evento(ev: ConectorEvento):
     det = dict(ev.detalhe or {})
     det.setdefault("bot_token", ev.bot_token)
     det.setdefault("bot_nome", bot.get("nome") or "")
+    _bm_evento_id = None
     try:
-        sb.table("agente_eventos").insert({
+        _r_ev = sb.table("agente_eventos").insert({
             "user_id": bot.get("user_id"), "tipo": f"bot_{ev.tipo}",
             "regra": None, "detalhe_json": det,
         }).execute()
+        _bm_evento_id = ((_r_ev.data or [{}])[0]).get("id")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gravar evento: {e}")
+    # v6.76 — BabyMachine acompanha abertura e fechamento (non-blocking)
+    _tipo_bm = str(ev.tipo or "").lower()
+    if _tipo_bm == "aberto":
+        try: _bm_processar_abertura(sb, bot, det, _bm_evento_id)
+        except Exception as _e:
+            try: print(f"[bm hook aberto] {_e}")
+            except Exception: pass
+    elif _tipo_bm == "fechado":
+        try: _bm_processar_fechamento(sb, bot, det, _bm_evento_id)
+        except Exception as _e:
+            try: print(f"[bm hook fechado] {_e}")
+            except Exception: pass
     # v6.69 — FIM DE VIDA IMEDIATO: se o conector PY detectar BOTTESTED_FIM e
     # mandar tipo=fim, zera ultimo_ping AGORA (bot offline em segundos, não espera
     # os 45s do timeout). Silencioso se falhar — o timeout é a rede de segurança.
