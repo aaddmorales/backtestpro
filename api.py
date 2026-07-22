@@ -7854,14 +7854,20 @@ def _bm_processar_fechamento(sb, bot, det, evento_id):
     """/conector/evento tipo=fechado. Fecha a operação ABERTA mais antiga
     desse bot (FIFO). Calcula pnl se der (detalhe geralmente traz preço)."""
     if not sb or not bot: return
-    try:
-        abertas = (sb.table("babymachine_operacoes")
-                   .select("id, decisao, ts_entrada")
+   try:
+        _sim_ev = None
+        try:
+            _dl = {str(k).lower(): v for k, v in (det or {}).items()}
+            _sim_ev = _dl.get("simbolo") or _dl.get("symbol") or _dl.get("ativo")
+        except Exception:
+            pass
+        _q = (sb.table("babymachine_operacoes")
+                   .select("id, decisao, ts_entrada, ativo")
                    .eq("bot_id", bot.get("id"))
-                   .eq("status", "aberta")
-                   .order("ts_entrada")
-                   .limit(1)
-                   .execute().data or [])
+                   .eq("status", "aberta"))
+        if _sim_ev:
+            _q = _q.eq("ativo", _sim_ev)          # v6.98 — casa por SÍMBOLO, não só FIFO do bot
+        abertas = (_q.order("ts_entrada").limit(1).execute().data or [])
         if not abertas:
             # v6.91 — AUTO-RECUPERAÇÃO na saída: antes de criar órfã nova,
             # procura órfã de RECONCILIAÇÃO recente (<2h) — se a reconciliação
