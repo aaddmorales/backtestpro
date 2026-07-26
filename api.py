@@ -1,3 +1,4 @@
+
 # ============================================================
 #  BotTested API — v7.18  (a versão REAL está em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
 #  Build: 2026-07-26g-canal-ema-exaustao | Deploy: Railway
