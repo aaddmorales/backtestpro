@@ -6330,6 +6330,7 @@ ESTRATEGIAS_PRONTAS = [
         "desc": "MEDIDA EM DADO REAL DO MT5 (6 meses, 35 mil barras da IC Markets): XAUUSD M30 fez PF 1.44 com 312 operacoes, positiva em 6 de 7 meses. A regra mais simples da casa: fechou ABAIXO do canal EMA20 High/Low = vende; fechou ACIMA = compra; sai e INVERTE no cruzamento oposto. Sempre posicionada — acerta ~32% das vezes, mas o ganho medio (61 pts) e 3x a perda media (20 pts). Recomendada no M30 e SO no XAUUSD: BTC/USD (PF 0.98, spread come o resto) e S&P500 (PF 0.85) foram medidos nos MESMOS 6 meses e REPROVADOS — a honestidade da medicao vale mais que uma lista bonita de mercados. Stop de desastre obrigatorio; sem take profit por desenho.",
         "tags": ["TEND\u00caNCIA", "SEMPRE POSICIONADO"], "nivel": "intermedi\u00e1rio",
         "mercados": ["XAU/USD (Ouro)"],
+        "celula_real": {"ativo": "XAU/USD (Ouro)", "periodo": "6 meses", "timeframe": "30m", "faixa_acerto": [30, 35], "fonte": "MT5 IC Markets"},
         "codigo": '''# BT_CRUZAMENTO_CANAL — EA nativo deterministico (recomendado: grafico M30)
 # Estrategia da casa medida em 6 meses de dado real do MT5 (XAUUSD M30: PF 1.44).
 # Fechou abaixo do canal EMA20 High/Low = vende; fechou acima = compra;
@@ -13922,6 +13923,20 @@ def estrategias_vitrine(lang: str = "pt"):
             "combos": m.get("combos", 0),
             "forte_pct": m.get("forte_pct", 0),
         })
+        # v7.25c — CELULA REAL: card medido FORA do Yahoo (ex.: CSV do MT5 da
+        # corretora) fica PREGADO na celula aprovada. O agregado do banco Yahoo
+        # continua visivel no verso (honestidade), mas nao tem autoridade pra
+        # trocar o ativo/TF anunciado nem o destino do botao Testar — dado de
+        # corretora real vence dado aproximado. (Licao de 28/jul: o esquenta
+        # mediu o card no Yahoo e o rotulo virou GBP/USD D1, celula que ninguem
+        # aprovou, enquanto XAU/USD M30 PF 1.44 sumia do anuncio.)
+        _cr = est.get("celula_real")
+        if _cr:
+            itens[-1]["top_ativos"] = [_cr.get("ativo")]
+            itens[-1]["melhor_combo"] = {"ativo": _cr.get("ativo"),
+                                         "periodo": _cr.get("periodo", "6 meses"),
+                                         "timeframe": _cr.get("timeframe"),
+                                         "faixa_acerto": _cr.get("faixa_acerto")}
     # v6.43: estratégias MEDIDAS (com combo positivo) primeiro; as "em medição"
     # descem pro fim da grade — a vitrine lidera com o que pode provar.
     # v7.23 — CURADORIA: aprovadas primeiro, medidas depois, em medicao no fim
