@@ -13912,6 +13912,8 @@ def estrategias_vitrine(lang: str = "pt"):
                           ("observacao" if m.get("melhor_combo") else "em_medicao")),
             "medida": bool(m.get("melhor_combo")),
             "casa": bool(est.get("casa")),
+            # v7.25b — card com cor propria (medido no MT5 real) chega ao front
+            "cor_destaque": est.get("cor_destaque"),
             "codigo": est.get("codigo", ""),
             "sharpe_medio": m.get("sharpe_medio"),
             "pf_medio": m.get("pf_medio"),
@@ -13923,7 +13925,8 @@ def estrategias_vitrine(lang: str = "pt"):
     # v6.43: estratégias MEDIDAS (com combo positivo) primeiro; as "em medição"
     # descem pro fim da grade — a vitrine lidera com o que pode provar.
     # v7.23 — CURADORIA: aprovadas primeiro, medidas depois, em medicao no fim
-    itens.sort(key=lambda x: 0 if x.get("celulas_aprovadas") else (1 if x.get("medida") else 2))
+    # v7.25b — destaque (medido em dado REAL do MT5) lidera; depois a curadoria normal
+    itens.sort(key=lambda x: -1 if x.get("cor_destaque") else (0 if x.get("celulas_aprovadas") else (1 if x.get("medida") else 2)))
     # melhores celulas do banco inteiro (ate 6) pro topo da Vitrine — 1 clique
     melhores = []
     for _it in itens:
