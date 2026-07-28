@@ -3891,7 +3891,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v10.23';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.24';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* v10.19: o selo passa a SAIR do APP_VERSAO. Eram dois lugares (literal no HTML
    + constante no JS) e bastou atualizar um pra o selo mentir sobre o deploy —
@@ -9984,6 +9984,8 @@ async function carregarVitrine(){
       const corSh=_vitCorQual(e.sharpe_medio);
       const tagsFront=(e.tags||[]).slice(0,2).map(function(tg){return '<span class="vit-tag">'+tg+'</span>';}).join(' ');
       const casa=e.casa?'<span style="font-size:8px;font-weight:800;color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 4px;margin-left:5px">CASA</span>':'';
+      // v10.24 — card com cor propria (estrategia medida no MT5): selo + moldura
+      const destaque=e.cor_destaque?'<span style="font-size:8px;font-weight:800;color:'+e.cor_destaque+';border:1px solid '+e.cor_destaque+';border-radius:4px;padding:1px 4px;margin-left:5px;white-space:nowrap">\u26a1 MT5</span>':'';
       const wr=(e.winrate_medio!=null?e.winrate_medio+'%':'—');
       // v10.23 — selo da curadoria: aprovada (verde) / em observacao (ambar)
       const _selo=(Array.isArray(e.celulas_aprovadas)&&e.celulas_aprovadas.length)
@@ -10028,7 +10030,7 @@ async function carregarVitrine(){
 
       // FRENTE: robô + nome + timeframe herói + pontinho de qualidade
       const frente='<div class="vit-face vit-front">'
-        +'<div style="width:100%"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+_selo+'</div>'
+        +'<div style="width:100%"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.nome+casa+destaque+_selo+'</div>'
           +'<div style="margin-top:5px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap">'+tagsFront+'</div></div>'
         +_roboImg(e.categoria, _i)
         +(ativosFront
@@ -10084,7 +10086,8 @@ async function carregarVitrine(){
         +'<div class="vit-testar">'+t('vit.testar')+'<span id="vit-dest-'+e.id+'" style="opacity:.85"></span></div>'
       +'</div>';
 
-      return '<div class="vit-card" onclick="escolherEstrategiaVitrine(\''+e.id+'\')"><div class="vit-inner">'+frente+verso+'</div></div>';
+      const _corCard=e.cor_destaque?(' style="border:1.5px solid '+e.cor_destaque+';box-shadow:0 0 16px '+e.cor_destaque+'55"'):'';
+      return '<div class="vit-card"'+_corCard+' onclick="escolherEstrategiaVitrine(\''+e.id+'\')"><div class="vit-inner">'+frente+verso+'</div></div>';
     }).join('');
     // v10.16: primeira escada ja renderizada (card nunca abre vazio) — o
     // ativo de topo vem pre-selecionado e o botao de testar ja diz o destino.
