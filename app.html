@@ -3891,7 +3891,7 @@ initAuth();
 
 <script>
 const API = 'https://backtestpro-production-eb9a.up.railway.app';
-const APP_VERSAO = 'v10.25';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.26';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* v10.19: o selo passa a SAIR do APP_VERSAO. Eram dois lugares (literal no HTML
    + constante no JS) e bastou atualizar um pra o selo mentir sobre o deploy —
@@ -10498,6 +10498,150 @@ function _calRenderFull(){
   <div id="rc-msg">Quer ajuda pra entender esse resultado? Fala comigo!</div>
   <div class="rc-arrow"></div>
 </div>
+<!-- ── TUTOR v10.26: o robo ganha pernas (par do /tutor/momentos v7.31) ── -->
+<style id="bt-tutor-css">
+#tutor-avatar{position:fixed;right:26px;bottom:170px;width:58px;height:58px;z-index:9600;opacity:0;pointer-events:none;transition:left .9s cubic-bezier(.45,1.35,.4,1),top .9s cubic-bezier(.45,1.35,.4,1),right .9s,bottom .9s,opacity .35s}
+#tutor-avatar.ativo{opacity:1;pointer-events:auto}
+#tutor-avatar img{width:100%;filter:drop-shadow(0 8px 18px rgba(139,92,246,.45))}
+#tutor-spot{position:fixed;z-index:9550;border:2px solid #8b5cf6;border-radius:12px;box-shadow:0 0 0 9999px rgba(3,8,16,.55),0 0 24px rgba(139,92,246,.55);pointer-events:none;opacity:0;transition:all .5s}
+#tutor-spot.ativo{opacity:1}
+#tutor-balao{position:fixed;z-index:9650;width:min(340px,86vw);background:var(--bg2,#0d1526);border:1.5px solid #8b5cf6;border-radius:14px;padding:14px 16px;box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(8px);transition:all .4s;pointer-events:none}
+#tutor-balao.ativo{opacity:1;transform:none;pointer-events:auto}
+.tutor-tit{font-weight:800;font-size:13px;color:#a78bfa;margin-bottom:6px;display:flex;gap:6px;align-items:center}
+.tutor-txt{font-size:12.5px;line-height:1.55;color:var(--text,#e6edf3)}
+.tutor-acts{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;align-items:center}
+.tutor-btn{font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 12px;cursor:pointer;border:1px solid #8b5cf6;background:transparent;color:#a78bfa}
+.tutor-btn.cta{background:#8b5cf6;color:#fff;border-color:#8b5cf6}
+.tutor-mute{margin-right:auto;font-size:10.5px;color:var(--muted,#8b949e);cursor:pointer;text-decoration:underline dotted}
+</style>
+<div id="tutor-avatar"><img src="/assets/robo_default.png" alt="Tutor"></div>
+<div id="tutor-spot"></div>
+<div id="tutor-balao">
+  <div class="tutor-tit">🎓 <span id="tutor-tit-txt">Tutor</span></div>
+  <div class="tutor-txt" id="tutor-txt"></div>
+  <div class="tutor-acts">
+    <span class="tutor-mute" onclick="BTTutor.silenciar()">silenciar 1h</span>
+    <button class="tutor-btn" onclick="BTTutor.dispensar()">Entendi</button>
+    <button class="tutor-btn cta" id="tutor-cta" style="display:none" onclick="BTTutor.acao()">Ver</button>
+  </div>
+</div>
+<script>
+// ── BTTutor v1 (v10.26) — o Radar deixa o canto e vai ate o ponto ──────────
+// Busca /tutor/momentos, resolve a ANCORA na tela, anda ate ela com spotlight
+// e balao. Guardrails anti-clippy: dispensados persistem (localStorage), teto
+// de 4 intervencoes/hora, silenciar 1h, so 1 balao por vez, so com aba visivel.
+window.BTTutor = (function(){
+  var LS_DISP = 'bt_tutor_v1_disp', LS_HIST = 'bt_tutor_v1_hist', LS_MUDO = 'bt_tutor_v1_mudo';
+  var atual = null, timer = null;
+  function _ls(k, d){ try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(_){ return d; } }
+  function _lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+  function _mudo(){ return Date.now() < (parseInt(localStorage.getItem(LS_MUDO)||'0',10)); }
+  function _capOk(){
+    var h = _ls(LS_HIST, []).filter(function(t){ return Date.now()-t < 3600000; });
+    _lsSet(LS_HIST, h);
+    return h.length < 4;
+  }
+  var ANCORAS = {
+    gestao_risco: function(){ return document.getElementById('stop_loss'); },
+    learning:     function(){ return document.querySelector('[data-tab-content="learning"]') || document.getElementById('monitor-conteudo'); },
+    monitor:      function(){ return document.getElementById('monitor-geral') || document.getElementById('monitor-conteudo'); }
+  };
+  function _resolver(nome){
+    try{
+      var f = ANCORAS[nome];
+      var el = f ? f() : null;
+      if (el && el.offsetParent !== null) return el;   // so ancora VISIVEL
+    }catch(_){ }
+    return null;
+  }
+  function _pos(el){
+    var av = document.getElementById('tutor-avatar');
+    var sp = document.getElementById('tutor-spot');
+    var ba = document.getElementById('tutor-balao');
+    if (el){
+      try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(_){ }
+      setTimeout(function(){
+        var r = el.getBoundingClientRect();
+        sp.style.left = (r.left-8)+'px'; sp.style.top = (r.top-8)+'px';
+        sp.style.width = (r.width+16)+'px'; sp.style.height = (r.height+16)+'px';
+        sp.classList.add('ativo');
+        var bx = Math.min(Math.max(r.left, 12), window.innerWidth-360);
+        var by = (r.bottom + 190 < window.innerHeight) ? (r.bottom + 18) : Math.max(12, r.top - 185);
+        ba.style.left = bx+'px'; ba.style.top = by+'px';
+        av.style.right = 'auto'; av.style.bottom = 'auto';
+        av.style.left = Math.max(8, bx - 62)+'px'; av.style.top = by+'px';
+        ba.classList.add('ativo'); av.classList.add('ativo');
+      }, 420);
+    } else {
+      // sem ancora visivel: fala do proprio canto
+      sp.classList.remove('ativo');
+      av.style.left = 'auto'; av.style.top = 'auto';
+      av.style.right = '26px'; av.style.bottom = '170px';
+      ba.style.left = 'auto'; ba.style.top = 'auto';
+      ba.style.left = (window.innerWidth - 372)+'px';
+      ba.style.top  = (window.innerHeight - 320)+'px';
+      ba.classList.add('ativo'); av.classList.add('ativo');
+    }
+  }
+  function mostrar(m){
+    if (atual || _mudo() || !_capOk()) return;
+    atual = m;
+    document.getElementById('tutor-tit-txt').textContent = m.titulo || 'Tutor';
+    document.getElementById('tutor-txt').textContent = m.texto || '';
+    var cta = document.getElementById('tutor-cta');
+    cta.style.display = m.acao_label ? '' : 'none';
+    if (m.acao_label) cta.textContent = m.acao_label;
+    _pos(_resolver(m.ancora));
+    var h = _ls(LS_HIST, []); h.push(Date.now()); _lsSet(LS_HIST, h);
+  }
+  function _fechar(){
+    ['tutor-balao','tutor-spot','tutor-avatar'].forEach(function(id){
+      document.getElementById(id).classList.remove('ativo');
+    });
+    var av = document.getElementById('tutor-avatar');
+    av.style.left = 'auto'; av.style.top = 'auto';
+    av.style.right = '26px'; av.style.bottom = '170px';
+    atual = null;
+  }
+  function dispensar(){
+    if (atual){ var d = _ls(LS_DISP, []); if (d.indexOf(atual.id) < 0) d.push(atual.id); _lsSet(LS_DISP, d.slice(-120)); }
+    _fechar();
+  }
+  function acao(){
+    var el = atual ? _resolver(atual.ancora) : null;
+    if (el){ try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(_){ } }
+    dispensar();
+  }
+  function silenciar(){
+    try{ localStorage.setItem(LS_MUDO, String(Date.now() + 3600000)); }catch(_){ }
+    _fechar();
+  }
+  async function buscar(){
+    try{
+      if (atual || _mudo() || document.visibilityState !== 'visible') return;
+      var uid = (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual.id : '';
+      if (!uid) return;
+      var r = await fetch(API + '/tutor/momentos', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: uid, dias: 3})
+      });
+      if (!r.ok) return;
+      var d = await r.json();
+      var disp = _ls(LS_DISP, []);
+      var novos = (d.momentos || []).filter(function(m){ return disp.indexOf(m.id) < 0; });
+      if (novos.length) mostrar(novos[0]);
+    }catch(_){ }
+  }
+  function iniciar(){
+    if (timer) return;
+    setTimeout(buscar, 20000);            // primeira olhada 20s depois do load
+    timer = setInterval(buscar, 120000);  // depois a cada 2 min (so age se tiver novidade)
+  }
+  document.addEventListener('DOMContentLoaded', iniciar);
+  if (document.readyState !== 'loading') iniciar();
+  return {dispensar: dispensar, acao: acao, silenciar: silenciar, buscar: buscar};
+})();
+</script>
 <!-- ── MODAL "Validando pro MT5" ── -->
 <div id="mt5-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(4,10,20,0.82);backdrop-filter:blur(3px);align-items:center;justify-content:center">
   <div style="width:min(440px,92vw);background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:30px 28px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,0.55)">
