@@ -1,6 +1,6 @@
 # ============================================================
-#  BotTested API (versao REAL: so em API_VERSAO/BUILD_TAG, ~linha 640, e no /versao)
-#  Deploy: Railway
+#  BotTested API — v7.47 | Build: 2026-08-12a-bt-cascata-v1 | Deploy: Railway
+#  (mesma versao do API_VERSAO/BUILD_TAG e do /versao — atualizados SEMPRE juntos)
 #  >>> AO ENTREGAR NOVO api.py: atualizar ESTA linha + API_VERSAO + BUILD_TAG juntos <<<
 #  Novidades v3.1:
 #  - FIX CRITICO: rodar_codigo_custom agora executa de verdade com o motor
