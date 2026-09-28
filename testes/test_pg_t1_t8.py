@@ -122,7 +122,7 @@ def test_T5_unique_violation_desfaz_o_claim(dsn, bot):
     did = _decisao(dsn, bot)
     c = psycopg2.connect(dsn); c.autocommit = True; cur = c.cursor()
     cur.execute("select uid from ciclo_decisoes where id=%s", (did,)); u = cur.fetchone()[0]
-    cur.execute("insert into mt5_comandos(bot_id,tipo,params) values (%s,'buy',%s)", (bot["id"], json.dumps({"uid": u})))
+    cur.execute("insert into mt5_comandos(bot_id,bot_token,user_id,tipo,params) values (%s,%s,%s,'buy',%s)", (bot["id"], bot["token"], bot["user"], json.dumps({"uid": u})))
     c.close()
     with pytest.raises(psycopg2.errors.RaiseException, match=r"uid_ja_comandado\(dedup_unique\)"):
         _rpc(dsn, bot, did)
