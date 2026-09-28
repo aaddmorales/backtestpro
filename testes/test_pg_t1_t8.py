@@ -1,4 +1,9 @@
-"""T1-T8 — RPC r01_claim_e_comando + migracoes 0002/0003 em POSTGRES REAL isolado.
+"""T1-T8 — RPC r01_claim_e_comando + migracoes 0002/0003 AUDITADAS (27/set,
+reconstruidas do registro literal) em POSTGRES REAL isolado. Contrato:
+retorno (ok, motivo, comando_id, uid); motivos auditados
+'emissao_so_para_abertura' | 'vinculo_bot_invalido(token_user)' |
+'decisao_invalida_vencida_ou_ja_consumida'; unique_violation vira
+RAISE 'uid_ja_comandado(dedup_unique)' e desfaz o claim.
 Sem skip por construcao: ambiente ausente = FALHA (nunca SKIP).
 Exige BT_PG_ISOLADO_URL e BT_PG_CONFIRMO_ISOLADO=1; o banco precisa ter
 public._bt_homolog_marker (sentinela do isolado)."""
@@ -76,38 +81,40 @@ def _n_cmd(dsn, bot):
 
 def test_T1_claim_e_comando_na_mesma_transacao(dsn, bot):
     did = _decisao(dsn, bot)
-    ok, motivo, cmd = _rpc(dsn, bot, did)
-    assert ok and cmd and motivo == "ok"
+    ok, motivo, cmd, uid_rpc = _rpc(dsn, bot, did)
+    assert ok and cmd and motivo == "ok" and uid_rpc
     assert _status(dsn, did) == "consumida" and _n_cmd(dsn, bot) == 1
     c = psycopg2.connect(dsn); cur = c.cursor()
     cur.execute("select params->>'uid', d.uid from mt5_comandos m join ciclo_decisoes d on d.id=%s where m.id=%s", (did, cmd))
-    a, b = cur.fetchone(); c.close()
-    assert a == b  # uid do comando = uid do servidor
+    a, b = cur.fetchone()
+    cur.execute("select params->'decisao'->>'id', ts_consumo is not null from mt5_comandos m, ciclo_decisoes d where m.id=%s and d.id=%s", (cmd, did))
+    dec_id, consumo = cur.fetchone(); c.close()
+    assert a == b == uid_rpc and dec_id == did and consumo  # uid/decisao do BANCO
 
 
 def test_T2_replay_recusado(dsn, bot):
     did = _decisao(dsn, bot)
     assert _rpc(dsn, bot, did)[0]
-    ok, motivo, cmd = _rpc(dsn, bot, did)
-    assert not ok and motivo.startswith("decisao_nao_emitida") and cmd is None
+    ok, motivo, cmd, _u = _rpc(dsn, bot, did)
+    assert not ok and motivo == "decisao_invalida_vencida_ou_ja_consumida" and cmd is None
     assert _n_cmd(dsn, bot) == 1
 
 
 def test_T3_vinculo_conferido_no_banco(dsn, bot):
     did = _decisao(dsn, bot)
-    assert _rpc(dsn, bot, did, token="0" * 32) [1] == "vinculo_bot_invalido"
-    assert _rpc(dsn, bot, did, user=str(uuid.uuid4()))[1] == "vinculo_bot_invalido"
-    assert _rpc(dsn, bot, did, tipo="sell")[1] == "decisao_lado_incoerente"
+    assert _rpc(dsn, bot, did, token="0" * 32)[1] == "vinculo_bot_invalido(token_user)"
+    assert _rpc(dsn, bot, did, user=str(uuid.uuid4()))[1] == "vinculo_bot_invalido(token_user)"
+    assert _rpc(dsn, bot, did, tipo="sell")[1] == "decisao_invalida_vencida_ou_ja_consumida"
     c = psycopg2.connect(dsn); c.autocommit = True; cur = c.cursor()
     cur.execute("update conector_bots set simbolo='BTCUSD' where id=%s", (bot["id"],)); c.close()
-    assert _rpc(dsn, bot, did)[1] == "decisao_de_outro_simbolo"
+    assert _rpc(dsn, bot, did)[1] == "decisao_invalida_vencida_ou_ja_consumida"
     assert _status(dsn, did) == "emitida" and _n_cmd(dsn, bot) == 0
 
 
 def test_T4_vencida_recusada(dsn, bot):
     did = _decisao(dsn, bot, expira=-5)
-    ok, motivo, _ = _rpc(dsn, bot, did)
-    assert not ok and motivo == "decisao_vencida"
+    ok, motivo, _, _u = _rpc(dsn, bot, did)
+    assert not ok and motivo == "decisao_invalida_vencida_ou_ja_consumida"
     assert _status(dsn, did) == "emitida" and _n_cmd(dsn, bot) == 0
 
 
@@ -117,7 +124,7 @@ def test_T5_unique_violation_desfaz_o_claim(dsn, bot):
     cur.execute("select uid from ciclo_decisoes where id=%s", (did,)); u = cur.fetchone()[0]
     cur.execute("insert into mt5_comandos(bot_id,tipo,params) values (%s,'buy',%s)", (bot["id"], json.dumps({"uid": u})))
     c.close()
-    with pytest.raises(psycopg2.errors.UniqueViolation):
+    with pytest.raises(psycopg2.errors.RaiseException, match=r"uid_ja_comandado\(dedup_unique\)"):
         _rpc(dsn, bot, did)
     assert _status(dsn, did) == "emitida"   # claim desfeito pela transacao
     assert _n_cmd(dsn, bot) == 1            # so o pre-existente
@@ -146,10 +153,10 @@ def test_T7_contrato_e_veto_cv1(dsn, bot):
     d2 = _decisao(dsn, bot, cv1="bloqueada")
     d3 = _decisao(dsn, bot, cv1="neutra")
     for d in (d1, d2, d3):
-        ok, motivo, _ = _rpc(dsn, bot, d)
-        assert not ok and motivo == "decisao_contrato_invalido"
+        ok, motivo, _, _u = _rpc(dsn, bot, d)
+        assert not ok and motivo == "decisao_invalida_vencida_ou_ja_consumida"
         assert _status(dsn, d) == "emitida"
-    assert _rpc(dsn, bot, _decisao(dsn, bot), tipo="close")[1] == "tipo_nao_e_abertura"
+    assert _rpc(dsn, bot, _decisao(dsn, bot), tipo="close")[1] == "emissao_so_para_abertura"
     assert _n_cmd(dsn, bot) == 0
 
 
@@ -166,6 +173,11 @@ def test_T8_grants_e_rls(dsn, bot):
     cur.execute("select relrowsecurity, relforcerowsecurity from pg_class where oid='public.ciclo_decisoes'::regclass")
     assert cur.fetchone() == (True, True)
     cur.execute("select indexdef from pg_indexes where indexname='ux_mt5_comandos_abertura_uid'")
-    assert "WHERE (tipo = ANY" in cur.fetchone()[0]
+    idx = cur.fetchone()[0]
+    assert "WHERE ((tipo = ANY" in idx and "params ? 'uid'" in idx
+    cur.execute("select convalidated from pg_constraint where conname='fk_ciclo_decisoes_bot'")
+    assert cur.fetchone() == (True,)
+    cur.execute("select pg_get_function_result('public.r01_claim_e_comando(text,bigint,text,uuid,text,jsonb,text)'::regprocedure)")
+    assert cur.fetchone()[0] == "TABLE(ok boolean, motivo text, comando_id bigint, uid text)"
     c.close()
     assert _status(dsn, did) == "emitida"
