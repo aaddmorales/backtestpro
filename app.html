@@ -3223,7 +3223,7 @@ async function conectorBannerVerificar(){
     if(bx){ bx.textContent=T.baixar; bx.onclick=function(){ window.open(_CONECTOR_DOWNLOAD_URL,'_blank'); }; }
     const jt=document.getElementById('cb-ja-tenho');
     if(jt){ jt.textContent=T.jatenho; jt.onclick=function(){
-      if(!_btHomolog()){ try{ location.href='bottested://abrir'; }catch(_){} }    // tenta trazer o conector pra frente (nunca em homolog)
+      try{ location.href='bottested://abrir'; }catch(_){}    // tenta trazer o conector pra frente
       _cbMarcarOk();
     }; }
     const fx=document.getElementById('cb-fechar'); if(fx) fx.onclick=_cbMarcarOk;
@@ -3899,10 +3899,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-// v10.45 — na HOMOLOGACAO o bottested:// abre o conector de PRODUCAO (ele e quem registra o
-// protocolo); o token de homolog ia parar la (401). Em homolog o protocolo NUNCA e disparado.
-function _btHomolog(){ try{ return /homolog/i.test(API); }catch(_){ return false; } }
-const APP_VERSAO = 'v10.45-conector-homolog';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.44-perfil-c27r12';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9657,21 +9654,13 @@ async function enviarProMT5(){
       // dispara o protocolo bottested:// (registrado pelo conector na 1ª execução)
       try{
         const ifr=document.createElement('iframe'); ifr.style.display='none';
-        if(_btHomolog()) throw 0;   // v10.45: homolog nunca abre o conector de producao
         ifr.src='bottested://validar?token='+encodeURIComponent(token);
         document.body.appendChild(ifr); setTimeout(function(){ try{ifr.remove();}catch(_){}} ,4000);
       }catch(_){}
-      if(_btHomolog()){
-        _mt5Modal('validando', 'HOMOLOGACAO — abra o BotTested Conector HOMOLOG',
-          'No PowerShell: <b>py C:\\BotTested_HOMOLOG\\conector_homolog.py</b>. Na janela HOMOLOG: Conferir MT5 DEMO, cole ESTE token e clique Conectar. Nao use o conector de producao. Aguardo ate ~2 min.');
-      }
       // espera o conector dar sinal de vida (até ~25s)
       let vivo=false;
-      const _nEsp=_btHomolog()?48:10;   // v10.45: homolog espera ate ~120s (conector aberto a mao)
-      for(let i=0;i<_nEsp;i++){ await new Promise(r=>setTimeout(r,2500)); if(await conectorOnline()){ vivo=true; break; } }
-      if(!vivo){ _mt5Modal('reprovado', TT.reprovadoT, _btHomolog()
-        ? 'BT-K03 · HOMOLOGACAO: o <b>Conector HOMOLOG</b> nao ficou online com este token. Abra <b>C:\\BotTested_HOMOLOG\\conector_homolog.py</b>, confira o MT5 DEMO, cole este token, clique Conectar e envie de novo.'
-        : naoAbriuTxt); return; }
+      for(let i=0;i<10;i++){ await new Promise(r=>setTimeout(r,2500)); if(await conectorOnline()){ vivo=true; break; } }
+      if(!vivo){ _mt5Modal('reprovado', TT.reprovadoT, naoAbriuTxt); return; }
       _mt5Modal('validando', TT.validando, TT.validandoSub);
     }
     // v9.46 — AVISO DO ESPELHO: código idêntico ao da vitrine = validação
