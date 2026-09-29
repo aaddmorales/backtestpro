@@ -1225,6 +1225,44 @@ select option{background:#141920}
   padding:1px 7px;border-radius:9px;font-size:10px;font-weight:800
 }
 
+
+.mon-body.mon-tab-learning{grid-template-columns:minmax(0,1fr)}   /* v10.46: a aba LM ocupa a largura toda do card (antes ficava presa na 1ª coluna de 270px) */
+/* v10.46 — C27R13 LEARNING MACHINE DOS CICLOS (cor nunca é a única indicação: o estado vem escrito) */
+.clm{display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+.clm-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.clm-tit{font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.clm-sub{font-size:11px;color:var(--muted);font-family:var(--mono,monospace)}
+.clm-ciclos{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px}
+@media (max-width:1100px){.clm-ciclos{grid-template-columns:1fr}}
+.clm-c{background:var(--bg2,#0d1420);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55}
+.clm-c b{color:var(--text)}
+.clm-dec{border-width:2px}
+.clm-dec .clm-dec-v{font-size:18px;font-weight:900;letter-spacing:.03em}
+.clm-st{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:8px;font-size:10.5px;font-weight:800;font-family:var(--mono,monospace);border:1px solid currentColor;white-space:nowrap}
+.clm-buy{color:#00d084}.clm-sell{color:#ff5a6a}.clm-neu{color:#c9a227}.clm-na{color:#7d8899}.clm-veto{color:#ff8a3d}.clm-ok{color:#00d084}.clm-warn{color:#ffb830}.clm-bad{color:#ff5a6a}
+.clm-mx{width:100%;overflow-x:auto}
+.clm-mx table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:1100px}
+.clm-mx th{text-align:left;color:var(--muted);font-weight:700;padding:5px 6px;border-bottom:1px solid var(--border2);white-space:nowrap}
+.clm-mx td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.clm-mx tr.clm-row{cursor:pointer}
+.clm-mx tr.clm-row:hover td{background:rgba(255,255,255,.025)}
+.clm-mx tr.clm-ref td{background:rgba(0,208,132,.06)}
+.clm-mx tr.clm-ref td:first-child{box-shadow:inset 3px 0 0 #00d084}
+.clm-mx tr.clm-det td{background:#0a0f18;font-family:var(--mono,monospace);font-size:10.5px;color:var(--muted2);white-space:pre-wrap}
+.clm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:1100px){.clm-grid2{grid-template-columns:1fr}}
+.clm-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11.5px}
+.clm-kv span:nth-child(odd){color:var(--muted)}
+.clm-cnt{display:flex;flex-wrap:wrap;gap:6px}
+.clm-cnt div{background:var(--bg2,#0d1420);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;font-size:11px}
+.clm-cnt b{display:block;font-size:15px;color:var(--text)}
+.clm-tl{max-height:320px;overflow-y:auto;font-size:11.5px}
+.clm-tl-i{display:grid;grid-template-columns:150px 110px 90px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.clm-filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px}
+.clm-filtros select,.clm-filtros input{background:var(--bg2,#0d1420);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;font-size:11px}
+.clm-btn{background:var(--bg4,#1a2230);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer}
+.clm-alerta{border-color:#ff8a3d !important}
+
 /* v9.69 — ABA LEARNING MACHINE */
 .mon-card:fullscreen .mon-tab-learning{
   display:flex !important;flex-direction:column;
@@ -3899,7 +3937,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.44-perfil-c27r12';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.46-ciclos-lm-c27r13';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8416,6 +8454,8 @@ async function carregarBots(){
                 <button class="lm-filtro-btn" data-dias="90" onclick="lmFiltrarPeriodo(${b.id}, 90, this)">90 dias</button>
               </div>
             </div>
+            <!-- v10.46 — C27R13: CICLOS AO VIVO (leituras por TF, decisão do backend, trilha, autoridade, saúde) -->
+            <div class="clm" id="clm-${b.id}"><div class="clm-box clm-sub">Carregando as leituras dos Ciclos…</div></div>
             <!-- v9.85 — PLACAR DO APRENDIZADO (acertos × erros por bot/ativo + porquê dos erros) -->
             <div class="lm-stats" id="lm-stats-${b.id}"></div>
             <!-- TIMELINE -->
@@ -8713,6 +8753,7 @@ async function lmCarregar(botId){
   try {
     // v9.85 — timeline (deste bot) + placar (todos os bots do usuário), em paralelo
     const uid = (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual.id : '';
+    clmCarregar(botId);   // v10.46 — Ciclos ao vivo (independente das operações)
     const [r, rs] = await Promise.all([
       fetch(API + '/babymachine/operacoes', {
         method: 'POST',
@@ -8786,6 +8827,222 @@ function lmRender(botId, dados){
 }
 
 // v9.85 — PLACAR DO APRENDIZADO: geral + por bot + por ativo + porquê dos erros
+
+// ════════════════════════════════════════════════════════════════════════
+//  v10.46 — C27R13 LEARNING MACHINE DOS CICLOS
+//  Tudo que aparece aqui vem do backend (/learning/ciclos/*). A tela NÃO decide:
+//  a decisão consolidada é a do servidor (R-CICLO-01); cores só reforçam o
+//  estado escrito. Ordem das linhas fixa (a do servidor); linhas abertas ficam
+//  abertas entre atualizações.
+// ════════════════════════════════════════════════════════════════════════
+const _clmAbertos = {};          // botId -> Set(tf)
+const _clmFiltro = {};           // botId -> {etapa, barra}
+const _clmUlt = {};              // botId -> último payload
+function _clmE(v){ return (v===null||v===undefined||v==='') ? '' : String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _clmNA(v, txt){ return (v===null||v===undefined||v==='') ? `<span class="clm-na">${txt||'indisponível'}</span>` : _clmE(v); }
+function _clmHora(iso){ if(!iso) return '<span class="clm-na">—</span>'; try{ const d=new Date(iso); return d.toISOString().slice(11,16)+' UTC'; }catch(_){ return _clmE(iso); } }
+function _clmDataHora(iso){ if(!iso) return '—'; try{ const d=new Date(iso); return d.toISOString().replace('T',' ').slice(0,19)+' UTC'; }catch(_){ return _clmE(iso); } }
+function _clmIdade(s){ if(s===null||s===undefined) return '<span class="clm-na">não coletado</span>'; s=Math.max(0,Math.round(s)); if(s<120) return s+'s'; if(s<7200) return Math.round(s/60)+'min'; return Math.round(s/3600)+'h'; }
+function _clmRes(r){
+  const m = {favoravel_compra:['clm-buy','▲','FAVORÁVEL À COMPRA'], favoravel_venda:['clm-sell','▼','FAVORÁVEL À VENDA'],
+             neutro:['clm-neu','◆','NEUTRO'], veto:['clm-veto','⛔','VETO'], indisponivel:['clm-na','○','INDISPONÍVEL']};
+  const x = m[r] || m.indisponivel; return `<span class="clm-st ${x[0]}">${x[1]} ${x[2]}</span>`;
+}
+function _clmEstado(e){
+  const m = {atual:['clm-ok','●','ATUAL'], atrasado:['clm-warn','◐','ATRASADO'], ausente:['clm-bad','○','AUSENTE'],
+             indisponivel:['clm-na','○','INDISPONÍVEL'], sem_carimbo:['clm-warn','◌','SEM CARIMBO DE BARRA']};
+  const x = m[e] || ['clm-na','?',String(e||'—').toUpperCase()]; return `<span class="clm-st ${x[0]}">${x[1]} ${x[2]}</span>`;
+}
+function _clmDir(d){ const m={alta:['clm-buy','▲ alta'],baixa:['clm-sell','▼ baixa'],lateral:['clm-neu','◆ lateral'],indefinida:['clm-na','○ indefinida']}; const x=m[d]||m.indefinida; return `<span class="${x[0]}">${x[1]}</span>`; }
+function _clmDec(d, est){
+  const m = {comprar:['clm-buy','▲ COMPRAR'], vender:['clm-sell','▼ VENDER'], observar:['clm-neu','◆ OBSERVAR'], bloquear:['clm-bad','⛔ BLOQUEAR']};
+  const x = m[d] || ['clm-na', String(d||'—').toUpperCase()];
+  return `<span class="clm-dec-v ${x[0]}">${x[1]}</span> <span class="clm-st ${x[0]}">${_clmE(est)}</span>`;
+}
+function _clmEstr(e){
+  if(!e) return '<span class="clm-na">não calculado</span>';
+  const p=[]; if(e.rompimento) p.push('rompeu extremo (20)'); if(e.rompimento_iminente) p.push('rompimento iminente'); if(e.exaustao) p.push('exaustão');
+  return p.length ? _clmE(p.join(' · ')) : 'sem evento';
+}
+
+async function clmCarregar(botId){
+  const el = document.getElementById('clm-'+botId); if(!el) return;
+  const f = _clmFiltro[botId] || (_clmFiltro[botId] = {etapa:'', barra:''});
+  try{
+    const h = await _authHeaders();
+    const [r, rt] = await Promise.all([
+      fetch(API + '/learning/ciclos/ao-vivo', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, dias: _lmDias})}),
+      fetch(API + '/learning/ciclos/trilha', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, limite: 200,
+             etapa: f.etapa || null, barra_m15: f.barra || null,
+             desde: new Date(Date.now() - _lmDias*86400000).toISOString()})})
+    ]);
+    if(!r.ok){ el.innerHTML = `<div class="clm-box clm-bad">BT-L01 · Não consegui ler os Ciclos (HTTP ${r.status}). A tela não inventa leitura.</div>`; return; }
+    const d = await r.json();
+    const tr = rt.ok ? await rt.json() : {trilha: [], erro: rt.status};
+    d._recebido = new Date().toISOString();
+    _clmUlt[botId] = d;
+    clmRender(botId, d, tr);
+  }catch(e){ el.innerHTML = `<div class="clm-box clm-bad">BT-L02 · Falha de rede ao ler os Ciclos. Última leitura mantida abaixo.</div>` + (el.dataset.ult||''); }
+}
+
+function clmToggle(botId, tf){
+  const s = _clmAbertos[botId] || (_clmAbertos[botId] = new Set());
+  if(s.has(tf)) s.delete(tf); else s.add(tf);
+  const d = _clmUlt[botId]; if(d) clmRender(botId, d, d._trilha || {trilha: []});
+}
+function clmFiltrar(botId){
+  const f = _clmFiltro[botId] || (_clmFiltro[botId] = {});
+  const e = document.getElementById('clm-f-etapa-'+botId), b = document.getElementById('clm-f-barra-'+botId);
+  f.etapa = e ? e.value : ''; f.barra = b ? b.value : '';
+  clmCarregar(botId);
+}
+async function clmExportar(botId, barra){
+  if(!barra){ alert('Escolha a barra M15 (filtro "Barra M15") para exportar a trilha daquele ciclo.'); return; }
+  try{
+    const r = await fetch(API + '/learning/ciclos/exportar', {method:'POST', headers: await _authHeaders(),
+                          body: JSON.stringify({bot_id: botId, barra_m15: barra})});
+    const d = await r.json();
+    const blob = new Blob([JSON.stringify(d, null, 2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `ciclo_bot${botId}_${String(barra).replace(/[:+]/g,'-')}.json`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  }catch(e){ alert('Exportação falhou: ' + e); }
+}
+
+function clmRender(botId, d, tr){
+  const el = document.getElementById('clm-'+botId); if(!el) return;
+  d._trilha = tr;
+  const L = d.leituras || {}, C = d.ciclos || {}, A = d.autoridade || {}, K = d.contadores || {}, S = d.saude || {};
+  const c1 = C.ciclo1 || {}, c2 = C.ciclo2 || {}, cons = C.consolidada || {}, at = C.atestado || {};
+  const abertos = _clmAbertos[botId] || new Set();
+  // ── 1. RESUMO DOS CICLOS + DECISÃO DO BACKEND ──
+  const resumo = `
+  <div class="clm-box">
+    <div class="clm-tit"><span>🔁 Ciclos ao vivo · ${_clmE((d.bot||{}).nome)} · ${_clmE((d.bot||{}).simbolo)} · magic ${_clmE((d.bot||{}).magic)}</span>
+      <span class="clm-sub">barra M15 de referência fechou às ${_clmHora(L.barra_m15_utc)} · leitura do EA ${_clmHora(L.leitura_utc)} · tela recebeu ${_clmDataHora(d._recebido)} · regras ${_clmE(C.versao_regras)}</span></div>
+    <div class="clm-ciclos" style="margin-top:8px">
+      <div class="clm-c"><b>Ciclo 1 · ascendente ${_clmE(c1.ordem)}</b><br>
+        Etapa: <b>${_clmE(c1.etapa)}</b><br>
+        Alinhamento: ${c1.alinhado ? '<span class="clm-st clm-ok">✔ ALINHADO '+_clmE(c1.direcao||'')+'</span>' : '<span class="clm-st clm-na">✖ NÃO ALINHADO</span>'}<br>
+        Divergência: ${(c1.divergencias||[]).length ? '<span class="clm-warn">'+_clmE(c1.divergencias.join('; '))+'</span>' : 'nenhuma'}<br>
+        Degraus superiores: M30 ${_clmE((c1.extras||{}).M30||'—')} · H1 ${_clmE((c1.extras||{}).H1||'—')}<br>
+        <span class="clm-sub">${_clmE(c1.fonte)}</span></div>
+      <div class="clm-c"><b>Ciclo 2 · descendente ${_clmE(c2.ordem)}</b><br>
+        Etapa: <b>${_clmE(c2.etapa)}</b><br>
+        Alinhamento: ${c2.alinhado ? '<span class="clm-st clm-ok">✔ ALINHADO '+_clmE(c2.direcao||'')+'</span>' : '<span class="clm-st clm-na">✖ NÃO ALINHADO</span>'}<br>
+        Divergência: ${(c2.divergencias||[]).length ? '<span class="clm-warn">'+_clmE(c2.divergencias.join('; '))+'</span>' : 'nenhuma'}<br>
+        Referência longa: MN1 ${_clmE((c2.extras||{}).MN1||'—')} · W1 ${_clmE((c2.extras||{}).W1||'—')}<br>
+        <span class="clm-sub">${_clmE(c2.fonte)}</span></div>
+      <div class="clm-c clm-dec ${cons.decisao==='bloquear'?'clm-alerta':''}"><b>Decisão consolidada do backend</b><br>
+        ${_clmDec(cons.decisao, cons.estado)}<br>
+        Regra: <b>${_clmE(cons.regra)}</b><br>
+        Motivo: ${_clmE(cons.motivo)}<br>
+        Execução: ${_clmE(cons.execucao)}<br>
+        Atestado: ${at.estado==='verificado' ? '<span class="clm-st clm-ok">✔ VERIFICADO</span> motor '+_clmE(at.versao_motor)+' · válido até '+_clmHora(at.valido_ate) : '<span class="clm-st clm-bad">✖ '+_clmE((at.estado||'').toUpperCase())+'</span>'}<br>
+        ${(C.faltam||[]).length ? '<span class="clm-bad">Faltando: '+_clmE(C.faltam.join(', '))+'</span><br>' : ''}
+        <span class="clm-sub">${_clmE(cons.fonte)}</span></div>
+    </div>
+  </div>`;
+  // ── 2. MATRIZ POR TIMEFRAME ──
+  const linhas = (L.linhas || []).map(l => {
+    const ref = l.referencia_decisao ? ' clm-ref' : '';
+    const niv = (l.niveis||[]).map(n => `${_clmE(n.tipo)} ${_clmE(n.nivel)} (${_clmE(n.toques)} toques${n.testando?', testando':''})`).join('; ');
+    let row = `<tr class="clm-row${ref}" onclick="clmToggle(${botId}, '${l.tf}')" title="Clique para ver os valores brutos">
+      <td><b>${l.tf}</b>${l.referencia_decisao?' <span class="clm-st clm-ok">REF.</span>':''}<br><span class="clm-sub">${_clmE(l.papel)}</span></td>
+      <td>${l.barra_fechada_utc ? (['D1','W1','MN1'].includes(l.tf) ? _clmE(String(l.barra_fechada_utc).slice(0,10))+' → '+_clmE(String(l.barra_formacao_desde_utc||'').slice(0,10)) : _clmHora(l.barra_fechada_utc)+'→'+_clmHora(l.barra_formacao_desde_utc)) : '<span class="clm-na">sem carimbo</span>'}<br><span class="clm-sub">em formação há ${_clmIdade(l.idade_barra_formacao_s)}</span></td>
+      <td>${_clmHora(l.leitura_utc)}<br><span class="clm-sub">idade ${_clmIdade(l.idade_dado_s)}</span></td>
+      <td>${_clmDir(l.direcao)}<br><span class="clm-sub">${_clmNA(l.tendencia,'tendência não calculada')}</span><br><span class="clm-sub">força: ${_clmNA(l.forca,'não calculada pelo motor')}</span></td>
+      <td>${_clmEstr(l.estrutura)}</td>
+      <td>${_clmNA(l.posicao_preco,'não coletado')}<br><span class="clm-sub">${niv || 'níveis: não coletado'}</span><br><span class="clm-sub">range médio: ${_clmNA(l.volatilidade_range_medio,'não coletado')}</span></td>
+      <td>${_clmRes(l.resultado)}<br><span class="clm-sub">${_clmE(l.regra)}</span></td>
+      <td style="max-width:280px">${_clmE(l.razao)}</td>
+      <td>${_clmEstado(l.estado_dado)}<br><span class="clm-sub">${_clmE(l.fonte)}</span></td>
+    </tr>`;
+    if(abertos.has(l.tf)){
+      row += `<tr class="clm-det"><td colspan="9">${_clmE(JSON.stringify({barra_fechada_utc:l.barra_fechada_utc, barra_formacao_desde_utc:l.barra_formacao_desde_utc, leitura_utc:l.leitura_utc, criterios:{regra:l.regra, razao:l.razao, estrutura:l.estrutura, tendencia_fonte:l.tendencia_fonte}, bruto:l.bruto}, null, 2))}</td></tr>`;
+    }
+    return row;
+  }).join('');
+  const spr = L.spread ? `${_clmE(L.spread.pontos)} pts (${_clmE(L.spread.preco)})` : '<span class="clm-na">não coletado</span>';
+  const matriz = `
+  <div class="clm-box">
+    <div class="clm-tit"><span>📊 Leituras por timeframe</span><span class="clm-sub">preço ${_clmNA(L.preco,'—')} · spread ${spr} · fuso da corretora ${L.offset_corretora_s!=null ? (L.offset_corretora_s/3600)+'h' : 'não informado'} · EA ${_clmNA(L.eav,'< v7.80')} · gráfico ${_clmE(L.tfop||'—')}</span></div>
+    <div class="clm-mx" style="margin-top:6px"><table>
+      <tr><th>TF · papel</th><th>Barra fechada</th><th>Leitura</th><th>Direção · tendência</th><th>Estrutura</th><th>Preço no contexto</th><th>Resultado</th><th>Razão</th><th>Dado · fonte</th></tr>
+      ${linhas || '<tr><td colspan="9" class="clm-na">Sem snapshot deste bot — nada a mostrar (não coletado).</td></tr>'}
+    </table></div>
+    <div class="clm-sub" style="margin-top:4px">▲ favorável à compra · ▼ favorável à venda · ◆ neutro · ⛔ veto · ○ indisponível. Leitura favorável num TF ≠ decisão autorizada ≠ comando criado ≠ ordem executada.</div>
+  </div>`;
+  // ── 3. AUTORIDADE ──
+  const decs = (A.decisoes||[]).slice(0,6).map(x => `<div>${x.status==='consumida'?'<span class="clm-st clm-ok">✔ DECISÃO CONSUMIDA (1×)</span>':'<span class="clm-st clm-neu">◆ DECISÃO AUTORIZADA · '+_clmE((x.status||'').toUpperCase())+'</span>'} uid ${_clmE(x.uid)} · barra ${_clmHora(x.ts_barra)} · emitida ${_clmHora(x.ts_emissao)} · consumo ${_clmHora(x.ts_consumo)} · expira ${_clmHora(x.expira_em)}</div>`).join('') || '<span class="clm-na">nenhuma decisão emitida no período</span>';
+  const cmds = (A.comandos||[]).slice(0,6).map(x => `<div>${x.executada?'<span class="clm-st clm-buy">✔ ORDEM EXECUTADA NO MT5</span>':'<span class="clm-st clm-warn">⧗ COMANDO '+_clmE((x.status||'').toUpperCase())+'</span>'} ${_clmE(x.tipo)} · comando ${_clmE(x.id)} · uid ${_clmE(x.uid)} · criado ${_clmHora(x.criado_em)} · entregue ${_clmHora(x.entregue_em)} · confirmado ${_clmHora(x.confirmado_em)}${x.ticket?' · ticket '+_clmE(x.ticket):''}${x.erro?' · erro '+_clmE(x.erro):''}</div>`).join('') || '<span class="clm-na">nenhum comando de abertura no período</span>';
+  const rec = (A.recusas_rpc||[]).slice(0,5).map(x => `<div class="clm-bad">✖ ${_clmDataHora(x.ts)} · ${_clmE(x.motivo)}</div>`).join('') || '<span class="clm-na">nenhuma recusa da RPC</span>';
+  const autoridade = `
+  <div class="clm-box"><div class="clm-tit"><span>🔐 Autoridade da decisão</span><span class="clm-sub">segredo, token e assinatura inteira nunca saem do servidor</span></div>
+    <div class="clm-grid2" style="margin-top:6px">
+      <div class="clm-kv">
+        <span>Atestado</span><span>${at.estado==='verificado'?'<span class="clm-st clm-ok">✔ VERIFICADO</span>':'<span class="clm-st clm-bad">✖ '+_clmE((at.estado||'—').toUpperCase())+'</span> '+_clmE(at.motivo)}</span>
+        <span>Bot · símbolo · magic</span><span>${_clmE(at.bot_id)} · ${_clmE(at.simbolo)} · ${_clmNA(at.magic,'—')}</span>
+        <span>Barra fechada</span><span>${_clmHora(at.ts_barra_m15)}</span>
+        <span>Validade</span><span>${_clmHora(at.valido_ate)}</span>
+        <span>CV1 · janela</span><span>${_clmE(((at.cv1||{}).veredito)||'—')} · ${_clmE(JSON.stringify((at.cv1||{}).janela||{}))}</span>
+        <span>CV2 · dirs</span><span>${_clmE(JSON.stringify((at.cv2||{}).dirs||{}))}</span>
+        <span>Assinatura</span><span>${_clmNA(at.assinatura,'—')}</span>
+      </div>
+      <div style="font-size:11.5px;line-height:1.6"><b>ciclo_decisoes</b>${decs}<b>Comandos</b>${cmds}<b>Recusas da RPC</b>${rec}</div>
+    </div></div>`;
+  // ── 4. CONTADORES + SAÚDE ──
+  const vetos = Object.entries(K.vetos_por_motivo||{}).map(([k,v]) => `${_clmE(k)}: ${v}`).join(' · ') || 'nenhum';
+  const contadores = `
+  <div class="clm-box"><div class="clm-tit"><span>🧮 Leituras dos Ciclos no período (${_clmE(K.periodo_dias)}d)</span><span class="clm-sub">operações seguem nos contadores Pendentes/Abertas/Fechadas acima</span></div>
+    <div class="clm-cnt" style="margin-top:6px">
+      <div>Barras analisadas<b>${_clmE(K.barras_analisadas)}</b></div><div>Leituras completas<b>${_clmE(K.leituras_completas)}</b></div>
+      <div>Alinhamentos C1<b>${_clmE(K.alinhamentos_c1)}</b></div><div>Alinhamentos C2<b>${_clmE(K.alinhamentos_c2)}</b></div>
+      <div>Decisões autorizadas<b>${_clmE(K.decisoes_autorizadas)}</b></div><div>Comandos<b>${_clmE(K.comandos)}</b></div>
+      <div>Falhas de coleta<b>${_clmE(K.falhas_coleta)}</b></div>
+    </div><div class="clm-sub" style="margin-top:5px">Vetos por motivo: ${vetos}</div></div>`;
+  const V = S.versoes || {};
+  const divPos = S.divergencia_posicao;
+  const saude = `
+  <div class="clm-box ${divPos?'clm-alerta':''}"><div class="clm-tit"><span>🩺 Saúde e integridade</span></div>
+    <div class="clm-grid2" style="margin-top:6px">
+      <div class="clm-kv">
+        <span>MT5 (snapshot)</span><span>${S.mt5==='online'?'<span class="clm-st clm-ok">● ONLINE</span>':'<span class="clm-st clm-warn">◐ '+_clmE((S.mt5||'').toUpperCase())+'</span>'} · último ${_clmDataHora(S.ultimo_snapshot_utc)} (${_clmIdade(S.idade_snapshot_s)})</span>
+        <span>Conector</span><span>visto ${_clmDataHora(S.conector_visto_em)} · ping ${_clmDataHora(S.ultimo_ping)}</span>
+        <span>Versões</span><span>API ${_clmE(V.api)} · build ${_clmE(V.build)} · EA ${_clmE(V.ea)} · conector ${_clmE(V.conector)} · app ${_clmE(typeof APP_VERSAO!=='undefined'?APP_VERSAO:'?')}</span>
+        <span>Lacunas M15</span><span>${_clmE(S.n_lacunas)}${(S.lacunas_m15||[]).length?' · última: '+_clmHora(S.lacunas_m15[0].depois_de)+'→'+_clmHora(S.lacunas_m15[0].antes_de):''}</span>
+        <span>Duplicados</span><span>${_clmE(S.duplicados)}</span>
+      </div>
+      <div class="clm-kv">
+        <span>Símbolo/magic</span><span>${S.divergencia_simbolo||S.divergencia_magic?'<span class="clm-st clm-bad">✖ DIVERGENTE</span>':'<span class="clm-st clm-ok">✔ CONFERE</span>'}</span>
+        <span>Falhas de persistência</span><span>${_clmE(S.falhas_persistencia)}</span>
+        <span>Posição MT5 × BabyMachine</span><span>${divPos?'<span class="clm-st clm-bad">✖ DIVERGE</span>':'<span class="clm-st clm-ok">✔ CONFERE</span>'} MT5 ${_clmNA(S.posicoes_mt5,'não informado')} · BM abertas ${_clmE(S.operacoes_abertas_bm)}
+          ${divPos?` <button class="clm-btn" onclick="event.stopPropagation();document.getElementById('clm-f-etapa-${botId}').value='divergencia';clmFiltrar(${botId})">Investigar</button>`:''}</span>
+      </div>
+    </div></div>`;
+  // ── 5. LINHA DO TEMPO ──
+  const f = _clmFiltro[botId] || {};
+  const barras = [...new Set((tr.trilha||[]).map(x => x.barra_m15).filter(Boolean))];
+  const optsBarra = ['<option value="">todas as barras</option>'].concat(barras.map(b => `<option value="${_clmE(b)}" ${f.barra===b?'selected':''}>${_clmDataHora(b)}</option>`)).join('');
+  const etapas = ['','snapshot','leituras','ciclos','atestado','decisao','veto','persistencia','rpc','comando','resposta_mt5','abertura','fechamento','falha_coleta','divergencia'];
+  const optsEt = etapas.map(e => `<option value="${e}" ${f.etapa===e?'selected':''}>${e||'todas as etapas'}</option>`).join('');
+  const corEst = {ok:'clm-ok', recusado:'clm-bad', falha:'clm-bad', aviso:'clm-warn', pendente:'clm-neu'};
+  const itens = (tr.trilha||[]).map(x => `<div class="clm-tl-i"><span>${_clmDataHora(x.ts)}</span><span><b>${_clmE(x.etapa)}</b><br><span class="clm-sub">${_clmE(x.origem)}</span></span>
+      <span class="clm-st ${corEst[x.estado]||'clm-na'}">${_clmE((x.estado||'').toUpperCase())}</span>
+      <span>${_clmE(x.motivo)}<br><span class="clm-sub">barra ${_clmHora(x.barra_m15)} · corr ${_clmE(x.correlacao)}${x.ref&&x.ref.comando_id?' · comando '+_clmE(x.ref.comando_id):''}</span></span></div>`).join('')
+      || '<div class="clm-na">Nenhum registro na trilha para este filtro.</div>';
+  const trilha = `
+  <div class="clm-box"><div class="clm-tit"><span>🧾 Trilha auditável</span>
+    <span class="clm-filtros">
+      <select id="clm-f-etapa-${botId}" onchange="clmFiltrar(${botId})">${optsEt}</select>
+      <select id="clm-f-barra-${botId}" onchange="clmFiltrar(${botId})">${optsBarra}</select>
+      <button class="clm-btn" onclick="clmExportar(${botId}, (document.getElementById('clm-f-barra-${botId}')||{}).value)">⬇ Exportar ciclo (JSON)</button>
+    </span></div>
+    <div class="clm-tl" style="margin-top:6px">${itens}</div></div>`;
+  el.innerHTML = resumo + matriz + contadores + autoridade + saude + trilha;
+  el.dataset.ult = resumo + matriz;
+}
+
 function lmStatsRender(botId, d){
   const el = document.getElementById('lm-stats-' + botId);
   if (!el) return;
