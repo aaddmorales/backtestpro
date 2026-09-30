@@ -1241,7 +1241,7 @@ select option{background:#141920}
 .clm-st{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:8px;font-size:10.5px;font-weight:800;font-family:var(--mono,monospace);border:1px solid currentColor;white-space:nowrap}
 .clm-buy{color:#00d084}.clm-sell{color:#ff5a6a}.clm-neu{color:#c9a227}.clm-na{color:#7d8899}.clm-veto{color:#ff8a3d}.clm-ok{color:#00d084}.clm-warn{color:#ffb830}.clm-bad{color:#ff5a6a}
 .clm-mx{width:100%;overflow-x:auto}
-.clm-mx table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:1100px}
+.clm-mx table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:1250px}
 .clm-mx th{text-align:left;color:var(--muted);font-weight:700;padding:5px 6px;border-bottom:1px solid var(--border2);white-space:nowrap}
 .clm-mx td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top}
 .clm-mx tr.clm-row{cursor:pointer}
@@ -1251,8 +1251,14 @@ select option{background:#141920}
 .clm-mx tr.clm-det td{background:#0a0f18;font-family:var(--mono,monospace);font-size:10.5px;color:var(--muted2);white-space:pre-wrap}
 .clm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:1100px){.clm-grid2{grid-template-columns:1fr}}
-.clm-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11.5px}
-.clm-kv span:nth-child(odd){color:var(--muted)}
+.clm-kv{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:4px 12px;font-size:11.5px;align-items:start}
+.clm-kv > span{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.clm-kv > span:nth-child(odd){color:var(--muted)}
+.clm-id{font-family:var(--mono,monospace);font-size:10.5px;background:#0a0f18;border:1px solid var(--border2);border-radius:4px;padding:0 4px;overflow-wrap:anywhere;word-break:break-all}
+.clm-lista{font-size:11.5px;line-height:1.55;min-width:0}
+.clm-lista .clm-lt{font-weight:800;color:var(--muted2);margin-top:6px}
+.clm-it{padding:4px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.clm-elo{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11.5px}
 .clm-cnt{display:flex;flex-wrap:wrap;gap:6px}
 .clm-cnt div{background:var(--bg2,#0d1420);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;font-size:11px}
 .clm-cnt b{display:block;font-size:15px;color:var(--text)}
@@ -3937,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.46-ciclos-lm-c27r13';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.47-atestado-lm-c27r14';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8909,97 +8915,140 @@ async function clmExportar(botId, barra){
   }catch(e){ alert('Exportação falhou: ' + e); }
 }
 
+function _clmSimNao(v, sim, nao){ return v ? `<span class="clm-st clm-ok">✔ ${sim}</span>` : `<span class="clm-st clm-na">✖ ${nao}</span>`; }
+function _clmEtapaEstado(etapa, estado){
+  // v10.47: o rótulo diz O QUE aconteceu naquela etapa — "OK" nunca aparece sozinho
+  const M = {
+    snapshot:{ok:'RECEBIDO'}, leituras:{ok:'COLETADA', aviso:'COLETA INCOMPLETA'},
+    ciclos:{ok:'CALCULADO (não autoriza)', aviso:'CÁLCULO INCOMPLETO'},
+    atestado:{ok:'VERIFICADO', recusado:'RECUSADO'}, decisao:{ok:'DECISÃO DO BACKEND'},
+    veto:{recusado:'VETO'}, persistencia:{ok:'DECISÃO PERSISTIDA', falha:'FALHA AO GRAVAR'},
+    rpc:{ok:'CONSUMIDA 1×', recusado:'RPC RECUSOU'}, comando:{pendente:'COMANDO CRIADO', ok:'ENTREGUE AO CONECTOR'},
+    resposta_mt5:{ok:'EXECUTADA NO MT5', falha:'MT5 RECUSOU'}, abertura:{ok:'POSIÇÃO ABERTA'},
+    fechamento:{ok:'POSIÇÃO FECHADA'}, falha_coleta:{aviso:'FALHA DE COLETA', falha:'FALHA DE COLETA'},
+    divergencia:{aviso:'DIVERGÊNCIA', recusado:'DIVERGÊNCIA'}
+  };
+  return ((M[etapa]||{})[estado]) || String(estado||'').toUpperCase();
+}
+function _clmDur(s){ return _clmIdade(s); }
+
 function clmRender(botId, d, tr){
   const el = document.getElementById('clm-'+botId); if(!el) return;
   d._trilha = tr;
   const L = d.leituras || {}, C = d.ciclos || {}, A = d.autoridade || {}, K = d.contadores || {}, S = d.saude || {};
-  const c1 = C.ciclo1 || {}, c2 = C.ciclo2 || {}, cons = C.consolidada || {}, at = C.atestado || {};
+  const c1 = C.ciclo1 || {}, c2 = C.ciclo2 || {}, cons = C.consolidada || {}, at = C.atestado || {}, E = C.estagios || {};
   const abertos = _clmAbertos[botId] || new Set();
+  const cmdsA = A.comandos || [];
+  const temCmd = cmdsA.length > 0, temExec = cmdsA.some(c => c.executada);
+  // ── 0. ESTÁGIOS: quatro perguntas diferentes, quatro respostas separadas ──
+  const est = `
+  <div class="clm-box"><div class="clm-tit"><span>🪜 Onde a barra ${_clmHora(L.barra_m15_utc)} chegou</span><span class="clm-sub">cada etapa é independente; ✔ numa etapa NÃO implica a seguinte</span></div>
+    <div class="clm-cnt" style="margin-top:6px">
+      <div>1 · Leitura coletada<b>${E.leitura_coletada ? '✔ sim' : '✖ não'}</b></div>
+      <div>2 · Ciclo calculado<b>C1 ${(E.ciclo_calculado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_calculado||{}).c2?'✔':'✖'}</b></div>
+      <div>3 · Ciclo alinhado<b>C1 ${(E.ciclo_alinhado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_alinhado||{}).c2?'✔':'✖'}</b></div>
+      <div>4 · Decisão autorizada (backend)<b>${E.decisao_autorizada ? '✔ sim' : '✖ não'}</b></div>
+      <div>5 · Comando criado<b>${temCmd ? '✔ sim' : '✖ não'}</b></div>
+      <div>6 · Ordem executada no MT5<b>${temExec ? '✔ sim' : '✖ não'}</b></div>
+    </div></div>`;
   // ── 1. RESUMO DOS CICLOS + DECISÃO DO BACKEND ──
+  const cicloBox = (c, titulo, extras) => `
+      <div class="clm-c"><b>${titulo}</b><br>
+        Leituras (EA): <b>${_clmE(c.leituras_txt||'')}</b><br>
+        Ciclo: ${_clmSimNao(c.calculado, 'CALCULADO', 'NÃO CALCULADO')} ${c.alinhado ? '<span class="clm-st clm-ok">✔ ALINHADO '+_clmE(c.direcao||'')+'</span>' : '<span class="clm-st clm-na">✖ NÃO ALINHADO</span>'}<br>
+        Etapa: <b>${_clmE(c.etapa)}</b><br>
+        Divergência: ${(c.divergencias||[]).length ? '<span class="clm-warn">'+_clmE(c.divergencias.join('; '))+'</span>' : 'nenhuma'}<br>
+        ${extras}<br>
+        <span class="clm-sub">critério: ${_clmE(c.criterio||'')} · ${_clmE(c.fonte)}</span></div>`;
   const resumo = `
   <div class="clm-box">
     <div class="clm-tit"><span>🔁 Ciclos ao vivo · ${_clmE((d.bot||{}).nome)} · ${_clmE((d.bot||{}).simbolo)} · magic ${_clmE((d.bot||{}).magic)}</span>
-      <span class="clm-sub">barra M15 de referência fechou às ${_clmHora(L.barra_m15_utc)} · leitura do EA ${_clmHora(L.leitura_utc)} · tela recebeu ${_clmDataHora(d._recebido)} · regras ${_clmE(C.versao_regras)}</span></div>
+      <span class="clm-sub">barra M15 de referência fechou às ${_clmHora(L.barra_m15_utc)} · snapshot do EA ${_clmHora(L.leitura_utc)} (idade ${_clmIdade(L.idade_snapshot_s)}) · tela recebeu ${_clmDataHora(d._recebido)} · ${_clmE(C.versao_regras)}</span></div>
     <div class="clm-ciclos" style="margin-top:8px">
-      <div class="clm-c"><b>Ciclo 1 · ascendente ${_clmE(c1.ordem)}</b><br>
-        Etapa: <b>${_clmE(c1.etapa)}</b><br>
-        Alinhamento: ${c1.alinhado ? '<span class="clm-st clm-ok">✔ ALINHADO '+_clmE(c1.direcao||'')+'</span>' : '<span class="clm-st clm-na">✖ NÃO ALINHADO</span>'}<br>
-        Divergência: ${(c1.divergencias||[]).length ? '<span class="clm-warn">'+_clmE(c1.divergencias.join('; '))+'</span>' : 'nenhuma'}<br>
-        Degraus superiores: M30 ${_clmE((c1.extras||{}).M30||'—')} · H1 ${_clmE((c1.extras||{}).H1||'—')}<br>
-        <span class="clm-sub">${_clmE(c1.fonte)}</span></div>
-      <div class="clm-c"><b>Ciclo 2 · descendente ${_clmE(c2.ordem)}</b><br>
-        Etapa: <b>${_clmE(c2.etapa)}</b><br>
-        Alinhamento: ${c2.alinhado ? '<span class="clm-st clm-ok">✔ ALINHADO '+_clmE(c2.direcao||'')+'</span>' : '<span class="clm-st clm-na">✖ NÃO ALINHADO</span>'}<br>
-        Divergência: ${(c2.divergencias||[]).length ? '<span class="clm-warn">'+_clmE(c2.divergencias.join('; '))+'</span>' : 'nenhuma'}<br>
-        Referência longa: MN1 ${_clmE((c2.extras||{}).MN1||'—')} · W1 ${_clmE((c2.extras||{}).W1||'—')}<br>
-        <span class="clm-sub">${_clmE(c2.fonte)}</span></div>
+      ${cicloBox(c1, 'Ciclo 1 · ascendente M1 → M5 → M15', 'Degraus superiores: M30 '+_clmE((c1.extras||{}).M30||'—')+' · H1 '+_clmE((c1.extras||{}).H1||'—'))}
+      ${cicloBox(c2, 'Ciclo 2 · descendente D1 → H4', 'Referência longa: MN1 '+_clmE((c2.extras||{}).MN1||'—')+' · W1 '+_clmE((c2.extras||{}).W1||'—'))}
       <div class="clm-c clm-dec ${cons.decisao==='bloquear'?'clm-alerta':''}"><b>Decisão consolidada do backend</b><br>
         ${_clmDec(cons.decisao, cons.estado)}<br>
         Regra: <b>${_clmE(cons.regra)}</b><br>
         Motivo: ${_clmE(cons.motivo)}<br>
         Execução: ${_clmE(cons.execucao)}<br>
-        Atestado: ${at.estado==='verificado' ? '<span class="clm-st clm-ok">✔ VERIFICADO</span> motor '+_clmE(at.versao_motor)+' · válido até '+_clmHora(at.valido_ate) : '<span class="clm-st clm-bad">✖ '+_clmE((at.estado||'').toUpperCase())+'</span>'}<br>
         ${(C.faltam||[]).length ? '<span class="clm-bad">Faltando: '+_clmE(C.faltam.join(', '))+'</span><br>' : ''}
-        <span class="clm-sub">${_clmE(cons.fonte)}</span></div>
+        <span class="clm-sub">${_clmE(cons.fonte)} · alinhamento descritivo NÃO autoriza</span></div>
     </div>
   </div>`;
+  // ── 1b. ELOS DA CADEIA DO ATESTADO ──
+  const elos = (C.elos||[]).map(e => `<div class="clm-elo"><span>${e.estado==='ok'?'<span class="clm-st clm-ok">✔ OK</span>':(e.estado==='sem_dado'?'<span class="clm-st clm-na">○ SEM DADO</span>':'<span class="clm-st clm-bad">✖ FALHA</span>')}</span><span><b>${_clmE(e.elo)}</b><br><span class="clm-sub">${_clmE(e.motivo)}</span></span></div>`).join('');
+  const cadeia = `<div class="clm-box"><div class="clm-tit"><span>⛓ Cadeia do atestado (motor → assinatura → conector → snapshot → API)</span></div><div style="margin-top:6px">${elos || '<span class="clm-na">sem avaliação</span>'}</div></div>`;
   // ── 2. MATRIZ POR TIMEFRAME ──
   const linhas = (L.linhas || []).map(l => {
     const ref = l.referencia_decisao ? ' clm-ref' : '';
-    const niv = (l.niveis||[]).map(n => `${_clmE(n.tipo)} ${_clmE(n.nivel)} (${_clmE(n.toques)} toques${n.testando?', testando':''})`).join('; ');
+    const niv = (l.niveis||[]).map(n => `${_clmE(n.tipo)} ${_clmE(n.nivel)}${n.toques!=null?' ('+_clmE(n.toques)+' toques'+(n.testando?', testando':'')+')':''}${n.velas_atras!=null?' há '+_clmE(n.velas_atras)+' velas':''}`).join('; ');
+    const longo = ['D1','W1','MN1'].includes(l.tf);
+    const fech = l.barra_fechada_abertura_utc
+      ? (longo ? _clmDataHora(l.barra_fechada_abertura_utc).slice(0,16)+' → '+_clmDataHora(l.barra_fechada_fim_utc).slice(0,16)
+               : _clmHora(l.barra_fechada_abertura_utc)+' → '+_clmHora(l.barra_fechada_fim_utc))
+      : '<span class="clm-na">sem carimbo</span>';
+    const f = l.forca;
     let row = `<tr class="clm-row${ref}" onclick="clmToggle(${botId}, '${l.tf}')" title="Clique para ver os valores brutos">
       <td><b>${l.tf}</b>${l.referencia_decisao?' <span class="clm-st clm-ok">REF.</span>':''}<br><span class="clm-sub">${_clmE(l.papel)}</span></td>
-      <td>${l.barra_fechada_utc ? (['D1','W1','MN1'].includes(l.tf) ? _clmE(String(l.barra_fechada_utc).slice(0,10))+' → '+_clmE(String(l.barra_formacao_desde_utc||'').slice(0,10)) : _clmHora(l.barra_fechada_utc)+'→'+_clmHora(l.barra_formacao_desde_utc)) : '<span class="clm-na">sem carimbo</span>'}<br><span class="clm-sub">em formação há ${_clmIdade(l.idade_barra_formacao_s)}</span></td>
-      <td>${_clmHora(l.leitura_utc)}<br><span class="clm-sub">idade ${_clmIdade(l.idade_dado_s)}</span></td>
-      <td>${_clmDir(l.direcao)}<br><span class="clm-sub">${_clmNA(l.tendencia,'tendência não calculada')}</span><br><span class="clm-sub">força: ${_clmNA(l.forca,'não calculada pelo motor')}</span></td>
-      <td>${_clmEstr(l.estrutura)}</td>
-      <td>${_clmNA(l.posicao_preco,'não coletado')}<br><span class="clm-sub">${niv || 'níveis: não coletado'}</span><br><span class="clm-sub">range médio: ${_clmNA(l.volatilidade_range_medio,'não coletado')}</span></td>
+      <td>${fech}${l.barra_corretora?'<br><span class="clm-sub">'+_clmE(l.barra_corretora)+'</span>':''}</td>
+      <td><span class="clm-sub">snapshot</span> ${_clmIdade(l.idade_snapshot_s)}<br><span class="clm-sub">fechada há</span> ${_clmIdade(l.idade_barra_fechada_s)}<br><span class="clm-sub">em formação há</span> ${l.tempo_em_formacao_s!=null?_clmIdade(l.tempo_em_formacao_s):'<span class="clm-na">não coletado (EA &lt; 7.81)</span>'}</td>
+      <td>${_clmDir(l.direcao)}<br><span class="clm-sub">EA · 5 fechadas</span></td>
+      <td>${_clmNA(l.tendencia,'não calculada')}<br><span class="clm-sub">${l.tendencia?'servidor · 5 velas, inclui em formação':'scanner não cobre este TF'}</span></td>
+      <td>${f ? _clmE(f.direcao)+' '+_clmE(f.valor) : '<span class="clm-na">não calculada</span>'}<br><span class="clm-sub">${f?'_sinal_forca · 10 fechadas':'sem 11 velas fechadas'} · ranking: não existe no contrato</span></td>
+      <td>${_clmEstr(l.estrutura)}<br><span class="clm-sub">compressão/pullback/reversão/OTT: não calculados pelo motor</span></td>
+      <td>${_clmNA(l.posicao_preco,'canal: não coletado')}<br><span class="clm-sub">${niv || 'níveis: não coletado'}</span><br><span class="clm-sub">range médio: ${_clmNA(l.volatilidade_range_medio,'não coletado')}</span></td>
       <td>${_clmRes(l.resultado)}<br><span class="clm-sub">${_clmE(l.regra)}</span></td>
-      <td style="max-width:280px">${_clmE(l.razao)}</td>
-      <td>${_clmEstado(l.estado_dado)}<br><span class="clm-sub">${_clmE(l.fonte)}</span></td>
+      <td style="max-width:260px">${_clmE(l.razao)}</td>
+      <td>${_clmEstado(l.estado_dado)}</td>
     </tr>`;
     if(abertos.has(l.tf)){
-      row += `<tr class="clm-det"><td colspan="9">${_clmE(JSON.stringify({barra_fechada_utc:l.barra_fechada_utc, barra_formacao_desde_utc:l.barra_formacao_desde_utc, leitura_utc:l.leitura_utc, criterios:{regra:l.regra, razao:l.razao, estrutura:l.estrutura, tendencia_fonte:l.tendencia_fonte}, bruto:l.bruto}, null, 2))}</td></tr>`;
+      row += `<tr class="clm-det"><td colspan="11">${_clmE(JSON.stringify({barra_fechada_abertura_utc:l.barra_fechada_abertura_utc, barra_fechada_fim_utc:l.barra_fechada_fim_utc, barra_formacao_abertura_utc:l.barra_formacao_abertura_utc, barra_corretora:l.barra_corretora, leitura_utc:l.leitura_utc, idades_s:{snapshot:l.idade_snapshot_s, barra_fechada:l.idade_barra_fechada_s, em_formacao:l.tempo_em_formacao_s}, criterios:{direcao:l.direcao_fonte, regra:l.regra, razao:l.razao, estrutura:l.estrutura, tendencia:l.tendencia_fonte, forca:l.forca}, niveis:l.niveis, bruto:l.bruto}, null, 2))}</td></tr>`;
     }
     return row;
   }).join('');
   const spr = L.spread ? `${_clmE(L.spread.pontos)} pts (${_clmE(L.spread.preco)})` : '<span class="clm-na">não coletado</span>';
   const matriz = `
   <div class="clm-box">
-    <div class="clm-tit"><span>📊 Leituras por timeframe</span><span class="clm-sub">preço ${_clmNA(L.preco,'—')} · spread ${spr} · fuso da corretora ${L.offset_corretora_s!=null ? (L.offset_corretora_s/3600)+'h' : 'não informado'} · EA ${_clmNA(L.eav,'< v7.80')} · gráfico ${_clmE(L.tfop||'—')}</span></div>
+    <div class="clm-tit"><span>📊 Leituras por timeframe</span><span class="clm-sub">preço ${_clmNA(L.preco,'—')} · spread ${spr} · EA ${_clmNA(L.eav,'< v7.80')} · gráfico ${_clmE(L.tfop||'—')}</span></div>
+    <div class="clm-sub" style="margin-top:3px">${_clmE(L.nota_utc||'')}</div>
     <div class="clm-mx" style="margin-top:6px"><table>
-      <tr><th>TF · papel</th><th>Barra fechada</th><th>Leitura</th><th>Direção · tendência</th><th>Estrutura</th><th>Preço no contexto</th><th>Resultado</th><th>Razão</th><th>Dado · fonte</th></tr>
-      ${linhas || '<tr><td colspan="9" class="clm-na">Sem snapshot deste bot — nada a mostrar (não coletado).</td></tr>'}
+      <tr><th>TF · papel</th><th>Barra fechada (UTC)</th><th>Idades</th><th>Direção (EA)</th><th>Tendência (servidor)</th><th>Força</th><th>Estrutura</th><th>Preço no contexto</th><th>Resultado</th><th>Razão</th><th>Dado</th></tr>
+      ${linhas || '<tr><td colspan="11" class="clm-na">Sem snapshot deste bot — nada a mostrar (não coletado).</td></tr>'}
     </table></div>
-    <div class="clm-sub" style="margin-top:4px">▲ favorável à compra · ▼ favorável à venda · ◆ neutro · ⛔ veto · ○ indisponível. Leitura favorável num TF ≠ decisão autorizada ≠ comando criado ≠ ordem executada.</div>
+    <div class="clm-sub" style="margin-top:4px">Direção = EA (BTvCicloTF, barras fechadas) · Tendência = servidor (inclui a barra em formação): fontes e critérios diferentes podem discordar. ▲ favorável à compra · ▼ favorável à venda · ◆ neutro · ○ indisponível.</div>
   </div>`;
   // ── 3. AUTORIDADE ──
-  const decs = (A.decisoes||[]).slice(0,6).map(x => `<div>${x.status==='consumida'?'<span class="clm-st clm-ok">✔ DECISÃO CONSUMIDA (1×)</span>':'<span class="clm-st clm-neu">◆ DECISÃO AUTORIZADA · '+_clmE((x.status||'').toUpperCase())+'</span>'} uid ${_clmE(x.uid)} · barra ${_clmHora(x.ts_barra)} · emitida ${_clmHora(x.ts_emissao)} · consumo ${_clmHora(x.ts_consumo)} · expira ${_clmHora(x.expira_em)}</div>`).join('') || '<span class="clm-na">nenhuma decisão emitida no período</span>';
-  const cmds = (A.comandos||[]).slice(0,6).map(x => `<div>${x.executada?'<span class="clm-st clm-buy">✔ ORDEM EXECUTADA NO MT5</span>':'<span class="clm-st clm-warn">⧗ COMANDO '+_clmE((x.status||'').toUpperCase())+'</span>'} ${_clmE(x.tipo)} · comando ${_clmE(x.id)} · uid ${_clmE(x.uid)} · criado ${_clmHora(x.criado_em)} · entregue ${_clmHora(x.entregue_em)} · confirmado ${_clmHora(x.confirmado_em)}${x.ticket?' · ticket '+_clmE(x.ticket):''}${x.erro?' · erro '+_clmE(x.erro):''}</div>`).join('') || '<span class="clm-na">nenhum comando de abertura no período</span>';
-  const rec = (A.recusas_rpc||[]).slice(0,5).map(x => `<div class="clm-bad">✖ ${_clmDataHora(x.ts)} · ${_clmE(x.motivo)}</div>`).join('') || '<span class="clm-na">nenhuma recusa da RPC</span>';
+  const idm = v => `<code class="clm-id">${_clmE(v)}</code>`;
+  const decs = (A.decisoes||[]).slice(0,6).map(x => `<div class="clm-it">${x.status==='consumida'?'<span class="clm-st clm-ok">✔ DECISÃO CONSUMIDA (1×)</span>':'<span class="clm-st clm-neu">◆ DECISÃO AUTORIZADA · '+_clmE((x.status||'').toUpperCase())+'</span>'}<br>uid ${idm(x.uid)} · id ${idm(x.id)}<br><span class="clm-sub">barra ${_clmHora(x.ts_barra)} · emitida ${_clmHora(x.ts_emissao)} · consumo ${_clmHora(x.ts_consumo)} · expira ${_clmHora(x.expira_em)}</span></div>`).join('') || '<div class="clm-na">nenhuma decisão persistida em ciclo_decisoes no período</div>';
+  const cmds = cmdsA.slice(0,6).map(x => `<div class="clm-it">${x.executada?'<span class="clm-st clm-buy">✔ ORDEM EXECUTADA NO MT5</span>':'<span class="clm-st clm-warn">⧗ COMANDO '+_clmE((x.status||'').toUpperCase())+'</span>'} ${_clmE(x.tipo)}<br>comando ${idm(x.id)} · uid ${idm(x.uid)}<br><span class="clm-sub">criado ${_clmHora(x.criado_em)} · entregue ${_clmHora(x.entregue_em)} · confirmado ${_clmHora(x.confirmado_em)}${x.ticket?' · ticket '+_clmE(x.ticket):''}${x.erro?' · erro '+_clmE(x.erro):''}</span></div>`).join('') || '<div class="clm-na">nenhum comando de abertura no período</div>';
+  const rec = (A.recusas_rpc||[]).slice(0,5).map(x => `<div class="clm-it clm-bad">✖ ${_clmDataHora(x.ts)} · ${_clmE(x.motivo)}</div>`).join('') || '<div class="clm-na">nenhuma recusa da RPC</div>';
   const autoridade = `
   <div class="clm-box"><div class="clm-tit"><span>🔐 Autoridade da decisão</span><span class="clm-sub">segredo, token e assinatura inteira nunca saem do servidor</span></div>
     <div class="clm-grid2" style="margin-top:6px">
       <div class="clm-kv">
-        <span>Atestado</span><span>${at.estado==='verificado'?'<span class="clm-st clm-ok">✔ VERIFICADO</span>':'<span class="clm-st clm-bad">✖ '+_clmE((at.estado||'—').toUpperCase())+'</span> '+_clmE(at.motivo)}</span>
+        <span>Atestado</span><span>${at.estado==='verificado'?'<span class="clm-st clm-ok">✔ VERIFICADO</span>':'<span class="clm-st clm-bad">✖ '+_clmE((at.estado||'—').toUpperCase())+'</span><br>'+_clmE(at.motivo)}</span>
         <span>Bot · símbolo · magic</span><span>${_clmE(at.bot_id)} · ${_clmE(at.simbolo)} · ${_clmNA(at.magic,'—')}</span>
         <span>Barra fechada</span><span>${_clmHora(at.ts_barra_m15)}</span>
         <span>Validade</span><span>${_clmHora(at.valido_ate)}</span>
-        <span>CV1 · janela</span><span>${_clmE(((at.cv1||{}).veredito)||'—')} · ${_clmE(JSON.stringify((at.cv1||{}).janela||{}))}</span>
-        <span>CV2 · dirs</span><span>${_clmE(JSON.stringify((at.cv2||{}).dirs||{}))}</span>
-        <span>Assinatura</span><span>${_clmNA(at.assinatura,'—')}</span>
+        <span>Motor</span><span>${_clmNA(at.versao_motor,'—')}</span>
+        <span>CV1 · janela</span><span>${_clmE(((at.cv1||{}).veredito)||'—')} · ${idm(JSON.stringify((at.cv1||{}).janela||{}))}</span>
+        <span>CV2 · dirs</span><span>${idm(JSON.stringify((at.cv2||{}).dirs||{}))}</span>
+        <span>Assinatura</span><span>${at.assinatura?idm(at.assinatura):'<span class="clm-na">—</span>'}</span>
       </div>
-      <div style="font-size:11.5px;line-height:1.6"><b>ciclo_decisoes</b>${decs}<b>Comandos</b>${cmds}<b>Recusas da RPC</b>${rec}</div>
+      <div class="clm-lista"><div class="clm-lt">ciclo_decisoes</div>${decs}<div class="clm-lt">Comandos</div>${cmds}<div class="clm-lt">Recusas da RPC</div>${rec}</div>
     </div></div>`;
   // ── 4. CONTADORES + SAÚDE ──
   const vetos = Object.entries(K.vetos_por_motivo||{}).map(([k,v]) => `${_clmE(k)}: ${v}`).join(' · ') || 'nenhum';
+  const LB = S.lacunas_barras || {};
   const contadores = `
   <div class="clm-box"><div class="clm-tit"><span>🧮 Leituras dos Ciclos no período (${_clmE(K.periodo_dias)}d)</span><span class="clm-sub">operações seguem nos contadores Pendentes/Abertas/Fechadas acima</span></div>
     <div class="clm-cnt" style="margin-top:6px">
-      <div>Barras analisadas<b>${_clmE(K.barras_analisadas)}</b></div><div>Leituras completas<b>${_clmE(K.leituras_completas)}</b></div>
+      <div>Barras analisadas<b>${_clmE(K.barras_analisadas)}</b></div><div>Snapshots recebidos<b>${_clmE(K.snapshots_recebidos)}</b></div>
+      <div>Leituras completas<b>${_clmE(K.leituras_completas)}</b></div>
       <div>Alinhamentos C1<b>${_clmE(K.alinhamentos_c1)}</b></div><div>Alinhamentos C2<b>${_clmE(K.alinhamentos_c2)}</b></div>
-      <div>Decisões autorizadas<b>${_clmE(K.decisoes_autorizadas)}</b></div><div>Comandos<b>${_clmE(K.comandos)}</b></div>
-      <div>Falhas de coleta<b>${_clmE(K.falhas_coleta)}</b></div>
+      <div>Decisões autorizadas<b>${_clmE(K.decisoes_autorizadas)}</b></div><div>Decisões duplicadas<b>${_clmE(K.decisoes_duplicadas)}</b></div>
+      <div>Comandos<b>${_clmE(K.comandos)}</b></div><div>Falhas de coleta<b>${_clmE(K.falhas_coleta)}</b></div>
     </div><div class="clm-sub" style="margin-top:5px">Vetos por motivo: ${vetos}</div></div>`;
   const V = S.versoes || {};
   const divPos = S.divergencia_posicao;
@@ -9009,9 +9058,9 @@ function clmRender(botId, d, tr){
       <div class="clm-kv">
         <span>MT5 (snapshot)</span><span>${S.mt5==='online'?'<span class="clm-st clm-ok">● ONLINE</span>':'<span class="clm-st clm-warn">◐ '+_clmE((S.mt5||'').toUpperCase())+'</span>'} · último ${_clmDataHora(S.ultimo_snapshot_utc)} (${_clmIdade(S.idade_snapshot_s)})</span>
         <span>Conector</span><span>visto ${_clmDataHora(S.conector_visto_em)} · ping ${_clmDataHora(S.ultimo_ping)}</span>
-        <span>Versões</span><span>API ${_clmE(V.api)} · build ${_clmE(V.build)} · EA ${_clmE(V.ea)} · conector ${_clmE(V.conector)} · app ${_clmE(typeof APP_VERSAO!=='undefined'?APP_VERSAO:'?')}</span>
-        <span>Lacunas M15</span><span>${_clmE(S.n_lacunas)}${(S.lacunas_m15||[]).length?' · última: '+_clmHora(S.lacunas_m15[0].depois_de)+'→'+_clmHora(S.lacunas_m15[0].antes_de):''}</span>
-        <span>Duplicados</span><span>${_clmE(S.duplicados)}</span>
+        <span>Versões</span><span>API ${_clmE(V.api)} · build ${_clmE(V.build)}<br>EA ${_clmE(V.ea)} · conector ${_clmE(V.conector)} · app ${_clmE(typeof APP_VERSAO!=='undefined'?APP_VERSAO:'?')}</span>
+        <span>Lacunas M15</span><span>${_clmE(S.n_lacunas)} intervalo(s): ausência de coleta ${_clmE(LB.ausencia_de_coleta||0)} · mercado fechado ${_clmE(LB.mercado_fechado||0)} · indeterminado (EA antigo) ${_clmE(LB.indeterminado_ea_antigo||0)}</span>
+        <span>Snapshots repetidos</span><span>${_clmE(S.duplicados)} (não geram decisão nova)</span>
       </div>
       <div class="clm-kv">
         <span>Símbolo/magic</span><span>${S.divergencia_simbolo||S.divergencia_magic?'<span class="clm-st clm-bad">✖ DIVERGENTE</span>':'<span class="clm-st clm-ok">✔ CONFERE</span>'}</span>
@@ -9028,7 +9077,7 @@ function clmRender(botId, d, tr){
   const optsEt = etapas.map(e => `<option value="${e}" ${f.etapa===e?'selected':''}>${e||'todas as etapas'}</option>`).join('');
   const corEst = {ok:'clm-ok', recusado:'clm-bad', falha:'clm-bad', aviso:'clm-warn', pendente:'clm-neu'};
   const itens = (tr.trilha||[]).map(x => `<div class="clm-tl-i"><span>${_clmDataHora(x.ts)}</span><span><b>${_clmE(x.etapa)}</b><br><span class="clm-sub">${_clmE(x.origem)}</span></span>
-      <span class="clm-st ${corEst[x.estado]||'clm-na'}">${_clmE((x.estado||'').toUpperCase())}</span>
+      <span><span class="clm-st ${corEst[x.estado]||'clm-na'}">${_clmE(_clmEtapaEstado(x.etapa, x.estado))}</span></span>
       <span>${_clmE(x.motivo)}<br><span class="clm-sub">barra ${_clmHora(x.barra_m15)} · corr ${_clmE(x.correlacao)}${x.ref&&x.ref.comando_id?' · comando '+_clmE(x.ref.comando_id):''}</span></span></div>`).join('')
       || '<div class="clm-na">Nenhum registro na trilha para este filtro.</div>';
   const trilha = `
@@ -9039,8 +9088,8 @@ function clmRender(botId, d, tr){
       <button class="clm-btn" onclick="clmExportar(${botId}, (document.getElementById('clm-f-barra-${botId}')||{}).value)">⬇ Exportar ciclo (JSON)</button>
     </span></div>
     <div class="clm-tl" style="margin-top:6px">${itens}</div></div>`;
-  el.innerHTML = resumo + matriz + contadores + autoridade + saude + trilha;
-  el.dataset.ult = resumo + matriz;
+  el.innerHTML = est + resumo + cadeia + matriz + contadores + autoridade + saude + trilha;
+  el.dataset.ult = est + resumo + matriz;
 }
 
 function lmStatsRender(botId, d){

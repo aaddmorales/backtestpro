@@ -36,7 +36,7 @@ def _magic(tok):
     return 100000 + (int(h[:12], 16) % 1_900_000_000)
 
 
-def _det(tok, agora=None, cvt=True, cv1="U.U.U^.L.D", cv2="U.U.U.U", tgmt_atraso=0, extra=None):
+def _det(tok, agora=None, cvt=True, cv1="U.U.U^.L.D", cv2="U.U.U.U", tgmt_atraso=0, extra=None, m15_sem=()):
     agora = int(agora or time.time())
     seg = {"MN1": None, "W1": 604800, "D1": 86400, "H4": 14400, "H1": 3600, "M30": 1800, "M15": 900, "M5": 300, "M1": 60}
     tempos = []
@@ -52,6 +52,16 @@ def _det(tok, agora=None, cvt=True, cv1="U.U.U^.L.D", cv2="U.U.U.U", tgmt_atraso
          "tsrv": str(agora - tgmt_atraso + OFF), "tgmt": str(agora - tgmt_atraso)}
     if cvt:
         d["cvt"] = ".".join(tempos)
+        t0s = []
+        for tf in ("MN1", "W1", "D1", "H4", "H1", "M30", "M15", "M5", "M1"):
+            s_ = seg[tf] or 2592000
+            t0s.append(str((agora // s_) * s_ + OFF))
+        d["cvt0"] = ".".join(t0s)
+        # m15h: aberturas das 96 M15 fechadas que a "corretora" teve (exceto m15_sem, em UTC de abertura)
+        ab = [(agora // 900) * 900 - 900 * k for k in range(1, 97)]
+        ab = [x for x in ab if x not in set(m15_sem)]
+        d["m15h"] = ",".join([str(ab[0] + OFF)] + [str((ab[i - 1] - ab[i]) // 900) for i in range(1, len(ab))])
+        d["cD"] = ";".join([vela] * 12); d["eav"] = "7.81-ciclos-lm2"
     d.update(extra or {})
     return d
 
@@ -131,14 +141,14 @@ def test_2_painel_ordem_resumo_e_sem_segredos(amb):
     assert por["M5"]["estrutura"]["rompimento_iminente"] is False and por["M15"]["estrutura"]["rompimento_iminente"]
     assert por["H1"]["direcao"] == "baixa" and por["M30"]["resultado"] == "neutro" and por["D1"]["resultado"] == "favoravel_compra"
     assert por["M30"]["canal_ema20"] == "acima" and por["H4"]["posicao_preco"].startswith("abaixo")
-    assert por["D1"]["forca"] is None                               # o motor não calcula: não inventa
+    assert por["D1"]["ranking"] is None                             # nenhum contrato define ranking: não inventa
     c = j["ciclos"]
     assert c["ciclo1"]["etapa"] == "M1 → M5 → M15 (completo)" and c["ciclo2"]["alinhado"]
     cons = c["consolidada"]
     assert cons["decisao"] == "bloquear" and cons["estado"] == "INCOMPLETO/BLOQUEADO"
     assert cons["modo_operacional"] == "observar"
     assert j["contadores"]["barras_analisadas"] >= 1 and j["contadores"]["vetos_por_motivo"].get("R-CICLO-01.atestado")
-    assert j["saude"]["versoes"]["ea"] == "7.80-ciclos-lm1" and j["saude"]["mt5"] == "online"
+    assert j["saude"]["versoes"]["ea"] == "7.81-ciclos-lm2" and j["saude"]["mt5"] == "online"
     assert b["tok"].encode() not in raw and b"bot_token" not in raw
 
 
@@ -233,3 +243,43 @@ def test_7_atestado_valido_autoriza_e_repeticao_de_decisao(amb):
     c0 = [c for c in j["autoridade"]["comandos"] if c["id"] == cmd["id"]][0]
     assert c0["executada"] and c0["ticket"] == 998877 and c0["uid"] == d1["uid"]
     assert [d for d in j["autoridade"]["decisoes"] if d["uid"] == d1["uid"]][0]["consumo_unico"] is True
+
+
+def test_8_idades_separadas_e_rotulo_da_corretora(amb):
+    b = amb["bots"]["B"]
+    _snap(b["tok"], _det(b["tok"]))
+    j, _ = _ao_vivo(amb, b["id"])
+    por = {l["tf"]: l for l in j["leituras"]["linhas"]}
+    agora = int(time.time())
+    m15 = por["M15"]
+    assert m15["tempo_em_formacao_s"] is not None and 0 <= m15["tempo_em_formacao_s"] < 900
+    assert m15["idade_barra_fechada_s"] == m15["tempo_em_formacao_s"]           # mercado contínuo: fechou quando a atual abriu
+    assert m15["idade_snapshot_s"] is not None and m15["idade_snapshot_s"] <= 5
+    assert por["D1"]["barra_corretora"].startswith("dia ") and "UTC+3" in por["D1"]["barra_corretora"]
+    assert por["MN1"]["barra_fechada_fim_utc"] is not None                       # MN1 pelo calendário da corretora
+    assert por["M5"]["forca"]["fonte"].startswith("contrato _sinal_forca") and por["M5"]["ranking"] is None
+    assert por["D1"]["volatilidade_range_medio"] is not None                     # cD (EA 7.81)
+    assert j["ciclos"]["estagios"]["decisao_autorizada"] is False and j["ciclos"]["estagios"]["leitura_coletada"]
+    assert [e["estado"] for e in j["ciclos"]["elos"]][:2] == ["falha", "falha"]   # conector de teste sem ponte
+
+
+def test_9_lacunas_coleta_x_mercado_fechado(amb):
+    b = amb["bots"]["C"]
+    agora = int(time.time())
+    base = (agora // 900) * 900
+    _snap(b["tok"], _det(b["tok"], agora=agora - 3600))                          # barra T-60min
+    # a "corretora" NÃO teve as barras que fecharam em T-30 e T-15 (abertas em T-45 e T-30)
+    _snap(b["tok"], _det(b["tok"], m15_sem=(base - 2700, base - 1800)))
+    j, _ = _ao_vivo(amb, b["id"])
+    lb = j["saude"]["lacunas_barras"]
+    assert (lb["ausencia_de_coleta"], lb["mercado_fechado"]) == (1, 2), j["saude"]["lacunas_m15"]
+
+
+def test_10_rotulos_de_ciclo_sem_direcao(amb):
+    b = amb["bots"]["B"]
+    _snap(b["tok"], _det(b["tok"], cv1="L.L.U.L.L", cv2="L.D.L.L"))
+    j, _ = _ao_vivo(amb, b["id"])
+    c1, c2 = j["ciclos"]["ciclo1"], j["ciclos"]["ciclo2"]
+    assert c1["calculado"] and not c1["alinhado"] and c1["etapa"].startswith("escada não começa: M1 lateral")
+    assert c1["leituras_txt"] == "M1 lateral · M5 lateral · M15 alta"
+    assert c2["etapa"] == "D1 lateral · H4 lateral — sem direção de referência"
