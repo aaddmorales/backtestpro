@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.47-atestado-lm-c27r14';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.48-motor-ciclos-c27r14';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8932,6 +8932,38 @@ function _clmEtapaEstado(etapa, estado){
 }
 function _clmDur(s){ return _clmIdade(s); }
 
+// C27R14 rev.2 — leitura ORIGINAL do motor dos Ciclos (bt_ciclo_v1), como o conector a recebeu do leitor.
+// É telemetria: a autoridade continua sendo o atestado assinado verificado pelo backend.
+function clmMotorBox(m){
+  if (!m) return `<div class="clm-box"><div class="clm-tit"><span>🧠 Motor dos Ciclos (PC)</span></div><span class="clm-bad">sem telemetria do motor — conector sem a ponte hml8 ou leitor do motor não configurado</span></div>`;
+  const est = m.estado === 'ok' ? '<span class="clm-st clm-ok">✔ LENDO</span>'
+    : ({processo_parado:'<span class="clm-st clm-bad">✖ PROCESSO PARADO</span>', espelho_atrasado:'<span class="clm-st clm-bad">✖ ESPELHO ATRASADO</span>',
+        espelho_ausente:'<span class="clm-st clm-bad">✖ ESPELHO AUSENTE</span>', nao_configurado:'<span class="clm-st clm-bad">✖ NÃO CONFIGURADO</span>'}[m.estado]
+       || `<span class="clm-st clm-bad">✖ ${_clmE(String(m.estado||'?').toUpperCase())}</span>`);
+  const lt = m.leitura || {};
+  const pt = m.por_tf || {};
+  const ord = ['D1','H4','H1','M30','M15','M5','M1'];
+  const dirTxt = v => v===1?'alta':(v===-1?'baixa':(v===0?'lateral':'—'));
+  const rows = ord.filter(k => pt[k]).map(k => { const x = pt[k] || {};
+    return `<tr><td><b>${k}</b></td><td>${_clmE(x.barra_corretora||x.fonte||'—')}</td><td>${dirTxt(x.dir)}</td><td>${_clmE(x.estrutura||'—')}<br><span class="clm-sub">topo ${_clmE(x.ultimo_topo??'—')} · fundo ${_clmE(x.ultimo_fundo??'—')}</span></td>
+      <td>${_clmE(x.regime||'—')}<br><span class="clm-sub">caixa: ${_clmE(x.caixa||'nenhuma')}</span></td><td>degrau ${_clmE(x.degrau??'—')}<br><span class="clm-sub">${_clmE(x.gatilho_exaustao||'sem gatilho')}</span></td>
+      <td>${_clmE(x.forca??'—')} / ${_clmE(x.confianca??'—')}<br><span class="clm-sub">força/confiança [REF] · persist. ${_clmE(x.persistencia??'—')}</span></td><td>${_clmE(x.volatilidade||'—')}<br><span class="clm-sub">L=${_clmE(x.perna_L??'—')} D=${_clmE(x.afastamento_D??'—')}</span></td>
+      <td><span class="clm-sub">${_clmE((x.eventos||[]).join(', ')||'—')}</span></td></tr>`; }).join('');
+  const td = lt.topdown || [];
+  return `<div class="clm-box"><div class="clm-tit"><span>🧠 Motor dos Ciclos (PC · bt_ciclo_v1) — leitura original</span>${est}</div>
+    <div class="clm-kv" style="margin-top:6px">
+      <span>Processo</span><span>pid ${_clmE(m.pid??'—')} · batimento há ${_clmE(m.heartbeat_idade_s??'—')}s · leitor ${_clmE(m.leitor||'—')} · conta ${_clmE(m.login??'—')} ${m.conta_demo?'DEMO':''}</span>
+      <span>Barra lida pelo motor</span><span>${_clmE(m.barra_motor_corretora||'—')} (corretora) · publicada há ${_clmE(m.publicado_idade_s??'—')}s · OHLC ${m.ohlc_confere?'confere com o EA':(m.ohlc_confere===false?'DIVERGE do EA':'não conferido')}</span>
+      <span>Fuso</span><span>EA ${_clmE(m.off_ea_s??'—')}s · motor ${_clmE(m.off_motor_s??'—')}s (${_clmE(m.off_motor_fonte||'—')})</span>
+      <span>Veredito do motor</span><span><b>${_clmE(td[0]||'—')}</b> · ${_clmE(td[1]||'')} <span class="clm-sub">(descritivo aqui; só vale como autoridade pelo atestado verificado)</span></span>
+      <span>Ciclo 1 (escada)</span><span>${_clmE(lt.estado_unico||'—')} · janela 10→15: ${_clmE(lt.janela_10_15||'sem confirmação')} · fase ${_clmE((lt.fase||{}).fase??'—')} ${_clmE((lt.fase||{}).rotulo||'')}</span>
+      <span>Classificação</span><span>${_clmE(lt.classificacao||'—')} · conclusão: ${_clmE((lt.conclusao||{}).decisao||'—')}</span>
+      ${m.estado!=='ok'?`<span>Motivo</span><span class="clm-bad">${_clmE(m.motivo||'')}</span>`:''}
+    </div>
+    ${rows?`<div class="clm-mx" style="margin-top:8px"><table><thead><tr><th>TF</th><th>Barra (corretora)</th><th>Canal EMA20</th><th>Estrutura (pivôs N=2)</th><th>Regime / compressão</th><th>Exaustão / reversão</th><th>Força / confiança</th><th>Volatilidade</th><th>Eventos</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+  </div>`;
+}
+
 function clmRender(botId, d, tr){
   const el = document.getElementById('clm-'+botId); if(!el) return;
   d._trilha = tr;
@@ -8977,8 +9009,9 @@ function clmRender(botId, d, tr){
     </div>
   </div>`;
   // ── 1b. ELOS DA CADEIA DO ATESTADO ──
-  const elos = (C.elos||[]).map(e => `<div class="clm-elo"><span>${e.estado==='ok'?'<span class="clm-st clm-ok">✔ OK</span>':(e.estado==='sem_dado'?'<span class="clm-st clm-na">○ SEM DADO</span>':'<span class="clm-st clm-bad">✖ FALHA</span>')}</span><span><b>${_clmE(e.elo)}</b><br><span class="clm-sub">${_clmE(e.motivo)}</span></span></div>`).join('');
-  const cadeia = `<div class="clm-box"><div class="clm-tit"><span>⛓ Cadeia do atestado (motor → assinatura → conector → snapshot → API)</span></div><div style="margin-top:6px">${elos || '<span class="clm-na">sem avaliação</span>'}</div></div>`;
+  const elos = (C.elos||[]).map(e => `<div class="clm-elo"><span>${e.estado==='ok'?'<span class="clm-st clm-ok">✔ OK</span>':(e.estado==='sem_dado'?'<span class="clm-st clm-na">○ SEM DADO</span>':(e.estado==='nao_avaliado'?'<span class="clm-st clm-na">· NÃO AVALIADO</span>':'<span class="clm-st clm-bad">✖ FALHA</span>'))}</span><span><b>${_clmE(e.elo)}</b><br><span class="clm-sub">${_clmE(e.motivo)}</span></span></div>`).join('');
+  const cadeia = `<div class="clm-box"><div class="clm-tit"><span>⛓ Cadeia do atestado (processo do motor → espelho → identidade → fuso → assinatura → API)</span></div><div style="margin-top:6px">${elos || '<span class="clm-na">sem avaliação</span>'}</div></div>`
+    + clmMotorBox(L.motor);
   // ── 2. MATRIZ POR TIMEFRAME ──
   const linhas = (L.linhas || []).map(l => {
     const ref = l.referencia_decisao ? ' clm-ref' : '';
@@ -8996,7 +9029,7 @@ function clmRender(botId, d, tr){
       <td>${_clmDir(l.direcao)}<br><span class="clm-sub">EA · 5 fechadas</span></td>
       <td>${_clmNA(l.tendencia,'não calculada')}<br><span class="clm-sub">${l.tendencia?'servidor · 5 velas, inclui em formação':'scanner não cobre este TF'}</span></td>
       <td>${f ? _clmE(f.direcao)+' '+_clmE(f.valor) : '<span class="clm-na">não calculada</span>'}<br><span class="clm-sub">${f?'_sinal_forca · 10 fechadas':'sem 11 velas fechadas'} · ranking: não existe no contrato</span></td>
-      <td>${_clmEstr(l.estrutura)}<br><span class="clm-sub">compressão/pullback/reversão/OTT: não calculados pelo motor</span></td>
+      <td>${_clmEstr(l.estrutura)}<br><span class="clm-sub">leitura do EA (telemetria) · compressão, pullback e reversão: ver quadro do motor · OTT: não existe no motor</span></td>
       <td>${_clmNA(l.posicao_preco,'canal: não coletado')}<br><span class="clm-sub">${niv || 'níveis: não coletado'}</span><br><span class="clm-sub">range médio: ${_clmNA(l.volatilidade_range_medio,'não coletado')}</span></td>
       <td>${_clmRes(l.resultado)}<br><span class="clm-sub">${_clmE(l.regra)}</span></td>
       <td style="max-width:260px">${_clmE(l.razao)}</td>

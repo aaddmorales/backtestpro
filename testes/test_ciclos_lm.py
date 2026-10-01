@@ -125,7 +125,7 @@ def test_1_leitura_por_barra_e_trilha(amb):
     assert _pg("select n_snapshots from ciclo_leituras where bot_id=%s and barra_m15=%s", b["id"], barra)[0][0] == 2
     etapas = [r[0] for r in _pg("select etapa from ciclo_trilha where bot_id=%s and barra_m15=%s order by id",
                                 b["id"], barra)]
-    assert etapas == ["snapshot", "leituras", "ciclos", "atestado", "veto"], etapas
+    assert etapas == ["snapshot", "leituras", "ciclos", "motor", "atestado", "veto"], etapas
 
 
 def test_2_painel_ordem_resumo_e_sem_segredos(amb):
@@ -260,7 +260,7 @@ def test_8_idades_separadas_e_rotulo_da_corretora(amb):
     assert por["M5"]["forca"]["fonte"].startswith("contrato _sinal_forca") and por["M5"]["ranking"] is None
     assert por["D1"]["volatilidade_range_medio"] is not None                     # cD (EA 7.81)
     assert j["ciclos"]["estagios"]["decisao_autorizada"] is False and j["ciclos"]["estagios"]["leitura_coletada"]
-    assert [e["estado"] for e in j["ciclos"]["elos"]][:2] == ["falha", "falha"]   # conector de teste sem ponte
+    assert [e["estado"] for e in j["ciclos"]["elos"]][:2] == ["falha", "nao_avaliado"]   # conector de teste sem ponte
 
 
 def test_9_lacunas_coleta_x_mercado_fechado(amb):
