@@ -78,3 +78,43 @@ def test_impressao_do_segredo_sem_expor(amb):
     assert s == 200 and j["configurado"] is True
     assert j["impressao"] == hashlib.sha256(("bt-cv-impressao-v1|" + SEG).encode()).hexdigest()[:16]
     assert SEG.encode() not in raw
+
+
+def _sintetico(tok, magic, janela, dirs, veredito="autorizada"):
+    """Atestado SINTÉTICO (segredo de teste da bancada) — só para exercitar a
+    regra da API com combinações que o MT5 falso não produz sob encomenda."""
+    import bt_cv_atestado as cvat
+    return cvat.assinar({"bot_token_hash": hashlib.sha256(tok.encode()).hexdigest(),
+                         "versao_motor": "teste-regra", "simbolo": "XAUUSD", "magic": magic,
+                         "ts_barra_m15": T._barra_m15().isoformat(),
+                         "cv1": {"janela": janela, "veredito": veredito, "motivo": "item1_referencia_a_favor(D1&H4)"},
+                         "cv2": {"dirs": dirs}}, segredo=SEG)
+
+
+def test_divergencia_motor_api_separada_de_integracao(amb):
+    b = amb["bots"]["C"]
+    mg = T._magic(b["tok"])
+    # motor autorizou (D1=H4=M15=+1), M1 contra: regra adicional da API → divergência
+    info, cons, _ = _estado(amb, b, _sintetico(b["tok"], mg, {"M1": -1, "M5": 1, "M15": 1}, {"D1": 1, "H4": 1}))
+    assert info["estado"] == "verificado"
+    assert cons["regra"] == "R-CICLO-01.divergencia_motor_api" and "divergência" in cons["classe_veto"], cons
+    jj, _ = T._ao_vivo(amb, b["id"])
+    e = jj["ciclos"]["estagios"]
+    assert e["atestado_valido"] is True and e["decisao_vetada"] is True and e["decisao_autorizada"] is False
+    assert [g["assinado"] for g in jj["ciclos"]["origem_criterios"]] == [True, False, None]
+    assert jj["ciclos"]["origem_criterios"][0]["campos"]["cv1.veredito"] == "autorizada"
+    assert jj["ciclos"]["origem_criterios"][2]["campos"]["cv1.janela.M1"] == -1
+    # 'autorizada' com H4 contra: o motor nunca produz → integração (incoerente), não divergência
+    info, cons, _ = _estado(amb, b, _sintetico(b["tok"], mg, {"M1": 1, "M5": 1, "M15": 1}, {"D1": 1, "H4": -1}))
+    assert cons["regra"] == "R-CICLO-01.incoerente" and cons["classe_veto"].startswith("integração"), cons
+    # o emissor real recusa a divergência e a trilha marca a classe
+    os.environ.setdefault("BT_CV_SEGREDO", SEG)
+    import api
+    sb = api._sb_admin()
+    _estado(amb, b, _sintetico(b["tok"], mg, {"M1": -1, "M5": 1, "M15": 1}, {"D1": 1, "H4": 1}))
+    bot = sb.table("conector_bots").select("*").eq("id", b["id"]).execute().data[0]
+    ok, r = api._r01_emitir_decisao(sb, bot, "buy")
+    assert not ok and str(r).startswith("atestado_incoerente(autorizada_com_janela_contra:M1)"), r
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='veto' and motivo like %s",
+                 b["id"], "%DIVERGÊNCIA MOTOR×API%")[0][0] >= 1
+    assert T._pg("select count(*) from ciclo_decisoes where bot_id=%s", b["id"])[0][0] == 0

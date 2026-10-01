@@ -102,7 +102,7 @@ def amb():
     s, v = _req("GET", E["BT_ISO_API"] + "/estrategias/vitrine?lang=pt", tok=tok)
     card = [e for e in json.loads(v)["estrategias"] if e["id"] == "teste_integracao_mt5"][0]
     bots = {}
-    for k in ("A", "B", "M"):
+    for k in ("A", "B", "M", "R"):
         s, r = _req("POST", E["BT_ISO_API"] + "/conector/registrar",
                     {"nome": f"hml-conector-{k}-" + uuid.uuid4().hex[:6], "simbolo": "XAUUSD"}, tok=tok)
         bots[k] = json.loads(r)["bot_token"]
@@ -469,3 +469,46 @@ def test_h15_motor_real_ate_a_api(amb, motor_pc, monkeypatch):
     cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
     cur.execute("select count(*) from mt5_comandos where bot_id=%s and tipo in ('buy','sell')", (b_id,))
     assert cur.fetchone()[0] == 0
+
+
+def test_h15_parada_e_reinicio_do_leitor(amb, motor_pc, monkeypatch):
+    """Leitor para (sem batimento) → snapshot SEM atestado e veto de integração;
+    leitor volta → mesma barra NÃO é republicada, atestado volta, e nenhuma
+    decisão/comando nasce em duplicidade."""
+    import json as _j
+    seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
+    monkeypatch.setenv("BT_CV_SEGREDO", seg)
+    tR = amb["bots"]["R"]
+    dados = FM.det_ea(_magic(tR))
+    cur = TV._pg().cursor()
+    cur.execute("select id from conector_bots where bot_token=%s", (tR,)); b_id = cur.fetchone()[0]
+    assert N.enviar_snapshot(tR, dict(dados))
+    cur.execute("select detalhe_json->'cv_atestado'->>'ts_barra_m15' from conector_snapshots where bot_token=%s order by id desc limit 1", (tR,))
+    tsb = cur.fetchone()[0]; assert tsb
+    # PARADA: sem batimento há > 90 s
+    sau = _j.load(open(motor_pc / "SAUDE.json")); sau["agora_utc"] = "2026-01-01T00:00:00+00:00"
+    _j.dump(sau, open(motor_pc / "SAUDE.json", "w"))
+    assert N.enviar_snapshot(tR, dict(dados))
+    cur.execute("select detalhe_json ? 'cv_atestado', detalhe_json->'cv_motor'->>'estado' from conector_snapshots "
+                "where bot_token=%s order by id desc limit 1", (tR,))
+    assert cur.fetchone() == (False, "processo_parado")
+    s_, j = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/ao-vivo", {"bot_id": b_id}, tok=amb["tok"])
+    j = json.loads(j)
+    assert j["ciclos"]["consolidada"]["decisao"] == "bloquear" and j["ciclos"]["estagios"]["atestado_valido"] is False
+    assert j["ciclos"]["elos"][0]["estado"] == "falha" and "processo_parado" in j["ciclos"]["elos"][0]["motivo"]
+    # REINÍCIO: mesma barra → não republica; atestado volta
+    a0 = _j.load(open(motor_pc / "ATUAL.json"))
+    r = FM.rodar_leitor(str(motor_pc), data_path=str(motor_pc.parent / "Terminal" / "ABC"))
+    assert r.returncode == 0 and "retomada: " + a0["barra_corretora"] in r.stdout
+    assert _j.load(open(motor_pc / "ATUAL.json")) == a0
+    assert N.enviar_snapshot(tR, dict(dados))
+    cur.execute("select detalhe_json->'cv_motor'->>'estado', detalhe_json->'cv_atestado'->>'ts_barra_m15' "
+                "from conector_snapshots where bot_token=%s order by id desc limit 1", (tR,))
+    assert cur.fetchone() == ("ok", tsb)
+    cur.execute("select etapa, estado from ciclo_trilha where bot_id=%s and barra_m15=%s and etapa in ('motor','atestado') order by id",
+                (b_id, tsb))
+    assert cur.fetchall() == [("motor", "ok"), ("atestado", "ok"), ("motor", "aviso"), ("atestado", "recusado"),
+                              ("motor", "ok"), ("atestado", "ok")]
+    cur.execute("select count(*) from ciclo_leituras where bot_id=%s and barra_m15=%s", (b_id, tsb)); assert cur.fetchone()[0] == 1
+    cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
+    cur.execute("select count(*) from mt5_comandos where bot_id=%s and tipo in ('buy','sell')", (b_id,)); assert cur.fetchone()[0] == 0

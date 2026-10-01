@@ -14,7 +14,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $API_HML = "https://homolog-homolog.up.railway.app"
-$MANIFESTO_SHA = "6d265708c972d6af28c6defd64daa512bfbb07f70a86d59cff494d4d8ef931ab"
+$MANIFESTO_SHA = "6a084a5743a6b5d5dcd299b4496e20da442b1cd3ddfb1cddc6d6449ce1d7989a"
 $CONECTOR_SHA = @{
   "conector_homolog.py"        = "44d426187e9b65a1816949ed267c08bd8c6598cf64280d5582c511e0d7aee83b"
   "conector_nucleo_homolog.py" = "fc6ffe292ec8408629b67ea0abd23e3ca722e80f3fd270c5aaaf5a585f5c5018"
@@ -92,7 +92,14 @@ $terminal = Join-Path $instDir "terminal64.exe"
 if (-not (Test-Path -LiteralPath $terminal)) { Pare "terminal64.exe nao encontrado em $instDir" }
 Ok "MT5 DEMO fixado: $terminal (dados $dataDir)"
 
-# 6. copia com conferencia
+# 6. copia com conferencia (antes: registra o estado anterior para o desinstalador restaurar)
+$estado = [ordered]@{
+  instalado_em = (Get-Date).ToString("s"); commit = $commit; destino = $Destino
+  BT_CV_ESPELHO_anterior = [Environment]::GetEnvironmentVariable("BT_CV_ESPELHO", "User")
+  BT_CV_MOTOR_DIR_anterior = [Environment]::GetEnvironmentVariable("BT_CV_MOTOR_DIR", "User")
+  BT_CV_SEGREDO_existia = [bool][Environment]::GetEnvironmentVariable("BT_CV_SEGREDO", "User")
+  backup_conector = $null; inicializar = $null
+}
 $motorDst = Join-Path $Destino "motor"
 $dados = Join-Path $motorDst "dados"
 New-Item -ItemType Directory -Force -Path $motorDst, $dados | Out-Null
@@ -105,6 +112,7 @@ Ok "motor instalado em $motorDst ($(@($copiar).Count) modulos)"
 $jan = $procs | Where-Object { $_.CommandLine -like "*conector_homolog.py*" }
 if ($jan) { $jan | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }; Start-Sleep 2 }
 $bak = Join-Path $Destino ("_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
+$estado.backup_conector = $bak
 New-Item -ItemType Directory -Force -Path $bak | Out-Null
 foreach ($n in $CONECTOR_SHA.Keys) {
   $d = Join-Path $Destino $n
@@ -113,6 +121,7 @@ foreach ($n in $CONECTOR_SHA.Keys) {
   if ((Sha $d) -ne $CONECTOR_SHA[$n]) { Pare "copia divergente: $d" }
 }
 Ok "Conector HOMOLOG hml8 instalado em $Destino (anteriores em $bak)"
+$estado | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $motorDst "instalacao_hml8.json") -Encoding ASCII
 
 # 7. segredo: conferido pela impressao da API homolog, sem exibir
 function Impressao([string]$s) {
@@ -149,6 +158,8 @@ ping -n 31 127.0.0.1 >nul
 goto loop
 "@ | Set-Content -LiteralPath $cmd -Encoding ASCII
 $startup = [Environment]::GetFolderPath("Startup")
+$estado.inicializar = (Join-Path $startup "BotTested_HOMOLOG_Motor.cmd")
+$estado | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $motorDst "instalacao_hml8.json") -Encoding ASCII
 "@echo off`r`nstart `"BotTested HOMOLOG Motor`" /min cmd /c `"$cmd`"" | Set-Content -LiteralPath (Join-Path $startup "BotTested_HOMOLOG_Motor.cmd") -Encoding ASCII
 Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*bt_motor_leitura_hml*" -or $_.CommandLine -like "*motor_iniciar.cmd*" } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }

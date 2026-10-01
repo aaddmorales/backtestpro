@@ -48,6 +48,20 @@ O pacote também traz `bt_vivo_sombra_v74_c27r.py` (7.4.1-c27r, sha cec5ee18…)
 
 Divergência mantida, conforme a radiografia de 27/set: o motor autoriza com D1=H4=M15, e a API ainda exige M1/M5/M15 todos no lado. O efeito é fail-closed: a integração nunca opera mais do que o motor permite.
 
+## 3b. Origem exata de cada critério que pode autorizar uma abertura
+
+| critério | quem calcula | campo ASSINADO no atestado | entra na autorização? |
+|---|---|---|---|
+| **Ciclo 2 — referência** (D1 e H4 contra a direção do M15) | motor, `bt_ciclo_v1.avaliar` l.391-415 → `12_veredito.topdown` | `cv1.veredito` (autorizada/neutra/bloqueada) + `cv1.motivo`; os insumos em `cv2.dirs.D1`, `cv2.dirs.H4`, `cv1.janela.M15` | **sim**: bloqueada = veto, neutra = não autoriza, autorizada segue |
+| **Ciclo 1 original** (escada M1→M5→M15, janela 10→15, fases) | motor, l.361-388 + `fases_propagacao` | **nenhum** (só telemetria `cv_motor`) | **não**; o motor usa a janela 10→15 só para corte de posição aberta |
+| **Checagens adicionais da API** | `_r01_ler_ciclos_servidor`, `_r01_emitir_decisao`, RPC `r01_claim_e_comando` | usa `bot_token_hash`, `simbolo`, `magic`, `ts_barra_m15`, `assinatura` e `cv1.janela.M1/M5` | **sim**: HMAC + vínculo + barra fechada + validade de 900 s; **M1 e M5 no lado do M15**; lado do comando = lado da decisão; idempotência por (bot, barra, lado) e consumo único |
+
+`cv1.veredito` tem esse nome por legado do contrato c27r3, mas carrega o **topdown do motor**, que é o critério do Ciclo 2. `cv1.janela` são as direções do canal EMA20 (`le["dir"]`) do motor, não a escada do Ciclo 1.
+
+**Divergência motor × API** (regra `R-CICLO-01.divergencia_motor_api`): o motor autorizou (D1 = H4 = M15), mas M1 e/ou M5 não acompanham, e a API veta. Na BabyMachine isso aparece com motivo e classe próprios, separado de falha de integração:
+- `R-CICLO-01.atestado` = atestado ausente ou recusado;
+- `R-CICLO-01.incoerente` = "autorizada" com D1, H4 ou M15 fora do lado, combinação que o motor nunca produz.
+
 ## 4. Operação no PC (somente homologação e conta demo)
 
 ```
@@ -79,3 +93,15 @@ py C:\BotTested_HOMOLOG\motor\bt_motor_leitura_hml.py --ativo XAUUSD --login <co
 - O leitor substitui `mt5.order_send` e `order_check` por erro antes de carregar o motor.
 - Não chama `sombra()`, `executar()`, trailing nem proteção.
 - O `bt_vivo_sombra` com `--executa` NÃO deve rodar junto. O instalador verifica isso e para se ele estiver rodando.
+
+## 5. Desativar e restaurar
+
+`powershell -ExecutionPolicy Bypass -File .\instaladores\desinstalar_motor_hml8.ps1 [-RemoverSegredo] [-ReabrirConector]`
+- Para o leitor e remove o `BotTested_HOMOLOG_Motor.cmd` da pasta Inicializar.
+- Restaura o conector do `_backup_<data>` registrado em `instalacao_hml8.json`.
+- Devolve `BT_CV_ESPELHO`/`BT_CV_MOTOR_DIR` aos valores anteriores, ou remove se não existiam.
+- `BT_CV_SEGREDO` só é removido com `-RemoverSegredo` e se não existia antes da instalação.
+- Move `C:\BotTested_HOMOLOG\motor` para `_desinstalado_<data>`; nada é apagado.
+
+Só desligar o início automático, sem desinstalar: apagar
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\BotTested_HOMOLOG_Motor.cmd` e fechar a janela "BotTested HOMOLOG Motor".
