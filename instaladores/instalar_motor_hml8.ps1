@@ -10,8 +10,12 @@
 param(
   [Parameter(Mandatory = $true)][long]$Login,
   [string]$Ativo = "XAUUSD",
-  [string]$Destino = "C:\BotTested_HOMOLOG"
+  [string]$Destino = "C:\BotTested_HOMOLOG",
+  [string]$Repo = ""
 )
+# rev.4 (02/out): a funcao auxiliar chamava-se "Py" e o PowerShell (que nao diferencia maiusculas)
+# resolvia "& py" para ela mesma -> recursao infinita (CallDepthOverflow). Agora chama py.exe por nome
+# de aplicativo e aceita -Repo para rodar de fora do clone.
 $ErrorActionPreference = "Stop"
 $API_HML = "https://homolog-homolog.up.railway.app"
 $MANIFESTO_SHA = "6a084a5743a6b5d5dcd299b4496e20da442b1cd3ddfb1cddc6d6449ce1d7989a"
@@ -22,12 +26,15 @@ $CONECTOR_SHA = @{
 function Pare([string]$m) { Write-Host "PARADO: $m" -ForegroundColor Red; Write-Host "Nada mais foi alterado a partir deste ponto."; exit 1 }
 function Ok([string]$m) { Write-Host "OK  $m" -ForegroundColor Green }
 function Sha([string]$p) { (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLower() }
-function Py([string]$codigo) {   # chamada nativa sem transformar stderr em erro do PowerShell 5.1
+$PYEXE = (Get-Command py.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+function RodarPython([string]$codigo) {   # chamada nativa sem transformar stderr em erro do PowerShell 5.1
   $eap = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  try { $o = & py -c $codigo 2>&1 | Out-String; return @($LASTEXITCODE, $o.Trim()) } finally { $ErrorActionPreference = $eap }
+  try { $o = & $PYEXE -c $codigo 2>&1 | Out-String; return @($LASTEXITCODE, $o.Trim()) } finally { $ErrorActionPreference = $eap }
 }
 
-$repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+if (-not $Repo) { $Repo = Join-Path $PSScriptRoot ".." }
+$repo = (Resolve-Path $Repo).Path
+if (-not (Test-Path -LiteralPath (Join-Path $repo "motor_ciclos\MANIFESTO_MOTOR.sha256"))) { Pare "motor_ciclos nao encontrado em $repo (use -Repo <pasta do clone>)" }
 $motorSrc = Join-Path $repo "motor_ciclos"
 $conSrc = Join-Path $repo "conector_homolog\hml"
 Write-Host "=== Instalador motor dos Ciclos + Conector HOMOLOG hml8 ===" -ForegroundColor Cyan
@@ -69,12 +76,12 @@ $sombra = $procs | Where-Object { $_.CommandLine -like "*bt_vivo_sombra*" }
 if ($sombra) { Write-Host "aviso: bt_vivo_sombra (sombra, sem --executa) rodando - nao interfere; o leitor usa pasta propria" -ForegroundColor Yellow }
 
 # 4. Python e bibliotecas
-if (-not (Get-Command py -ErrorAction SilentlyContinue)) { Pare "Python launcher (py) nao encontrado" }
-$r = Py "import sys; print(sys.executable)"; $py = $r[1]
+if (-not $PYEXE) { Pare "Python launcher (py.exe) nao encontrado" }
+$r = RodarPython "import sys; print(sys.executable)"; $py = $r[1]
 if ($r[0] -ne 0 -or -not (Test-Path -LiteralPath $py)) { Pare "Python nao respondeu: $($r[1])" }
-$r = Py "import sys; assert sys.version_info >= (3, 10), sys.version"
+$r = RodarPython "import sys; assert sys.version_info >= (3, 10), sys.version"
 if ($r[0] -ne 0) { Pare "Python >= 3.10 necessario ($($r[1]))" }
-$r = Py "import pandas, numpy, MetaTrader5"
+$r = RodarPython "import pandas, numpy, MetaTrader5"
 if ($r[0] -ne 0) { Pare "faltam bibliotecas. Rode: py -m pip install --user -r `"$motorSrc\requirements_motor.txt`" e rode este instalador de novo." }
 Ok "Python $py com pandas/numpy/MetaTrader5"
 
@@ -137,7 +144,8 @@ if ($seg -and (Impressao $seg) -eq $api.impressao) {
 } else {
   Write-Host "Cole o BT_CV_SEGREDO do Railway homolog (servico bottested-homolog > Variables). Nada aparece na tela." -ForegroundColor Cyan
   $sec = Read-Host -AsSecureString "BT_CV_SEGREDO"
-  $seg = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)).Trim()
+  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+  try { $seg = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim() } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
   if ((Impressao $seg) -ne $api.impressao) { $seg = $null; Pare "segredo digitado NAO confere com a API homolog - nada gravado" }
   [Environment]::SetEnvironmentVariable("BT_CV_SEGREDO", $seg, "User")
   Ok "BT_CV_SEGREDO gravado no usuario (confere com a API homolog; valor nao exibido)"
@@ -163,10 +171,10 @@ $estado | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $motorDst "instal
 "@echo off`r`nstart `"BotTested HOMOLOG Motor`" /min cmd /c `"$cmd`"" | Set-Content -LiteralPath (Join-Path $startup "BotTested_HOMOLOG_Motor.cmd") -Encoding ASCII
 Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*bt_motor_leitura_hml*" -or $_.CommandLine -like "*motor_iniciar.cmd*" } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+$t0 = Get-Date
 Start-Process cmd -ArgumentList "/c", "`"$cmd`"" -WindowStyle Minimized
 Ok "leitor iniciado (religa sozinho; sobe com o Windows pela pasta Inicializar)"
 $sau = Join-Path $dados "SAUDE.json"
-$t0 = Get-Date
 while (((Get-Date) - $t0).TotalSeconds -lt 120) {
   Start-Sleep 5
   if ((Test-Path -LiteralPath $sau) -and (Get-Item -LiteralPath $sau).LastWriteTime -gt $t0) { break }
