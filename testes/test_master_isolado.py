@@ -64,7 +64,8 @@ def test_vitrine_card_so_para_o_usuario_de_teste(amb):
     assert "teste_integracao_mt5" not in [e["id"] for e in v["estrategias"]]
     c = amb["card"]
     assert c["nome"] == "MASTER TESTE MT5 — DEMO"
-    assert c["ensaio"] == {"ativo": "XAU/USD (Ouro)", "periodo": "6 meses", "timeframe": "15m"}
+    assert c["ensaio"] == {"ativo": "XAU/USD (Ouro)", "periodo": "6 meses", "timeframe": "15m",
+                           "ativos": ["XAU/USD (Ouro)", "BTC/USD"]}
     assert "BT_EXECUTOR_PURO" in c["codigo"]
 
 
@@ -76,7 +77,8 @@ def test_registro_simbolo_canonico(amb):
 
 @pytest.mark.parametrize("campo,valor,motivo", [
     ("codigo", "# outro\nclass X(Strategy):\n    def next(self): self.buy()\n", "master_codigo_diverge_do_card"),
-    ("ativo", "BTC/USD (Bitcoin)", "master_ativo_diverge_do_card"),
+    ("ativo", "EUR/USD", "master_ativo_diverge_do_card"),
+    ("ativo", "BTC/USD (Bitcoin)", "master_ativo_diverge_do_card"),          # só o nome exato da lista
     ("timeframe", "1d", "master_timeframe_diverge_do_card"),
     ("bot_nome", "   ", "master_sem_nome_de_bot")])
 def test_envio_master_divergente_recusado_sem_escrita(amb, campo, valor, motivo):
@@ -118,3 +120,26 @@ def test_backtest_master_sem_fallback_silencioso(amb):
     assert s == 422 and j["detail"].startswith("master_codigo_falhou")
     s, j = _req("POST", E["BT_ISO_API"] + "/backtest/custom", dict(base, codigo=amb["card"]["codigo"]), tok=amb["tok"])
     assert s == 200 and j["total_trades"] == 0
+
+
+def test_envio_master_btc_aceito_lista_fechada(amb):
+    """C27R17: MASTER em BTC/USD 15m (ensaio no fim de semana). Símbolo canônico BTCUSD, identidade completa."""
+    assert amb["card"]["mercados"] == ["XAU/USD (Ouro)", "BTC/USD"]
+    s, r = _req("POST", E["BT_ISO_API"] + "/conector/registrar",
+                {"nome": "pytest-master-btc-" + uuid.uuid4().hex[:6], "simbolo": "BTC/USD"}, tok=amb["tok"])
+    assert s == 200
+    c = psycopg2.connect(E["BT_PG_ISOLADO_URL"]); cur = c.cursor()
+    cur.execute("select simbolo from conector_bots where bot_token=%s", (r["bot_token"],))
+    assert cur.fetchone()[0] == "BTCUSD"
+    s, j = _req("POST", E["BT_ISO_API"] + "/mt5/enviar",
+                _corpo(amb, bot_token=r["bot_token"], bot_nome="Pytest Master BTC", ativo="BTC/USD"), tok=amb["tok"])
+    assert s == 200 and j["ok"], j
+    i = j["identidade"]
+    assert i["estrategia_id"] == "teste_integracao_mt5" and i["ativo"] == "BTC/USD" and i["timeframe"] == "15m"
+    cur.execute("select config_operacional from conector_bots where bot_token=%s", (r["bot_token"],))
+    cfg = cur.fetchone()[0]; c.close()
+    assert cfg["ativo_envio"] == "BTC/USD" and cfg["estrategia_id"] == "teste_integracao_mt5"
+    # o EA gerado continua sendo o executor puro: nenhuma entrada nativa
+    s, d = _req("POST", E["BT_ISO_API"] + "/mt5/pendente/checar", {"bot_token": r["bot_token"]})
+    cod = d.get("codigo") or ""
+    assert d.get("pendente") and "BTLerComando" in cod and "EXECUTOR PURO" in cod
