@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.49-origem-criterios-c27r14';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.50-referencia-historica-c27r15';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8978,6 +8978,57 @@ function clmOrigemBox(org, cons){
   return `<div class="clm-box"><div class="clm-tit"><span>🔎 Origem dos critérios de autorização (esta barra)</span></div><div class="clm-lista" style="margin-top:6px">${div}${linhas}</div></div>`;
 }
 
+// C27R15 — Referência histórica da estratégia: o que o estudo mediu × o que o mercado mostra agora ×
+// por que o sistema autorizou ou vetou. Três informações SEPARADAS; o estudo é só referência.
+function clmRefBox(R){
+  if (!R) return '';
+  const H = R.desempenho_historico || {}, K = R.pontuacao_checklist || {}, A = R.autorizacao_operacional || {};
+  const nr = x => (x===null||x===undefined||x==='') ? '<span class="clm-na">não registrado</span>' : (x==='não registrado' ? '<span class="clm-na">não registrado</span>' : _clmE(x));
+  const linha = (a,b) => `<tr><td style="width:190px"><b>${a}</b></td><td>${b}</td></tr>`;
+  const rk = r => !r ? nr(null) : (r.posicao ? `<b>${r.posicao}º de ${r.de}</b>${r.no_top10_do_admin?' (aparece no Top 10 do Admin)':''}` : `<span class="clm-na">${_clmE(r.motivo||'fora do ranking')}</span> (${r.de} células elegíveis)`) + `<br><span class="clm-sub">critério: ${_clmE(r.criterio)}</span>`;
+  let corpo = '';
+  if (H.situacao !== 'com_estudo') {
+    corpo = `<div class="clm-it"><b class="clm-veto">${_clmE(H.mensagem||'sem estudo associado')}</b><br><span class="clm-sub">${_clmE(H.detalhe||((H.avisos||[]).join(' · ')))}</span></div>`;
+  } else {
+    corpo = (H.estudos||[]).map(e => {
+      const c = e.correspondencia || {};
+      const corr = `Estratégia: ${_clmE(c.estrategia)} · Versão: ${_clmE(c.versao)} · Ativo: ${_clmE(c.ativo)} · TF: ${_clmE(c.timeframe)} · Parâmetros: ${_clmE(c.parametros)}`;
+      let res, per, pos, ids;
+      if (e.banco === 'estudo_biblioteca_v2') {
+        const m = e.metricas || {}, f = e.fora_da_amostra || {}, cu = e.custos || {};
+        res = `trades ${nr(m.trades)} · acerto ${nr(m.win_rate_pct)}% · PF ${nr(m.profit_factor)} · Sharpe ${nr(m.sharpe)} · retorno ${nr(m.retorno)} ${_clmE(m.retorno_unidade)} · drawdown ${nr(m.drawdown)} ${_clmE(m.drawdown_unidade)}`
+            + `<br><span class="clm-sub">custos: spread ${nr(cu.spread)} · comissão ${nr(cu.comissao)} · slippage ${nr(cu.slippage)}</span>`
+            + `<br><span class="clm-sub">fora da amostra: ${f.existe ? _clmE(f.tipo)+' — PF A '+nr(f.wf_a_pf)+' · PF B '+nr(f.wf_b_pf)+' · selo do Admin: '+_clmE(f.selo_admin) : 'não registrado'}</span>`;
+        per = `${nr(e.periodo)} · medido em ${e.data_estudo && e.data_estudo!=='não registrado' ? _clmDataHora(e.data_estudo) : nr(null)}<br><span class="clm-sub">fonte: ${nr(e.fonte_dados)} · Professor ${nr((e.versao||{}).professor)} · motor ${nr((e.versao||{}).motor)}</span>`;
+        pos = rk(e.ranking);
+        ids = `<code class="clm-id">${_clmE(e.estudo_id)}</code> <code class="clm-id">${_clmE(e.chave)}</code>`;
+      } else {
+        const js = e.janelas || [];
+        res = js.map(j => `<b>${_clmE(j.periodo)}</b>: trades ${nr(j.trades)} · acerto ${nr(j.win_rate_pct)}% · PF ${nr(j.profit_factor)} · Sharpe ${nr(j.sharpe)} · retorno ${nr(j.retorno)}% · drawdown ${nr(j.drawdown)} · comissão ${nr((j.custos||{}).comissao)} · spread ${nr((j.custos||{}).spread)} · slippage ${nr((j.custos||{}).slippage)}`).join('<br>')
+            + `<br><span class="clm-sub">fora da amostra: ${_clmE((e.fora_da_amostra||{}).tipo)}</span>`;
+        per = js.map(j => `${_clmE(j.periodo)} · medido em ${j.data_estudo && j.data_estudo!=='não registrado' ? _clmDataHora(j.data_estudo) : 'não registrado'}`).join('<br>') + `<br><span class="clm-sub">fonte: ${_clmE(e.fonte_dados)} · regras ${nr((e.versao||{}).regras)}</span>`;
+        pos = js.map(j => `<b>${_clmE(j.periodo)}</b>: ` + rk(j.ranking)).join('<br>');
+        ids = js.map(j => `<code class="clm-id">${_clmE(j.estudo_id)}</code>`).join(' ');
+      }
+      return `<div class="clm-sub" style="margin-top:8px">Banco: <b>${_clmE(e.banco)}</b> · ${_clmE((e.estrategia||{}).nome)} (${_clmE((e.estrategia||{}).id)}) · ${_clmE(e.ativo)} ${_clmE(e.timeframe)} · ${ids}</div>
+        <div class="clm-mx"><table style="min-width:0">${linha('Correspondência', corr)}${linha('Resultado histórico', res)}${linha('Período estudado', per)}${linha('Posição no ranking', pos)}</table></div>`;
+    }).join('');
+    corpo += `<div class="clm-mx"><table style="min-width:0">${linha('Limitações', (H.limitacoes||[]).map(_clmE).join('<br>') || 'nenhuma registrada')}${(H.avisos||[]).length?linha('Sem correspondência', H.avisos.map(_clmE).join('<br>')):''}</table></div>`;
+  }
+  const P = H.participacao_na_decisao || {}, RG = H.regime || {}, RM = P.regras_de_medicao_ativas || {};
+  const reg = RG.disponivel ? 'estudo com desempenho por regime' : `<b>${_clmE(RG.mensagem||'')}</b>` + (typeof RG.leitura_atual_dos_ciclos === 'object' && RG.leitura_atual_dos_ciclos ? `<br><span class="clm-sub">leitura atual dos Ciclos (motor): regime M15 ${_clmE(RG.leitura_atual_dos_ciclos.regime_m15||'—')} · caixa ${_clmE(RG.leitura_atual_dos_ciclos.caixa_m15||'nenhuma')} · volatilidade ${_clmE(RG.leitura_atual_dos_ciclos.volatilidade_m15||'—')} · ${_clmE(RG.leitura_atual_dos_ciclos.estado_unico||'')}</span>` : `<br><span class="clm-sub">${_clmE(RG.leitura_atual_dos_ciclos||'')}</span>`);
+  const flags = Object.entries(RM.flags||{}).map(([k,v]) => `${_clmE(k)}=${_clmE(v)}`).join(', ');
+  const itens = (K.itens||[]).map(i => `${i.ok===true?'✔':(i.ok===false?'✖':'○')} ${_clmE(i.nome)}`).join(' · ');
+  return `<div class="clm-box"><div class="clm-tit"><span>📚 Referência histórica da estratégia</span><span class="clm-sub">${_clmE((H.bot||{}).estrategia_nome||'')} · ${_clmE((H.bot||{}).simbolo_mt5||'')} ${_clmE((H.bot||{}).timeframe_envio||'')}</span></div>
+    ${corpo}
+    <div class="clm-mx"><table style="min-width:0">${linha('Participação na decisão', `<b>${_clmE(P.papel||'referência informativa')}</b><br><span class="clm-sub">${_clmE(P.explicacao||'')}</span>${flags?`<br><span class="clm-warn">regra em vigor derivada de medição: ${flags}</span> <span class="clm-sub">${_clmE(RM.origem||'')}</span>`:''}`)}${linha('Estudo × mercado atual', reg)}</table></div>
+    <div class="clm-ciclos" style="margin-top:8px">
+      <div class="clm-c"><b>1 · Desempenho histórico</b><br><span class="clm-sub">resultado medido nos estudos</span><br>${H.situacao==='com_estudo' ? (H.estudos||[]).map(e => _clmE(e.banco==='estudo_biblioteca_v2'?'Professor (MT5)':'Fábrica (yfinance)')).join(' + ') : '<span class="clm-na">'+_clmE(H.mensagem||'sem estudo')+'</span>'}</div>
+      <div class="clm-c"><b>2 · Pontuação do checklist</b><br><span class="clm-sub">condições atuais atendidas</span><br>${K.prontidao_pct!=null ? 'prontidão <b>'+_clmE(K.prontidao_pct)+'%</b> · '+_clmE(K.verdes)+' verdes, '+_clmE(K.vermelhos)+' vermelhos, '+_clmE(K.sem_dado)+' sem dado' : '<span class="clm-na">'+_clmE(K.mensagem||K.erro||'não calculado')+'</span>'}<br><span class="clm-sub">${itens}</span></div>
+      <div class="clm-c clm-dec"><b>3 · Autorização operacional</b><br><span class="clm-sub">regras, Ciclos e portões</span><br><b>${_clmE(A.estado||'—')}</b> · ${_clmE(A.regra||'')}<br><span class="clm-sub">${_clmE(A.motivo||'')}</span><br><span class="clm-sub">o estudo influenciou? <b>${A.estudo_influenciou?'sim':'não'}</b> — ${_clmE(A.explicacao||'')}</span></div>
+    </div></div>`;
+}
+
 function clmRender(botId, d, tr){
   const el = document.getElementById('clm-'+botId); if(!el) return;
   d._trilha = tr;
@@ -9138,7 +9189,7 @@ function clmRender(botId, d, tr){
       <button class="clm-btn" onclick="clmExportar(${botId}, (document.getElementById('clm-f-barra-${botId}')||{}).value)">⬇ Exportar ciclo (JSON)</button>
     </span></div>
     <div class="clm-tl" style="margin-top:6px">${itens}</div></div>`;
-  el.innerHTML = est + resumo + cadeia + matriz + contadores + autoridade + saude + trilha;
+  el.innerHTML = est + resumo + clmRefBox(d.referencia_historica) + cadeia + matriz + contadores + autoridade + saude + trilha;
   el.dataset.ult = est + resumo + matriz;
 }
 

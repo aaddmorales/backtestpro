@@ -15,7 +15,7 @@ Origem: `CORRECAO_P2_CICLO_VIVO_27SET.zip` (SHA-256 `bd33c34a3cb5a8b99c7e487710d
 | bt_cv_atestado.py | 1.2-c27r6 | ea94366adbbb2edb93802e98657498c3410ba29f33f15a49b45d52be970f6185 | o mesmo arquivo da API (raiz do repositório) |
 | bt_ponte_ciclo_v1.py | **1.1-hml** | ver MANIFESTO | correções C1–C3, descritas na §3 |
 | bt_conector_atestado.py | **0.4-hml** | ver MANIFESTO | vínculo do bot, fuso e frescor |
-| bt_motor_leitura_hml.py | **1.0-hml** | ver MANIFESTO | novo: o leitor; só lê e nunca envia ordens |
+| bt_motor_leitura_hml.py | **1.1-hml** | ver MANIFESTO | novo: o leitor; só lê e nunca envia ordens |
 | referencia_27set/* | v1.0 / v0.3 | 89e4b4be… / 71b34a58… | originais do pacote, mantidos para o diff |
 
 Dependências: Python ≥ 3.10, `pandas`, `numpy` e `MetaTrader5`. Ver `requirements_motor.txt`.

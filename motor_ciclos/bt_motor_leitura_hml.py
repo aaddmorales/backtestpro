@@ -37,7 +37,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.0-hml"
+LEITOR_VERSAO = "1.1-hml"
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MODULOS = ("bt_ciclo_v1.py", "bt_vivo_sombra.py", "bloco1_motor_v3.py",
            "professor_cards_v19.py", "professor_bloco2.py", "professor_bloco3.py",
@@ -85,18 +85,29 @@ def _bloquear_ordens(mt5):
             setattr(mt5, nome, _proibido)
 
 
+_TICK_ANT = {"t": None}
+
+
 def _fuso_por_tick(mt5, ativo):
     """(off_s, fonte). off = horário do servidor − UTC, em múltiplos de 15 min.
-    Só confia em tick recente (diferença residual < 120 s)."""
+    v1.1: só confia em tick NOVO (o horário do tick avançou desde a passada
+    anterior) com resíduo < 120 s. Na 1.0 um tick velho do terminal recém-ligado,
+    por coincidência múltiplo de 15 min, virou fuso −28800 s por uma passada
+    (02/out, 10:38 UTC: 'fuso_divergente' até o tick seguinte)."""
     try:
         tk = mt5.symbol_info_tick(ativo)
         if not tk or not tk.time:
             return None, "sem_tick"
+        ant, _TICK_ANT["t"] = _TICK_ANT["t"], int(tk.time)
+        if ant is None:
+            return None, "aguardando_segundo_tick"
+        if int(tk.time) <= ant:
+            return None, "tick_parado(mercado fechado ou terminal sem cotação)"
         bruto = float(tk.time) - time.time()
         off = int(round(bruto / 900.0)) * 900
         if abs(bruto - off) > 120:
             return None, f"tick_antigo({bruto - off:+.0f}s)"
-        return off, "tick_recente"
+        return off, "tick_novo"
     except Exception as e:
         return None, f"erro({type(e).__name__})"
 
@@ -172,13 +183,15 @@ def main(argv=None):
           f"terminal {tinfo.path} · ordens BLOQUEADAS · retomada: {ult_pub or 'nenhuma barra publicada'}",
           flush=True)
 
+    _fuso_por_tick(mt5, a.ativo)          # 1ª amostra do tick (a medição exige tick NOVO)
+    time.sleep(1.2)
     while True:
         try:
             o2, f2 = _fuso_por_tick(mt5, a.ativo)
             if o2 is not None:
                 off, off_fonte = o2, f2
-            elif off is None:
-                off_fonte = f2
+            else:                      # sem medição confiável nesta passada: não afirma fuso
+                off, off_fonte = None, f2
             ts_m15, _spread = S.puxar_e_espelhar(mt5, a.ativo)
             barra = str(ts_m15)
             if barra != ult_pub:
