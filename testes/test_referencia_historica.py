@@ -222,3 +222,38 @@ def test_8_banco_da_fabrica_so_e_comprovado_por_hash(amb):
 def test_9_ranking_demonstrativo_marcado():
     s, j, _ = T._req("GET", T.E["BT_ISO_API"] + "/ranking", None)
     assert s == 200 and j["demonstracao"] is True and "aviso" in j
+
+
+def test_10_corrida_da_virada_nao_reescreve_a_decisao(amb):
+    """Visto na plataforma (02/out, 19:30:00 UTC): a ingestão começou antes do fim da validade e a
+    verificação rodou depois; a decisão 'observar' virou 'bloquear leitura_vencida'. Aqui o relógio
+    do INÍCIO da ingestão é forçado para 1 s antes do fim da validade."""
+    import hashlib
+    os.environ.setdefault("BT_CV_SEGREDO", T.SEGREDO or "x")
+    import api, bt_cv_atestado as cvat
+    a = amb["bots"]["A"]
+    T._pg("delete from ciclo_trilha where bot_id=%s", a["id"]); T._pg("delete from ciclo_leituras where bot_id=%s", a["id"])
+    fim = (int(time.time()) // 900) * 900                  # fim da validade da barra anterior (já passou)
+    ea = fim - 1                                           # o EA ainda carimba a barra anterior
+    barra = T._barra_m15(ea)
+    at = cvat.assinar({"bot_token_hash": hashlib.sha256(a["tok"].encode()).hexdigest(), "versao_motor": "teste-bancada",
+                       "simbolo": "XAUUSD", "magic": T._magic(a["tok"]), "ts_barra_m15": barra.isoformat(),
+                       "cv1": {"janela": {"M1": 1, "M5": 1, "M15": 0}, "veredito": "neutra", "motivo": "referencia_neutra"},
+                       "cv2": {"dirs": {"D1": -1, "H4": -1}}}, segredo=T.SEGREDO)
+    s, _, _ = T._snap(a["tok"], T._det(a["tok"], agora=ea, extra={"cv_atestado": at})); assert s == 200
+    antes = T._pg("select decisao, regra, motivo from ciclo_leituras where bot_id=%s and barra_m15=%s", a["id"], barra)[0]
+    det2 = T._det(a["tok"], agora=ea)                      # snapshot seguinte: SEM atestado (outro estado)
+    s, _, _ = T._snap(a["tok"], det2); assert s == 200
+    sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("id", a["id"]).execute().data[0]
+    chamadas = []
+    real = api._clm_agora_s
+    api._clm_agora_s = lambda: (chamadas.append(1), (fim - 1) if len(chamadas) == 1 else real())[1]
+    try:
+        api._clm_ingerir(sb, bot, None, dict(det2, tgmt=str(int(det2["tgmt"]) + 1)))
+    finally:
+        api._clm_agora_s = real
+    assert len(chamadas) >= 2                              # o relógio foi lido de novo depois da verificação
+    depois = T._pg("select decisao, regra, motivo, (falhas->'pos_validade'->>'n')::int from ciclo_leituras "
+                   "where bot_id=%s and barra_m15=%s", a["id"], barra)[0]
+    assert depois[:3] == antes and depois[3] >= 2
