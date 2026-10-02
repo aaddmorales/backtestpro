@@ -1,4 +1,4 @@
-# Auditoria dos estudos e do ranking do Admin (C27R15, 02/out/2026)
+# Auditoria dos estudos e do ranking do Admin (C27R15, 02/out/2026 — rev. b)
 
 Nada foi recalculado. Tudo abaixo foi lido do código (`api.py`, `app.html`) e dos bancos: produção só em leitura, homologação em leitura e na cópia descrita no item 4.
 
@@ -14,7 +14,7 @@ Nada foi recalculado. Tudo abaixo foi lido do código (`api.py`, `app.html`) e d
 ## 2. Critério de ranking (como o Admin ordena)
 
 - **v2 (aba Estudo):** entram células com `trades ≥ 30` e `PF > 1`; ordem por **Sharpe** decrescente; mostra as 10 primeiras, por ativo e período.
-  - Selo: "forte" = ≥ 30 trades, PF > 1 e PF > 1 nas duas metades do walk-forward; "ok" = PF > 1 e ≥ 20 trades.
+  - Selo: "forte" = ≥ 30 trades, PF > 1 e PF > 1 nas duas metades do período (ver item 3b); "ok" = PF > 1 e ≥ 20 trades.
 - **v1:** entram células com `trades ≥ 20` e `PF > 1`; ordem por Sharpe decrescente; top 10.
 
 ## 3. O que cada banco registra
@@ -32,13 +32,39 @@ Nada foi recalculado. Tudo abaixo foi lido do código (`api.py`, `app.html`) e d
 | comissão | **não registrado** | `parametros.comissao` = 0,0002 |
 | slippage | **não registrado** | **não registrado** |
 | data do estudo | `medido_em` (06/09/2026) | `medido_em` (26/07 a 01/10/2026) |
-| fora da amostra | walk-forward em duas metades (`wf_a_pf`, `wf_b_pf`) | **não há**; 3 janelas consecutivas medidas em separado |
+| fora da amostra | **não registrado** (ver 3b); há estabilidade em duas metades (`wf_a_pf`, `wf_b_pf`) | **não registrado**; 3 janelas consecutivas medidas em separado |
 | resultado por regime | **não registrado** | **não registrado** |
 | extras | `pior`, `mae_p95` (pontos) | `captura_pct`, `forca` |
 
 Volume lido em 02/out:
 - **Produção:** v2 = 915 linhas; v1 = 12 444 linhas.
 - **Homologação:** v1 = 3 621 linhas (sem XAU); v2 = 0 antes desta ordem.
+
+## 3b. "Walk-forward" do Professor não é avaliação fora da amostra
+
+Li o procedimento no código do Professor (`professor_cards_v19.py`, l. 395–401, cards 2.0; o estudo foi medido com cards 1.9, cujo código não tenho):
+
+```
+wf_a = pf(T[T.ts < meio]);  wf_b = pf(T[T.ts >= meio])
+```
+
+- É o **PF da primeira e da segunda metade** das operações do mesmo período, com **os mesmos parâmetros**.
+- Não há treino numa parte e teste na outra, nem otimização, nem janela rolante. Logo não é fora da amostra; é uma medida de **estabilidade**.
+- Não consegui comprovar que a 1.9 fazia diferente da 2.0. Por isso **ajustei o rótulo** em vez de afirmar o procedimento:
+  - API: `fora_da_amostra = {existe: false, tipo: "não registrado"}` e, à parte, `estabilidade_em_metades` com os dois PFs e o nome que o banco usa;
+  - Admin (aba Estudo): "walk-forward" virou "PF nas duas metades do período"; os números não mudaram.
+
+## 3c. Onde o `/ranking` demonstrativo é consumido
+
+| lugar | o que encontrei |
+|---|---|
+| `api.py` l. 7424, `GET /ranking` | lista fixa de 5 nomes com números inventados para layout |
+| `api.py` l. 987, rota `/` | só cita `/ranking` na lista de endpoints |
+| `app.html` | **nenhuma chamada** a `/ranking` |
+| `app.html` l. 2272, aba `#tab-rank` ("Rank Best Bots") | HTML **estático** com os mesmos números fictícios; está na lista do `switchTab`, mas **não existe botão** que a abra |
+| conector, EA, motor, instaladores | nenhuma referência |
+
+Conclusão: ninguém consome a rota; nenhum número dela chega à BabyMachine, ao Radar ou a uma decisão. Marquei os dois pontos sem removê-los: a rota devolve `"demonstracao": true` com aviso, e a aba traz "DEMONSTRAÇÃO DE LAYOUT — nomes e números fictícios". Remover a rota e a aba é decisão sua.
 
 ## 4. Cópia feita na homologação
 
@@ -49,10 +75,24 @@ Volume lido em 02/out:
 ## 5. Vínculo bot ↔ estudo
 
 - O envio grava no bot (`config_operacional`): `estrategia_id`, `estrategia_nome`, `ativo_envio`, `timeframe_envio`, `codigo_sha1`, `sl_envio_pts`, `tp_envio_pts`.
-- **v1:** o id é o mesmo da Vitrine, então o vínculo é direto.
-- **v2:** os ids são outros (`cardN_…`) e **nenhum banco guarda o vínculo**. Criei a tabela declarada `_REF_CORRESP_V2`, com dois níveis:
-  - "idêntico" (mesmo nome nos dois bancos): EMA 9/21, Tripla Média, RSI, Bollinger, Donchian 20;
-  - "declarada" (nome próximo, **a confirmar pelo dono**): Estratégia 2 ↔ Reversão no Extremo, Cruzamento do Canal ↔ card4, MACD, S&R do Dia Anterior, Engolfo, Topo/Fundo Duplo.
+- **v1 (fábrica):** o id é o mesmo da Vitrine, mas isso **não basta**. A correspondência só é "comprovada" quando três coisas batem: o `codigo_hash` do estudo é o sha256 do código atual do card; o `codigo_sha1` gravado no envio do bot é o sha1 desse mesmo código; stop e alvo do envio são os do estudo. Fora disso aparece "NÃO COMPROVADA", com o que não bateu.
+- **v2 (Professor):** os ids são outros (`cardN_…`) e **nenhum banco guarda o vínculo**. A ligação é só pelo nome, então **todas** ficam como **correspondência não comprovada**. Na BabyMachine o quadro diz "os números abaixo não são o desempenho deste bot".
+- Comparei o código da Vitrine com o dos cards (cards 2.0). A **saída é sempre diferente**: o estudo usa stop estrutural e saída "100% Ciclo, sem TP"; o bot usa stop e alvo do envio.
+
+| Vitrine | card do Professor | entrada |
+|---|---|---|
+| Cruzamento EMA 9/21 | card5_ema_9_21 | equivalente |
+| Cruzamento do Canal | card4_canal_ema20 | parcial: a Vitrine entra enquanto o fechamento está fora do canal; o card só no cruzamento |
+| MACD | card9_macd | parcial: a Vitrine só compra; o card opera os dois lados |
+| S&R do Dia Anterior | card11_sr_dia_anterior | parcial: o card exige cruzamento e continuidade |
+| Tripla Média 9/21/50 | card6_tripla_media | diferente |
+| RSI Reversão | card7_rsi | diferente (média simples × Wilder; só compra × dois lados) |
+| Bollinger Reversão | card8_bollinger | diferente (toque × fechou fora e voltou) |
+| Rompimento Donchian 20 | card10_donchian20 | diferente (máxima/mínima da barra × fechamento com continuidade) |
+| Engolfo | card12_engolfo | diferente |
+| Topo/Fundo Duplo | card13_topo_fundo_duplo | diferente (pivôs e tolerância) |
+| Estratégia 2 | card1_reversao_extremo | diferente |
+
 - Sem equivalente na Vitrine: `card2_rompimento_caixa`, `card3_segunda_entrada`.
 - Sem card no v2: Canal EMA 20 H/L, Tendência Diária, Trend Day, Fibonacci, Gap, Média+ATR, Microcanal, Fechamento Ímã.
 - **MASTER** (`teste_integracao_mt5`): executor de integração, "sem resultado medido". Não tem estudo.
@@ -65,3 +105,29 @@ Volume lido em 02/out:
 - **Regra derivada de medição que já atua:** o "mandato medido" da v7.46 grava `veto_fase=true` (Cruzamento do Canal e Estratégia 2 em XAU) e `protecao=false` (Donchian em BTC) no envio. Vem da medição do Professor de fases; os números dessa medição **não estão** nos bancos de estudo.
 
 Nesta ordem o estudo entrou só como **referência informativa**. Nenhuma regra de abertura foi alterada.
+
+## 7. Pontuação, veto e autorização
+
+São três coisas diferentes, e o quadro agora mostra cada uma:
+
+- **Pontuação** — prontidão % do checklist e estrelas de confluência. É medida; pontuação alta não autoriza.
+- **Veto** — um portão fechado. O quadro lista os 8 portões na ordem em que o detector e o emissor os aplicam e aponta o primeiro fechado.
+- **Autorização** — só existe com os 8 portões avaliados e abertos. O quadro **não autoriza nada**; ele lê.
+
+| # | portão | o quadro avalia? |
+|---|---|---|
+| 1 | modo operacional ("observar" não dispara nada) | sim |
+| 2 | intervalo entre oportunidades | sim (memória do servidor) |
+| 3 | disjuntores: pausa, posição aberta, limite diário, drawdown | parcial: drawdown do dia só dentro do detector |
+| 4 | direção e níveis da operação | não; só dentro do detector |
+| 5 | confluências ≥ limiar de estrelas do modo | não; só dentro do detector |
+| 6 | checklist de entrada (`pode_entrar`) | sim |
+| 7 | autoridade dos Ciclos (R-CICLO-01) | sim |
+| 8 | consumo único da decisão (RPC) | não; só quando há decisão emitida |
+
+A leitura dos portões não cria nem altera estado no servidor (lê `_BOT_CONFIG`, `_OPORTUNIDADES_HIST` e `_CIRCUIT_STATE` sem chamar as funções que os inicializam).
+
+## 8. Decisão registrada da barra × integração agora
+
+- A decisão da barra M15 fica gravada em `ciclo_leituras` e vale 900 s. Snapshots que chegam depois da validade **não reescrevem** a decisão; são contados em `falhas.pos_validade` e geram um aviso na trilha por estado distinto.
+- O painel mostra, lado a lado, a **decisão registrada** e a **integração agora** (motor e atestado deste snapshot, com o elo em falha). Uma falha atual aparece mesmo quando a barra anterior terminou válida.

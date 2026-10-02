@@ -2273,7 +2273,7 @@ body.modo-vitrine #vitrine{display:block}
             <div class="rank-header">
               <div>
                 <div class="rank-title">🏆 Rank Best Bots</div>
-                <div class="rank-sub">Melhores estratégias da comunidade no momento</div>
+                <div class="rank-sub">DEMONSTRAÇÃO DE LAYOUT — nomes e números fictícios, não são resultados medidos</div>
               </div>
               <button class="tbtn tbtn-orange" onclick="switchTab('editor')">+ Publicar meu Bot</button>
             </div>
@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.50-referencia-historica-c27r15';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.51-referencia-historica-c27r15b';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -4069,7 +4069,7 @@ const I18N = {
     'cap.inicial':'Capital Inicial','cap.final':'Capital Final','cap.lucro':'Lucro / Perda','cap.cagr':'Retorno Anual (CAGR)',
     'otim.resultado':'Resultado da otimização','otim.testadas':'combinações testadas · ordenado por','otim.retorno':'Retorno','otim.verGrafico':'ver no gráfico','otim.grafico':'Gráfico da combinação','otim.overfit':'Estas são MÉTRICAS DE BACKTEST sobre dados históricos. Desempenho passado NÃO garante desempenho futuro. A combinação no topo pode estar superajustada (overfitting) ao histórico. Antes de confiar, valide fora da amostra (out-of-sample) e em outros períodos.','otim.avisoWR':'Atenção: a combinação com mais acertos perde dinheiro (win rate alto, retorno negativo). Taxa de acerto não é lucro.','otim.melhorNeg':'A melhor combinação testada ainda dá prejuízo — neste conjunto não há configuração vencedora. Não é fracasso seu: às vezes o ativo/timeframe simplesmente não favorece a estratégia. Teste outra estratégia, outro timeframe, ou amplie o range da varredura.','ov.candlesOps':'Candles + Operações',
     'estudo.titulo':'Estudo — Matriz Estratégia × Timeframe',
-    'estudo.sub':'Matriz estratégia × timeframe medida em <b>barras reais MT5 (IC Markets)</b>, importada do Professor — o motor sintético morreu. 💪 = robusta: <b>30+ trades e PF &gt; 1 nas DUAS metades do walk-forward</b> (nunca pico). Ranking por consistência (Sharpe). Célula vazia = aguardando refação sobre o Bloco 1. Histórico medido — não é promessa.',
+    'estudo.sub':'Matriz estratégia × timeframe medida em <b>barras reais MT5 (IC Markets)</b>, importada do Professor — o motor sintético morreu. 💪 = robusta: <b>30+ trades e PF &gt; 1 nas DUAS metades do período</b> (estabilidade com os mesmos parâmetros — não é avaliação fora da amostra; nunca pico). Ranking por consistência (Sharpe). Célula vazia = aguardando refação sobre o Bloco 1. Histórico medido — não é promessa.',
     'estudo.ativo':'Ativo (catálogo completo)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Rodar estudo (1–2 min)',
     'per.6m':'6 meses','per.1a':'1 ano','per.2a':'2 anos','per.3a':'3 anos','per.5a':'5 anos',
     'estudo.gateTitulo':'Recurso do plano profissional',
@@ -4105,7 +4105,7 @@ const I18N = {
     'cap.inicial':'Initial Capital','cap.final':'Final Capital','cap.lucro':'Profit / Loss','cap.cagr':'Annual Return (CAGR)',
     'otim.resultado':'Optimization result','otim.testadas':'combinations tested · sorted by','otim.retorno':'Return','otim.verGrafico':'view on chart','otim.grafico':'Chart of the combination','otim.overfit':'These are BACKTEST METRICS on historical data. Past performance does NOT guarantee future performance. The top combination may be overfitted to the history. Before trusting it, validate out-of-sample and across other periods.','otim.avisoWR':'Heads up: the combination with the most wins loses money (high win rate, negative return). Hit rate is not profit.','otim.melhorNeg':'The best combination tested still loses money — there is no winning setup in this set. Not your fault: sometimes the asset/timeframe simply does not favor the strategy. Try another strategy, another timeframe, or widen the sweep range.','ov.candlesOps':'Candles + Trades',
     'estudo.titulo':'Study — Strategy × Timeframe Matrix',
-    'estudo.sub':'Strategy × timeframe matrix measured on <b>real MT5 bars (IC Markets)</b>, imported from the Professor — the synthetic engine is gone. 💪 = robust: <b>30+ trades and PF &gt; 1 in BOTH walk-forward halves</b> (never a peak). Ranked by consistency (Sharpe). Empty cell = awaiting the Block 1 rebuild. Measured history — not a promise.',
+    'estudo.sub':'Strategy × timeframe matrix measured on <b>real MT5 bars (IC Markets)</b>, imported from the Professor — the synthetic engine is gone. 💪 = robust: <b>30+ trades and PF &gt; 1 in BOTH halves of the period</b> (stability with the same parameters — not an out-of-sample evaluation; never a peak). Ranked by consistency (Sharpe). Empty cell = awaiting the Block 1 rebuild. Measured history — not a promise.',
     'estudo.ativo':'Asset (full catalog)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Run study (1–2 min)',
     'per.6m':'6 months','per.1a':'1 year','per.2a':'2 years','per.3a':'3 years','per.5a':'5 years',
     'estudo.gateTitulo':'Professional plan feature',
@@ -4141,7 +4141,7 @@ const I18N = {
     'cap.inicial':'Capital inicial','cap.final':'Capital final','cap.lucro':'Ganancia / Pérdida','cap.cagr':'Retorno anual (CAGR)',
     'otim.resultado':'Resultado de la optimización','otim.testadas':'combinaciones probadas · ordenado por','otim.retorno':'Retorno','otim.verGrafico':'ver en el gráfico','otim.grafico':'Gráfico de la combinación','otim.overfit':'Estas son MÉTRICAS DE BACKTEST sobre datos históricos. El rendimiento pasado NO garantiza el rendimiento futuro. La combinación superior puede estar sobreajustada (overfitting) al histórico. Antes de confiar, valida fuera de muestra (out-of-sample) y en otros períodos.','otim.avisoWR':'Atención: la combinación con más aciertos pierde dinero (win rate alto, retorno negativo). La tasa de acierto no es ganancia.','otim.melhorNeg':'La mejor combinación probada aún pierde dinero — no hay configuración ganadora en este conjunto. No es tu culpa: a veces el activo/timeframe simplemente no favorece la estrategia. Prueba otra estrategia, otro timeframe o amplía el rango del barrido.','ov.candlesOps':'Velas + Operaciones',
     'estudo.titulo':'Estudio — Matriz Estrategia × Timeframe',
-    'estudo.sub':'Matriz estrategia × timeframe medida en <b>barras reales MT5 (IC Markets)</b>, importada del Professor — el motor sintético murió. 💪 = robusta: <b>30+ trades y PF &gt; 1 en las DOS mitades del walk-forward</b> (nunca un pico). Clasificado por consistencia (Sharpe). Celda vacía = esperando la reconstrucción sobre el Bloque 1. Histórico medido — no es una promesa.',
+    'estudo.sub':'Matriz estrategia × timeframe medida en <b>barras reales MT5 (IC Markets)</b>, importada del Professor — el motor sintético murió. 💪 = robusta: <b>30+ trades y PF &gt; 1 en las DOS mitades del período</b> (estabilidad con los mismos parámetros — no es evaluación fuera de muestra; nunca un pico). Clasificado por consistencia (Sharpe). Celda vacía = esperando la reconstrucción sobre el Bloque 1. Histórico medido — no es una promesa.',
     'estudo.ativo':'Activo (catálogo completo)','estudo.tfs':'Timeframes','estudo.rodar':'🧪 Ejecutar estudio (1–2 min)',
     'per.6m':'6 meses','per.1a':'1 año','per.2a':'2 años','per.3a':'3 años','per.5a':'5 años',
     'estudo.gateTitulo':'Función del plan profesional',
@@ -4361,7 +4361,7 @@ async function rodarEstudo() {
     }
     // v10.30: CARIMBO DE ORIGEM — de onde o número veio, sempre na tela
     const og = d.origem || {};
-    const carimbo = `<div style="font-size:11px;color:var(--muted);margin-top:10px">🧾 Origem: ${og.fonte || 'barras MT5 reais'}${og.corretora ? ' · ' + og.corretora : ''}${og.professor_versao ? ' · Professor ' + og.professor_versao : ''}${og.motor_versao ? ' · motor ' + og.motor_versao : ''}${og.bloco1_versao ? ' · Bloco 1 ' + og.bloco1_versao : ''} · walk-forward em duas metades${window._bibMedidoEm ? ' · 📅 medida em ' + window._bibMedidoEm : ''}</div>`;
+    const carimbo = `<div style="font-size:11px;color:var(--muted);margin-top:10px">🧾 Origem: ${og.fonte || 'barras MT5 reais'}${og.corretora ? ' · ' + og.corretora : ''}${og.professor_versao ? ' · Professor ' + og.professor_versao : ''}${og.motor_versao ? ' · motor ' + og.motor_versao : ''}${og.bloco1_versao ? ' · Bloco 1 ' + og.bloco1_versao : ''} · PF medido em duas metades do período (estabilidade, não fora da amostra)${window._bibMedidoEm ? ' · 📅 medida em ' + window._bibMedidoEm : ''}</div>`;
     res.innerHTML = renderEstudo(d) + carimbo;
   } catch (e) {
     res.innerHTML = `<div style="color:var(--red);font-size:13px;padding:14px">Erro ao ler a biblioteca: ${e.message}</div>`;
@@ -8987,18 +8987,23 @@ function clmRefBox(R){
   const linha = (a,b) => `<tr><td style="width:190px"><b>${a}</b></td><td>${b}</td></tr>`;
   const rk = r => !r ? nr(null) : (r.posicao ? `<b>${r.posicao}º de ${r.de}</b>${r.no_top10_do_admin?' (aparece no Top 10 do Admin)':''}` : `<span class="clm-na">${_clmE(r.motivo||'fora do ranking')}</span> (${r.de} células elegíveis)`) + `<br><span class="clm-sub">critério: ${_clmE(r.criterio)}</span>`;
   let corpo = '';
-  if (H.situacao !== 'com_estudo') {
+  if (!(H.estudos||[]).length) {
     corpo = `<div class="clm-it"><b class="clm-veto">${_clmE(H.mensagem||'sem estudo associado')}</b><br><span class="clm-sub">${_clmE(H.detalhe||((H.avisos||[]).join(' · ')))}</span></div>`;
   } else {
     corpo = (H.estudos||[]).map(e => {
       const c = e.correspondencia || {};
-      const corr = `Estratégia: ${_clmE(c.estrategia)} · Versão: ${_clmE(c.versao)} · Ativo: ${_clmE(c.ativo)} · TF: ${_clmE(c.timeframe)} · Parâmetros: ${_clmE(c.parametros)}`;
+      const im = c.implementacao || {};
+      const selo = c.nivel === 'comprovada' ? '<span class="clm-st clm-ok">✔ COMPROVADA</span>' : '<span class="clm-st clm-bad">✖ NÃO COMPROVADA</span>';
+      const impl = im.entrada ? `entrada ${_clmE(im.entrada)} (${_clmE(im.detalhe)}); saída ${_clmE(im.saida)} — comparado com ${_clmE(im.comparado_com)}`
+        : `estudo mediu o código atual do card: ${im.estudo_mediu_o_codigo_atual_do_card?'sim':'não'}; bot enviado com o código atual: ${im.bot_enviado_com_o_codigo_atual_do_card?'sim':'não'} (${_clmE(im.detalhe||'')})`;
+      const corr = `${selo} Estratégia: ${_clmE(c.estrategia)}<br>Implementação: ${impl}<br>Versão: ${_clmE(c.versao)} · Ativo: ${_clmE(c.ativo)} · TF: ${_clmE(c.timeframe)}<br>Parâmetros: ${_clmE(c.parametros)}`;
       let res, per, pos, ids;
       if (e.banco === 'estudo_biblioteca_v2') {
-        const m = e.metricas || {}, f = e.fora_da_amostra || {}, cu = e.custos || {};
+        const m = e.metricas || {}, f = e.estabilidade_em_metades || {}, cu = e.custos || {};
         res = `trades ${nr(m.trades)} · acerto ${nr(m.win_rate_pct)}% · PF ${nr(m.profit_factor)} · Sharpe ${nr(m.sharpe)} · retorno ${nr(m.retorno)} ${_clmE(m.retorno_unidade)} · drawdown ${nr(m.drawdown)} ${_clmE(m.drawdown_unidade)}`
             + `<br><span class="clm-sub">custos: spread ${nr(cu.spread)} · comissão ${nr(cu.comissao)} · slippage ${nr(cu.slippage)}</span>`
-            + `<br><span class="clm-sub">fora da amostra: ${f.existe ? _clmE(f.tipo)+' — PF A '+nr(f.wf_a_pf)+' · PF B '+nr(f.wf_b_pf)+' · selo do Admin: '+_clmE(f.selo_admin) : 'não registrado'}</span>`;
+            + `<br><span class="clm-sub">avaliação fora da amostra: <b>não registrada</b></span>`
+            + `<br><span class="clm-sub">${f.existe ? _clmE(f.tipo)+': PF 1ª metade '+nr(f.pf_metade_1)+' · PF 2ª metade '+nr(f.pf_metade_2)+' · selo do Admin: '+_clmE(f.selo_admin) : 'estabilidade em metades: não registrada'}</span>`;
         per = `${nr(e.periodo)} · medido em ${e.data_estudo && e.data_estudo!=='não registrado' ? _clmDataHora(e.data_estudo) : nr(null)}<br><span class="clm-sub">fonte: ${nr(e.fonte_dados)} · Professor ${nr((e.versao||{}).professor)} · motor ${nr((e.versao||{}).motor)}</span>`;
         pos = rk(e.ranking);
         ids = `<code class="clm-id">${_clmE(e.estudo_id)}</code> <code class="clm-id">${_clmE(e.chave)}</code>`;
@@ -9013,6 +9018,7 @@ function clmRefBox(R){
       return `<div class="clm-sub" style="margin-top:8px">Banco: <b>${_clmE(e.banco)}</b> · ${_clmE((e.estrategia||{}).nome)} (${_clmE((e.estrategia||{}).id)}) · ${_clmE(e.ativo)} ${_clmE(e.timeframe)} · ${ids}</div>
         <div class="clm-mx"><table style="min-width:0">${linha('Correspondência', corr)}${linha('Resultado histórico', res)}${linha('Período estudado', per)}${linha('Posição no ranking', pos)}</table></div>`;
     }).join('');
+    corpo = `<div class="clm-it"><b class="${H.situacao==='com_estudo'?'clm-ok':'clm-veto'}">${_clmE(H.mensagem||'')}</b></div>` + corpo;
     corpo += `<div class="clm-mx"><table style="min-width:0">${linha('Limitações', (H.limitacoes||[]).map(_clmE).join('<br>') || 'nenhuma registrada')}${(H.avisos||[]).length?linha('Sem correspondência', H.avisos.map(_clmE).join('<br>')):''}</table></div>`;
   }
   const P = H.participacao_na_decisao || {}, RG = H.regime || {}, RM = P.regras_de_medicao_ativas || {};
@@ -9023,10 +9029,25 @@ function clmRefBox(R){
     ${corpo}
     <div class="clm-mx"><table style="min-width:0">${linha('Participação na decisão', `<b>${_clmE(P.papel||'referência informativa')}</b><br><span class="clm-sub">${_clmE(P.explicacao||'')}</span>${flags?`<br><span class="clm-warn">regra em vigor derivada de medição: ${flags}</span> <span class="clm-sub">${_clmE(RM.origem||'')}</span>`:''}`)}${linha('Estudo × mercado atual', reg)}</table></div>
     <div class="clm-ciclos" style="margin-top:8px">
-      <div class="clm-c"><b>1 · Desempenho histórico</b><br><span class="clm-sub">resultado medido nos estudos</span><br>${H.situacao==='com_estudo' ? (H.estudos||[]).map(e => _clmE(e.banco==='estudo_biblioteca_v2'?'Professor (MT5)':'Fábrica (yfinance)')).join(' + ') : '<span class="clm-na">'+_clmE(H.mensagem||'sem estudo')+'</span>'}</div>
+      <div class="clm-c"><b>1 · Desempenho histórico</b><br><span class="clm-sub">resultado medido nos estudos</span><br>${(H.estudos||[]).length ? (H.estudos||[]).map(e => _clmE(e.banco==='estudo_biblioteca_v2'?'Professor (MT5)':'Fábrica (yfinance)') + ((e.correspondencia||{}).nivel==='comprovada'?' ✔':' — correspondência não comprovada')).join('<br>') : '<span class="clm-na">'+_clmE(H.mensagem||'sem estudo')+'</span>'}</div>
       <div class="clm-c"><b>2 · Pontuação do checklist</b><br><span class="clm-sub">condições atuais atendidas</span><br>${K.prontidao_pct!=null ? 'prontidão <b>'+_clmE(K.prontidao_pct)+'%</b> · '+_clmE(K.verdes)+' verdes, '+_clmE(K.vermelhos)+' vermelhos, '+_clmE(K.sem_dado)+' sem dado' : '<span class="clm-na">'+_clmE(K.mensagem||K.erro||'não calculado')+'</span>'}<br><span class="clm-sub">${itens}</span></div>
       <div class="clm-c clm-dec"><b>3 · Autorização operacional</b><br><span class="clm-sub">regras, Ciclos e portões</span><br><b>${_clmE(A.estado||'—')}</b> · ${_clmE(A.regra||'')}<br><span class="clm-sub">${_clmE(A.motivo||'')}</span><br><span class="clm-sub">o estudo influenciou? <b>${A.estudo_influenciou?'sim':'não'}</b> — ${_clmE(A.explicacao||'')}</span></div>
+    </div>
+    <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Portão (ordem de aplicação)</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>${(A.portoes||[]).map(p => `<tr><td>${_clmE(p.portao)}</td><td>${p.aberto===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.aberto===false?'<span class="clm-st clm-bad">FECHADO (veto)</span>':'<span class="clm-st clm-na">NÃO AVALIADO AQUI</span>')}</td><td><span class="clm-sub">${_clmE(p.detalhe||'')}</span></td></tr>`).join('')}</tbody></table>
+      <div class="clm-sub" style="margin-top:4px">Pontuação ≠ veto ≠ autorização: prontidão % e estrelas são medidas; veto é um portão FECHADO${A.primeiro_fechado?' (primeiro: '+_clmE(A.primeiro_fechado)+')':''}; autorização exige os 8 avaliados e abertos — este quadro não autoriza nada. ${_clmE(K.papel||'')}</div>
     </div></div>`;
+}
+
+// C27R15 — decisão REGISTRADA da barra × situação da integração AGORA (nunca se misturam).
+function clmBarraBox(B){
+  if (!B) return '';
+  const R = B.registrada, V = B.validade || {}, I = B.integracao_agora || {};
+  const reg = R ? `<b>${_clmE(String(R.decisao||'').toUpperCase())}</b> · ${_clmE(R.regra||'')}${R.classe_veto?' · '+_clmE(R.classe_veto):''}<br><span class="clm-sub">${_clmE(R.motivo||'')}</span><br><span class="clm-sub">atestado na barra: ${_clmE(R.atestado_na_barra||'—')} · motor na barra: ${_clmE(R.motor_na_barra||'—')} · ${_clmE(R.n_snapshots)} snapshots${R.pos_validade?' · '+_clmE(R.pos_validade.n)+' após a validade ('+_clmE((R.pos_validade.estados||[]).join(', '))+')':''}</span>` : '<span class="clm-na">barra ainda sem registro</span>';
+  const val = V.fim_utc ? (V.encerrada ? `<span class="clm-st clm-na">VALIDADE ENCERRADA às ${_clmHora(V.fim_utc)}</span>` : `<span class="clm-st clm-ok">VÁLIDA por mais ${_clmE(V.restam_s)}s</span>`) : '';
+  const ag = I.falha ? `<span class="clm-st clm-bad">✖ FALHA DE INTEGRAÇÃO AGORA</span> ${_clmE(I.elo_em_falha||'')}<br><span class="clm-sub">${_clmE(I.motivo_elo||'')}</span>` : `<span class="clm-st clm-ok">✔ integração íntegra agora</span><br><span class="clm-sub">motor ${_clmE(I.motor)} · atestado ${_clmE(I.atestado)}</span>`;
+  return `<div class="clm-box${I.falha?' clm-alerta':''}"><div class="clm-tit"><span>🧾 Decisão registrada da barra × integração agora</span>${val}</div>
+    <div class="clm-grid2" style="margin-top:6px"><div class="clm-c"><b>Decisão registrada (persistida)</b><br>${reg}</div><div class="clm-c"><b>Integração agora (este snapshot)</b><br>${ag}</div></div>
+    <div class="clm-sub" style="margin-top:4px">${_clmE(B.nota||'')}</div></div>`;
 }
 
 function clmRender(botId, d, tr){
@@ -9189,7 +9210,7 @@ function clmRender(botId, d, tr){
       <button class="clm-btn" onclick="clmExportar(${botId}, (document.getElementById('clm-f-barra-${botId}')||{}).value)">⬇ Exportar ciclo (JSON)</button>
     </span></div>
     <div class="clm-tl" style="margin-top:6px">${itens}</div></div>`;
-  el.innerHTML = est + resumo + clmRefBox(d.referencia_historica) + cadeia + matriz + contadores + autoridade + saude + trilha;
+  el.innerHTML = est + clmBarraBox(d.barra_registrada) + resumo + clmRefBox(d.referencia_historica) + cadeia + matriz + contadores + autoridade + saude + trilha;
   el.dataset.ult = est + resumo + matriz;
 }
 
