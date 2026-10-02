@@ -37,7 +37,9 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.2-hml"
+LEITOR_VERSAO = "1.3-hml"
+CAND_VERSAO = "cand-1"
+TFS_CANDIDATOS = ("M15", "M30", "H1")     # escopo da seleção (C27R19)
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MODULOS = ("bt_ciclo_v1.py", "bt_vivo_sombra.py", "bloco1_motor_v3.py",
            "professor_cards_v19.py", "professor_bloco2.py", "professor_bloco3.py",
@@ -127,6 +129,91 @@ def _espera(intervalo, agora_s, periodo_publicado):
     if falta < intervalo:
         return max(1, falta + 2)
     return intervalo
+
+
+def _candidatos(pasta, ativo, spread_tick=None):
+    """v1.3 — CANDIDATOS por timeframe (M15, M30, H1) com o código do Professor, SEM alteração:
+    professor_cards (sinais dos 13 cards em barras FECHADAS de cada TF), professor_bloco2.
+    resolver_entradas (entrada no relógio do M15, stop estrutural = pivô do M15 ∓ 0,3×ATR14,
+    blindagens e corte do Ciclo) e preparar_territorio (H4/H1/M30). É o mesmo percurso do
+    bt_vivo_sombra.decidir até a montagem dos candidatos; o Seletor (pilha) NÃO roda aqui.
+    Só lê o espelho. Não decide, não escolhe e não envia nada: é telemetria para a plataforma."""
+    import contextlib, io
+    import numpy as np
+    import bloco1_motor_v3 as B1
+    import professor_cards_v19 as PC
+    import professor_bloco2 as B2
+    t0 = time.time()
+    with contextlib.redirect_stdout(io.StringIO()):
+        ficha_ok = bool(PC._aplicar_ficha(ativo, pasta))
+        lt = B1.LeitorMultiTF(pasta, ativo).carregar()
+        F15 = B1.FichaSerie(lt, "M15", ativo)
+        fichas = {"M15": F15}
+        for tf in TFS_CANDIDATOS:
+            if tf not in fichas and tf in lt.andares:
+                fichas[tf] = B1.FichaSerie(lt, tf, ativo)
+        ter = B2.preparar_territorio(lt, F15)
+    n15 = int(F15.n); k_ult = n15 - 1
+    passo15 = (F15.ts[1] - F15.ts[0])
+    ts_txt = lambda t: str(np.datetime_as_string(np.datetime64(t), unit="s")).replace("T", " ")
+    ponto = float(getattr(PC, "PONTO", 0) or 0)
+    itens = []
+    for cid, nome, fn in PC.CARDS:
+        for tf in TFS_CANDIDATOS:
+            F = fichas.get(tf)
+            if F is None:
+                continue
+            with contextlib.redirect_stdout(io.StringIO()):
+                sin = fn(F, F.D)
+                res = B2.resolver_entradas(F, sin, F15)
+            passo_tf = (F.ts[1] - F.ts[0])
+            val15 = max(1, int(B2.VALIDADE_FILA_TF * passo_tf / passo15))
+            base = {"card": cid, "nome": nome, "tf": tf, "validade_m15": val15}
+            resolvidos = set()
+            for r in res:
+                resolvidos.add(int(r["i_sin"]))
+                idade = k_ult - int(r["k15"])
+                if idade > val15:
+                    continue
+                lado = int(r["lado"]); ent = float(r["ent"]); st = float(r["stop0"])
+                itens.append(dict(base, estado="confirmado", lado=lado,
+                                  uid=f"{cid}|{tf}|{ts_txt(F.ts[int(r['i_sin'])])}|{lado}",
+                                  ts_sinal=ts_txt(F.ts[int(r["i_sin"])]),
+                                  ts_entrada_m15=ts_txt(F15.ts[int(r["k15"])]),
+                                  idade_m15=int(idade), entrada=round(ent, 6), stop=round(st, 6),
+                                  risco_pts=(round(abs(ent - st) / ponto, 1) if ponto > 0 else None),
+                                  corte_ciclo_contra_agora=bool(F15.corta[lado][k_ult])))
+            for (i_sin, lado, nivel, modo) in sin:
+                i_sin = int(i_sin); lado = int(lado)
+                if i_sin in resolvidos or i_sin < F.n - B2.VALIDADE_FILA_TF:
+                    continue
+                itens.append(dict(base, estado="aguardando", lado=lado, modo=str(modo),
+                                  uid=f"{cid}|{tf}|{ts_txt(F.ts[i_sin])}|{lado}",
+                                  ts_sinal=ts_txt(F.ts[i_sin]),
+                                  barras_desde_o_sinal=int(F.n - 1 - i_sin),
+                                  nivel=(None if nivel is None else round(float(nivel), 6)),
+                                  espera=("entrada na abertura de barra do TF, resolvida no relógio do M15"
+                                          if modo == "fechamento" else
+                                          "armado no nível; só entra com continuidade"),
+                                  corte_ciclo_contra_agora=bool(F15.corta[lado][k_ult])))
+    return {"versao": CAND_VERSAO, "ativo": ativo, "leitor": LEITOR_VERSAO,
+            "codigo": {"cards": getattr(PC, "CARDS_VERSAO", None), "bloco2": getattr(B2, "B2_VERSAO", None),
+                       "bloco1": getattr(B1, "MOTOR_VERSAO", None)},
+            "barra_m15_corretora": ts_txt(F15.ts[k_ult]), "n15": n15,
+            "tfs": {tf: {"barra_corretora": ts_txt(F.ts[F.n - 1]), "barras": int(F.n)} for tf, F in fichas.items()},
+            "territorio_h4_h1_m30": int(ter[k_ult]) if len(ter) else 0,
+            "blindagens_m15": {"B1": bool(F15.B1[k_ult]), "B5": bool(F15.B5[k_ult]),
+                               "corte_contra_compra": bool(F15.corta[1][k_ult]),
+                               "corte_contra_venda": bool(F15.corta[-1][k_ult])},
+            "ficha": {"aplicada": ficha_ok, "ponto": ponto or None,
+                      "spread_modelado_pts": getattr(PC, "SPREAD_PTS", None),
+                      "ignora_b5": bool(getattr(PC, "IGNORAR_B5", False))},
+            "spread_tick_pts": (None if spread_tick is None else int(spread_tick)),
+            "contrato_do_estudo": {"stop": "pivô do M15 ∓ 0,3×ATR14 do M15", "saida": "100% Ciclo, sem alvo fixo",
+                                   "frescor_para_entrada_nova": "até 1 barra M15 (IDADE_MAX do vivo)",
+                                   "validade_na_fila": "4 barras do TF do card"},
+            "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
+            "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
 
 
 def _ultima_linha_m15(pasta, ativo):
@@ -231,6 +318,11 @@ def main(argv=None):
                         leit["leitura"] = None
                         leit["erro"] = f"{type(e).__name__}: {e}"
                     _grava_json_atomico(os.path.join(tmp, "leitura_motor.json"), leit)
+                    try:                               # v1.3: candidatos M15/M30/H1 (só telemetria)
+                        cand = _candidatos(tmp, a.ativo, _spread)
+                    except Exception as e:
+                        cand = {"versao": CAND_VERSAO, "erro": f"{type(e).__name__}: {e}"[:300], "itens": []}
+                    _grava_json_atomico(os.path.join(tmp, "candidatos.json"), cand)
                     os.replace(tmp, destino)
                 else:
                     leit = _ler_json(os.path.join(destino, "leitura_motor.json")) or {}

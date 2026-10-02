@@ -128,7 +128,7 @@ def test_8_leitor_acorda_logo_depois_da_virada():
     """v1.2 — visto na plataforma: o 1º snapshot da barra chegava antes de o motor publicar
     (intervalo fixo de 20 s) e a barra abria como espelho_atrasado."""
     import bt_motor_leitura_hml as L
-    assert L.LEITOR_VERSAO == "1.2-hml"
+    assert L.LEITOR_VERSAO == "1.3-hml"
     base = 900 * 2_000_000
     assert L._espera(20, base + 400, 2_000_000) == 20            # meio da barra: intervalo normal
     assert L._espera(20, base + 890, 2_000_000) == 12            # virada em 10 s: acorda 2 s depois dela

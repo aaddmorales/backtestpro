@@ -741,7 +741,7 @@ class ConectorApp:
             # CAIU DO LADO DA PLATAFORMA: sinal se solta PRA CIMA
             c.create_line(xs[2] - 8, y, xs[2] - 60, y - 20,
                           fill=cores[0], width=3, arrow="last")
-            c.create_text((xs[1] + xs[2]) / 2, y + 30, text="sem conexão com a plataforma",
+            c.create_text((xs[1] + xs[2]) / 2, y + 30, text=("nada a enviar: sem sinal do MT5" if not e_mt5 else "sem conexão com a plataforma"),
                           fill=cores[0], font=("Segoe UI", 8))
         # bolinhas + rótulos
         rot = ("MT5", "Conector", "Plataforma")

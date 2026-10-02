@@ -29,7 +29,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"''', "H1-api_base")
 
 n = troca(n, 'APP_NOME = "BotTested Conector"', 'APP_NOME = "BotTested Conector HOMOLOG"', "H2-nome")
-n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml9"', "H2-versao")
+n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml10"', "H2-versao")
 
 # H3 — log de depuração separado
 n = troca(n, '"BotTested_Conector_debug.log"', '"BotTested_Conector_HOMOLOG_debug.log"', "H3-log")
@@ -432,6 +432,10 @@ c = troca(c, "    def _toggle_conectar(self):", """    def _hml_autoconectar(sel
             dbg(f"autoconectar: {e}")
 
     def _toggle_conectar(self):""", "H17-metodo")
+
+# H18 (hml10) — rótulo da trilha: sem sinal do MT5 não é "sem conexão com a plataforma"
+c = troca(c, 'text="sem conexão com a plataforma",',
+          'text=("nada a enviar: sem sinal do MT5" if not e_mt5 else "sem conexão com a plataforma"),', "H18-rotulo")
 
 # H11 — nada de fragmento de token ou argv no log
 c = c.replace("token {tok[:8]}…", "token ***")

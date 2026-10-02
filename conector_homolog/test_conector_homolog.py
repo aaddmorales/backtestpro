@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml9"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml10"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml9"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml10"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -658,3 +658,60 @@ def test_h16_janela_estatico():
     assert "target=self._loop_comandos" in src and "cmd_passo(tok, mg, self.mql5_dir)" in src
     nuc = (AQUI / "hml" / "conector_nucleo_homolog.py").read_text(encoding="utf-8")
     assert "order_send" not in nuc.lower() and "MetaTrader5" not in nuc      # o conector não envia ordem: só o EA
+
+
+# ═════════════════════ hml10 + leitor 1.3 — candidatos M15/M30/H1 até a seleção (C27R19) ═════════════════════
+def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monkeypatch):
+    """Leitor REAL (cards 2.0 + resolver_entradas, MT5 falso) → conector REAL → API: uma avaliação
+    por barra em selecao_avaliacoes, exposta na BabyMachine e no JSON; nada de decisão/comando."""
+    seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
+    monkeypatch.setenv("BT_CV_SEGREDO", seg)
+    cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
+    assert cand["versao"] == "cand-1" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
+    assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
+    s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",
+                   {"nome": "hml-sel-" + uuid.uuid4().hex[:6], "simbolo": "XAUUSD"}, tok=amb["tok"])
+    tok = json.loads(r)["bot_token"]
+    N._CV_CAND_ENVIOS.clear(); N._CV_CACHE.clear()
+    dados = FM.det_ea(_magic(tok))
+    for _ in range(5):
+        assert N.enviar_snapshot(tok, dict(dados))
+    cur = TV._pg().cursor()
+    cur.execute("select id from conector_bots where bot_token=%s", (tok,)); b_id = cur.fetchone()[0]
+    cur.execute("select count(*) filter (where detalhe_json->'cv_motor' ? 'candidatos'), count(*) from conector_snapshots "
+                "where bot_token=%s", (tok,))
+    assert cur.fetchone() == (3, 5)                                   # candidatos só nos 3 primeiros snapshots da barra
+    cur.execute("select count(*), max(n_candidatos), max(versao) from selecao_avaliacoes where bot_id=%s", (b_id,))
+    n, ncand, ver = cur.fetchone()
+    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-1")        # UMA avaliação por barra
+    cur.execute("select leituras->'motor' ? 'candidatos' from ciclo_leituras where bot_id=%s", (b_id,))
+    assert cur.fetchone()[0] is False                                 # não duplica os candidatos na leitura da barra
+    s, j = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/ao-vivo", {"bot_id": b_id}, tok=amb["tok"])
+    S = json.loads(j)["selecao"]; av = S["avaliacao"]
+    assert S["disponivel"] and av["modo"] == "observar" and av["integridade"]["ok"] is True
+    assert set(av["grupos"]) == {"M15", "M30", "H1"} and av["produtor_dos_sinais"]["assinado"] is False
+    todos = [c for g in av["grupos"].values() for c in g["candidatos"]]
+    assert len(todos) == len(cand["itens"]) == av["resumo"]["candidatos"]
+    for c in todos:
+        assert len(c["portoes"]) == 9 and c["elegibilidade"] in ("elegivel", "aguardando", "vetada", "sem_dados")
+        assert c["estudo"]["existe"] and c["estudo"]["equivalencia"]["nivel"] == "nao_comprovada"
+        assert c["execucao"]["decisao"] is None and c["escolha"] is not None
+        if c["elegibilidade"] == "elegivel":                          # portão fechado nunca é compensado por pontuação
+            assert all(p["ok"] is True for p in c["portoes"])
+        if c["sinal"]["estado"] == "aguardando":
+            assert c["elegibilidade"] != "elegivel"
+    eleg = [c for c in todos if c["elegibilidade"] == "elegivel"]
+    if eleg:
+        esc = [c for c in todos if c["escolha"]["escolhido"]]
+        assert len(esc) == 1 and esc[0]["pontuacao"]["pf"] == max(c["pontuacao"]["pf"] for c in eleg)
+        assert av["escolha"]["uid"] == esc[0]["uid"]
+    else:
+        assert av["escolha"] is None and av["resumo"]["conclusao"] == "nenhuma oportunidade elegível"
+    barra = av["barra_m15_utc"]
+    s, ex = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/exportar", {"bot_id": b_id, "barra_m15": barra}, tok=amb["tok"])
+    ex = json.loads(ex)
+    assert ex["selecao"]["avaliacao"]["resumo"] == av["resumo"] and tok not in json.dumps(ex)
+    cur.execute("select count(*) from ciclo_trilha where bot_id=%s and etapa='selecao'", (b_id,)); assert cur.fetchone()[0] == 1
+    cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
+    cur.execute("select count(*) from mt5_comandos where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0

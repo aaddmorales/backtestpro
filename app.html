@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.54-virada-na-tela-c27r18';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.55-selecao-observar-c27r19';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8926,7 +8926,8 @@ function _clmEtapaEstado(etapa, estado){
     rpc:{ok:'CONSUMIDA 1×', recusado:'RPC RECUSOU'}, comando:{pendente:'COMANDO CRIADO', ok:'ENTREGUE AO CONECTOR'},
     resposta_mt5:{ok:'EXECUTADA NO MT5', falha:'MT5 RECUSOU'}, abertura:{ok:'POSIÇÃO ABERTA'},
     fechamento:{ok:'POSIÇÃO FECHADA'}, falha_coleta:{aviso:'FALHA DE COLETA', falha:'FALHA DE COLETA'},
-    divergencia:{aviso:'DIVERGÊNCIA', recusado:'DIVERGÊNCIA'}
+    divergencia:{aviso:'DIVERGÊNCIA', recusado:'DIVERGÊNCIA'},
+    motor:{ok:'MOTOR OK', aviso:'MOTOR — AVISO'}, selecao:{ok:'SELEÇÃO AVALIADA (observar)', aviso:'SELEÇÃO SEM DADOS'}
   };
   return ((M[etapa]||{})[estado]) || String(estado||'').toUpperCase();
 }
@@ -9036,6 +9037,55 @@ function clmRefBox(R){
     <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Portão (ordem de aplicação)</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>${(A.portoes||[]).map(p => `<tr><td>${_clmE(p.portao)}</td><td>${p.aberto===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.aberto===false?'<span class="clm-st clm-bad">FECHADO (veto)</span>':'<span class="clm-st clm-na">NÃO AVALIADO AQUI</span>')}</td><td><span class="clm-sub">${_clmE(p.detalhe||'')}</span></td></tr>`).join('')}</tbody></table>
       <div class="clm-sub" style="margin-top:4px">Pontuação ≠ veto ≠ autorização: prontidão % e estrelas são medidas; veto é um portão FECHADO${A.primeiro_fechado?' (primeiro: '+_clmE(A.primeiro_fechado)+')':''}; autorização exige os 8 avaliados e abertos — este quadro não autoriza nada. ${_clmE(K.papel||'')}</div>
     </div></div>`;
+}
+
+// C27R19 — SELEÇÃO DE OPORTUNIDADES M15 / M30 / H1 (modo observar). Portão ≠ pontuação ≠ escolha.
+function clmSelBox(botId, S){
+  if (!S) return '';
+  const tit = '<span>🎯 Seleção de oportunidades · M15 · M30 · H1</span><span class="clm-st clm-na">MODO OBSERVAR — nada é executado</span>';
+  if (!S.disponivel) return `<div class="clm-box"><div class="clm-tit">${tit}</div><span class="clm-sub">${_clmE(S.mensagem||'')}</span></div>`;
+  const A = S.avaliacao || {}, R = A.resumo || {}, G = A.grupos || {}, X = A.contexto || {}, I = A.integridade || {};
+  const ab = _clmAbertos[botId] || new Set();
+  const selo = e => ({elegivel:'<span class="clm-st clm-ok">ELEGÍVEL</span>', aguardando:'<span class="clm-st clm-warn">AGUARDANDO</span>',
+                      vetada:'<span class="clm-st clm-bad">VETADA</span>', sem_dados:'<span class="clm-st clm-na">SEM DADOS</span>'})[e] || _clmE(e);
+  const ctxCor = v => v === 'a favor' ? 'clm-ok' : (v === 'contra' ? 'clm-bad' : 'clm-na');
+  const linha = c => {
+    const E = c.estudo || {}, N = c.niveis || {}, Sg = c.sinal || {}, Cx = c.contexto_superior || {}, P = c.pontuacao || {}, Q = c.escolha || {};
+    const k = 'sel:' + c.uid, aberto = ab.has(k);
+    const est = E.existe ? `<span class="clm-id">${_clmE(E.estudo_id)}</span> PF <b>${_clmE(E.profit_factor)}</b> · ${_clmE(E.trades)} trades · acerto ${_clmE(E.win_rate_pct)}%<br><span class="clm-sub">metades ${_clmE(E.pf_metade_1)}/${_clmE(E.pf_metade_2)} · ${E.selo_da_lista ? 'com selo' : 'SEM selo'} · equivalência <b>não comprovada</b></span>` : `<span class="clm-na">${_clmE(E.mensagem||'sem estudo')}</span>`;
+    const sup = Object.keys(Cx).filter(x => ['M30','H1','H4','D1'].includes(x)).map(x => `<span class="clm-st ${ctxCor(Cx[x])}">${x} ${_clmE(Cx[x])}</span>`).join(' ');
+    const det = aberto ? `<tr class="clm-det"><td colspan="8"><div class="clm-grid2"><div class="clm-c"><b>Portões obrigatórios (ordem de aplicação)</b><br>${(c.portoes||[]).map(p => `${p.ok===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.ok===false?'<span class="clm-st clm-bad">FECHADO</span>':'<span class="clm-st clm-na">NÃO AVALIADO</span>')} ${_clmE(p.portao)} <span class="clm-sub">— ${_clmE(p.detalhe||'')} · ${_clmE(p.origem||'')}</span>`).join('<br>')}</div>
+      <div class="clm-c"><b>Níveis e contrato</b><br>entrada ${_clmE(N.entrada ?? '—')} · stop ${_clmE(N.stop ?? '—')} · risco ${_clmE(N.risco_pts ?? '—')} pts<br><span class="clm-sub">${_clmE(N.stop_regra||'')} · ${_clmE(N.saida_regra||'')}</span><br>
+        <b>Barreira contrária</b> ${c.barreira_contraria ? `${_clmE(c.barreira_contraria.tf)} em ${_clmE(c.barreira_contraria.nivel)} · ${_clmE(c.barreira_contraria.distancia_em_R)} R${c.barreira_contraria.aviso ? ' <span class="clm-warn">(menos de 1 R)</span>' : ''}` : '—'}<br>
+        <b>Configuração atual (R-CICLO-01 na M15)</b> ${(c.configuracao_atual||{}).autorizaria ? '<span class="clm-st clm-ok">AUTORIZARIA</span>' : '<span class="clm-st clm-bad">NÃO AUTORIZARIA</span>'} <span class="clm-sub">${_clmE((c.configuracao_atual||{}).motivo||'')}</span><br>
+        <b>Estudo</b> <span class="clm-sub">${_clmE((E.equivalencia||{}).motivo||'')} · ${_clmE((E.limitacoes||[]).join('; '))} · ${_clmE(E.nota||'')}</span><br>
+        <b>Pontuação</b> <span class="clm-sub">${_clmE(P.formula||'')}</span></div></div></td></tr>` : '';
+    return `<tr class="clm-row${Q.escolhido ? ' clm-ref' : ''}" onclick="clmToggle(${botId}, '${_clmE(k).replace(/'/g, '')}')" style="cursor:pointer">
+      <td><b>${_clmE((c.estrategia||{}).nome)}</b>${Q.escolhido ? ' <span class="clm-st clm-ok">ESCOLHIDO</span>' : ''}<br><span class="clm-sub">${_clmE((c.estrategia||{}).card)} · cards ${_clmE(((c.estrategia||{}).codigo||{}).cards)} · ${_clmE((c.estrategia||{}).familia)} · ${_clmE(c.ativo)} ${_clmE(c.timeframe)} · barra ${_clmHora(Sg.barra_do_sinal_utc)}</span></td>
+      <td><span class="clm-st ${c.lado_num > 0 ? 'clm-buy' : 'clm-sell'}">${_clmE(String(c.lado||'').toUpperCase())}</span><br><span class="clm-sub">${_clmE(Sg.estado)}${Sg.idade_m15 != null ? ' · há ' + _clmE(Sg.idade_m15) + ' barra(s) M15' : ''}</span></td>
+      <td>${est}</td><td>${sup}<br><span class="clm-sub">${_clmE(Cx.resumo||'')}</span></td>
+      <td>${selo(c.elegibilidade)}<br><span class="clm-sub">${_clmE(c.primeiro_impedimento||'todos os portões abertos')}</span></td>
+      <td>PF ${_clmE(P.pf ?? '—')}<br><span class="clm-sub">menor metade ${_clmE(P.pf_metade_min ?? '—')} · ${_clmE(P.trades ?? '—')} trades</span></td>
+      <td><span class="clm-sub">${_clmE(Q.motivo||'')}</span></td>
+      <td><span class="clm-sub">${_clmE((c.execucao||{}).resultado||'')}</span></td></tr>${det}`;
+  };
+  const grupo = tf => {
+    const g = G[tf] || {}, L = g.leitura_do_ciclo || {}, cs = g.candidatos || [];
+    const dir = L.dir == null ? 'sem leitura' : (L.dir > 0 ? 'alta' : (L.dir < 0 ? 'baixa' : 'lateral'));
+    return `<tr><td colspan="8" style="padding-top:10px"><b>${tf}</b> <span class="clm-sub">barra fechada às ${_clmHora(g.barra_fechou_utc)} · Ciclo nesta escala: canal ${_clmE(dir)} · estrutura ${_clmE(L.estrutura||'—')} · regime ${_clmE(L.regime||'—')} · caixa ${_clmE(L.caixa||'—')}${tf === 'M15' && L.fase ? ' · fase ' + _clmE((L.fase||{}).fase) + ' ' + _clmE((L.fase||{}).rotulo||'') : ''}</span></td></tr>`
+      + (cs.length ? cs.map(linha).join('') : `<tr><td colspan="8"><span class="clm-na">nenhum candidato neste timeframe</span></td></tr>`);
+  };
+  const hist = (S.historico||[]).map(h => `<span class="clm-id" title="${_clmE(h.escolha||'sem escolha')}">${_clmHora(h.barra_m15)}: ${_clmE(h.candidatos)} cand · ${_clmE(h.elegiveis_proposto)}/${_clmE(h.elegiveis_atual)} eleg${h.escolha ? ' ★' : ''}${h.acompanhado ? ' ✓' : ''}</span>`).join(' ');
+  const ac = S.acompanhamento ? `<div class="clm-sub" style="margin-top:4px">Acompanhamento (${_clmE(S.acompanhamento.janela)}): ${Object.keys(S.acompanhamento.itens||{}).length} candidato(s) medidos · ${_clmE(S.acompanhamento.nota||'')}</div>` : '';
+  return `<div class="clm-box${R.elegiveis_proposto ? '' : ''}"><div class="clm-tit">${tit}</div>
+    <div class="clm-grid2" style="margin-top:6px">
+      <div class="clm-c"><b>Conclusão da barra ${_clmHora(A.barra_m15_utc)} (contrato proposto ${_clmE(A.versao)})</b><br>${R.elegiveis_proposto ? '<span class="clm-st clm-ok">'+_clmE(R.conclusao)+'</span>' : '<span class="clm-st clm-na">NENHUMA OPORTUNIDADE ELEGÍVEL</span>'}<br><span class="clm-sub">${_clmE(R.candidatos)} candidato(s) · ${_clmE((R.por_estado||{}).elegivel)} elegível(is) · ${_clmE((R.por_estado||{}).aguardando)} aguardando · ${_clmE((R.por_estado||{}).vetada)} vetado(s) · ${_clmE((R.por_estado||{}).sem_dados)} sem dados</span></div>
+      <div class="clm-c"><b>Configuração atual (referência)</b><br><span class="clm-sub">${_clmE(R.conclusao_atual||'')}</span><br><span class="clm-sub">contexto: D1 ${_clmE(X.D1||'—')} · H4 ${_clmE(X.H4||'—')} · motor ${_clmE(X.topdown_do_motor||'—')} (${_clmE(X.motivo_do_motor||'')}) · território ${_clmE(X.territorio_h4_h1_m30 ?? '—')}</span></div>
+    </div>
+    ${I.ok ? '' : `<div class="clm-bad" style="margin-top:6px">Integridade: ${_clmE((I.motivos||[]).join('; '))}</div>`}
+    <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Identidade</th><th>Sinal</th><th>Estudo (referência)</th><th>Contexto superior</th><th>Elegibilidade</th><th>Pontuação</th><th>Escolha</th><th>Execução</th></tr></thead><tbody>${['M15','M30','H1'].map(grupo).join('')}</tbody></table></div>
+    <div class="clm-sub" style="margin-top:6px">Sinais: ${_clmE((A.produtor_dos_sinais||{}).onde||'')} · leitor ${_clmE((A.produtor_dos_sinais||{}).leitor||'—')} · cards ${_clmE(((A.produtor_dos_sinais||{}).codigo||{}).cards||'—')} · <b>não assinados</b>. Resultado do estudo é histórico; a integridade é da barra atual. Clique num candidato para ver os portões.</div>
+    ${ac}<div class="clm-sub" style="margin-top:4px">Últimas barras: ${hist}</div></div>`;
 }
 
 // C27R15 — decisão REGISTRADA da barra × situação da integração AGORA (nunca se misturam).
@@ -9208,7 +9258,7 @@ function clmRender(botId, d, tr){
   const f = _clmFiltro[botId] || {};
   const barras = [...new Set((tr.trilha||[]).map(x => x.barra_m15).filter(Boolean))];
   const optsBarra = ['<option value="">todas as barras</option>'].concat(barras.map(b => `<option value="${_clmE(b)}" ${f.barra===b?'selected':''}>${_clmDataHora(b)}</option>`)).join('');
-  const etapas = ['','snapshot','leituras','ciclos','atestado','decisao','veto','persistencia','rpc','comando','resposta_mt5','abertura','fechamento','falha_coleta','divergencia'];
+  const etapas = ['','snapshot','leituras','ciclos','atestado','decisao','veto','persistencia','rpc','comando','resposta_mt5','abertura','fechamento','falha_coleta','divergencia','motor','selecao'];
   const optsEt = etapas.map(e => `<option value="${e}" ${f.etapa===e?'selected':''}>${e||'todas as etapas'}</option>`).join('');
   const corEst = {ok:'clm-ok', recusado:'clm-bad', falha:'clm-bad', aviso:'clm-warn', pendente:'clm-neu'};
   const itens = (tr.trilha||[]).map(x => `<div class="clm-tl-i"><span>${_clmDataHora(x.ts)}</span><span><b>${_clmE(x.etapa)}</b><br><span class="clm-sub">${_clmE(x.origem)}</span></span>
@@ -9223,7 +9273,7 @@ function clmRender(botId, d, tr){
       <button class="clm-btn" onclick="clmExportar(${botId}, (document.getElementById('clm-f-barra-${botId}')||{}).value)">⬇ Exportar ciclo (JSON)</button>
     </span></div>
     <div class="clm-tl" style="margin-top:6px">${itens}</div></div>`;
-  el.innerHTML = est + clmBarraBox(d.barra_registrada) + resumo + clmRefBox(d.referencia_historica) + cadeia + matriz + contadores + autoridade + saude + trilha;
+  el.innerHTML = est + clmBarraBox(d.barra_registrada) + clmSelBox(botId, d.selecao) + resumo + clmRefBox(d.referencia_historica) + cadeia + matriz + contadores + autoridade + saude + trilha;
   el.dataset.ult = est + resumo + matriz;
 }
 

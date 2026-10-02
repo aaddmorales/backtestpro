@@ -1,6 +1,8 @@
 _CV_LEITOR = None
 _CV_AVISOU = set()
 _CV_CACHE = {}
+_CV_CAND_ENVIOS = {}            # (pasta da barra, magic) -> nº de snapshots que já levaram os candidatos
+_CV_CAND_MAX = 3                # hml10: candidatos vão nos 3 primeiros snapshots da barra (a API guarda 1x por barra)
 _CV_HEARTBEAT_MAX_S = 90        # leitor do motor passa a cada 20 s; 90 s sem batimento = parado
 
 
@@ -68,7 +70,7 @@ def _cv_atestar(dados, bot_token=""):
     dados.pop("cv_atestado", None)
     dados.pop("cv_atestado_falha", None)
     dados.pop("cv_motor", None)
-    mot = {"versao_ponte_conector": "hml8"}
+    mot = {"versao_ponte_conector": "hml10"}
     dados["cv_motor"] = mot
 
     def falha(estado, motivo):
@@ -199,6 +201,20 @@ def _cv_atestar(dados, bot_token=""):
                                                            "janela_10_15", "degrau_m15", "fase", "conclusao")},
                     "dirs": {k: (v or {}).get("dir") for k, v in (resumo.get("por_tf") or {}).items()},
                     "por_tf": resumo.get("por_tf")})
+        # hml10 (C27R19) — candidatos M15/M30/H1 calculados pelo leitor (telemetria NÃO assinada).
+        # Só vão junto de uma barra cuja identidade conferiu; nos 3 primeiros snapshots da barra.
+        try:
+            kc = (pasta_barra, magic)
+            n_env = _CV_CAND_ENVIOS.get(kc, 0)
+            if n_env < _CV_CAND_MAX:
+                cand = _cv_ler_json(os.path.join(pasta_barra, "candidatos.json"))
+                if cand:
+                    mot["candidatos"] = cand
+                    if len(_CV_CAND_ENVIOS) > 50:
+                        _CV_CAND_ENVIOS.clear()
+                    _CV_CAND_ENVIOS[kc] = n_env + 1
+        except Exception as _e:
+            mot["candidatos_erro"] = f"{type(_e).__name__}"
         dbg(f"cv_atestado: motor {at.get('versao_motor')} barra {at.get('ts_barra_m15')} "
             f"veredito={((at.get('cv1') or {}).get('veredito'))}")
     except Exception as e:
