@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.51-referencia-historica-c27r15b';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.52-canal-de-comando-c27r16';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8935,7 +8935,7 @@ function _clmDur(s){ return _clmIdade(s); }
 // C27R14 rev.2 — leitura ORIGINAL do motor dos Ciclos (bt_ciclo_v1), como o conector a recebeu do leitor.
 // É telemetria: a autoridade continua sendo o atestado assinado verificado pelo backend.
 function clmMotorBox(m){
-  if (!m) return `<div class="clm-box"><div class="clm-tit"><span>🧠 Motor dos Ciclos (PC)</span></div><span class="clm-bad">sem telemetria do motor — conector sem a ponte hml8 ou leitor do motor não configurado</span></div>`;
+  if (!m) return `<div class="clm-box"><div class="clm-tit"><span>🧠 Motor dos Ciclos (PC)</span></div><span class="clm-bad">sem telemetria do motor — conector sem a ponte do motor (hml8 ou superior) ou leitor do motor não configurado</span></div>`;
   const est = m.estado === 'ok' ? '<span class="clm-st clm-ok">✔ LENDO</span>'
     : ({processo_parado:'<span class="clm-st clm-bad">✖ PROCESSO PARADO</span>', espelho_atrasado:'<span class="clm-st clm-bad">✖ ESPELHO ATRASADO</span>',
         espelho_ausente:'<span class="clm-st clm-bad">✖ ESPELHO AUSENTE</span>', nao_configurado:'<span class="clm-st clm-bad">✖ NÃO CONFIGURADO</span>'}[m.estado]

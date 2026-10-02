@@ -1,6 +1,6 @@
 # instalar_motor_hml8.ps1 - C27R14 rev.2 - SOMENTE HOMOLOGACAO / MT5 DEMO
 # Instala o LEITOR DO MOTOR DOS CICLOS (motor congelado bt_ciclo_v1 2.4 + espelho do bt_vivo_sombra 7.4)
-# e o Conector HOMOLOG v1.35-hml8 a partir DESTE repositorio (branch de ensaio), conferindo hashes completos.
+# e o Conector HOMOLOG v1.35-hml9 (ponte do motor + canal de comando) a partir DESTE repositorio (branch de ensaio), conferindo hashes completos.
 # NAO contem segredo. O BT_CV_SEGREDO e digitado mascarado e conferido pela impressao publica da API homolog
 # (/conector/cv-impressao) - o valor nunca e exibido, gravado em log nem enviado.
 # Para em qualquer divergencia. Nao toca em main, producao, conector de producao nem conta real.
@@ -18,10 +18,10 @@ param(
 # de aplicativo e aceita -Repo para rodar de fora do clone.
 $ErrorActionPreference = "Stop"
 $API_HML = "https://homolog-homolog.up.railway.app"
-$MANIFESTO_SHA = "13fad574fd4010fabeb6e978972120780a2bd1ce0e64f6cc66ead07420006603"
+$MANIFESTO_SHA = "2288e6b004d7eea93a6efebb53765b5e93012a860d9a213b1b6d65ac04aabadb"
 $CONECTOR_SHA = @{
-  "conector_homolog.py"        = "44d426187e9b65a1816949ed267c08bd8c6598cf64280d5582c511e0d7aee83b"
-  "conector_nucleo_homolog.py" = "fc6ffe292ec8408629b67ea0abd23e3ca722e80f3fd270c5aaaf5a585f5c5018"
+  "conector_homolog.py"        = "94a0fa28ba1edc63fa28e32ea8dee8e40e35dc000c6b3b6552a2e6d871d6c091"
+  "conector_nucleo_homolog.py" = "99a1f201c0963efcc198ba948e91315b8812217e7d996f2b78b1efd1854b052e"
 }
 function Pare([string]$m) { Write-Host "PARADO: $m" -ForegroundColor Red; Write-Host "Nada mais foi alterado a partir deste ponto."; exit 1 }
 function Ok([string]$m) { Write-Host "OK  $m" -ForegroundColor Green }
@@ -37,7 +37,7 @@ $repo = (Resolve-Path $Repo).Path
 if (-not (Test-Path -LiteralPath (Join-Path $repo "motor_ciclos\MANIFESTO_MOTOR.sha256"))) { Pare "motor_ciclos nao encontrado em $repo (use -Repo <pasta do clone>)" }
 $motorSrc = Join-Path $repo "motor_ciclos"
 $conSrc = Join-Path $repo "conector_homolog\hml"
-Write-Host "=== Instalador motor dos Ciclos + Conector HOMOLOG hml8 ===" -ForegroundColor Cyan
+Write-Host "=== Instalador motor dos Ciclos + Conector HOMOLOG hml9 ===" -ForegroundColor Cyan
 Write-Host "repositorio: $repo"
 
 # 1. repositorio limpo e na branch de ensaio
@@ -66,7 +66,7 @@ Ok "manifesto do motor: $($lista.Count) arquivos conferidos (bt_ciclo_v1 9ac1af9
 foreach ($n in $CONECTOR_SHA.Keys) {
   if ((Sha (Join-Path $conSrc $n)) -ne $CONECTOR_SHA[$n]) { Pare "hash divergente: conector_homolog\hml\$n" }
 }
-Ok "conector hml8 conferido"
+Ok "conector hml9 conferido"
 
 # 3. seguranca: nada executando ordens por fora da plataforma
 $procs = Get-CimInstance Win32_Process
@@ -127,7 +127,7 @@ foreach ($n in $CONECTOR_SHA.Keys) {
   Copy-Item -LiteralPath (Join-Path $conSrc $n) -Destination $d -Force
   if ((Sha $d) -ne $CONECTOR_SHA[$n]) { Pare "copia divergente: $d" }
 }
-Ok "Conector HOMOLOG hml8 instalado em $Destino (anteriores em $bak)"
+Ok "Conector HOMOLOG hml9 instalado em $Destino (anteriores em $bak)"
 $estado | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $motorDst "instalacao_hml8.json") -Encoding ASCII
 
 # 7. segredo: conferido pela impressao da API homolog, sem exibir
@@ -189,6 +189,7 @@ if (-not $s.conta_demo -or [long]$s.login -ne $Login) { Pare "leitor nao esta na
 if ($s.erro_ultimo) { Pare "leitor com erro: $($s.erro_ultimo)" }
 
 # 9. reabre o Conector HOMOLOG com o ambiente novo
-Start-Process $py -ArgumentList "`"$Destino\conector_homolog.py`"" -WorkingDirectory $Destino
-Ok "Conector HOMOLOG v1.35-hml8 aberto"
-Write-Host "Pronto. Proximo passo: Vitrine > MASTER > ... > Enviar para o MT5 (nome novo) e anexar ao $Ativo M15 da DEMO." -ForegroundColor Cyan
+Start-Process $py -ArgumentList "`"$Destino\conector_homolog.py`"", "--conectar" -WorkingDirectory $Destino
+Ok "Conector HOMOLOG v1.35-hml9 aberto (conexao automatica se ja houver token salvo)"
+Write-Host "Pronto. Se o bot ja esta no grafico $Ativo M15 da DEMO, nao precisa reenviar: confira na janela do conector que ele conectou." -ForegroundColor Cyan
+Write-Host "Canal de comando (hml9): so funciona com a DEMO conferida (botao 'Conferir MT5 DEMO') e Algo Trading ligado no MT5 demo." -ForegroundColor Cyan

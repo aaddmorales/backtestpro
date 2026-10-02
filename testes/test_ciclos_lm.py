@@ -229,8 +229,15 @@ def test_7_atestado_valido_autoriza_e_repeticao_de_decisao(amb):
     # entrega ao conector → resposta do MT5 → evento de abertura: tudo na mesma trilha
     s, ent, _ = _req("POST", E["BT_ISO_API"] + "/mt5/comando/pendente/checar", {"bot_token": b["tok"]})
     assert s == 200 and (ent.get("comando") or {}).get("id") == cmd["id"], ent
+    # C27R16: só o bot dono confirma — sem token ou com token de outro bot, 404 e nada muda
+    for corpo in ({}, {"bot_token": amb["bots"]["A"]["tok"]}):
+        s, cf, _ = _req("POST", E["BT_ISO_API"] + "/mt5/comando/confirmar",
+                        dict({"comando_id": cmd["id"], "sucesso": True, "resultado": {"ticket": 1}}, **corpo))
+        assert s == 404, (s, cf)
+    assert _pg("select status from mt5_comandos where id=%s", cmd["id"])[0][0] == "entregue"
     s, cf, _ = _req("POST", E["BT_ISO_API"] + "/mt5/comando/confirmar",
-                    {"comando_id": cmd["id"], "sucesso": True, "resultado": {"ticket": 998877, "preco_real": 4162.9}})
+                    {"comando_id": cmd["id"], "sucesso": True, "bot_token": b["tok"],
+                     "resultado": {"ticket": 998877, "preco_real": 4162.9, "retcode": 10009}})
     assert s == 200 and cf["status"] == "executado", cf
     s, ev, _ = _req("POST", E["BT_ISO_API"] + "/conector/evento",
                     {"bot_token": b["tok"], "tipo": "aberto",

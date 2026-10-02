@@ -29,7 +29,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"''', "H1-api_base")
 
 n = troca(n, 'APP_NOME = "BotTested Conector"', 'APP_NOME = "BotTested Conector HOMOLOG"', "H2-nome")
-n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml8"', "H2-versao")
+n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml9"', "H2-versao")
 
 # H3 — log de depuração separado
 n = troca(n, '"BotTested_Conector_debug.log"', '"BotTested_Conector_HOMOLOG_debug.log"', "H3-log")
@@ -268,6 +268,11 @@ n = troca(n, """def enviar_snapshot(bot_token, dados):
         return False""", (pathlib.Path(__file__).parent / "ponte_motor_hml8.py").read_text(encoding="utf-8"),
     "H14/H15-ponte-motor")
 
+# H16 (hml9, C27R16) — CANAL DE COMANDO nuvem → conector → EA, só com a DEMO conferida.
+# O conector transporta o comando que a API criou pela RPC dos Ciclos; não decide nada.
+n = troca(n, "def checar_subir_conector(bot_token):\n",
+          (pathlib.Path(__file__).parent / "comando_hml9.py").read_text(encoding="utf-8"), "H16-comando")
+
 (OUT / "conector_nucleo_homolog.py").write_text(n, encoding="utf-8")
 
 # ═════════════════════════ JANELA ═════════════════════════
@@ -318,6 +323,33 @@ c = troca(c, '''        try:
 # H10 (hml2) — importa a conferência DEMO
 c = troca(c, "    ler_mt5_pin, salvar_mt5_pin, HOMOLOG,\n)",
           "    ler_mt5_pin, salvar_mt5_pin, HOMOLOG,\n    conferir_demo, confirmar_demo, resetar_demo, restaurar_protocolo,\n)", "H10-import")
+# H16 (hml9) — laço do canal de comando em thread própria (não atrasa a leitura do snapshot)
+c = troca(c, "    conferir_demo, confirmar_demo, resetar_demo, restaurar_protocolo,\n)",
+          "    conferir_demo, confirmar_demo, resetar_demo, restaurar_protocolo, cmd_passo,\n)", "H16-import")
+c = troca(c, """        threading.Thread(target=self._loop_eventos, daemon=True).start()  # v1.35
+""", """        threading.Thread(target=self._loop_eventos, daemon=True).start()  # v1.35
+        threading.Thread(target=self._loop_comandos, daemon=True).start()  # HOMOLOG H16
+""", "H16-thread")
+c = troca(c, """    def _loop_eventos(self):""", """    def _loop_comandos(self):
+        \"\"\"HOMOLOG H16 — canal de comando: só para bots com snapshot FRESCO (EA vivo no
+        gráfico) e com a DEMO conferida. Um passo por bot a cada ~2 s.\"\"\"
+        while self.rodando:
+            try:
+                agora = time.time()
+                for mg in list(self._snaps_por_magic.keys()):
+                    tok = self._token_por_magic.get(mg)
+                    if not mg or not tok or not self.mql5_dir:
+                        continue
+                    if (agora - self._lido_por_magic.get(mg, 0)) > 35:
+                        continue          # EA sem sinal: não entrega comando a ninguém
+                    msg = cmd_passo(tok, mg, self.mql5_dir)
+                    if msg:
+                        self._set_status(f"{time.strftime('%H:%M:%S')} {msg}"[:110])
+            except Exception as e:
+                dbg(f"loop comandos: {e}")
+            time.sleep(2)
+
+    def _loop_eventos(self):""", "H16-laco")
 # H10 — botão "Conferir MT5 DEMO" logo acima do Conectar
 c = troca(c, "        self.btn_conectar = tk.Button(self.root, text=\"▶  Conectar e monitorar\",",
 '''        self.btn_demo = tk.Button(self.root, text="🔎  Conferir MT5 DEMO (obrigatório antes do job)",
@@ -380,6 +412,27 @@ c = troca(c, """def main():
         print("OK: bottested:// devolvido ao conector de PRODUCAO" if ok else "FALHOU: " + det)
         return
     if tk is None:""", "H12-restaurar")
+# H17 (hml9) — "--conectar": ao abrir pelo instalador, liga o monitor sozinho SE já houver token
+# salvo e MT5 fixado (sem caixa de diálogo). A conferência DEMO continua manual.
+c = troca(c, """    threading.Thread(target=_servir_tokens, args=(srv, app), daemon=True).start()
+    root.mainloop()""", """    threading.Thread(target=_servir_tokens, args=(srv, app), daemon=True).start()
+    if "--conectar" in argv:
+        root.after(2500, app._hml_autoconectar)
+    root.mainloop()""", "H17-main")
+c = troca(c, "    def _toggle_conectar(self):", """    def _hml_autoconectar(self):
+        try:
+            if self.rodando:
+                return
+            if not self.entry_token.get().strip() or not self.mql5_dir:
+                self._set_status("HOMOLOG: --conectar sem token salvo ou sem MT5 fixado — clique em Conectar")
+                return
+            dbg("HOMOLOG: conexão automática (--conectar)")
+            self._toggle_conectar()
+        except Exception as e:
+            dbg(f"autoconectar: {e}")
+
+    def _toggle_conectar(self):""", "H17-metodo")
+
 # H11 — nada de fragmento de token ou argv no log
 c = c.replace("token {tok[:8]}…", "token ***")
 assert "{tok[:8]}" in c

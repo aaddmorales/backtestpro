@@ -217,7 +217,7 @@ from conector_nucleo_homolog import (
     checar_subir_conector, sinalizar_parada,
     registrar_autostart,
     ler_mt5_pin, salvar_mt5_pin, HOMOLOG,
-    conferir_demo, confirmar_demo, resetar_demo, restaurar_protocolo,
+    conferir_demo, confirmar_demo, resetar_demo, restaurar_protocolo, cmd_passo,
 )
 
 # porta local fixa usada como "lock" de instância única (single-instance).
@@ -891,6 +891,18 @@ class ConectorApp:
                   bg=COR_VERDE, fg="#06231a", relief="flat",
                   font=("Segoe UI", 10, "bold"), padx=20, pady=6).pack(pady=(0, 16))
 
+    def _hml_autoconectar(self):
+        try:
+            if self.rodando:
+                return
+            if not self.entry_token.get().strip() or not self.mql5_dir:
+                self._set_status("HOMOLOG: --conectar sem token salvo ou sem MT5 fixado — clique em Conectar")
+                return
+            dbg("HOMOLOG: conexão automática (--conectar)")
+            self._toggle_conectar()
+        except Exception as e:
+            dbg(f"autoconectar: {e}")
+
     def _toggle_conectar(self):
         if self.rodando:
             self.rodando = False
@@ -1210,6 +1222,7 @@ class ConectorApp:
         # este loop fica livre pra ler arquivo/log e enviar a cada 1.5s.
         threading.Thread(target=self._loop_rede, daemon=True).start()
         threading.Thread(target=self._loop_eventos, daemon=True).start()  # v1.35
+        threading.Thread(target=self._loop_comandos, daemon=True).start()  # HOMOLOG H16
 
         # Primeira passada: captura o último snapshot de CADA bot já presente no
         # log (pra ficar online em segundos), monta o mapa magic->token e marca a
@@ -1396,6 +1409,25 @@ class ConectorApp:
                 self._set_status("Erro de leitura (continua tentando)…")
             time.sleep(1.5)
 
+    def _loop_comandos(self):
+        """HOMOLOG H16 — canal de comando: só para bots com snapshot FRESCO (EA vivo no
+        gráfico) e com a DEMO conferida. Um passo por bot a cada ~2 s."""
+        while self.rodando:
+            try:
+                agora = time.time()
+                for mg in list(self._snaps_por_magic.keys()):
+                    tok = self._token_por_magic.get(mg)
+                    if not mg or not tok or not self.mql5_dir:
+                        continue
+                    if (agora - self._lido_por_magic.get(mg, 0)) > 35:
+                        continue          # EA sem sinal: não entrega comando a ninguém
+                    msg = cmd_passo(tok, mg, self.mql5_dir)
+                    if msg:
+                        self._set_status(f"{time.strftime('%H:%M:%S')} {msg}"[:110])
+            except Exception as e:
+                dbg(f"loop comandos: {e}")
+            time.sleep(2)
+
     def _loop_eventos(self):
         """v1.35 (a) — ENVIO DE EVENTOS EM THREAD PRÓPRIA: drena a fila que o
         loop de leitura alimenta e faz os POSTs. Um POST lento (Railway frio,
@@ -1580,6 +1612,8 @@ def main():
     app = ConectorApp(root, via_protocolo=via_protocolo, token_inicial=token_url)
     # escuta novas tentativas de abrir (elas trazem esta janela pra frente + token)
     threading.Thread(target=_servir_tokens, args=(srv, app), daemon=True).start()
+    if "--conectar" in argv:
+        root.after(2500, app._hml_autoconectar)
     root.mainloop()
 
 

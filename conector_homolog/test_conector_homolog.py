@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml8"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml9"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml8"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml9"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -512,3 +512,149 @@ def test_h15_parada_e_reinicio_do_leitor(amb, motor_pc, monkeypatch):
     cur.execute("select count(*) from ciclo_leituras where bot_id=%s and barra_m15=%s", (b_id, tsb)); assert cur.fetchone()[0] == 1
     cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
     cur.execute("select count(*) from mt5_comandos where bot_id=%s and tipo in ('buy','sell')", (b_id,)); assert cur.fetchone()[0] == 0
+
+
+# ═════════════════════ hml9 — canal de comando nuvem → conector → EA (C27R16) ═════════════════════
+import test_ciclos_lm as TC          # snapshot/atestado da bancada (mesmo caminho do conector)
+
+
+def _ea_falso(mql5, magic, resposta):
+    """Faz o que o BTLerComando do EA faz: lê bt_cmd, apaga, grava bt_ok. Devolve a linha lida."""
+    arq = os.path.join(mql5, "Files", f"bt_cmd_{magic}.txt")
+    linha = open(arq, encoding="ascii").read().strip()
+    os.remove(arq)
+    cid = linha.split("|")[0]
+    open(os.path.join(mql5, "Files", f"bt_ok_{magic}.txt"), "w", encoding="latin-1").write(f"{cid}|{resposta}\n")
+    return linha
+
+
+def _st(cmd_id):
+    cur = TV._pg().cursor()
+    cur.execute("select status, resultado from mt5_comandos where id=%s", (cmd_id,))
+    return cur.fetchone()
+
+
+def _gestao(tok, tipo, params):
+    TC._snap(tok, TC._det(tok))                                   # bot online (exigência da rota)
+    s, j = TV._req("POST", TV.E["BT_ISO_API"] + "/mt5/comando", {"bot_token": tok, "tipo": tipo, "params": params})
+    assert s == 200, j
+    return json.loads(j)["comando_id"]
+
+
+@pytest.fixture()
+def mt5_demo(tmp_path, monkeypatch):
+    mql5 = tmp_path / "MQL5"; (mql5 / "Files").mkdir(parents=True)
+    monkeypatch.setattr(N, "gate_demo", lambda d: (True, "ok"))
+    N._CMD_ESTADO.clear(); N._CMD_GATE.clear()
+    return str(mql5)
+
+
+def test_h16_validacoes_antes_do_ea():
+    dec = {"decisao": {"id": 7}, "uid": "u-1"}
+    assert N._cmd_linha({"id": 5, "tipo": "buy", "params": dict(dec, lote=0.01, sl=4100.5, tp=4120)}) == \
+        ('5|buy|{"lote":0.01,"sl":4100.5,"tp":4120.0}', None)          # uid/decisão NÃO vão para o EA
+    assert N._cmd_linha({"id": 5, "tipo": "buy", "params": {"lote": 0.01}})[1] == "abertura_sem_decisao_dos_ciclos"
+    assert N._cmd_linha({"id": 5, "tipo": "sell", "params": dict(dec, lote=0)})[1] == "lote_invalido"
+    assert N._cmd_linha({"id": 5, "tipo": "buy", "params": dict(dec, lote=0.01, sl="x")})[1] == "parametro_invalido(sl)"
+    assert N._cmd_linha({"id": 5, "tipo": "compra", "params": {}})[1] == "tipo_desconhecido(compra)"
+    assert N._cmd_linha({"id": 0, "tipo": "close_all", "params": {}})[1] == "id_invalido"
+    assert N._cmd_expirado({"expira_em": "2020-01-01T00:00:00+00:00"}) and N._cmd_expirado({"expira_em": "lixo"})
+    assert not N._cmd_expirado({"expira_em": "2999-01-01T00:00:00+00:00"})
+
+
+def test_h16_abertura_autorizada_ate_o_ticket(amb, mt5_demo):
+    """Decisão dos Ciclos (atestado assinado, autorizada) → RPC → comando → conector → EA → ticket."""
+    seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
+    import hashlib, bt_cv_atestado as cvat
+    os.environ.setdefault("BT_CV_SEGREDO", seg)
+    import api
+    tok = amb["bots"]["R"]; mg = _magic(tok)
+    at = cvat.assinar({"bot_token_hash": hashlib.sha256(tok.encode()).hexdigest(), "versao_motor": "teste-bancada-hml9",
+                       "simbolo": "XAUUSD", "magic": mg, "ts_barra_m15": TC._barra_m15().isoformat(),
+                       "cv1": {"janela": {"M1": 1, "M5": 1, "M15": 1}, "veredito": "autorizada"},
+                       "cv2": {"dirs": {"D1": 1, "H4": 1}}}, segredo=seg)
+    s, _, _ = TC._snap(tok, TC._det(tok, extra={"cv_atestado": at})); assert s == 200
+    sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("bot_token", tok).execute().data[0]
+    ok, dec = api._r01_emitir_decisao(sb, bot, "buy"); assert ok, dec
+    ok, cmd = api._r01_abrir_via_rpc(sb, bot, "buy", {"decisao_id": dec["id"], "lote": 0.01, "sl": 4100.5, "tp": 4120.0},
+                                     "auto_detector"); assert ok, cmd
+    cid = cmd["id"]
+    assert _st(cid)[0] == "pendente"
+    # 1) conector busca e grava o arquivo do EA
+    msg = N.cmd_passo(tok, mg, mt5_demo)
+    assert "entregue ao EA" in msg and _st(cid)[0] == "entregue"
+    arq = os.path.join(mt5_demo, "Files", f"bt_cmd_{mg}.txt")
+    assert open(arq).read().strip() == f'{cid}|buy|{{"lote":0.01,"sl":4100.5,"tp":4120.0}}'
+    assert tok not in open(arq).read() and N._cmd_ja_entregue(mt5_demo, cid)
+    # 2) sem resposta ainda: nada muda, nada é reenviado
+    assert N.cmd_passo(tok, mg, mt5_demo) is None and _st(cid)[0] == "entregue"
+    # 3) o EA consome e responde; o conector confirma com ticket, preço e retcode
+    assert _ea_falso(mt5_demo, mg, "ok|ticket=778899;preco=4110.25;retcode=10009").startswith(f"{cid}|buy|")
+    msg = N.cmd_passo(tok, mg, mt5_demo)
+    assert "ticket 778899" in msg
+    st, res = _st(cid)
+    assert st == "executado" and (res["ticket"], res["preco_real"], res["retcode"]) == (778899, 4110.25, 10009)
+    assert not os.path.exists(os.path.join(mt5_demo, "Files", f"bt_ok_{mg}.txt")) and mg not in N._CMD_ESTADO
+    cur = TV._pg().cursor()
+    cur.execute("select etapa, estado from ciclo_trilha where bot_id=%s and correlacao=%s order by id", (bot["id"], dec["uid"]))
+    et = cur.fetchall()
+    for passo in (("persistencia", "ok"), ("rpc", "ok"), ("comando", "pendente"), ("comando", "ok"), ("resposta_mt5", "ok")):
+        assert passo in et, (passo, et)
+    cur.execute("select status from ciclo_decisoes where id=%s", (dec["id"],)); assert cur.fetchone()[0] == "consumida"
+    # 4) fila vazia: nenhum segundo comando, nenhum arquivo novo
+    assert N.cmd_passo(tok, mg, mt5_demo) is None and not os.path.exists(arq)
+    cur.execute("select count(*) from mt5_comandos where bot_id=%s and tipo in ('buy','sell')", (bot["id"],))
+    assert cur.fetchone()[0] == 1
+
+
+def test_h16_recusa_do_mt5_e_ea_que_nao_consome(amb, mt5_demo):
+    tok = amb["bots"]["A"]; mg = _magic(tok)
+    # MT5 recusa (retcode != DONE): vira 'falhou' com o retcode, mesmo o EA tendo escrito "ok"
+    c1 = _gestao(tok, "mover_sl", {"ticket": 123, "sl": 4100.0})
+    assert "entregue" in N.cmd_passo(tok, mg, mt5_demo)
+    _ea_falso(mt5_demo, mg, "ok|retcode=10016")
+    assert "recusado pelo MT5" in N.cmd_passo(tok, mg, mt5_demo)
+    st, res = _st(c1); assert st == "falhou" and res["retcode"] == 10016 and "10016" in res["erro"]
+    # EA não consome: o arquivo é RETIRADO e o comando falha nomeado — nenhuma ordem fica esperando
+    c2 = _gestao(tok, "close_all", {})
+    t0 = 1_000_000.0
+    assert "entregue" in N.cmd_passo(tok, mg, mt5_demo, agora=t0)
+    arq = os.path.join(mt5_demo, "Files", f"bt_cmd_{mg}.txt"); assert os.path.exists(arq)
+    assert N.cmd_passo(tok, mg, mt5_demo, agora=t0 + 5) is None and os.path.exists(arq)
+    assert "não consumiu" in N.cmd_passo(tok, mg, mt5_demo, agora=t0 + N.CMD_ESPERA_CONSUMO_S + 1)
+    st, res = _st(c2); assert st == "falhou" and "ea_nao_consumiu" in res["erro"] and not os.path.exists(arq)
+    # EA consome e some: estado DESCONHECIDO, declarado como tal (não vira sucesso nem é reenviado)
+    c3 = _gestao(tok, "close_all", {})
+    assert "entregue" in N.cmd_passo(tok, mg, mt5_demo, agora=t0)
+    os.remove(arq)
+    assert N.cmd_passo(tok, mg, mt5_demo, agora=t0 + 1) is None
+    assert "não respondeu" in N.cmd_passo(tok, mg, mt5_demo, agora=t0 + 2 + N.CMD_ESPERA_RESPOSTA_S)
+    st, res = _st(c3); assert st == "falhou" and "DESCONHECIDO" in res["erro"]
+    # resposta velha de OUTRO comando não é aceita como resposta deste
+    c4 = _gestao(tok, "close_all", {})
+    assert "entregue" in N.cmd_passo(tok, mg, mt5_demo, agora=t0)
+    os.remove(arq)
+    open(os.path.join(mt5_demo, "Files", f"bt_ok_{mg}.txt"), "w").write(f"{c3}|ok|fechados=1\n")
+    assert N.cmd_passo(tok, mg, mt5_demo, agora=t0 + 1) is None and _st(c4)[0] == "entregue"
+    open(os.path.join(mt5_demo, "Files", f"bt_ok_{mg}.txt"), "w").write(f"{c4}|ok|fechados=1\n")
+    assert "executado" in N.cmd_passo(tok, mg, mt5_demo, agora=t0 + 2) and _st(c4)[0] == "executado"
+
+
+def test_h16_sem_demo_conferida_nao_busca_comando(amb, tmp_path, monkeypatch):
+    tok = amb["bots"]["B"]; mg = _magic(tok)
+    mql5 = tmp_path / "MQL5"; (mql5 / "Files").mkdir(parents=True)
+    N._CMD_ESTADO.clear(); N._CMD_GATE.clear()
+    monkeypatch.setattr(N, "gate_demo", lambda d: (False, "BT-HML-D02 conferência DEMO pendente"))
+    cid = _gestao(tok, "close_all", {})
+    n0 = len(ROTAS)
+    assert N.cmd_passo(tok, mg, str(mql5)) is None
+    assert not [r for r in ROTAS[n0:] if "comando" in r[1]]            # nem chegou a perguntar à nuvem
+    assert _st(cid)[0] == "pendente" and not os.listdir(mql5 / "Files")
+
+
+def test_h16_janela_estatico():
+    src = (AQUI / "hml" / "conector_homolog.py").read_text(encoding="utf-8")
+    assert "target=self._loop_comandos" in src and "cmd_passo(tok, mg, self.mql5_dir)" in src
+    nuc = (AQUI / "hml" / "conector_nucleo_homolog.py").read_text(encoding="utf-8")
+    assert "order_send" not in nuc.lower() and "MetaTrader5" not in nuc      # o conector não envia ordem: só o EA

@@ -105,3 +105,29 @@ py C:\BotTested_HOMOLOG\motor\bt_motor_leitura_hml.py --ativo XAUUSD --login <co
 
 Só desligar o início automático, sem desinstalar: apagar
 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\BotTested_HOMOLOG_Motor.cmd` e fechar a janela "BotTested HOMOLOG Motor".
+
+## 6. Canal de comando (Conector HOMOLOG hml9, C27R16)
+
+O conector v1.35 nunca teve a perna que leva o comando da nuvem ao EA. Em produção, os 46 comandos já criados ficaram todos em `pendente`, sem entrega nem confirmação. O hml9 implementa essa perna, só para homologação e conta demo.
+
+| etapa | quem faz | onde fica registrado |
+|---|---|---|
+| sinal de entrada | detector da plataforma (`_detectar_oportunidade`), a cada snapshot, com modo `copiloto` ou `automatico` | oportunidade no card do Monitor |
+| decisão | `_r01_emitir_decisao`: atestado assinado do motor + checagens da API | `ciclo_decisoes` (emitida) |
+| consumo único + comando | RPC `r01_claim_e_comando` | `ciclo_decisoes` (consumida) + `mt5_comandos` (pendente) |
+| entrega | conector hml9: `POST /mt5/comando/pendente/checar` e grava `MQL5\Files\bt_cmd_<magic>.txt` | `mt5_comandos` (entregue) + trilha `comando` |
+| execução | EA (`BTLerComando`): `OrderSend` e grava `bt_ok_<magic>.txt` | diário do MT5 (`BOTTESTED_CMD`, `BOTTESTED_CMD_OK`) |
+| resposta | conector: `POST /mt5/comando/confirmar` com ticket, preço e retcode | `mt5_comandos` (executado ou falhou) + trilha `resposta_mt5` |
+| posição | EA: evento `aberto` e snapshot com a posição | BabyMachine + Monitor |
+
+Travas do conector:
+- só busca comando com a DEMO conferida e o EA com snapshot fresco (menos de 35 s);
+- abertura sem decisão dos Ciclos (`decisao.id` + `uid`) não é entregue;
+- comando expirado não é entregue;
+- cada id é entregue uma única vez por instalação (registro em `bt_hml_comandos_entregues.json`);
+- EA não consome em 20 s: o arquivo é retirado e o comando falha com o motivo;
+- EA consome e não responde em 45 s: falha declarada como "estado desconhecido", sem reenvio;
+- retcode diferente de 10008/10009 é falha, mesmo que o EA escreva "ok";
+- o conector não envia ordem: só o EA chama `OrderSend`.
+
+A confirmação na API passou a exigir o token do bot dono do comando. Antes bastava o id.
