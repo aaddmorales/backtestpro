@@ -122,3 +122,17 @@ def test_7_ponte_recusa_antiga_futura_sem_fuso_sem_token(leitor):
         _ficha_e_assinar(d, None, agora=agora)
     with pytest.raises(ValueError, match="bot_token_ausente"):
         _ficha_e_assinar(d, FM.OFF, bot_tok="", agora=agora)
+
+
+def test_8_leitor_acorda_logo_depois_da_virada():
+    """v1.2 — visto na plataforma: o 1º snapshot da barra chegava antes de o motor publicar
+    (intervalo fixo de 20 s) e a barra abria como espelho_atrasado."""
+    import bt_motor_leitura_hml as L
+    assert L.LEITOR_VERSAO == "1.2-hml"
+    base = 900 * 2_000_000
+    assert L._espera(20, base + 400, 2_000_000) == 20            # meio da barra: intervalo normal
+    assert L._espera(20, base + 890, 2_000_000) == 12            # virada em 10 s: acorda 2 s depois dela
+    assert L._espera(20, base + 2, 1_999_999) == 3               # barra nova ainda não publicada: a cada 3 s
+    assert L._espera(20, base + 2, 2_000_000) == 20              # já publicada: volta ao normal
+    assert L._espera(20, base + 61, 1_999_999) == 20             # passou 1 min sem barra (mercado fechado): normal
+    assert L._espera(1, base + 400, 2_000_000) == 5              # nunca abaixo de 5 s fora da janela

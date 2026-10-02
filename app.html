@@ -1263,7 +1263,7 @@ select option{background:#141920}
 .clm-cnt div{background:var(--bg2,#0d1420);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;font-size:11px}
 .clm-cnt b{display:block;font-size:15px;color:var(--text)}
 .clm-tl{max-height:320px;overflow-y:auto;font-size:11.5px}
-.clm-tl-i{display:grid;grid-template-columns:150px 110px 90px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.clm-tl-i{display:grid;grid-template-columns:150px 110px minmax(90px,max-content) 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
 .clm-filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px}
 .clm-filtros select,.clm-filtros input{background:var(--bg2,#0d1420);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;font-size:11px}
 .clm-btn{background:var(--bg4,#1a2230);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer}
@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.53-master-btc-c27r17';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.54-virada-na-tela-c27r18';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9060,6 +9060,18 @@ function clmRender(botId, d, tr){
   const _mesmaBarra = t => { try { return t && L.barra_m15_utc && new Date(t).getTime() === new Date(L.barra_m15_utc).getTime(); } catch(e) { return false; } };
   const cmdsBarra = cmdsA.filter(c => _mesmaBarra(c.ts_barra));
   const temCmd = cmdsBarra.length > 0, temExec = cmdsBarra.some(c => c.executada);
+  // v10.54 (C27R18): depois do fim da validade (virada), as etapas 4 e 5 mostram o que foi
+  // REGISTRADO para a barra — antes mostravam a avaliação do instante ("leitura vencida") e
+  // contradiziam o quadro "Decisão registrada" logo abaixo.
+  const _BR = d.barra_registrada || {}, _REG = _BR.registrada;
+  const _posVal = !!_REG && (!!(_BR.validade||{}).encerrada || String((C.atestado||{}).motivo||'').startsWith('leitura_vencida'));
+  const _e4 = _posVal ? (_REG.atestado_na_barra === 'verificado') : E.atestado_valido;
+  const _dReg = String((_REG||{}).decisao||'');
+  const _e5 = _posVal
+    ? ((_dReg === 'comprar' || _dReg === 'vender') ? '✔ AUTORIZADA' : (_dReg === 'bloquear' ? '✖ VETADA' : '○ observar (não autoriza)'))
+    : (E.decisao_autorizada ? '✔ AUTORIZADA' : (E.decisao_vetada ? '✖ VETADA' : '○ observar (não autoriza)'));
+  const _e5c = _posVal ? (_REG.classe_veto || '') : (E.classe_veto || '');
+  const _regTag = _posVal ? '<span class="clm-sub">registrado na barra</span>' : '';
   // ── 0. ESTÁGIOS: quatro perguntas diferentes, quatro respostas separadas ──
   const est = `
   <div class="clm-box"><div class="clm-tit"><span>🪜 Onde a barra ${_clmHora(L.barra_m15_utc)} chegou</span><span class="clm-sub">cada etapa é independente; ✔ numa etapa NÃO implica a seguinte</span></div>
@@ -9067,8 +9079,8 @@ function clmRender(botId, d, tr){
       <div>1 · Leitura coletada<b>${E.leitura_coletada ? '✔ sim' : '✖ não'}</b></div>
       <div>2 · Ciclo calculado<b>C1 ${(E.ciclo_calculado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_calculado||{}).c2?'✔':'✖'}</b></div>
       <div>3 · Ciclo alinhado<b>C1 ${(E.ciclo_alinhado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_alinhado||{}).c2?'✔':'✖'}</b></div>
-      <div>4 · Atestado válido (API)<b>${E.atestado_valido ? '✔ verificado' : '✖ não'}</b></div>
-      <div>5 · Decisão do backend<b>${E.decisao_autorizada ? '✔ AUTORIZADA' : (E.decisao_vetada ? '✖ VETADA' : '○ observar (não autoriza)')}</b>${E.classe_veto ? '<span class="clm-sub">'+_clmE(E.classe_veto)+'</span>' : ''}</div>
+      <div>4 · Atestado válido (API)<b>${_e4 ? '✔ verificado' : '✖ não'}</b>${_regTag}</div>
+      <div>5 · Decisão do backend<b>${_e5}</b>${_e5c ? '<span class="clm-sub">'+_clmE(_e5c)+'</span>' : ''}${_regTag}</div>
       <div>6 · Comando criado (esta barra)<b>${temCmd ? '✔ sim' : '✖ não'}</b></div>
       <div>7 · Ordem executada no MT5 (esta barra)<b>${temExec ? '✔ sim' : '✖ não'}</b></div>
     </div></div>`;
@@ -9088,7 +9100,8 @@ function clmRender(botId, d, tr){
     <div class="clm-ciclos" style="margin-top:8px">
       ${cicloBox(c1, 'Ciclo 1 · ascendente M1 → M5 → M15', 'Degraus superiores: M30 '+_clmE((c1.extras||{}).M30||'—')+' · H1 '+_clmE((c1.extras||{}).H1||'—'))}
       ${cicloBox(c2, 'Ciclo 2 · descendente D1 → H4', 'Referência longa: MN1 '+_clmE((c2.extras||{}).MN1||'—')+' · W1 '+_clmE((c2.extras||{}).W1||'—'))}
-      <div class="clm-c clm-dec ${cons.decisao==='bloquear'?'clm-alerta':''}"><b>Decisão consolidada do backend</b><br>
+      <div class="clm-c clm-dec ${cons.decisao==='bloquear'?'clm-alerta':''}"><b>${_posVal ? 'Avaliação deste instante (validade da barra encerrada)' : 'Decisão consolidada do backend'}</b><br>
+        ${_posVal ? '<span class="clm-sub">a decisão que valeu na barra está no quadro “Decisão registrada”; esta é a situação de agora, até o 1º snapshot da barra nova</span><br>' : ''}
         ${_clmDec(cons.decisao, cons.estado)}<br>
         Regra: <b>${_clmE(cons.regra)}</b><br>
         Motivo: ${_clmE(cons.motivo)}<br>

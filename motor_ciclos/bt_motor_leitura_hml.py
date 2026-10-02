@@ -37,7 +37,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.1-hml"
+LEITOR_VERSAO = "1.2-hml"
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MODULOS = ("bt_ciclo_v1.py", "bt_vivo_sombra.py", "bloco1_motor_v3.py",
            "professor_cards_v19.py", "professor_bloco2.py", "professor_bloco3.py",
@@ -112,6 +112,23 @@ def _fuso_por_tick(mt5, ativo):
         return None, f"erro({type(e).__name__})"
 
 
+def _espera(intervalo, agora_s, periodo_publicado):
+    """Segundos até a próxima passada. v1.2: perto da virada da M15 o leitor não espera o
+    intervalo inteiro (na plataforma, o 1º snapshot da barra nova chegava até 20 s antes do
+    motor publicar e a barra abria como 'espelho_atrasado').
+      · virada dentro do intervalo -> acorda 2 s depois dela;
+      · 1º minuto da barra e a barra nova ainda não publicada -> a cada 3 s;
+      · resto do tempo -> o intervalo normal."""
+    intervalo = max(5, int(intervalo))
+    pos = agora_s % 900
+    falta = 900 - pos
+    if pos < 60 and periodo_publicado != int(agora_s // 900):
+        return 3
+    if falta < intervalo:
+        return max(1, falta + 2)
+    return intervalo
+
+
 def _ultima_linha_m15(pasta, ativo):
     import glob
     arqs = sorted(glob.glob(os.path.join(pasta, f"{ativo}_M15_*.csv")))
@@ -183,6 +200,7 @@ def main(argv=None):
           f"terminal {tinfo.path} · ordens BLOQUEADAS · retomada: {ult_pub or 'nenhuma barra publicada'}",
           flush=True)
 
+    periodo_pub = None
     _fuso_por_tick(mt5, a.ativo)          # 1ª amostra do tick (a medição exige tick NOVO)
     time.sleep(1.2)
     while True:
@@ -221,6 +239,7 @@ def main(argv=None):
                     "publicado_utc": _iso(_agora()), "m15": leit.get("m15"),
                     "erro_motor": leit.get("erro"), "leitor": LEITOR_VERSAO})
                 ult_pub = barra
+                periodo_pub = int(time.time() // 900)
                 velhas = sorted(d for d in os.listdir(os.path.join(dados, "barras"))
                                 if not d.endswith(".tmp") and ".tmp" not in d)
                 for d in velhas[:-MANTER_BARRAS]:
@@ -256,7 +275,7 @@ def main(argv=None):
             print(f"[aviso] SAUDE.json não gravado: {e}", flush=True)
         if a.uma_vez:
             break
-        time.sleep(max(5, a.intervalo))
+        time.sleep(_espera(a.intervalo, time.time(), periodo_pub))
     mt5.shutdown()
 
 
