@@ -9,3 +9,5 @@ requests
 psycopg2-binary
 stripe
 supabase
+fpdf2==2.8.9
+tzdata
