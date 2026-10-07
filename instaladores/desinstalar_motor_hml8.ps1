@@ -16,7 +16,7 @@ if (Test-Path -LiteralPath $estadoArq) { $estado = Get-Content -LiteralPath $est
 else { Write-Host "aviso: $estadoArq ausente - restauro so o que for encontrado" -ForegroundColor Yellow }
 
 # 1. parar leitor + inicio automatico
-Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*bt_motor_leitura_hml*" -or $_.CommandLine -like "*motor_iniciar.cmd*" } |
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*bt_motor_leitura_hml*" -or $_.CommandLine -like "*motor_iniciar*.cmd*" } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 $ini = if ($estado -and $estado.inicializar) { $estado.inicializar } else { Join-Path ([Environment]::GetFolderPath("Startup")) "BotTested_HOMOLOG_Motor.cmd" }
 if (Test-Path -LiteralPath $ini) { Remove-Item -LiteralPath $ini -Force; Ok "inicio automatico removido ($ini)" } else { Ok "inicio automatico ja ausente" }

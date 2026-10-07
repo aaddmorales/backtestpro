@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.59-r01v5-tempo-real-c27r23';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.60-sessao-ensaio-c27r24';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8505,6 +8505,8 @@ async function carregarBots(){
               </div>
             </div>
             <!-- v10.46 — C27R13: CICLOS AO VIVO (leituras por TF, decisão do backend, trilha, autoridade, saúde) -->
+            <!-- v10.60 — C27R24: SESSÃO DE ENSAIO (Bitcoin · Gold · Ensaio consolidado · Histórico anterior) -->
+            <div class="ses" id="ses-${b.id}" style="display:none"></div>
             <div class="clm" id="clm-${b.id}"><div class="clm-box clm-sub">Carregando as leituras dos Ciclos…</div></div>
             <!-- v9.85 — PLACAR DO APRENDIZADO (acertos × erros por bot/ativo + porquê dos erros) -->
             <div class="lm-stats" id="lm-stats-${b.id}"></div>
@@ -8803,12 +8805,13 @@ async function lmCarregar(botId){
   try {
     // v9.85 — timeline (deste bot) + placar (todos os bots do usuário), em paralelo
     const uid = (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual.id : '';
+    sesCarregar(botId);   // v10.60 — sessão de ensaio (recorte do servidor)
     clmCarregar(botId);   // v10.46 — Ciclos ao vivo (independente das operações)
     const [r, rs] = await Promise.all([
       fetch(API + '/babymachine/operacoes', {
         method: 'POST',
         headers: await _authHeaders(), /* B09.2: sessao obrigatoria */
-        body: JSON.stringify({bot_id: botId, dias: _lmDias, limite: 200})
+        body: JSON.stringify({bot_id: botId, dias: _lmDias, limite: 200, sessao: sesRecorte(botId)})
       }),
       fetch(API + '/babymachine/estatisticas', {
         method: 'POST',
@@ -8969,7 +8972,7 @@ function relAbrir(botId){
   let tzs = ['UTC']; try { tzs.unshift(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch(_){}
   ['America/Sao_Paulo', 'Europe/Helsinki', 'Europe/London', 'America/New_York'].forEach(z => { if (!tzs.includes(z)) tzs.push(z); });
   tzs = [...new Set(tzs)];
-  const op = [['hoje','Hoje (últimas 24 h)'], ['7d','7 dias'], ['30d','30 dias'], ['90d','90 dias'], ['ultima_barra','Última barra fechada'], ['personalizado','Personalizado']];
+  const op = [['sessao','Toda a sessão de ensaio'], ['hoje','Hoje (últimas 24 h)'], ['7d','7 dias'], ['30d','30 dias'], ['90d','90 dias'], ['ultima_barra','Última barra fechada'], ['personalizado','Personalizado']];
   const ov = document.createElement('div'); ov.id = 'rel-ov';
   ov.innerHTML = `<div id="rel-cx" role="dialog" aria-label="Relatório da BabyMachine">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h2>📄 Relatório da BabyMachine</h2>
@@ -8978,6 +8981,7 @@ function relAbrir(botId){
     <div class="rel-barra">
       <label>Período <select id="rel-per" onchange="document.getElementById('rel-pers').style.display=this.value==='personalizado'?'flex':'none'">${op.map(o => `<option value="${o[0]}"${o[0] === padrao ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>
       <span id="rel-pers" style="display:none;gap:6px;align-items:center">de <input type="datetime-local" id="rel-de"> até <input type="datetime-local" id="rel-ate"> <span class="rel-sit">(horário deste computador)</span></span>
+      <label>Recorte <select id="rel-rec" onchange="relRecMudou()"><option value="sessao">Sessão de ensaio · este ativo</option><option value="consolidado">Sessão de ensaio · consolidado (Bitcoin + Gold)</option><option value="anterior">Histórico anterior</option><option value="tudo">Tudo (sem recorte)</option></select></label>
       <label>Fuso <select id="rel-fuso">${tzs.map(z => `<option>${_clmE(z)}</option>`).join('')}</select></label>
       <button class="rel-b" id="rel-gerar" onclick="relGerar()">Gerar</button>
       <button class="rel-b sec" id="rel-pdf" onclick="relBaixar('pdf')" disabled>Baixar PDF</button>
@@ -8985,12 +8989,24 @@ function relAbrir(botId){
     </div>
     <div id="rel-out"><div class="rel-vazio">Escolha o período e clique em Gerar.</div></div></div>`;
   document.body.appendChild(ov);
+  const temSes = !!((_sesUlt[botId] || {}).painel);
+  const rec = document.getElementById('rel-rec');
+  if (!temSes){ rec.value = 'tudo'; [...rec.options].forEach(o => { if (o.value !== 'tudo') o.disabled = true; }); [...document.getElementById('rel-per').options].forEach(o => { if (o.value === 'sessao') o.disabled = true; }); }
+  else if (sesRecorte(botId) === 'anterior'){ rec.value = 'anterior'; }
+  else { rec.value = (_sesChip[botId] === 'consolidado') ? 'consolidado' : 'sessao'; document.getElementById('rel-per').value = 'sessao'; }
   relGerar();
+}
+function relRecMudou(){
+  const rec = document.getElementById('rel-rec').value, per = document.getElementById('rel-per');
+  if ((rec === 'anterior' || rec === 'tudo') && per.value === 'sessao') per.value = '7d';
+  if ((rec === 'sessao' || rec === 'consolidado')) per.value = 'sessao';
 }
 function relFechar(){ const o = document.getElementById('rel-ov'); if (o) o.remove(); }
 async function relGerar(){
   const out = document.getElementById('rel-out'), bt = document.getElementById('rel-gerar'); if (!out) return;
   const per = document.getElementById('rel-per').value, corpo = {bot_id: _relBot, periodo: per, fuso: document.getElementById('rel-fuso').value};
+  const rec = (document.getElementById('rel-rec') || {}).value || 'tudo';
+  corpo.sessao = (rec === 'sessao' || rec === 'consolidado') ? null : rec; corpo.consolidado = rec === 'consolidado';
   if (per === 'personalizado'){
     const a = document.getElementById('rel-de').value, b = document.getElementById('rel-ate').value;
     if (!a || !b){ out.innerHTML = '<div class="rel-q atencao">Preencha o início e o fim do período personalizado.</div>'; return; }
@@ -9022,6 +9038,9 @@ function relRender(c){
   let h = '';
   if (!c.persistido) h += `<div class="rel-q atencao"><b>Relatório não foi gravado no servidor</b>${_clmE(c.aviso_persistencia || '')} Sem gravação não há download.</div>`;
   h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 ${_clmE(c.sha256_do_conteudo)}</div>`;
+  h += `<div class="rel-q ${c.sessao_teste_id ? 'ok' : 'atencao'}"><b>Recorte: ${_clmE((c.recorte || {}).rotulo || 'sem recorte')}${c.escopo ? ' · ' + _clmE(c.escopo) : ''}</b>${c.sessao_teste_id ? 'sessao_teste_id ' + _clmE(c.sessao_teste_id) + ' — só registros desta sessão entram neste relatório.' : 'registros fora de sessão de ensaio.'}</div>`;
+  if (c.sessao_teste){ _sesCss(); h += '<div class="ses">' + sesHtml(c.sessao_teste, c.escopo === 'Ensaio consolidado' ? 'consolidado' : (c.escopo || I.ativo || '')) + '</div>'; }
+  if (c.escopo === 'Ensaio consolidado') return h;
   h += '<h3>Resumo</h3>' + (R.perguntas || []).map(q => `<div class="rel-q ${_clmE(q.estado)}"><b>${_clmE(q.pergunta)}</b>${_clmE(q.resposta)}</div>`).join('');
   h += _relKV([
     ['Bot', `${_clmE((I.bot || {}).nome)} <span class="rel-sit">id ${_clmE((I.bot || {}).id)}</span>`], ['Ativo / magic', `${_clmE(I.ativo)} / ${_clmE(I.magic)}`],
@@ -9140,14 +9159,137 @@ function relRender(c){
   return h;
 }
 
+// ═══ C27R24 — SESSÃO DE ENSAIO: recorte do backend, três filtros (Bitcoin · Gold · Ensaio consolidado) e histórico anterior ═══
+//  A tela NÃO soma nada: mostra o JSON de /learning/sessao/painel (os mesmos números do banco e do relatório).
+const _sesUlt = {}, _sesChip = {}, _sesRecorte = {};
+const _SES_ROT = {BTCUSD: 'Bitcoin', XAUUSD: 'Gold'};
+function sesRecorte(botId){ return _sesRecorte[botId] || null; }
+function _sesCss(){
+  if (document.getElementById('ses-css')) return;
+  const st = document.createElement('style'); st.id = 'ses-css';
+  st.textContent = `.ses{border:1px solid var(--border,#263241);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.5}
+.ses h4{margin:10px 0 4px;font-size:12.5px} .ses-top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.ses-id{font-family:var(--mono,monospace);font-size:11.5px} .ses-sit{color:var(--muted,#8a97a8);font-size:11px}
+.ses-chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0} .ses-chip{background:transparent;color:inherit;border:1px solid var(--border,#263241);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.ses-chip.on{background:var(--green,#00d084);color:#04130c;border-color:var(--green,#00d084)} .ses-chip.hist.on{background:var(--amber,#ffb830);border-color:var(--amber,#ffb830)}
+.ses-tag{display:inline-block;border-radius:5px;padding:1px 7px;font-weight:700;font-size:11px;border:1px solid var(--border,#263241)}
+.ses-tag.ok{border-color:var(--green,#00d084);color:var(--green,#00d084)} .ses-tag.av{border-color:var(--amber,#ffb830);color:var(--amber,#ffb830)} .ses-tag.bad{border-color:var(--red,#ff5c5c);color:var(--red,#ff5c5c)}
+.ses-tw{overflow:auto;max-width:100%} .ses-t{border-collapse:collapse;width:100%;font-size:11.5px;margin:4px 0} .ses-t th,.ses-t td{border:1px solid var(--border,#263241);padding:3px 6px;text-align:left;vertical-align:top}
+.ses-t th{background:rgba(255,255,255,.05);white-space:nowrap} .ses-kv{display:grid;grid-template-columns:minmax(150px,max-content) 1fr;gap:2px 12px} .ses-kv>span:nth-child(odd){color:var(--muted,#8a97a8)}`;
+  document.head.appendChild(st);
+}
+function _sesT(cab, linhas){
+  if (!linhas || !linhas.length) return '<div class="ses-sit">sem registros</div>';
+  return '<div class="ses-tw"><table class="ses-t"><thead><tr>' + cab.map(c => `<th>${_clmE(c)}</th>`).join('') + '</tr></thead><tbody>'
+    + linhas.map(l => '<tr>' + l.map(x => `<td>${x === null || x === undefined || x === '' ? '—' : _clmE(typeof x === 'object' ? JSON.stringify(x) : x)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+}
+function _sesDt(v){ if (!v) return '—'; try { const d = new Date(v); return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC · ' + d.toLocaleString('pt-BR', {timeZone: 'Europe/Kiev', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + ' Kiev'; } catch(_){ return _clmE(v); } }
+const _SES_CONT = [['barras', 'barras'], ['snapshots', 'snapshots'], ['candidatos', 'candidatos'], ['elegiveis', 'elegíveis'], ['vetos', 'vetos'], ['decisoes', 'decisões'],
+                   ['comandos', 'comandos'], ['aberturas', 'aberturas'], ['fechamentos', 'fechamentos'], ['resultado_usd', 'resultado US$']];
+function sesAtivoHtml(sym, a){
+  const sd = a.saude || {}, m = sd.mercado || {}, mo = sd.motor || {}, v = sd.versoes || {}, PT = a.por_timeframe || {}, LT = a.leituras_por_timeframe || {}, lc = sd.lacunas_m15 || {};
+  const cls = m.negociando === true ? 'ok' : (m.negociando === false ? 'av' : 'bad');
+  let h = `<h4>${_clmE(_SES_ROT[sym] || sym)} · ${_clmE((a.bot || {}).nome)} <span class="ses-sit">bot ${_clmE((a.bot || {}).id)} · magic ${_clmE((a.bot || {}).magic)} · ${_clmE(sym)}</span></h4>`;
+  h += `<div><span class="ses-tag ${cls}">${_clmE(m.classe)}</span> ${_clmE(m.texto)}</div>`;
+  h += '<div class="ses-kv">' + [
+    ['Motor / leitor', `${_clmE(mo.estado)} · ${_clmE(mo.motivo)} · leitor ${_clmE(mo.leitor)} · ponte ${_clmE(mo.ponte)} · pasta do ativo ${_clmE(mo.pasta_do_ativo)}`],
+    ['Versões', `EA ${_clmE(v.ea)} · ${_clmE(v.conector)} · motor ${_clmE(v.motor)} · cards ${_clmE(v.cards)}`],
+    ['Contrato instalado', `candidatos assinados: ${sd.atestado_de_candidatos ? 'sim' : 'NÃO'} · especificação do símbolo: ${sd.especificacao_assinada ? 'sim' : 'NÃO'} · gestão: ${sd.gestao_assinada ? 'sim' : 'NÃO'} · negócios do MT5: ${sd.negocios_assinados ? 'sim' : 'NÃO' + (sd.negocios_falha ? ' (' + _clmE(sd.negocios_falha) + ')' : '')}`],
+    ['Snapshot', `há ${_clmE(sd.snapshot_idade_s)} s · posições do bot no MT5: ${_clmE(sd.posicoes_do_bot_no_mt5)} · de outros magics neste símbolo: ${(sd.posicoes_de_outros_magics_no_simbolo || []).length} (fora do resultado; contam na exposição e na margem)`],
+    ['Lacunas M15', `${_clmE(lc.barras_faltando)} barra(s): ausência de coleta ${_clmE(lc.ausencia_de_coleta)} · mercado fechado ${_clmE(lc.mercado_fechado)} · indeterminado ${_clmE(lc.indeterminado)}`],
+    ['Recebidos com atraso', _clmE(JSON.stringify(sd.eventos_anteriores_recebidos_com_atraso || {}))]
+  ].map(p => `<span>${p[0]}</span><span>${p[1]}</span>`).join('') + '</div>';
+  h += '<h4>Candidatos, autorizações, execuções e resultados por timeframe</h4>' + _sesT(
+    ['TF', 'candidatos (avaliações)', 'elegíveis', 'vetados', 'aguardando', 'autoridade emitiria', 'decisões', 'aberturas', 'canceladas', 'abertas', 'fechamentos', 'gestão', 'resultado US$'],
+    Object.keys(PT).map(t => { const x = PT[t], c = x.candidatos || {}, s = x.selecao || {};
+      return [t, c.avaliacoes_de_candidato, c.elegivel, c.vetada, c.aguardando, s.sombra_seria_emitida, x.decisoes, x.aberturas, x.reservas_canceladas, x.posicoes_abertas, x.fechamentos, x.acoes_de_gestao, x.resultado_usd]; }));
+  const mot = []; Object.keys(PT).forEach(t => Object.entries(((PT[t].candidatos || {}).motivos) || {}).sort((p, q) => q[1] - p[1]).slice(0, 5).forEach(e => mot.push([t, e[0], e[1]])));
+  if (mot.length) h += '<h4>Motivos de veto/espera (primeiro portão fechado)</h4>' + _sesT(['TF', 'motivo', 'vezes'], mot);
+  if ((a.motivos_da_autoridade || []).length) h += '<h4>Autoridade r01v5 e limites da sessão</h4>' + _sesT(['TF', 'autoridade', 'limite da sessão', 'barras'], a.motivos_da_autoridade.slice(0, 12).map(x => [x.tf, x.motivo, x.limite, x.n]));
+  const ordem = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'Daily', 'W1', 'MN1'].filter(t => (LT.ea || {})[t] || (LT.motor || {})[t]);
+  h += '<h4>Leituras e mudanças de direção por timeframe</h4>' + _sesT(['TF', 'leituras (EA)', 'mudanças (EA)', 'direção agora (EA)', 'leituras (motor)', 'mudanças (motor)', 'direção agora (motor)', 'última mudança'],
+    ordem.map(t => { const e = (LT.ea || {})[t] || {}, mm = (LT.motor || {})[t] || {};
+      return [t, e.leituras, e.mudancas_de_direcao, e.direcao_na_ultima_barra, mm.leituras, mm.mudancas_de_direcao, ({'1': 'alta', '-1': 'baixa', '0': 'lateral'})[mm.direcao_na_ultima_barra] || mm.direcao_na_ultima_barra, e.ultima_mudanca || mm.ultima_mudanca]; }));
+  h += `<div class="ses-sit">${_clmE(LT.nota)}</div>`;
+  h += '<h4>Aberturas da sessão (reserva de risco → execução → gestão → resultado)</h4>' + _sesT(
+    ['#', 'estado', 'card · TF · lado', 'lote', 'risco US$', 'entrada', 'stop inicial → vigente', 'saída', 'resultado US$', 'motivo', 'comando', 'ticket', 'barra'],
+    (a.aberturas || []).map(x => [x.id, x.estado, `${x.card} · ${x.tf} · ${x.lado === 1 ? 'compra' : 'venda'}`, x.lote, x.risco_planejado_usd, x.preco_entrada, `${x.stop_inicial} → ${x.stop_atual}`, x.preco_saida, x.resultado_usd, x.motivo_saida || x.motivo_cancelamento, x.comando_id, x.ticket, x.ts_barra]));
+  h += '<h4>Comandos da sessão</h4>' + _sesT(['id', 'tipo', 'status', 'origem', 'criado', 'confirmado', 'ticket / erro', 'motivo'],
+    (a.comandos || []).slice(0, 20).map(x => [x.id, x.tipo, x.status, x.origem, x.criado_em, x.confirmado_em, (x.resultado || {}).ticket || (x.resultado || {}).erro, x.motivo]));
+  h += '<h4>Eventos da cadeia (mais recentes)</h4>' + _sesT(['quando (UTC)', 'etapa', 'estado', 'motivo'], (a.eventos || []).slice(0, 25).map(x => [x.ts, x.etapa, x.estado, x.motivo]));
+  return h;
+}
+function sesHtml(P, chip){
+  const S = P.sessao || {}, C = P.consolidado || {}, cfg = S.config || {}, L = C.limites || {}, ct = C.conta || {}, A = P.ativos || {};
+  let h = '<div class="ses-kv">' + [
+    ['sessao_teste_id', `<span class="ses-id">${_clmE(S.sessao_teste_id)}</span> · ${_clmE(S.nome)}`],
+    ['Estado', `<span class="ses-tag ${S.estado === 'ativa' ? 'ok' : 'av'}">${_clmE(S.estado)}</span> · novas aberturas: <span class="ses-tag ${S.novas_aberturas === 'permitidas' ? 'ok' : 'av'}">${_clmE(S.novas_aberturas)}</span>`
+      + ` <span class="ses-sit">habilitadas na sessão: ${S.aberturas_habilitadas ? 'sim' : 'não'} · contrato r01v5 ligado: ${S.contrato_r01v5_ligado ? 'sim' : 'não'}${S.aberturas_suspensas_em ? ' · suspensas: ' + _clmE(S.motivo_suspensao) : ''}</span>`],
+    ['Início', S.inicio ? `${_sesDt(S.inicio)} <span class="ses-sit">1ª barra M15 da sessão: ${_sesDt(S.primeira_barra)}</span>` : '<b>ainda não iniciada</b> — nenhum registro pertence à sessão'],
+    ['Término previsto', _sesDt(S.fim_previsto) + (S.fim ? ` · encerrada ${_sesDt(S.fim)}` : '')],
+    ['Bots', (S.bots || []).map(b => `${_clmE(_SES_ROT[b.simbolo] || b.simbolo)}: ${_clmE(b.nome)} (id ${_clmE(b.id)}, magic ${_clmE(b.magic)})`).join(' · ')],
+    ['Limites', `risco por operação ${_clmE(cfg.risco_pct_patrimonio)}% do patrimônio até US$ ${_clmE(cfg.risco_max_por_operacao_usd)} · máx. ${_clmE(cfg.max_aberturas)} aberturas · 1 posição por ativo, ${_clmE(cfg.max_posicoes_simultaneas)} simultâneas · risco agregado US$ ${_clmE(cfg.risco_agregado_max_usd)} · para após ${_clmE(cfg.max_perdas_consecutivas)} perdas seguidas ou US$ ${_clmE(cfg.perda_realizada_max_usd)} de perda realizada`]
+  ].map(p => `<span>${p[0]}</span><span>${p[1]}</span>`).join('') + '</div>';
+  const linhas = Object.keys(A).map(sym => [_SES_ROT[sym] || sym].concat(_SES_CONT.map(k => (A[sym].contadores || {})[k[0]])));
+  linhas.push(['Ensaio consolidado'].concat(_SES_CONT.map(k => (C.contadores || {})[k[0]])));
+  h += '<h4>Registros da sessão</h4>' + _sesT(['ativo'].concat(_SES_CONT.map(k => k[1])), linhas);
+  if (chip === 'consolidado'){
+    h += '<h4>Uso dos limites comuns</h4>' + _sesT(['aberturas', 'posições abertas', 'risco aberto US$', 'resultado realizado US$', 'perdas consecutivas', 'resultados pendentes'],
+      [[`${L.aberturas} de ${L.aberturas_max}`, `${L.posicoes_abertas} de ${L.posicoes_simultaneas_max}`, `${L.risco_aberto_usd} de ${L.risco_agregado_max_usd}`, `${L.resultado_realizado_usd} (limite −${L.perda_realizada_max_usd})`, `${L.perdas_consecutivas} de ${L.perdas_consecutivas_max}`, L.resultados_pendentes]]);
+    h += `<div><b>Conta (uma vez, não por bot):</b> patrimônio ${_clmE(ct.equity)} · saldo ${_clmE(ct.balance)} · margem livre ${_clmE(ct.margem_livre)} · posições na conta ${_clmE(JSON.stringify(ct.posicoes_na_conta || {}))} <span class="ses-sit">${_clmE(ct.fonte || ct.nota)}</span></div>`;
+    const PT = C.por_timeframe || {};
+    h += '<h4>Consolidado por timeframe</h4>' + _sesT(['TF', 'candidatos (avaliações)', 'elegíveis', 'vetados', 'autoridade emitiria', 'decisões', 'aberturas', 'fechamentos', 'resultado US$'],
+      Object.keys(PT).map(t => [t, PT[t].avaliacoes_de_candidato, PT[t].elegivel, PT[t].vetada, PT[t].sombra_seria_emitida, PT[t].decisoes, PT[t].aberturas, PT[t].fechamentos, PT[t].resultado_usd]));
+    h += `<div class="ses-sit">${_clmE(C.nota)}</div>`;
+    Object.keys(A).forEach(sym => { h += sesAtivoHtml(sym, A[sym]); });
+  } else if (chip === 'anterior'){
+    h += '<h4>Histórico anterior (registros sem sessão — preservados, nada foi apagado)</h4>' + _sesT(['ativo'].concat(_SES_CONT.slice(0, 7).map(k => k[1])).concat(['primeira barra', 'última barra']),
+      Object.keys(A).map(sym => { const x = A[sym].historico_anterior || {}; return [_SES_ROT[sym] || sym].concat(_SES_CONT.slice(0, 7).map(k => x[k[0]])).concat([x.primeira_barra, x.ultima_barra]); }));
+    h += '<div class="ses-sit">Os quadros abaixo (Ciclos, seleção, trilha e operações) estão mostrando o histórico anterior deste bot.</div>';
+  } else if (A[chip]){
+    h += sesAtivoHtml(chip, A[chip]);
+  }
+  h += `<div class="ses-sit">${_clmE(S.regra_do_recorte)} · gerado ${_clmE(P.gerado_utc)}</div>`;
+  return h;
+}
+function sesEscolher(botId, chip){
+  _sesChip[botId] = chip;
+  const novo = chip === 'anterior' ? 'anterior' : null;
+  const mudou = (_sesRecorte[botId] || null) !== novo;
+  _sesRecorte[botId] = novo;
+  const d = _sesUlt[botId]; if (d) sesRender(botId, d);
+  if (mudou) lmCarregar(botId);
+}
+function sesRender(botId, d){
+  const el = document.getElementById('ses-' + botId); if (!el) return;
+  _sesCss();
+  if (!d || !d.painel){ el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  const A = d.painel.ativos || {}, meu = Object.keys(A).find(s => String((A[s].bot || {}).id) === String(botId));
+  const chip = _sesChip[botId] || (_sesChip[botId] = meu || 'consolidado');
+  const chips = Object.keys(A).sort().map(s => [s, _SES_ROT[s] || s]).concat([['consolidado', 'Ensaio consolidado']]);
+  el.innerHTML = `<div class="ses-top"><b>🧪 Sessão de ensaio</b><span class="ses-sit">recorte aplicado no servidor: tela, banco e relatório usam os mesmos registros</span></div>
+    <div class="ses-chips">${chips.map(c => `<button class="ses-chip${chip === c[0] ? ' on' : ''}" onclick="sesEscolher(${botId}, '${c[0]}')">${_clmE(c[1])}</button>`).join('')}
+    <button class="ses-chip hist${chip === 'anterior' ? ' on' : ''}" onclick="sesEscolher(${botId}, 'anterior')">Histórico anterior</button></div>` + sesHtml(d.painel, chip)
+    + (meu && chip !== 'anterior' && chip !== meu ? `<div class="ses-sit">Os quadros abaixo (Ciclos, seleção, trilha) são do bot desta aba (${_clmE(_SES_ROT[meu] || meu)}), no recorte da sessão.</div>` : '');
+}
+async function sesCarregar(botId){
+  const el = document.getElementById('ses-' + botId); if (!el) return;
+  try{
+    const r = await fetch(API + '/learning/sessao/painel', {method: 'POST', headers: await _authHeaders(), body: JSON.stringify({bot_id: botId})});
+    if (!r.ok){ _sesCss(); el.innerHTML = `<div class="ses-sit">BT-S01 · Não consegui ler a sessão de ensaio (HTTP ${r.status}).</div>`; return; }
+    const d = await r.json(); _sesUlt[botId] = d; sesRender(botId, d);
+  }catch(e){ }
+}
+
 async function clmCarregar(botId){
   const el = document.getElementById('clm-'+botId); if(!el) return;
   const f = _clmFiltro[botId] || (_clmFiltro[botId] = {etapa:'', barra:''});
   try{
     const h = await _authHeaders();
     const [r, rt] = await Promise.all([
-      fetch(API + '/learning/ciclos/ao-vivo', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, dias: _lmDias})}),
-      fetch(API + '/learning/ciclos/trilha', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, limite: 200,
+      fetch(API + '/learning/ciclos/ao-vivo', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, dias: _lmDias, sessao: sesRecorte(botId)})}),
+      fetch(API + '/learning/ciclos/trilha', {method:'POST', headers:h, body: JSON.stringify({bot_id: botId, limite: 200, sessao: sesRecorte(botId),
              etapa: f.etapa || null, barra_m15: f.barra || null,
              desde: new Date(Date.now() - _lmDias*86400000).toISOString()})})
     ]);

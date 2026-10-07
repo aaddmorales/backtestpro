@@ -37,8 +37,9 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.5-hml"
-CAND_VERSAO = "cand-3"
+LEITOR_VERSAO = "1.6-hml"
+CAND_VERSAO = "cand-4"
+GESTAO_CONTRATO = "gestao-1"                # vida da posição pelo contrato do estudo (C27R24)
 CONF_CONTRATO = "conf-rt-1"                 # confirmação em TEMPO REAL (C27R23)
 VALIDADE_ENTRADA_S = 1800                   # 30 min a contar da confirmação (= IDADE_MAX de 1 barra M15 do executor congelado)
 TFS_CANDIDATOS = ("M15", "M30", "H1")     # escopo da seleção (C27R19)
@@ -303,6 +304,10 @@ def _candidatos(pasta, ativo, spread_tick=None):
             "B5_nota": ("B5 (fim de semana) vale nos 30 min finais de sexta no estudo; em tempo real o fim da sessão não é conhecido "
                         "e a blindagem fica ligada para a barra que abre agora" if (F15p.B5[n15] and not ign_b5) else None)}
     seg = lambda dt: int(dt / np.timedelta64(1, "s"))
+    try:
+        gestao = _gestao(B1, PC, ltp, F15p, n15, ts_txt)
+    except Exception as e:
+        gestao = {"contrato": GESTAO_CONTRATO, "erro": f"{type(e).__name__}: {e}"[:200]}
     itens = []; cont = {"confirmado": 0, "aguardando": 0, "cancelado": 0, "expirado": 0, "invalido": 0}
     comp = {"confirmados_rt": 0, "com_entrada_do_estudo": 0, "mesma_barra_de_entrada": 0, "mesmo_preco": 0,
             "estudo_posiciona_antes": 0, "estudo_ainda_nao_resolveu": 0}
@@ -393,8 +398,133 @@ def _candidatos(pasta, ativo, spread_tick=None):
             "contrato_do_estudo": {"stop": "pivô do M15 ∓ 0,3×ATR14 do M15", "saida": "100% Ciclo, sem alvo fixo",
                                    "frescor_para_entrada_nova": "30 min a contar da confirmação em tempo real (IDADE_MAX de 1 barra M15 do vivo)",
                                    "validade_na_fila": "4 barras do TF do card"},
+            "gestao": gestao,
             "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
             "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
+
+
+def _gestao(B1, PC, ltp, F15p, n15, ts_txt):
+    """v1.6 — VIDA DA POSIÇÃO pelo contrato do estudo (professor_bloco2.rodar_seletor, "100% Ciclo no relógio
+    do M15"), lida na ÚLTIMA M15 FECHADA (índice n15-1 da visão com a barra aberta, onde o código congelado
+    já a avalia). Para cada lado: corte do Ciclo (corta e não B1), B3 (tempo sem progresso), B5 e o stop
+    estrutural do trailing (último pivô ∓ BUFFER×ATR14). Só descreve: quem aplica a ordem do estudo
+    (stop → B5 → B3 com 2 barras de posição → Ciclo → trailing que só aperta) é a API, e o leitor não envia nada."""
+    import numpy as np
+    k = int(n15) - 1
+    A15 = F15p.lt.andares[F15p.andar_op]
+    mp = A15.mapas[k]; ak = float(F15p.D.atr14.values[k]); ck = float(F15p.D.close.values[k])
+    out = {"contrato": GESTAO_CONTRATO, "barra_m15_corretora": ts_txt(F15p.ts[k]), "fechamento": ck,
+           "B1": bool(F15p.B1[k]), "B5": bool(F15p.B5[k] and not PC.IGNORAR_B5),
+           "ordem_do_estudo": "stop -> B5 -> B3 (posição com 2+ barras M15) -> corte do Ciclo -> trailing (só aperta)",
+           "lados": {}}
+    for lado in (1, -1):
+        try:
+            b3 = B1.b3_tempo_sem_progresso(ltp, F15p.ts[k], lado, None)
+        except Exception as e:
+            b3 = {"corta": False, "motivo": f"B3 não calculado ({type(e).__name__})"}
+        nst = None
+        if mp is not None and mp.ultimo_fundo and mp.ultimo_topo and np.isfinite(ak) and ak > 0:
+            pv = mp.ultimo_fundo[1] if lado > 0 else mp.ultimo_topo[1]
+            nst = float(pv - lado * PC.BUFFER_ATR * ak)
+        out["lados"]["compra" if lado > 0 else "venda"] = {
+            "corte_do_ciclo": bool(F15p.corta[lado][k] and not F15p.B1[k]),
+            "B3": bool(b3.get("corta")), "B3_motivo": str(b3.get("motivo"))[:160],
+            "stop_estrutural": (None if nst is None else round(nst, 6)),
+            "stop_do_lado_certo": bool(nst is not None and ((lado > 0 and nst < ck) or (lado < 0 and nst > ck)))}
+    return out
+
+
+def _f(o, k):
+    v = getattr(o, k, None)
+    try:
+        return None if v is None else float(v)
+    except Exception:
+        return None
+
+
+def _especificacao(mt5, ativo, off):
+    """v1.6 — ESPECIFICAÇÃO DO SÍMBOLO lida no MT5 (só leitura): valor e tamanho do tick, volumes, contrato,
+    modo de negociação, distância mínima de stop, margem de 1 lote e idade do último tick. É do PRÓPRIO
+    símbolo: nada é herdado de outro ativo. Os horários de sessão não são expostos pela API Python do MT5."""
+    si = mt5.symbol_info(ativo)
+    if si is None:
+        return {"erro": "symbol_info indisponível"}
+    tk = None
+    try:
+        tk = mt5.symbol_info_tick(ativo)
+    except Exception:
+        tk = None
+    idade = None
+    if tk is not None and off is not None and getattr(tk, "time", None):
+        idade = int(time.time() + int(off) - int(tk.time))
+    marg = {}
+    for nome, cod in (("compra", getattr(mt5, "ORDER_TYPE_BUY", 0)), ("venda", getattr(mt5, "ORDER_TYPE_SELL", 1))):
+        try:
+            px = (tk.ask if nome == "compra" else tk.bid) if tk is not None else None
+            m = mt5.order_calc_margin(cod, ativo, 1.0, px) if (px and hasattr(mt5, "order_calc_margin")) else None
+            marg[nome] = None if m is None else float(m)
+        except Exception:
+            marg[nome] = None
+    tv_perda = _f(si, "trade_tick_value_loss")
+    return {"simbolo": ativo, "caminho": getattr(si, "path", None), "descricao": getattr(si, "description", None),
+            "moeda_de_lucro": getattr(si, "currency_profit", None), "moeda_de_margem": getattr(si, "currency_margin", None),
+            "digitos": getattr(si, "digits", None), "ponto": _f(si, "point"),
+            "tick_tamanho": _f(si, "trade_tick_size"), "tick_valor": _f(si, "trade_tick_value"),
+            "tick_valor_perda": (tv_perda if tv_perda else _f(si, "trade_tick_value")),
+            "contrato": _f(si, "trade_contract_size"),
+            "volume_min": _f(si, "volume_min"), "volume_passo": _f(si, "volume_step"), "volume_max": _f(si, "volume_max"),
+            "modo_de_negociacao": getattr(si, "trade_mode", None), "modo_de_execucao": getattr(si, "trade_exemode", None),
+            "preenchimento": getattr(si, "filling_mode", None),
+            "distancia_minima_stop_pts": getattr(si, "trade_stops_level", None),
+            "spread_pts": getattr(si, "spread", None), "spread_flutuante": getattr(si, "spread_float", None),
+            "margem_1_lote": marg,
+            "bid": (None if tk is None else float(tk.bid)), "ask": (None if tk is None else float(tk.ask)),
+            "tick_idade_s": idade,
+            "sessoes": "não registrado: a API Python do MT5 não expõe os horários de sessão do símbolo; "
+                       "o estado de negociação vem do modo de negociação e da idade do último tick",
+            "lido_utc": _iso(_agora())}
+
+
+def _negocios(mt5, ativo, off):
+    """v1.6 — NEGÓCIOS E POSIÇÕES do símbolo (só leitura), a cada passada: é daqui que sai o resultado
+    REALIZADO de cada posição (lucro + comissão + swap do histórico do MT5), o stop vigente e a exposição
+    da conta. O leitor continua sem poder enviar ordem."""
+    from datetime import timedelta
+    out = {"versao": "neg-1", "ativo": ativo, "lido_utc": _iso(_agora()), "off_s": off, "negocios": [], "posicoes": [],
+           "conta": None, "erro": None}
+    try:
+        ai = mt5.account_info()
+        if ai is not None:
+            out["conta"] = {"equity": _f(ai, "equity"), "balance": _f(ai, "balance"), "margem": _f(ai, "margin"),
+                            "margem_livre": _f(ai, "margin_free"), "nivel_de_margem": _f(ai, "margin_level"),
+                            "flutuante": _f(ai, "profit"), "moeda": getattr(ai, "currency", None)}
+        todas = (mt5.positions_get() if hasattr(mt5, "positions_get") else None) or []
+        out["conta_posicoes"] = {"total": len(todas),
+                                 "por_simbolo": {str(s): sum(1 for p in todas if p.symbol == s) for s in sorted({p.symbol for p in todas})}}
+        for p in todas:
+            if p.symbol != ativo:
+                continue
+            out["posicoes"].append({"ticket": int(p.ticket), "posicao_id": int(getattr(p, "identifier", p.ticket)),
+                                    "magic": int(p.magic), "tipo": int(p.type), "volume": float(p.volume),
+                                    "preco_abertura": float(p.price_open), "sl": float(p.sl), "tp": float(p.tp),
+                                    "lucro": float(p.profit), "swap": float(getattr(p, "swap", 0.0) or 0.0),
+                                    "aberta_corretora": int(p.time)})
+        if hasattr(mt5, "history_deals_get"):
+            agora = _agora().replace(tzinfo=None)
+            ds = mt5.history_deals_get(agora - timedelta(days=4), agora + timedelta(days=2)) or []
+            ds = [d for d in ds if d.symbol == ativo]
+            for d in sorted(ds, key=lambda x: (x.time, x.ticket))[-80:]:
+                out["negocios"].append({"ticket": int(d.ticket), "ordem": int(d.order), "posicao_id": int(d.position_id),
+                                        "magic": int(d.magic), "tipo": int(d.type), "entrada": int(d.entry),
+                                        "volume": float(d.volume), "preco": float(d.price), "lucro": float(d.profit),
+                                        "comissao": float(getattr(d, "commission", 0.0) or 0.0),
+                                        "swap": float(getattr(d, "swap", 0.0) or 0.0), "taxa": float(getattr(d, "fee", 0.0) or 0.0),
+                                        "motivo": int(getattr(d, "reason", -1)), "hora_corretora": int(d.time)})
+        else:
+            out["erro"] = "history_deals_get indisponível"
+    except Exception as e:
+        out["erro"] = f"{type(e).__name__}: {e}"[:200]
+    return out
 
 
 def _ema20(valores):
@@ -591,6 +721,10 @@ def main(argv=None):
                         cand["canais"] = _canais(tmp, a.ativo, mt5)
                     except Exception as e:
                         cand["canais"] = {"erro": f"{type(e).__name__}: {e}"[:300]}
+                    try:                               # v1.6: especificação do símbolo (lote por risco na API)
+                        cand["especificacao"] = _especificacao(mt5, a.ativo, off)
+                    except Exception as e:
+                        cand["especificacao"] = {"erro": f"{type(e).__name__}: {e}"[:300]}
                     _grava_json_atomico(os.path.join(tmp, "candidatos.json"), cand)
                     os.replace(tmp, destino)
                 else:
@@ -619,6 +753,10 @@ def main(argv=None):
                 _bloquear_ordens(mt5)
             except Exception:
                 pass
+        try:                                           # v1.6: negócios/posições do símbolo a cada passada
+            _grava_json_atomico(os.path.join(dados, "NEGOCIOS.json"), _negocios(mt5, a.ativo, off))
+        except Exception as e:
+            print(f"[aviso] NEGOCIOS.json não gravado: {e}", flush=True)
         try:
             ai = mt5.account_info()
             _grava_json_atomico(os.path.join(dados, "SAUDE.json"), {

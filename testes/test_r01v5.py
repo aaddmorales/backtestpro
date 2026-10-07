@@ -210,7 +210,7 @@ def test_3_assinatura_vinculo_e_forma(api, amb):
     assert cvat.verificar(volta, segredo=T.SEGREDO) == (True, None) and isinstance(volta["candidatos"][0]["stop"], str)
 
 
-def test_4_emissao_consumo_unico_e_comando_so_com_as_tres_travas(api, amb):
+def test_4_emissao_consumo_unico_e_comando_so_com_as_travas(api, amb):
     """Bancada: chave r01v5 LIGADA só aqui + bot em automático. Decisão com o candidato assinado, consumo
     único pela RPC, comando com o stop assinado, repetição recusada. Sem a chave: nada."""
     b = _bot(amb); sb = api._sb_admin()
@@ -235,13 +235,14 @@ def test_4_emissao_consumo_unico_e_comando_so_com_as_tres_travas(api, amb):
     T._pg("delete from ciclo_decisoes where bot_id=%s", b["id"])
     try:
         _chave(True)
-        # ligada, mas bot em OBSERVAR: a escolha não é executada
-        s5 = api._r05_executar_escolha(sb, bot, api._r05_sombra(sb, bot, det, _sel(b, barra), int(time.time())))
-        assert s5["emissao_habilitada"] is True and s5["modo_do_bot"] == "observar" and s5["decisao_emitida"] is False and _contagens(b) == (0, 0)
-        # ligada + automático: decisão e comando
+        # C27R24 — ligada, mas SEM sessão de ensaio: a escolha não é executada (nem com o bot em automático)
         api._bot_config_set(b["id"], {"modo_operacional": "automatico"})
         s5 = api._r05_executar_escolha(sb, bot, api._r05_sombra(sb, bot, det, _sel(b, barra), int(time.time())))
-        assert s5["decisao_emitida"] is True and s5["comando_criado"] is True, s5
+        assert s5["emissao_habilitada"] is True and s5["decisao_emitida"] is False and s5["comando_criado"] is False and _contagens(b) == (0, 0)
+        assert "sessão de ensaio" in s5["execucao_real"] and s5["sessao"]["em_sessao"] is False
+        # as peças da r01v5 (emissão + consumo único) seguem as mesmas; a execução com limites está em test_sessao.py
+        ok5, dd = api._r05_emitir_decisao(sb, bot, it["uid"]); assert ok5 is True, dd
+        ok6, _cmd = api._r05_abrir_via_rpc(sb, bot, dd["id"], 0.01); assert ok6 is True, _cmd
         d = T._pg("select uid, lado, status, veredito, expira_em, ts_barra from ciclo_decisoes where bot_id=%s", b["id"])
         assert len(d) == 1 and d[0][0] == duid and d[0][1] == -1 and d[0][2] == "consumida"
         v = d[0][3]

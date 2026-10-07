@@ -35,7 +35,8 @@ def last_error():
 
 
 def account_info():
-    return _O(login=LOGIN, server="ICMarketsSC-Demo", trade_mode=0 if DEMO else 2, balance=10000.0)
+    return _O(login=LOGIN, server="ICMarketsSC-Demo", trade_mode=0 if DEMO else 2, balance=10000.0, equity=10000.0,
+              margin=0.0, margin_free=10000.0, margin_level=0.0, profit=0.0, currency="USD")
 
 
 def terminal_info():
@@ -47,8 +48,26 @@ def symbol_select(s, v=True):
     return True
 
 
+ORDER_TYPE_BUY, ORDER_TYPE_SELL = 0, 1
+POSICOES, NEGOCIOS = [], []
+
+
 def symbol_info(s):
-    return _O(digits=2, spread=12, point=0.01)
+    return _O(digits=2, spread=12, point=0.01, trade_tick_size=0.01, trade_tick_value=1.0, trade_tick_value_loss=1.0,
+              trade_contract_size=100.0, volume_min=0.01, volume_step=0.01, volume_max=100.0, trade_mode=4,
+              trade_stops_level=0, currency_profit="USD", currency_margin="USD", path="Metals\\" + s, description="fake")
+
+
+def order_calc_margin(tipo, s, vol, preco):
+    return round(float(preco) * 100.0 * float(vol) / 500.0, 2)
+
+
+def positions_get(symbol=None, **k):
+    return tuple(p for p in POSICOES if symbol is None or p.symbol == symbol)
+
+
+def history_deals_get(de, ate, **k):
+    return tuple(NEGOCIOS)
 
 
 def symbol_info_tick(s):

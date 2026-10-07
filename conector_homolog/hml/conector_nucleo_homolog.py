@@ -41,7 +41,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"
 INTERVALO_SNAPSHOT = 20      # segundos entre snapshots pra nuvem (v1.25: era 60 — presença mais viva e religar rápido)
 APP_NOME = "BotTested Conector HOMOLOG"
-APP_VERSAO = "v1.35-hml11"  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
+APP_VERSAO = "v1.35-hml12"  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
 
 
 # ── 0. Log de debug em arquivo ─────────────────────────────────────
@@ -638,7 +638,7 @@ def magic_do_mq5(codigo):
 
 
 # ── 3. Reportar pra nuvem ──────────────────────────────────────────
-_CV_LEITOR = None
+_CV_LEITOR = {}                 # hml12: um leitor confiável por pasta (um ativo por pasta)
 _CV_AVISOU = set()
 _CV_CACHE = {}
 _CV_CAND_ENVIOS = {}            # (pasta da barra, magic) -> nº de snapshots que já levaram os candidatos
@@ -705,12 +705,11 @@ def _cv_atestar(dados, bot_token=""):
     (EA × motor), e só então assina com bt_conector_atestado v0.4. Nunca
     levanta: falha vira dados['cv_atestado_falha'] (motivo curto, sem segredo);
     a saúde do motor vai SEMPRE em dados['cv_motor'] (telemetria, não autoridade)."""
-    global _CV_LEITOR
     import hashlib as _h
     dados.pop("cv_atestado", None)
     dados.pop("cv_atestado_falha", None)
     dados.pop("cv_motor", None)
-    mot = {"versao_ponte_conector": "hml11"}
+    mot = {"versao_ponte_conector": "hml12"}
     dados["cv_motor"] = mot
 
     def falha(estado, motivo):
@@ -723,6 +722,14 @@ def _cv_atestar(dados, bot_token=""):
         return falha("nao_configurado", "BT_CV_ESPELHO ausente no PC (pasta de dados do leitor do motor)")
     if not os.path.isdir(base):
         return falha("nao_configurado", "BT_CV_ESPELHO aponta para pasta inexistente")
+    # hml12 (C27R24): um leitor POR ATIVO, cada um na sua subpasta <BT_CV_ESPELHO>\<SIMBOLO>. Sem subpasta
+    # para o símbolo do EA, vale a pasta-base (instalação antiga de um ativo só). Nada de um ativo serve ao outro.
+    _sim = "".join(ch for ch in str(dados.get("simbolo") or "").strip() if ch.isalnum() or ch in "._-")
+    if _sim and os.path.isdir(os.path.join(base, _sim)):
+        base = os.path.join(base, _sim)
+        mot["pasta_do_ativo"] = _sim
+    else:
+        mot["pasta_do_ativo"] = None
     sau = _cv_ler_json(os.path.join(base, "SAUDE.json"))
     if not sau:
         return falha("processo_parado", "SAUDE.json ausente — leitor do motor nunca rodou nesta pasta")
@@ -821,14 +828,15 @@ def _cv_atestar(dados, bot_token=""):
             at, resumo = _CV_CACHE[chave]
             mot["cache"] = True
         else:
-            if _CV_LEITOR is None:
+            if base not in _CV_LEITOR:
                 from bt_conector_atestado import LeitorConfiavel, VERSAO as _V
-                _CV_LEITOR = LeitorConfiavel(base)
+                _CV_LEITOR[base] = LeitorConfiavel(base)
                 mot["assinador"] = _V
-            at, resumo = _CV_LEITOR.ler_e_assinar_motor(
+            at, resumo = _CV_LEITOR[base].ler_e_assinar_motor(
                 pasta_barra, simbolo, magic, simbolo=simbolo, bot_token=bot_token,
                 off_corretora_s=off_ea, agora_utc=_d_agora_utc(), com_resumo=True)
-            _CV_CACHE.clear()
+            for _k in [k for k in _CV_CACHE if k[1] == magic]:      # só a barra anterior DESTE bot sai do cache
+                _CV_CACHE.pop(_k, None)
             _CV_CACHE[chave] = (at, resumo)
             mot["cache"] = False
         # frescor no envio (o cache não pode reapresentar leitura vencida)
@@ -871,6 +879,14 @@ def _cv_atestar(dados, bot_token=""):
                 dados["cv_atestado_cand"] = at5
         except Exception as _e:
             mot["candidatos_assinatura_erro"] = f"{type(_e).__name__}: {str(_e)[:120]}"
+        # hml12 (C27R24) — NEGÓCIOS E POSIÇÕES do símbolo, ASSINADOS, em todo snapshot: resultado realizado,
+        # stop vigente e exposição da conta. Lidos pelo leitor (só leitura) a cada passada.
+        try:
+            neg = _cv_ler_json(os.path.join(base, "NEGOCIOS.json"))
+            if neg:
+                dados["cv_negocios"] = _cv_assinar_negocios(at, neg, magic)
+        except Exception as _e:
+            mot["negocios_assinatura_erro"] = f"{type(_e).__name__}: {str(_e)[:120]}"
         dbg(f"cv_atestado: motor {at.get('versao_motor')} barra {at.get('ts_barra_m15')} "
             f"veredito={((at.get('cv1') or {}).get('veredito'))}")
     except Exception as e:
@@ -919,6 +935,52 @@ def _cv_assinar_candidatos(at, cand, resumo, off_s):
                   "leitor": str(cand.get("leitor")), "cards": str((cand.get("codigo") or {}).get("cards")),
                   "blindagem_agora": 1 if (slot.get("B1") or slot.get("B5")) else 0,
                   "candidatos": lista})
+    # hml12: especificação do símbolo (lote por risco) e leitura de gestão da última M15 fechada, na MESMA assinatura
+    esp = cand.get("especificacao")
+    if isinstance(esp, dict) and not esp.get("erro") and str(esp.get("simbolo")) == str(at.get("simbolo")):
+        corpo["especificacao"] = _cv_txt({k: esp.get(k) for k in (
+            "simbolo", "moeda_de_lucro", "digitos", "ponto", "tick_tamanho", "tick_valor", "tick_valor_perda", "contrato",
+            "volume_min", "volume_passo", "volume_max", "modo_de_negociacao", "distancia_minima_stop_pts",
+            "margem_1_lote", "bid", "ask", "tick_idade_s", "lido_utc")})
+    ges = cand.get("gestao")
+    if isinstance(ges, dict) and not ges.get("erro") and isinstance(ges.get("lados"), dict):
+        corpo["gestao"] = _cv_txt({"contrato": ges.get("contrato"),
+                                   "barra_m15_utc": _cv_utc(ges.get("barra_m15_corretora"), off_s),
+                                   "fechamento": ges.get("fechamento"), "B1": ges.get("B1"), "B5": ges.get("B5"),
+                                   "lados": {k: {q: v.get(q) for q in ("corte_do_ciclo", "B3", "stop_estrutural", "stop_do_lado_certo")}
+                                             for k, v in ges["lados"].items() if k in ("compra", "venda")}})
+    return _cvat5.assinar(corpo)
+
+
+def _cv_txt(v):
+    """Números decimais viajam como TEXTO (a assinatura não depende de como cada lado escreve um decimal);
+    booleanos viram 0/1; inteiros e textos ficam como estão."""
+    if isinstance(v, bool):
+        return 1 if v else 0
+    if isinstance(v, float):
+        return repr(v)
+    if isinstance(v, dict):
+        return {str(k): _cv_txt(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_cv_txt(x) for x in v]
+    return v
+
+
+def _cv_assinar_negocios(at, neg, magic):
+    """Atestado dos negócios/posições (contrato neg-1), com o mesmo vínculo de bot/símbolo/magic do atestado
+    do motor. Leva as posições do símbolo (todas: a exposição da conta conta) e só os negócios de posições
+    abertas por robô (as manuais, magic 0, ficam fora). Só descreve o que o MT5 registrou."""
+    import bt_cv_atestado as _cvat5
+    if str(neg.get("ativo")) != str(at.get("simbolo")):
+        return None
+    # posições abertas por robô (magic ≠ 0): a saída por stop pode vir com magic 0, então o filtro é pela POSIÇÃO
+    _robo = {int(d.get("posicao_id") or 0) for d in (neg.get("negocios") or []) if int(d.get("magic") or 0) != 0}
+    corpo = {k: at[k] for k in ("bot_token_hash", "versao_motor", "simbolo", "magic", "ts_barra_m15", "cv1", "cv2")}
+    corpo.update({"contrato": "neg-1", "lido_utc": str(neg.get("lido_utc")), "off_s": neg.get("off_s"),
+                  "erro": (None if not neg.get("erro") else str(neg.get("erro"))[:160]),
+                  "conta": _cv_txt(neg.get("conta") or {}), "conta_posicoes": _cv_txt(neg.get("conta_posicoes") or {}),
+                  "posicoes": _cv_txt(list(neg.get("posicoes") or [])[:20]),
+                  "negocios": _cv_txt([d for d in (neg.get("negocios") or []) if int(d.get("posicao_id") or 0) in _robo][-24:])})
     return _cvat5.assinar(corpo)
 
 

@@ -128,7 +128,7 @@ def test_8_leitor_acorda_logo_depois_da_virada():
     """v1.2 — visto na plataforma: o 1º snapshot da barra chegava antes de o motor publicar
     (intervalo fixo de 20 s) e a barra abria como espelho_atrasado."""
     import bt_motor_leitura_hml as L
-    assert L.LEITOR_VERSAO == "1.5-hml"
+    assert L.LEITOR_VERSAO == "1.6-hml"
     base = 900 * 2_000_000
     assert L._espera(20, base + 400, 2_000_000) == 20            # meio da barra: intervalo normal
     assert L._espera(20, base + 890, 2_000_000) == 12            # virada em 10 s: acorda 2 s depois dela
@@ -145,7 +145,7 @@ def test_9_leitor_registra_o_canal_ema20_de_cada_tempo_e_confere_com_o_mt5(leito
     d, _r = leitor
     pasta = os.path.join(d, FM.ler(d, "ATUAL.json")["pasta"])
     cand = FM.ler(pasta, "candidatos.json"); lm = FM.ler(pasta, "leitura_motor.json")
-    assert cand["versao"] == "cand-3" and cand["leitor"] == "1.5-hml"
+    assert cand["versao"] == "cand-4" and cand["leitor"] == "1.6-hml"
     cn = cand["canais"]
     assert set(cn) == {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
     srv = int(time.time()) + FM.OFF
@@ -163,3 +163,29 @@ def test_9_leitor_registra_o_canal_ema20_de_cada_tempo_e_confere_com_o_mt5(leito
         assert m["barras"] >= c["barras_no_espelho"]
     conf = [i for i in cand["itens"] if i["estado"] == "confirmado"]
     assert all(i.get("modo") in ("fechamento", "gatilho") for i in conf)                           # modo também nos confirmados
+
+
+def test_10_leitor_publica_especificacao_gestao_e_negocios_sem_enviar_ordem(leitor):
+    """v1.6 (C27R24) — especificação do PRÓPRIO símbolo, leitura de gestão da última M15 fechada (contrato do
+    estudo) e negócios/posições da conta, tudo só leitura (MT5 falso)."""
+    d, _r = leitor
+    pasta = os.path.join(d, FM.ler(d, "ATUAL.json")["pasta"])
+    cand = FM.ler(pasta, "candidatos.json")
+    e = cand["especificacao"]
+    assert e["simbolo"] == "XAUUSD" and e["tick_tamanho"] == 0.01 and e["tick_valor_perda"] == 1.0 and e["volume_min"] == 0.01
+    assert e["volume_passo"] == 0.01 and e["modo_de_negociacao"] == 4 and e["margem_1_lote"]["compra"] > 0
+    assert e["tick_idade_s"] is not None and abs(e["tick_idade_s"]) <= 5 and "não registrado" in e["sessoes"]
+    g = cand["gestao"]
+    assert g["contrato"] == "gestao-1" and set(g["lados"]) == {"compra", "venda"} and not g.get("erro")
+    assert g["barra_m15_corretora"] == cand["barra_m15_corretora"]                 # última M15 FECHADA, nunca a aberta
+    for lado, v in g["lados"].items():
+        assert isinstance(v["corte_do_ciclo"], bool) and isinstance(v["B3"], bool)
+        if v["stop_estrutural"] is not None:
+            assert v["stop_do_lado_certo"] == ((v["stop_estrutural"] < g["fechamento"]) if lado == "compra" else (v["stop_estrutural"] > g["fechamento"]))
+    c, v = g["lados"]["compra"], g["lados"]["venda"]
+    if c["stop_estrutural"] is not None and v["stop_estrutural"] is not None:
+        assert c["stop_estrutural"] < v["stop_estrutural"]                         # fundo − buffer < topo + buffer
+    n = FM.ler(d, "NEGOCIOS.json")
+    assert n["versao"] == "neg-1" and n["ativo"] == "XAUUSD" and n["erro"] is None and n["posicoes"] == [] and n["negocios"] == []
+    assert n["conta"]["equity"] == 10000.0 and n["conta_posicoes"] == {"total": 0, "por_simbolo": {}}
+    assert FM.ler(d, "SAUDE.json")["ordens"].startswith("bloqueadas")

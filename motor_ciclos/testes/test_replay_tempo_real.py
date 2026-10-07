@@ -65,7 +65,7 @@ def _item(fita, dp):
 def test_1_nada_do_futuro_em_nenhum_instante(fita):
     for dp in PASSOS:
         c = fita[dp]["cand"]; agora = _cor(T_H1 + dp)
-        assert c["agora_corretora"] == agora and c["versao"] == "cand-3" and c["confirmacao"]["contrato"] == "conf-rt-1"
+        assert c["agora_corretora"] == agora and c["versao"] == "cand-4" and c["confirmacao"]["contrato"] == "conf-rt-1"
         assert fita[dp]["ult_m15"] == _cor(T_H1 + dp - 900)                     # última barra do espelho fechou exatamente agora
         for i in c["itens"]:
             assert i["ts_sinal_fecha"] <= agora, i                               # a barra do sinal já fechou

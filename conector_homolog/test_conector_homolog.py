@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml11"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml12"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml11"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml12"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -401,7 +401,7 @@ def motor_pc(tmp_path, monkeypatch):
     monkeypatch.setenv("BT_CV_ESPELHO", str(dados))
     monkeypatch.setenv("BT_CV_MOTOR_DIR", FM.MOTOR)
     monkeypatch.setattr(N, "ler_mt5_pin", lambda: str(data_path / "MQL5"))
-    N._CV_LEITOR = None; N._CV_CACHE.clear()
+    N._CV_LEITOR = {}; N._CV_CACHE.clear()
     sys.modules.pop("bt_conector_atestado", None)
     return dados
 
@@ -667,7 +667,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
     monkeypatch.setenv("BT_CV_SEGREDO", seg)
     cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
-    assert cand["versao"] == "cand-3" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert cand["versao"] == "cand-4" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
     assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
     assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
     s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",
@@ -691,7 +691,17 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     assert n5 == 5 and _cvat_t.verificar(at5, segredo=seg) == (True, None) and at5["contrato"] == "r01v5" and at5["confirmacao"] == "conf-rt-1"
     assert at5["bot_token_hash"] == at4["bot_token_hash"] and at5["ts_barra_m15"] == at4["ts_barra_m15"] and at5["magic"] == at4["magic"]
     conf_leitor = sorted(i["uid"] for i in cand["itens"] if i["estado"] == "confirmado")
-    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.5-hml"
+    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.6-hml"
+    # hml12 (C27R24) — especificação do símbolo e gestão na MESMA assinatura; negócios assinados em todo snapshot
+    e5, g5 = at5["especificacao"], at5["gestao"]
+    assert e5["simbolo"] == "XAUUSD" and e5["tick_tamanho"] == "0.01" and e5["volume_min"] == "0.01" and e5["modo_de_negociacao"] == 4
+    assert g5["contrato"] == "gestao-1" and set(g5["lados"]) == {"compra", "venda"} and g5["lados"]["venda"]["corte_do_ciclo"] in (0, 1)
+    assert g5["barra_m15_utc"] < at5["ts_barra_m15"].replace("+00:00", "Z")
+    cur.execute("select count(*) filter (where detalhe_json ? 'cv_negocios'), (array_agg(detalhe_json->'cv_negocios' order by id desc))[1], "
+                "(array_agg(detalhe_json->'cv_motor'->>'versao_ponte_conector' order by id desc))[1] from conector_snapshots where bot_token=%s", (tok,))
+    nn, neg5, ponte = cur.fetchone()
+    assert nn == 5 and ponte == "hml12" and _cvat_t.verificar(neg5, segredo=seg) == (True, None) and neg5["contrato"] == "neg-1"
+    assert neg5["bot_token_hash"] == at4["bot_token_hash"] and neg5["posicoes"] == [] and neg5["conta"]["equity"] == "10000.0"
     for c in at5["candidatos"]:
         assert isinstance(c["stop"], str) and isinstance(c["preco_ref"], str) and c["confirmado_utc"] <= at5["ts_barra_m15"].replace("+00:00", "Z")
     cur.execute("select count(*), max(n_candidatos), max(versao) from selecao_avaliacoes where bot_id=%s", (b_id,))
@@ -760,3 +770,38 @@ def test_h20_linha_de_comando_r01v5_exige_candidato_e_stop_assinado():
     # abertura r01v4 (sem candidato) continua passando como antes
     v4 = {"lote": 0.01, "sl": 4110.0, "uid": "13-x-S", "decisao": {"id": "d0", "uid": "13-x-S", "veredito": {"contrato": "r01v4"}}}
     assert N._cmd_linha({"id": 8, "tipo": "sell", "params": v4})[1] is None
+
+
+# ═════════════════════ hml12 — um leitor por ativo, cada um na sua pasta (C27R24) ═════════════════════
+def test_h21_dois_ativos_cada_um_com_o_seu_leitor(tmp_path, monkeypatch):
+    """Dois leitores REAIS (MT5 falso), um por ativo, em <base>/<SIMBOLO>. A ponte escolhe a pasta pelo símbolo
+    do EA: o atestado do bitcoin sai do leitor do bitcoin e o do ouro do leitor do ouro; sem pasta para o
+    símbolo, nada de outro ativo é aproveitado."""
+    FM.esperar_janela_segura()
+    base = tmp_path / "dados"; data_path = tmp_path / "Terminal" / "ABC"
+    for sim in ("XAUUSD", "BTCUSD"):
+        r = FM.rodar_leitor(str(base / sim), data_path=str(data_path), args=("--ativo", sim))
+        assert r.returncode == 0, r.stderr[-1500:]
+        assert FM.ler(str(base / sim), "SAUDE.json")["ativo"] == sim
+    monkeypatch.setenv("BT_CV_ESPELHO", str(base)); monkeypatch.setenv("BT_CV_MOTOR_DIR", FM.MOTOR)
+    monkeypatch.setenv("BT_CV_SEGREDO", "s" * 40)
+    monkeypatch.setattr(N, "ler_mt5_pin", lambda: str(data_path / "MQL5"))
+    N._CV_LEITOR = {}; N._CV_CACHE.clear(); N._CV_CAND_AT.clear()
+    sys.modules.pop("bt_conector_atestado", None)
+    saida = {}
+    for sim, tok, mg in (("XAUUSD", "tok-ouro", 111111), ("BTCUSD", "tok-btc", 222222)):
+        d = FM.det_ea(mg, simbolo=sim); N._cv_atestar(d, tok)
+        assert d["cv_motor"]["estado"] == "ok", d["cv_motor"]
+        assert d["cv_motor"]["pasta_do_ativo"] == sim and d["cv_motor"]["ativo"] == sim
+        assert d["cv_atestado"]["simbolo"] == sim and d["cv_atestado"]["magic"] == mg
+        assert d["cv_atestado_cand"]["simbolo"] == sim and d["cv_atestado_cand"]["especificacao"]["simbolo"] == sim
+        assert d["cv_negocios"]["simbolo"] == sim and d["cv_negocios"]["magic"] == mg
+        saida[sim] = d
+    # os dois ficam em cache ao mesmo tempo (um bot não derruba a leitura do outro)
+    d = FM.det_ea(111111, simbolo="XAUUSD"); N._cv_atestar(d, "tok-ouro")
+    assert d["cv_motor"]["cache"] is True and d["cv_atestado"] == saida["XAUUSD"]["cv_atestado"]
+    d = FM.det_ea(222222, simbolo="BTCUSD"); N._cv_atestar(d, "tok-btc")
+    assert d["cv_motor"]["cache"] is True
+    # símbolo sem pasta própria: cai na pasta-base (vazia aqui) e NÃO usa o leitor de outro ativo
+    d = FM.det_ea(333333, simbolo="EURUSD"); N._cv_atestar(d, "tok-eur")
+    assert d["cv_motor"]["estado"] == "processo_parado" and d["cv_motor"]["pasta_do_ativo"] is None and "cv_atestado" not in d
