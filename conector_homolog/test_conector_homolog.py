@@ -667,7 +667,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
     monkeypatch.setenv("BT_CV_SEGREDO", seg)
     cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
-    assert cand["versao"] == "cand-1" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert cand["versao"] == "cand-2" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
     assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
     assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
     s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",
@@ -684,7 +684,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     assert cur.fetchone() == (3, 5)                                   # candidatos só nos 3 primeiros snapshots da barra
     cur.execute("select count(*), max(n_candidatos), max(versao) from selecao_avaliacoes where bot_id=%s", (b_id,))
     n, ncand, ver = cur.fetchone()
-    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-1")        # UMA avaliação por barra
+    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-2")        # UMA avaliação por barra
     cur.execute("select leituras->'motor' ? 'candidatos' from ciclo_leituras where bot_id=%s", (b_id,))
     assert cur.fetchone()[0] is False                                 # não duplica os candidatos na leitura da barra
     s, j = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/ao-vivo", {"bot_id": b_id}, tok=amb["tok"])
@@ -693,6 +693,13 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     assert set(av["grupos"]) == {"M15", "M30", "H1"} and av["produtor_dos_sinais"]["assinado"] is False
     todos = [c for g in av["grupos"].values() for c in g["candidatos"]]
     assert len(todos) == len(cand["itens"]) == av["resumo"]["candidatos"]
+    # C27R22 — leitor 1.4: o canal EMA20 de cada tempo superior chega pela mesma via e é exposto como CONTEXTO
+    assert av["versao"] == "sel-2" and av["contratos"]["selecao_e_operacional"] is False
+    for tf in ("D1", "H4", "H1", "M30"):
+        ts_ = av["contexto_superior"]["tempos"][tf]
+        assert ts_["ohlc"] == {k: cand["canais"][tf][k] for k in ("o", "h", "l", "c")} and ts_["conferencia_mt5"]["ohlc_confere"] is True
+        assert ts_["direcao"] in ("alta", "baixa", "lateral") and "FECHADA" in ts_["base"]
+    assert all(c["contexto_superior"]["frases"] and "contexto, sem veto automático" in c["contexto_superior"]["frases"][-1] for c in todos)
     for c in todos:
         assert len(c["portoes"]) == 9 and c["elegibilidade"] in ("elegivel", "aguardando", "vetada", "sem_dados")
         assert c["estudo"]["existe"] and c["estudo"]["equivalencia"]["nivel"] == "nao_comprovada"

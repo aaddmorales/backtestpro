@@ -37,8 +37,8 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.3-hml"
-CAND_VERSAO = "cand-1"
+LEITOR_VERSAO = "1.4-hml"
+CAND_VERSAO = "cand-2"
 TFS_CANDIDATOS = ("M15", "M30", "H1")     # escopo da seleção (C27R19)
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MODULOS = ("bt_ciclo_v1.py", "bt_vivo_sombra.py", "bloco1_motor_v3.py",
@@ -170,6 +170,7 @@ def _candidatos(pasta, ativo, spread_tick=None):
             val15 = max(1, int(B2.VALIDADE_FILA_TF * passo_tf / passo15))
             base = {"card": cid, "nome": nome, "tf": tf, "validade_m15": val15}
             resolvidos = set()
+            modo_de = {int(x[0]): str(x[3]) for x in sin}      # v1.4: modo do sinal também nos confirmados
             for r in res:
                 resolvidos.add(int(r["i_sin"]))
                 idade = k_ult - int(r["k15"])
@@ -180,6 +181,7 @@ def _candidatos(pasta, ativo, spread_tick=None):
                                   uid=f"{cid}|{tf}|{ts_txt(F.ts[int(r['i_sin'])])}|{lado}",
                                   ts_sinal=ts_txt(F.ts[int(r["i_sin"])]),
                                   ts_entrada_m15=ts_txt(F15.ts[int(r["k15"])]),
+                                  modo=modo_de.get(int(r["i_sin"])),
                                   idade_m15=int(idade), entrada=round(ent, 6), stop=round(st, 6),
                                   risco_pts=(round(abs(ent - st) / ponto, 1) if ponto > 0 else None),
                                   corte_ciclo_contra_agora=bool(F15.corta[lado][k_ult])))
@@ -214,6 +216,77 @@ def _candidatos(pasta, ativo, spread_tick=None):
                                    "validade_na_fila": "4 barras do TF do card"},
             "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
             "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
+
+
+def _ema20(valores):
+    """Mesma conta do motor (Andar._derivados): EMA de período 20, k = 2/21, semente = 1º valor."""
+    k = 2.0 / 21.0
+    e = float(valores[0])
+    for v in valores[1:]:
+        e = e + k * (float(v) - e)
+    return e
+
+
+def _canais(pasta, ativo, mt5=None):
+    """v1.4 — AUDITORIA do canal EMA20 por timeframe, SEM tocar no motor: lê os mesmos andares
+    (CV1.carregar_andares) e a mesma barra que CV1.avaliar usa (idx_ate do fim da M15) e registra
+    barra, OHLC, EMA20 das máximas, EMA20 das mínimas e a condição que dá a direção
+    (fechamento > EMA20 das máximas = alta; < EMA20 das mínimas = baixa; senão lateral).
+    Com o MT5 à mão, confere contra barras FECHADAS puxadas na hora, com histórico mais longo.
+    Só telemetria: não entra no atestado e não decide nada."""
+    import pandas as pd
+    import bt_ciclo_v1 as CV1
+    A = CV1.carregar_andares(pasta, ativo)
+    if "M15" not in A:
+        return {"erro": "espelho sem M15"}
+    i15 = A["M15"].n - 1
+    fim15 = pd.Timestamp(A["M15"].ts[i15]) + pd.Timedelta(minutes=15)
+    cods = {}
+    if mt5 is not None:
+        cods = {"M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "M30": mt5.TIMEFRAME_M30,
+                "H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "Daily": mt5.TIMEFRAME_D1}
+    out = {}
+    for tf in CV1.ANDARES:
+        nm = CV1.NOME.get(tf, tf)
+        a = A.get(tf)
+        if a is None:
+            out[nm] = {"erro": "andar ausente no espelho"}; continue
+        i = a.idx_ate(fim15 - pd.Timedelta(seconds=1))
+        if i < 25:
+            out[nm] = {"erro": "amostra insuficiente"}; continue
+        c, eh, el = float(a.c[i]), float(a.emaH[i]), float(a.emaL[i])
+        d = 1 if c > eh else (-1 if c < el else 0)
+        item = {"barra_corretora": str(pd.Timestamp(a.ts[i])), "fechada": True,
+                "fonte": "espelho do MT5 (copy_rates_from_pos a partir da posição 1: só barras fechadas)",
+                "o": float(a.o[i]), "h": float(a.h[i]), "l": float(a.l[i]), "c": c,
+                "ema20_maximas": round(eh, 6), "ema20_minimas": round(el, 6), "dir": d,
+                "condicao": ("fechamento > EMA20 das máximas" if d > 0 else
+                             ("fechamento < EMA20 das mínimas" if d < 0 else
+                              "fechamento entre a EMA20 das mínimas e a das máximas")),
+                "barras_no_espelho": int(a.n)}
+        if tf in cods:
+            try:
+                r = mt5.copy_rates_from_pos(ativo, cods[tf], 1, 1000)
+                if r is None or len(r) < 60:
+                    item["mt5"] = {"erro": f"MT5 devolveu {0 if r is None else len(r)} barras"}
+                else:
+                    u = r[-1]
+                    mh, ml = _ema20([x["high"] for x in r]), _ema20([x["low"] for x in r])
+                    tol = max(abs(c) * 1e-6, 1e-6)
+                    mesma = str(pd.to_datetime(int(u["time"]), unit="s")) == item["barra_corretora"]
+                    item["mt5"] = {"barras": int(len(r)), "barra_corretora": str(pd.to_datetime(int(u["time"]), unit="s")),
+                                   "o": float(u["open"]), "h": float(u["high"]), "l": float(u["low"]), "c": float(u["close"]),
+                                   "ema20_maximas": round(mh, 6), "ema20_minimas": round(ml, 6),
+                                   "mesma_barra": bool(mesma),
+                                   "ohlc_confere": bool(mesma and all(abs(float(u[k]) - item[q]) <= tol for k, q in
+                                                                      (("open", "o"), ("high", "h"), ("low", "l"), ("close", "c")))),
+                                   "ema_confere": bool(mesma and abs(mh - eh) <= max(abs(eh) * 1e-5, 1e-6)
+                                                       and abs(ml - el) <= max(abs(el) * 1e-5, 1e-6)),
+                                   "nota": "EMA20 recalculada sobre até 1000 barras fechadas do MT5; não é a leitura do indicador do gráfico"}
+            except Exception as e:
+                item["mt5"] = {"erro": f"{type(e).__name__}: {e}"[:200]}
+        out[nm] = item
+    return out
 
 
 def _ultima_linha_m15(pasta, ativo):
@@ -322,6 +395,10 @@ def main(argv=None):
                         cand = _candidatos(tmp, a.ativo, _spread)
                     except Exception as e:
                         cand = {"versao": CAND_VERSAO, "erro": f"{type(e).__name__}: {e}"[:300], "itens": []}
+                    try:                               # v1.4: auditoria do canal EMA20 por TF (só telemetria)
+                        cand["canais"] = _canais(tmp, a.ativo, mt5)
+                    except Exception as e:
+                        cand["canais"] = {"erro": f"{type(e).__name__}: {e}"[:300]}
                     _grava_json_atomico(os.path.join(tmp, "candidatos.json"), cand)
                     os.replace(tmp, destino)
                 else:

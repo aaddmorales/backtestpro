@@ -82,7 +82,7 @@ def test_2_contexto_superior_contrario_informa_no_proposto_e_veta_no_atual(api, 
                  veredito="bloqueada", jan={"M1": -1, "M5": -1, "M15": -1}, cv2={"D1": 1, "H4": 0}, preco=4099.8)
     c = _todos(av)[0]
     assert c["elegibilidade"] == "elegivel" and c["escolha"]["escolhido"] is True
-    assert c["contexto_superior"]["D1"] == "contra" and "contratendência" in c["contexto_superior"]["resumo"]
+    assert c["contexto_superior"]["D1"] == "sentidos opostos" and "sentido oposto ao de D1" in c["contexto_superior"]["resumo"]
     assert c["configuracao_atual"]["autorizaria"] is False and "bloqueada" in c["configuracao_atual"]["motivo"]
     assert av["resumo"]["elegiveis_proposto"] == 1 and av["resumo"]["elegiveis_atual"] == 0
     assert av["escolha_atual"] is None

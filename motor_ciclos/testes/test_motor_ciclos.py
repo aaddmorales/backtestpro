@@ -128,7 +128,7 @@ def test_8_leitor_acorda_logo_depois_da_virada():
     """v1.2 — visto na plataforma: o 1º snapshot da barra chegava antes de o motor publicar
     (intervalo fixo de 20 s) e a barra abria como espelho_atrasado."""
     import bt_motor_leitura_hml as L
-    assert L.LEITOR_VERSAO == "1.3-hml"
+    assert L.LEITOR_VERSAO == "1.4-hml"
     base = 900 * 2_000_000
     assert L._espera(20, base + 400, 2_000_000) == 20            # meio da barra: intervalo normal
     assert L._espera(20, base + 890, 2_000_000) == 12            # virada em 10 s: acorda 2 s depois dela
@@ -136,3 +136,30 @@ def test_8_leitor_acorda_logo_depois_da_virada():
     assert L._espera(20, base + 2, 2_000_000) == 20              # já publicada: volta ao normal
     assert L._espera(20, base + 61, 1_999_999) == 20             # passou 1 min sem barra (mercado fechado): normal
     assert L._espera(1, base + 400, 2_000_000) == 5              # nunca abaixo de 5 s fora da janela
+
+
+def test_9_leitor_registra_o_canal_ema20_de_cada_tempo_e_confere_com_o_mt5(leitor):
+    """v1.4 — auditoria do canal: barra FECHADA usada pelo motor, OHLC, EMA20 das máximas e das mínimas,
+    a condição que dá a direção e a conferência contra barras puxadas do MT5 na hora (MT5 falso, determinístico).
+    A direção registrada tem de ser a MESMA que o motor congelado informou."""
+    d, _r = leitor
+    pasta = os.path.join(d, FM.ler(d, "ATUAL.json")["pasta"])
+    cand = FM.ler(pasta, "candidatos.json"); lm = FM.ler(pasta, "leitura_motor.json")
+    assert cand["versao"] == "cand-2" and cand["leitor"] == "1.4-hml"
+    cn = cand["canais"]
+    assert set(cn) == {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
+    srv = int(time.time()) + FM.OFF
+    for tf, seg in (("D1", 86400), ("H4", 14400), ("H1", 3600), ("M30", 1800)):
+        c = cn[tf]
+        assert c["fechada"] is True and c["dir"] == lm["leitura"]["por_tf"][tf]["dir"]            # igual ao motor
+        assert c["barra_corretora"] == lm["leitura"]["por_tf"][tf]["barra_corretora"]
+        ab = int(datetime.strptime(c["barra_corretora"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
+        assert ab + seg <= srv, "o motor não pode usar barra em formação"
+        esperado = 1 if c["c"] > c["ema20_maximas"] else (-1 if c["c"] < c["ema20_minimas"] else 0)
+        assert c["dir"] == esperado and c["ema20_maximas"] > c["ema20_minimas"]
+        assert ("máximas" in c["condicao"]) == (c["dir"] > 0) or c["dir"] == 0
+        m = c["mt5"]
+        assert m["mesma_barra"] and m["ohlc_confere"] and m["ema_confere"], (tf, c)
+        assert m["barras"] >= c["barras_no_espelho"]
+    conf = [i for i in cand["itens"] if i["estado"] == "confirmado"]
+    assert all(i.get("modo") in ("fechamento", "gatilho") for i in conf)                           # modo também nos confirmados
