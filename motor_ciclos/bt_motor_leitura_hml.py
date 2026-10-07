@@ -37,8 +37,10 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.4-hml"
-CAND_VERSAO = "cand-2"
+LEITOR_VERSAO = "1.5-hml"
+CAND_VERSAO = "cand-3"
+CONF_CONTRATO = "conf-rt-1"                 # confirmação em TEMPO REAL (C27R23)
+VALIDADE_ENTRADA_S = 1800                   # 30 min a contar da confirmação (= IDADE_MAX de 1 barra M15 do executor congelado)
 TFS_CANDIDATOS = ("M15", "M30", "H1")     # escopo da seleção (C27R19)
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MODULOS = ("bt_ciclo_v1.py", "bt_vivo_sombra.py", "bloco1_motor_v3.py",
@@ -131,6 +133,129 @@ def _espera(intervalo, agora_s, periodo_publicado):
     return intervalo
 
 
+def _espelho_com_barra_aberta(pasta, destino):
+    """Cópia do espelho com UMA barra a mais em cada timeframe: a barra que está ABERTA agora, sem
+    informação nenhuma (abertura = máxima = mínima = fechamento = último fechamento conhecido).
+    Por quê: o detector de eventos congelado (bloco1_motor_v3.eventos_escada) não avalia a ÚLTIMA barra
+    da série, então no espelho de barras fechadas os eventos da barra que acabou de fechar só aparecem
+    quando a seguinte fecha (15 min depois no M15, 1 h depois no H1). Com a barra aberta acrescentada,
+    o MESMO código congelado avalia a última barra fechada — usando só dados que já existem. A prova de
+    que isso não inventa nada está no teste de reprodução cronológica (resultado igual ao que o motor
+    congelado grava depois, com as barras reais)."""
+    import glob
+    os.makedirs(destino, exist_ok=True)
+    for f in os.listdir(destino):
+        os.remove(os.path.join(destino, f))
+    for arq in sorted(glob.glob(os.path.join(pasta, "*.csv"))):
+        with open(arq, encoding="utf-8") as fh:
+            linhas = [l.rstrip("\r\n") for l in fh if l.strip()]
+        if len(linhas) >= 3:
+            cab = linhas[0].split("\t"); a = dict(zip(cab, linhas[-2].split("\t"))); u = dict(zip(cab, linhas[-1].split("\t")))
+            fmt = "%Y.%m.%d %H:%M:%S"
+            ta = datetime.strptime(a["<DATE>"] + " " + a.get("<TIME>", "00:00:00"), fmt)
+            tu = datetime.strptime(u["<DATE>"] + " " + u.get("<TIME>", "00:00:00"), fmt)
+            nome = os.path.basename(arq)
+            passo = None
+            for tag, seg in (("_M1_", 60), ("_M5_", 300), ("_M15_", 900), ("_M30_", 1800), ("_H1_", 3600), ("_H4_", 14400), ("_Daily_", 86400)):
+                if tag in nome:
+                    passo = seg
+            tn = tu + (tu - ta if passo is None else __import__("datetime").timedelta(seconds=passo))
+            n = dict(u); c = u["<CLOSE>"]
+            n.update({"<DATE>": tn.strftime("%Y.%m.%d"), "<OPEN>": c, "<HIGH>": c, "<LOW>": c, "<CLOSE>": c})
+            if "<TIME>" in n:
+                n["<TIME>"] = tn.strftime("%H:%M:%S")
+            if "<TICKVOL>" in n:
+                n["<TICKVOL>"] = "0"
+            linhas.append("\t".join(n[k] for k in cab))
+        with open(os.path.join(destino, os.path.basename(arq)), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(linhas) + "\n")
+    return destino
+
+
+def _confirmar_rt(B1, PC, F, F15, sinais, n_tf, n15):
+    # F e F15 vêm da visão COM a barra aberta: têm uma casa a mais (índices n_tf e n15) que só serve para
+    # ler corte/blindagem da barra que abre agora. Preços, sinais e stops usam apenas índices < n reais.
+    """CONFIRMAÇÃO EM TEMPO REAL (contrato conf-rt-1). Mesmas condições do resolvedor do estudo
+    (professor_bloco2.resolver_entradas), mas decididas só com o que já fechou:
+      · fechamento: confirma quando a barra do sinal FECHA (abertura da M15 seguinte), se o Ciclo não
+        corta o lado e não há blindagem; com blindagem, tenta de novo na M15 seguinte; corte cancela;
+      · gatilho: confirma quando uma barra do timeframe do card FECHA com continuidade além do nível
+        (B1.entrada_com_continuidade, congelada).
+    O resolvedor do estudo espera barras POSTERIORES para devolver a entrada; aqui nenhuma é usada.
+    Preço de referência = último preço conhecido no instante da confirmação. Stop = último pivô do M15
+    ∓ BUFFER×ATR14, lidos na última M15 fechada ANTES da confirmação (o estudo lê na barra da entrada)."""
+    import numpy as np
+    ts = F.ts; n = int(n_tf); ts15 = F15.ts; n15 = int(n15)
+    passo_tf = ts[1] - ts[0]; passo15 = ts15[1] - ts15[0]; T = ts15[n15]            # abertura da M15 que abre agora
+    o15 = F15.D.open.values; c15 = F15.D.close.values; c = F.D.close.values
+    A15 = F15.lt.andares[F15.andar_op]; atr15 = F15.D.atr14.values
+    ign_b5 = bool(PC.IGNORAR_B5)
+
+    def casa(lado, k):                                    # k <= n15 (n15 = a barra que abre agora)
+        return bool(F15.corta[lado][k]), bool(F15.B1[k] or (F15.B5[k] and not ign_b5))
+
+    out = []
+    for (i_sin, lado, nivel, modo) in sorted(sinais, key=lambda x: x[0]):
+        i_sin = int(i_sin); lado = int(lado); modo = str(modo)
+        fecha_sinal = ts[i_sin] + passo_tf
+        r = {"i_sin": i_sin, "lado": lado, "modo": modo, "nivel": (None if nivel is None else float(nivel)),
+             "estado": "aguardando", "motivo": None, "t_conf": None, "preco_ref": None}
+        if modo == "fechamento":
+            if fecha_sinal > T:
+                r["motivo"] = "barra do sinal ainda não consta fechada no relógio do M15"
+            else:
+                k0 = int(np.searchsorted(ts15, fecha_sinal, side="left"))       # M15 que abre no fechamento do sinal (n15 = agora)
+                r["motivo"] = "sem casa M15 para avaliar"
+                for k in range(k0, min(k0 + 96, n15 + 1)):
+                    cortou, blind = casa(lado, k)
+                    if cortou:
+                        r.update(estado="cancelado", motivo="corte do Ciclo contra o lado antes da entrada"); break
+                    if blind:
+                        r["motivo"] = "blindagem ativa (B1/B5): tenta na M15 seguinte"; continue
+                    if k < 1:
+                        continue
+                    r.update(estado="confirmado", motivo="barra do sinal fechou; Ciclo sem corte e sem blindagem",
+                             t_conf=ts15[k], preco_ref=float(c15[k - 1]),
+                             preco_ref_base="fechamento da última M15 antes da confirmação (último preço conhecido naquele instante)")
+                    break
+                else:
+                    if k0 + 96 <= n15:
+                        r.update(estado="expirado", motivo="96 barras M15 sem conseguir entrar")
+        else:
+            r["motivo"] = "armado no nível; espera uma barra fechar com continuidade"
+            for j in range(i_sin + 1, min(i_sin + 40, n)):
+                kj = int(np.searchsorted(ts15, ts[j], side="right")) - 1
+                if kj >= 0 and F15.corta[lado][kj]:
+                    r.update(estado="cancelado", motivo="corte do Ciclo contra o lado com o gatilho armado"); break
+                if kj >= 0 and (F15.B1[kj] or (F15.B5[kj] and not ign_b5)):
+                    continue
+                abre, _m = B1.entrada_com_continuidade(F.D, i_sin, nivel, lado, j)
+                if abre:
+                    r.update(estado="confirmado", motivo="barra fechou além do nível com corpo a favor (continuidade)",
+                             t_conf=ts[j] + passo_tf, preco_ref=float(c[j]),
+                             preco_ref_base=f"fechamento da barra de continuidade ({F.andar_op})")
+                    break
+            else:
+                if i_sin + 40 <= n:
+                    r.update(estado="expirado", motivo="40 barras do timeframe sem continuidade")
+        if r["estado"] == "confirmado":
+            k_ref = int(np.searchsorted(ts15, r["t_conf"], side="left")) - 1     # última M15 fechada ANTES da confirmação
+            mp = A15.mapas[k_ref] if 0 <= k_ref < n15 else None
+            a = float(atr15[k_ref]) if mp is not None else float("nan")
+            if mp is None or not (mp.ultimo_fundo and mp.ultimo_topo) or not np.isfinite(a) or a <= 0:
+                r.update(estado="invalido", motivo="sem pivô ou ATR do M15 para o stop")
+            else:
+                est = mp.ultimo_fundo[1] if lado > 0 else mp.ultimo_topo[1]
+                stop = float(est - lado * PC.BUFFER_ATR * a)
+                if (lado > 0 and stop >= r["preco_ref"]) or (lado < 0 and stop <= r["preco_ref"]):
+                    r.update(estado="invalido", motivo="stop estrutural do lado errado do preço")
+                else:
+                    r["stop"] = stop
+                    r["stop_base"] = "pivô e ATR14 do M15 na última barra fechada antes da confirmação"
+        out.append(r)
+    return out
+
+
 def _candidatos(pasta, ativo, spread_tick=None):
     """v1.3 — CANDIDATOS por timeframe (M15, M30, H1) com o código do Professor, SEM alteração:
     professor_cards (sinais dos 13 cards em barras FECHADAS de cada TF), professor_bloco2.
@@ -153,66 +278,120 @@ def _candidatos(pasta, ativo, spread_tick=None):
             if tf not in fichas and tf in lt.andares:
                 fichas[tf] = B1.FichaSerie(lt, tf, ativo)
         ter = B2.preparar_territorio(lt, F15)
+        # visão COM a barra aberta: o mesmo código congelado, agora avaliando a última barra FECHADA
+        import tempfile
+        pasta_ab = tempfile.mkdtemp(prefix="bt_aberta_")
+        try:
+            _espelho_com_barra_aberta(pasta, pasta_ab)
+            ltp = B1.LeitorMultiTF(pasta_ab, ativo).carregar()
+            F15p = B1.FichaSerie(ltp, "M15", ativo)
+            fichas_p = {"M15": F15p}
+            for tf in TFS_CANDIDATOS:
+                if tf not in fichas_p and tf in ltp.andares:
+                    fichas_p[tf] = B1.FichaSerie(ltp, tf, ativo)
+        finally:
+            shutil.rmtree(pasta_ab, ignore_errors=True)
     n15 = int(F15.n); k_ult = n15 - 1
+    assert int(F15p.n) == n15 + 1, "visão com a barra aberta tem de ter exatamente uma M15 a mais"
     passo15 = (F15.ts[1] - F15.ts[0])
     ts_txt = lambda t: str(np.datetime_as_string(np.datetime64(t), unit="s")).replace("T", " ")
     ponto = float(getattr(PC, "PONTO", 0) or 0)
-    itens = []
+    T = F15p.ts[n15]                                   # abertura da M15 que abre agora = fechamento da última do espelho
+    ign_b5 = bool(PC.IGNORAR_B5)
+    slot = {"T": T, "corta": {1: bool(F15p.corta[1][n15]), -1: bool(F15p.corta[-1][n15])},
+            "B1": bool(F15p.B1[n15]), "B5": bool(F15p.B5[n15] and not ign_b5),
+            "B5_nota": ("B5 (fim de semana) vale nos 30 min finais de sexta no estudo; em tempo real o fim da sessão não é conhecido "
+                        "e a blindagem fica ligada para a barra que abre agora" if (F15p.B5[n15] and not ign_b5) else None)}
+    seg = lambda dt: int(dt / np.timedelta64(1, "s"))
+    itens = []; cont = {"confirmado": 0, "aguardando": 0, "cancelado": 0, "expirado": 0, "invalido": 0}
+    comp = {"confirmados_rt": 0, "com_entrada_do_estudo": 0, "mesma_barra_de_entrada": 0, "mesmo_preco": 0,
+            "estudo_posiciona_antes": 0, "estudo_ainda_nao_resolveu": 0}
     for cid, nome, fn in PC.CARDS:
         for tf in TFS_CANDIDATOS:
             F = fichas.get(tf)
             if F is None:
                 continue
+            Fp = fichas_p.get(tf)
+            if Fp is None or int(Fp.n) != int(F.n) + 1:
+                continue
             with contextlib.redirect_stdout(io.StringIO()):
                 sin = fn(F, F.D)
-                res = B2.resolver_entradas(F, sin, F15)
+                res = B2.resolver_entradas(F, sin, F15)          # resolvedor RETROSPECTIVO do estudo: só referência
+                sin_p = [x for x in fn(Fp, Fp.D) if int(x[0]) < int(F.n)]      # sinais só em barras FECHADAS
+                rt = _confirmar_rt(B1, PC, Fp, F15p, sin_p, int(F.n), n15)     # confirmação possível em TEMPO REAL
             passo_tf = (F.ts[1] - F.ts[0])
             val15 = max(1, int(B2.VALIDADE_FILA_TF * passo_tf / passo15))
             base = {"card": cid, "nome": nome, "tf": tf, "validade_m15": val15}
-            resolvidos = set()
-            modo_de = {int(x[0]): str(x[3]) for x in sin}      # v1.4: modo do sinal também nos confirmados
-            for r in res:
-                resolvidos.add(int(r["i_sin"]))
-                idade = k_ult - int(r["k15"])
-                if idade > val15:
+            est_por = {int(r["i_sin"]): r for r in res}
+            for r in rt:
+                i_sin = r["i_sin"]; lado = r["lado"]
+                if r["estado"] in ("cancelado", "expirado", "invalido"):
+                    if i_sin >= F.n - B2.VALIDADE_FILA_TF:
+                        cont[r["estado"]] += 1
                     continue
-                lado = int(r["lado"]); ent = float(r["ent"]); st = float(r["stop0"])
-                itens.append(dict(base, estado="confirmado", lado=lado,
-                                  uid=f"{cid}|{tf}|{ts_txt(F.ts[int(r['i_sin'])])}|{lado}",
-                                  ts_sinal=ts_txt(F.ts[int(r["i_sin"])]),
-                                  ts_entrada_m15=ts_txt(F15.ts[int(r["k15"])]),
-                                  modo=modo_de.get(int(r["i_sin"])),
-                                  idade_m15=int(idade), entrada=round(ent, 6), stop=round(st, 6),
-                                  risco_pts=(round(abs(ent - st) / ponto, 1) if ponto > 0 else None),
-                                  corte_ciclo_contra_agora=bool(F15.corta[lado][k_ult])))
-            for (i_sin, lado, nivel, modo) in sin:
-                i_sin = int(i_sin); lado = int(lado)
-                if i_sin in resolvidos or i_sin < F.n - B2.VALIDADE_FILA_TF:
-                    continue
-                itens.append(dict(base, estado="aguardando", lado=lado, modo=str(modo),
-                                  uid=f"{cid}|{tf}|{ts_txt(F.ts[i_sin])}|{lado}",
-                                  ts_sinal=ts_txt(F.ts[i_sin]),
-                                  barras_desde_o_sinal=int(F.n - 1 - i_sin),
-                                  nivel=(None if nivel is None else round(float(nivel), 6)),
-                                  espera=("entrada na abertura de barra do TF, resolvida no relógio do M15"
-                                          if modo == "fechamento" else
-                                          "armado no nível; só entra com continuidade"),
-                                  corte_ciclo_contra_agora=bool(F15.corta[lado][k_ult])))
+                uid = f"{cid}|{tf}|{ts_txt(F.ts[i_sin])}|{lado}"
+                comum = dict(base, lado=lado, uid=uid, ts_sinal=ts_txt(F.ts[i_sin]),
+                             ts_sinal_fecha=ts_txt(F.ts[i_sin] + passo_tf), modo=r["modo"],
+                             nivel=(None if r["nivel"] is None else round(r["nivel"], 6)),
+                             corte_ciclo_contra_agora=bool(slot["corta"][lado]))
+                if r["estado"] == "confirmado":
+                    idade_s = seg(T - r["t_conf"])
+                    if idade_s > val15 * 900:                     # fora da janela de exibição (bem depois de vencido)
+                        continue
+                    cont["confirmado"] += 1; comp["confirmados_rt"] += 1
+                    e = est_por.get(i_sin)
+                    retro = None
+                    if e is not None:
+                        comp["com_entrada_do_estudo"] += 1
+                        mesma = bool(F15.ts[int(e["k15"])] == r["t_conf"])
+                        comp["mesma_barra_de_entrada"] += 1 if mesma else 0
+                        antes_s = seg(r["t_conf"] - F15.ts[int(e["k15"])])
+                        comp["mesmo_preco"] += 1 if abs(float(e["ent"]) - r["preco_ref"]) <= max(ponto, 1e-9) else 0
+                        comp["estudo_posiciona_antes"] += 1 if antes_s > 900 else 0
+                        retro = {"barra_m15_da_entrada": ts_txt(F15.ts[int(e["k15"])]), "entrada": round(float(e["ent"]), 6),
+                                 "posiciona_a_entrada_s_antes_da_confirmacao": antes_s,
+                                 "stop": round(float(e["stop0"]), 6), "mesma_barra_da_confirmacao": mesma,
+                                 "dif_preco_pts": (round(abs(float(e["ent"]) - r["preco_ref"]) / ponto, 1) if ponto > 0 else None),
+                                 "dif_stop_pts": (round(abs(float(e["stop0"]) - r["stop"]) / ponto, 1) if ponto > 0 else None)}
+                    else:
+                        comp["estudo_ainda_nao_resolveu"] += 1
+                    itens.append(dict(comum, estado="confirmado",
+                                      confirmacao={"contrato": CONF_CONTRATO, "base": r["motivo"]},
+                                      ts_confirmacao=ts_txt(r["t_conf"]), ts_entrada_m15=ts_txt(r["t_conf"]),
+                                      ts_vence=ts_txt(r["t_conf"] + np.timedelta64(VALIDADE_ENTRADA_S, "s")),
+                                      idade_s=idade_s, idade_m15=int(idade_s // 900),
+                                      preco_ref=round(r["preco_ref"], 6), preco_ref_base=r.get("preco_ref_base"),
+                                      entrada=round(r["preco_ref"], 6), stop=round(r["stop"], 6), stop_base=r.get("stop_base"),
+                                      risco_pts=(round(abs(r["preco_ref"] - r["stop"]) / ponto, 1) if ponto > 0 else None),
+                                      estudo_retro=retro))
+                else:
+                    if i_sin < F.n - B2.VALIDADE_FILA_TF:
+                        continue
+                    cont["aguardando"] += 1
+                    itens.append(dict(comum, estado="aguardando", barras_desde_o_sinal=int(F.n - 1 - i_sin),
+                                      espera=r["motivo"]))
     return {"versao": CAND_VERSAO, "ativo": ativo, "leitor": LEITOR_VERSAO,
             "codigo": {"cards": getattr(PC, "CARDS_VERSAO", None), "bloco2": getattr(B2, "B2_VERSAO", None),
                        "bloco1": getattr(B1, "MOTOR_VERSAO", None)},
             "barra_m15_corretora": ts_txt(F15.ts[k_ult]), "n15": n15,
+            "agora_corretora": ts_txt(T),
+            "confirmacao": {"contrato": CONF_CONTRATO, "validade_s": VALIDADE_ENTRADA_S,
+                            "regra": "confirma com o que já fechou; a entrada vale 30 min a contar da confirmação e não é reaproveitada",
+                            "contagem": cont, "comparacao_com_o_estudo": comp,
+                            "slot_agora": {"corte_contra_compra": bool(slot["corta"][1]), "corte_contra_venda": bool(slot["corta"][-1]),
+                                           "B1": bool(slot["B1"]), "B5": bool(slot["B5"]), "B5_nota": slot["B5_nota"]}},
             "tfs": {tf: {"barra_corretora": ts_txt(F.ts[F.n - 1]), "barras": int(F.n)} for tf, F in fichas.items()},
             "territorio_h4_h1_m30": int(ter[k_ult]) if len(ter) else 0,
-            "blindagens_m15": {"B1": bool(F15.B1[k_ult]), "B5": bool(F15.B5[k_ult]),
-                               "corte_contra_compra": bool(F15.corta[1][k_ult]),
-                               "corte_contra_venda": bool(F15.corta[-1][k_ult])},
+            "blindagens_m15": {"B1": bool(slot["B1"]), "B5": bool(slot["B5"]),
+                               "corte_contra_compra": bool(slot["corta"][1]),
+                               "corte_contra_venda": bool(slot["corta"][-1]),
+                               "base": "barra M15 que abre agora (antes, 1.3/1.4: última M15 fechada)"},
             "ficha": {"aplicada": ficha_ok, "ponto": ponto or None,
                       "spread_modelado_pts": getattr(PC, "SPREAD_PTS", None),
                       "ignora_b5": bool(getattr(PC, "IGNORAR_B5", False))},
             "spread_tick_pts": (None if spread_tick is None else int(spread_tick)),
             "contrato_do_estudo": {"stop": "pivô do M15 ∓ 0,3×ATR14 do M15", "saida": "100% Ciclo, sem alvo fixo",
-                                   "frescor_para_entrada_nova": "até 1 barra M15 (IDADE_MAX do vivo)",
+                                   "frescor_para_entrada_nova": "30 min a contar da confirmação em tempo real (IDADE_MAX de 1 barra M15 do vivo)",
                                    "validade_na_fila": "4 barras do TF do card"},
             "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
             "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
@@ -259,7 +438,10 @@ def _canais(pasta, ativo, mt5=None):
         item = {"barra_corretora": str(pd.Timestamp(a.ts[i])), "fechada": True,
                 "fonte": "espelho do MT5 (copy_rates_from_pos a partir da posição 1: só barras fechadas)",
                 "o": float(a.o[i]), "h": float(a.h[i]), "l": float(a.l[i]), "c": c,
+                "simbolo": ativo, "timeframe": nm,
                 "ema20_maximas": round(eh, 6), "ema20_minimas": round(el, 6), "dir": d,
+                "base_ema": {"periodo": 20, "fator": "2/21", "sobre": "máximas e mínimas", "inicializacao": "primeira barra do espelho",
+                             "barras": int(a.n), "erro_de_inicializacao": "desprezível acima de ~150 barras"},
                 "condicao": ("fechamento > EMA20 das máximas" if d > 0 else
                              ("fechamento < EMA20 das mínimas" if d < 0 else
                               "fechamento entre a EMA20 das mínimas e a das máximas")),
@@ -268,13 +450,22 @@ def _canais(pasta, ativo, mt5=None):
             try:
                 r = mt5.copy_rates_from_pos(ativo, cods[tf], 1, 1000)
                 if r is None or len(r) < 60:
-                    item["mt5"] = {"erro": f"MT5 devolveu {0 if r is None else len(r)} barras"}
+                    item["mt5"] = {"erro": f"MT5 devolveu {0 if r is None else len(r)} barras", "estado": "não conferido"}
+                elif str(pd.to_datetime(int(r[-1]["time"]), unit="s")) != item["barra_corretora"]:
+                    # virada: o MT5 já fechou outra barra (ou ainda não fechou a do espelho) — não é erro de cálculo
+                    item["mt5"] = {"simbolo": ativo, "timeframe": nm, "barras": int(len(r)),
+                                   "barra_corretora": str(pd.to_datetime(int(r[-1]["time"]), unit="s")),
+                                   "mesma_barra": False, "estado": "aguardando sincronização",
+                                   "ohlc_confere": None, "ema_confere": None,
+                                   "nota": "barras diferentes no espelho e no MT5: OHLC e EMA não são comparados"}
                 else:
                     u = r[-1]
                     mh, ml = _ema20([x["high"] for x in r]), _ema20([x["low"] for x in r])
                     tol = max(abs(c) * 1e-6, 1e-6)
                     mesma = str(pd.to_datetime(int(u["time"]), unit="s")) == item["barra_corretora"]
-                    item["mt5"] = {"barras": int(len(r)), "barra_corretora": str(pd.to_datetime(int(u["time"]), unit="s")),
+                    item["mt5"] = {"simbolo": ativo, "timeframe": nm,
+                                   "barras": int(len(r)), "barra_corretora": str(pd.to_datetime(int(u["time"]), unit="s")),
+                                   "tolerancia_ohlc": tol, "tolerancia_ema_relativa": 1e-5,
                                    "o": float(u["open"]), "h": float(u["high"]), "l": float(u["low"]), "c": float(u["close"]),
                                    "ema20_maximas": round(mh, 6), "ema20_minimas": round(ml, 6),
                                    "mesma_barra": bool(mesma),
@@ -283,6 +474,7 @@ def _canais(pasta, ativo, mt5=None):
                                    "ema_confere": bool(mesma and abs(mh - eh) <= max(abs(eh) * 1e-5, 1e-6)
                                                        and abs(ml - el) <= max(abs(el) * 1e-5, 1e-6)),
                                    "nota": "EMA20 recalculada sobre até 1000 barras fechadas do MT5; não é a leitura do indicador do gráfico"}
+                    item["mt5"]["estado"] = "confere" if (item["mt5"]["ohlc_confere"] and item["mt5"]["ema_confere"]) else "diverge"
             except Exception as e:
                 item["mt5"] = {"erro": f"{type(e).__name__}: {e}"[:200]}
         out[nm] = item

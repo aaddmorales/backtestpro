@@ -41,7 +41,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"
 INTERVALO_SNAPSHOT = 20      # segundos entre snapshots pra nuvem (v1.25: era 60 — presença mais viva e religar rápido)
 APP_NOME = "BotTested Conector HOMOLOG"
-APP_VERSAO = "v1.35-hml10"  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
+APP_VERSAO = "v1.35-hml11"  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
 
 
 # ── 0. Log de debug em arquivo ─────────────────────────────────────
@@ -710,7 +710,7 @@ def _cv_atestar(dados, bot_token=""):
     dados.pop("cv_atestado", None)
     dados.pop("cv_atestado_falha", None)
     dados.pop("cv_motor", None)
-    mot = {"versao_ponte_conector": "hml10"}
+    mot = {"versao_ponte_conector": "hml11"}
     dados["cv_motor"] = mot
 
     def falha(estado, motivo):
@@ -855,6 +855,22 @@ def _cv_atestar(dados, bot_token=""):
                     _CV_CAND_ENVIOS[kc] = n_env + 1
         except Exception as _e:
             mot["candidatos_erro"] = f"{type(_e).__name__}"
+        # hml11 (C27R23) — ATESTADO DE CANDIDATOS (contrato r01v5): os candidatos CONFIRMADOS em tempo real e
+        # ainda válidos viajam ASSINADOS (mesmo HMAC, mesmo vínculo de bot/símbolo/magic/barra), em todo
+        # snapshot da barra. É outro atestado: o cv_atestado (r01v4) segue intacto. Só descreve; quem decide é a API.
+        try:
+            kc5 = (pasta_barra, magic, _h.sha256(bot_token.encode("utf-8")).hexdigest())
+            at5 = _CV_CAND_AT.get(kc5)
+            if at5 is None:
+                cand5 = _cv_ler_json(os.path.join(pasta_barra, "candidatos.json")) or {}
+                at5 = _cv_assinar_candidatos(at, cand5, resumo, off_ea)
+                if len(_CV_CAND_AT) > 50:
+                    _CV_CAND_AT.clear()
+                _CV_CAND_AT[kc5] = at5
+            if at5:
+                dados["cv_atestado_cand"] = at5
+        except Exception as _e:
+            mot["candidatos_assinatura_erro"] = f"{type(_e).__name__}: {str(_e)[:120]}"
         dbg(f"cv_atestado: motor {at.get('versao_motor')} barra {at.get('ts_barra_m15')} "
             f"veredito={((at.get('cv1') or {}).get('veredito'))}")
     except Exception as e:
@@ -863,6 +879,47 @@ def _cv_atestar(dados, bot_token=""):
         if type(e).__name__ not in _CV_AVISOU:
             _CV_AVISOU.add(type(e).__name__)
             dbg(f"cv_atestado: falhou ({motivo}) — snapshot sem atestado")
+
+
+_CV_CAND_AT = {}
+
+
+def _cv_utc(txt_corretora, off_s):
+    from datetime import datetime as _d, timezone as _z, timedelta as _t
+    t = _d.strptime(str(txt_corretora)[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=_z.utc) - _t(seconds=int(off_s))
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _cv_assinar_candidatos(at, cand, resumo, off_s):
+    """Monta e assina o atestado r01v5. Só entram candidatos da MESMA barra e do MESMO ativo do atestado
+    do motor, com confirmação em tempo real (conf-rt-1). Números viajam como texto: a assinatura não
+    pode depender de como cada lado escreve um decimal. Devolve None se não houver o que assinar."""
+    import bt_cv_atestado as _cvat5
+    if not isinstance(cand, dict) or cand.get("erro") or not isinstance(cand.get("confirmacao"), dict):
+        return None
+    if str(cand.get("ativo")) != str(at.get("simbolo")):
+        return None
+    if _cv_utc(cand.get("agora_corretora"), off_s) != str(at.get("ts_barra_m15")).replace("+00:00", "Z")[:19] + "Z":
+        return None                                    # candidatos de outra barra: não assina
+    por_tf = (resumo or {}).get("por_tf") or {}
+    lista = []
+    for it in cand.get("itens") or []:
+        if it.get("estado") != "confirmado":
+            continue
+        lista.append({"uid": str(it.get("uid")), "card": str(it.get("card")), "tf": str(it.get("tf")),
+                      "lado": int(it.get("lado")), "modo": str(it.get("modo")),
+                      "sinal_abre_utc": _cv_utc(it.get("ts_sinal"), off_s), "sinal_fecha_utc": _cv_utc(it.get("ts_sinal_fecha"), off_s),
+                      "confirmado_utc": _cv_utc(it.get("ts_confirmacao"), off_s), "vence_utc": _cv_utc(it.get("ts_vence"), off_s),
+                      "preco_ref": "%.6f" % float(it.get("preco_ref")), "stop": "%.6f" % float(it.get("stop")),
+                      "corte_do_ciclo_agora": 1 if it.get("corte_ciclo_contra_agora") else 0,
+                      "dir_do_timeframe": (por_tf.get(str(it.get("tf"))) or {}).get("dir")})
+    slot = (cand.get("confirmacao") or {}).get("slot_agora") or {}
+    corpo = {k: at[k] for k in ("bot_token_hash", "versao_motor", "simbolo", "magic", "ts_barra_m15", "cv1", "cv2")}
+    corpo.update({"contrato": "r01v5", "confirmacao": str((cand.get("confirmacao") or {}).get("contrato")),
+                  "leitor": str(cand.get("leitor")), "cards": str((cand.get("codigo") or {}).get("cards")),
+                  "blindagem_agora": 1 if (slot.get("B1") or slot.get("B5")) else 0,
+                  "candidatos": lista})
+    return _cvat5.assinar(corpo)
 
 
 def _d_agora_utc():
@@ -1509,6 +1566,20 @@ def _cmd_linha(cmd):
             return None, "lote_invalido"
         if not (p.get("decisao") or {}).get("id") or not p.get("uid"):
             return None, "abertura_sem_decisao_dos_ciclos"      # só a RPC cria abertura
+        _ver = ((p.get("decisao") or {}).get("veredito") or {})
+        if _ver.get("contrato") == "r01v5":                     # hml11: abertura por candidato assinado
+            _c = _ver.get("candidato") or {}
+            if not _c.get("uid") or not _c.get("card") or _c.get("tf") not in ("M15", "M30", "H1"):
+                return None, "abertura_r01v5_sem_candidato"
+            if (1 if tipo == "buy" else -1) != _c.get("lado"):
+                return None, "abertura_r01v5_lado_diferente_do_candidato"
+            if not (float(limpo.get("sl") or 0) > 0):
+                return None, "abertura_r01v5_sem_stop"          # o stop do candidato é obrigatório
+            try:
+                if abs(float(limpo["sl"]) - float(_c.get("stop"))) > 1e-6:
+                    return None, "abertura_r01v5_stop_diferente_do_assinado"
+            except Exception:
+                return None, "abertura_r01v5_stop_ilegivel"
     return f"{cid}|{tipo}|{json.dumps(limpo, separators=(',', ':'))}", None
 
 

@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml10"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml11"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml10"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml11"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -667,7 +667,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
     monkeypatch.setenv("BT_CV_SEGREDO", seg)
     cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
-    assert cand["versao"] == "cand-2" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert cand["versao"] == "cand-3" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
     assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
     assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
     s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",
@@ -682,9 +682,21 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     cur.execute("select count(*) filter (where detalhe_json->'cv_motor' ? 'candidatos'), count(*) from conector_snapshots "
                 "where bot_token=%s", (tok,))
     assert cur.fetchone() == (3, 5)                                   # candidatos só nos 3 primeiros snapshots da barra
+    # hml11 (C27R23) — atestado de CANDIDATOS (r01v5): assinado pela ponte real, em TODOS os snapshots da barra
+    cur.execute("select count(*) filter (where detalhe_json ? 'cv_atestado_cand'), "
+                "(array_agg(detalhe_json->'cv_atestado_cand' order by id desc))[1], (array_agg(detalhe_json->'cv_atestado' order by id desc))[1] "
+                "from conector_snapshots where bot_token=%s", (tok,))
+    n5, at5, at4 = cur.fetchone()
+    import bt_cv_atestado as _cvat_t
+    assert n5 == 5 and _cvat_t.verificar(at5, segredo=seg) == (True, None) and at5["contrato"] == "r01v5" and at5["confirmacao"] == "conf-rt-1"
+    assert at5["bot_token_hash"] == at4["bot_token_hash"] and at5["ts_barra_m15"] == at4["ts_barra_m15"] and at5["magic"] == at4["magic"]
+    conf_leitor = sorted(i["uid"] for i in cand["itens"] if i["estado"] == "confirmado")
+    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.5-hml"
+    for c in at5["candidatos"]:
+        assert isinstance(c["stop"], str) and isinstance(c["preco_ref"], str) and c["confirmado_utc"] <= at5["ts_barra_m15"].replace("+00:00", "Z")
     cur.execute("select count(*), max(n_candidatos), max(versao) from selecao_avaliacoes where bot_id=%s", (b_id,))
     n, ncand, ver = cur.fetchone()
-    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-2")        # UMA avaliação por barra
+    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-3")        # UMA avaliação por barra
     cur.execute("select leituras->'motor' ? 'candidatos' from ciclo_leituras where bot_id=%s", (b_id,))
     assert cur.fetchone()[0] is False                                 # não duplica os candidatos na leitura da barra
     s, j = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/ao-vivo", {"bot_id": b_id}, tok=amb["tok"])
@@ -694,7 +706,16 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     todos = [c for g in av["grupos"].values() for c in g["candidatos"]]
     assert len(todos) == len(cand["itens"]) == av["resumo"]["candidatos"]
     # C27R22 — leitor 1.4: o canal EMA20 de cada tempo superior chega pela mesma via e é exposto como CONTEXTO
-    assert av["versao"] == "sel-2" and av["contratos"]["selecao_e_operacional"] is False
+    assert av["versao"] == "sel-3" and av["contratos"]["selecao_e_operacional"] is False
+    assert av["contratos"]["confirmacao_em_tempo_real"] is True and av["contratos"]["r01v5_emite"] is False
+    s5 = av["autoridade_r01v5"]
+    assert s5["atestado_de_candidatos_presente"] is True and s5["emissao_habilitada"] is False
+    assert s5["decisao_emitida"] is False and s5["comando_criado"] is False
+    cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
+    cur.execute("select count(*) from mt5_comandos where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
+    for c in todos:
+        if c["sinal"]["estado"] == "confirmado":
+            assert c["frescor"]["contrato_da_confirmacao"] == "conf-rt-1" and c["frescor"]["situacao"] in ("válida", "vencida", "entrada perdida")
     for tf in ("D1", "H4", "H1", "M30"):
         ts_ = av["contexto_superior"]["tempos"][tf]
         assert ts_["ohlc"] == {k: cand["canais"][tf][k] for k in ("o", "h", "l", "c")} and ts_["conferencia_mt5"]["ohlc_confere"] is True
@@ -722,3 +743,20 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     cur.execute("select count(*) from ciclo_trilha where bot_id=%s and etapa='selecao'", (b_id,)); assert cur.fetchone()[0] == 1
     cur.execute("select count(*) from ciclo_decisoes where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
     cur.execute("select count(*) from mt5_comandos where bot_id=%s", (b_id,)); assert cur.fetchone()[0] == 0
+
+
+# ═════════════════════ hml11 — abertura r01v5: o conector só entrega com o stop do candidato assinado ═════════════════════
+def test_h20_linha_de_comando_r01v5_exige_candidato_e_stop_assinado():
+    cand = {"uid": "card2_rompimento_caixa|M30|2026-10-07 05:00:00|-1", "card": "card2_rompimento_caixa", "tf": "M30", "lado": -1,
+            "stop": "4110.000000", "preco_ref": "4100.000000"}
+    p = {"lote": 0.01, "sl": 4110.0, "uid": "13-C-abc", "decisao": {"id": "d1", "uid": "13-C-abc", "veredito": {"contrato": "r01v5", "candidato": cand}}}
+    linha, erro = N._cmd_linha({"id": 7, "tipo": "sell", "params": p})
+    assert erro is None and linha.startswith("7|sell|") and '"sl":4110.0' in linha and "candidato" not in linha    # só números chegam ao EA
+    assert N._cmd_linha({"id": 7, "tipo": "sell", "params": dict(p, sl=4111.0)}) == (None, "abertura_r01v5_stop_diferente_do_assinado")
+    assert N._cmd_linha({"id": 7, "tipo": "sell", "params": {k: v for k, v in p.items() if k != "sl"}}) == (None, "abertura_r01v5_sem_stop")
+    assert N._cmd_linha({"id": 7, "tipo": "buy", "params": p}) == (None, "abertura_r01v5_lado_diferente_do_candidato")
+    sem = dict(p, decisao={"id": "d1", "uid": "13-C-abc", "veredito": {"contrato": "r01v5", "candidato": {"lado": -1}}})
+    assert N._cmd_linha({"id": 7, "tipo": "sell", "params": sem}) == (None, "abertura_r01v5_sem_candidato")
+    # abertura r01v4 (sem candidato) continua passando como antes
+    v4 = {"lote": 0.01, "sl": 4110.0, "uid": "13-x-S", "decisao": {"id": "d0", "uid": "13-x-S", "veredito": {"contrato": "r01v4"}}}
+    assert N._cmd_linha({"id": 8, "tipo": "sell", "params": v4})[1] is None

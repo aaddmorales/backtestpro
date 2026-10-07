@@ -70,7 +70,7 @@ def _cv_atestar(dados, bot_token=""):
     dados.pop("cv_atestado", None)
     dados.pop("cv_atestado_falha", None)
     dados.pop("cv_motor", None)
-    mot = {"versao_ponte_conector": "hml10"}
+    mot = {"versao_ponte_conector": "hml11"}
     dados["cv_motor"] = mot
 
     def falha(estado, motivo):
@@ -215,6 +215,22 @@ def _cv_atestar(dados, bot_token=""):
                     _CV_CAND_ENVIOS[kc] = n_env + 1
         except Exception as _e:
             mot["candidatos_erro"] = f"{type(_e).__name__}"
+        # hml11 (C27R23) — ATESTADO DE CANDIDATOS (contrato r01v5): os candidatos CONFIRMADOS em tempo real e
+        # ainda válidos viajam ASSINADOS (mesmo HMAC, mesmo vínculo de bot/símbolo/magic/barra), em todo
+        # snapshot da barra. É outro atestado: o cv_atestado (r01v4) segue intacto. Só descreve; quem decide é a API.
+        try:
+            kc5 = (pasta_barra, magic, _h.sha256(bot_token.encode("utf-8")).hexdigest())
+            at5 = _CV_CAND_AT.get(kc5)
+            if at5 is None:
+                cand5 = _cv_ler_json(os.path.join(pasta_barra, "candidatos.json")) or {}
+                at5 = _cv_assinar_candidatos(at, cand5, resumo, off_ea)
+                if len(_CV_CAND_AT) > 50:
+                    _CV_CAND_AT.clear()
+                _CV_CAND_AT[kc5] = at5
+            if at5:
+                dados["cv_atestado_cand"] = at5
+        except Exception as _e:
+            mot["candidatos_assinatura_erro"] = f"{type(_e).__name__}: {str(_e)[:120]}"
         dbg(f"cv_atestado: motor {at.get('versao_motor')} barra {at.get('ts_barra_m15')} "
             f"veredito={((at.get('cv1') or {}).get('veredito'))}")
     except Exception as e:
@@ -223,6 +239,47 @@ def _cv_atestar(dados, bot_token=""):
         if type(e).__name__ not in _CV_AVISOU:
             _CV_AVISOU.add(type(e).__name__)
             dbg(f"cv_atestado: falhou ({motivo}) — snapshot sem atestado")
+
+
+_CV_CAND_AT = {}
+
+
+def _cv_utc(txt_corretora, off_s):
+    from datetime import datetime as _d, timezone as _z, timedelta as _t
+    t = _d.strptime(str(txt_corretora)[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=_z.utc) - _t(seconds=int(off_s))
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _cv_assinar_candidatos(at, cand, resumo, off_s):
+    """Monta e assina o atestado r01v5. Só entram candidatos da MESMA barra e do MESMO ativo do atestado
+    do motor, com confirmação em tempo real (conf-rt-1). Números viajam como texto: a assinatura não
+    pode depender de como cada lado escreve um decimal. Devolve None se não houver o que assinar."""
+    import bt_cv_atestado as _cvat5
+    if not isinstance(cand, dict) or cand.get("erro") or not isinstance(cand.get("confirmacao"), dict):
+        return None
+    if str(cand.get("ativo")) != str(at.get("simbolo")):
+        return None
+    if _cv_utc(cand.get("agora_corretora"), off_s) != str(at.get("ts_barra_m15")).replace("+00:00", "Z")[:19] + "Z":
+        return None                                    # candidatos de outra barra: não assina
+    por_tf = (resumo or {}).get("por_tf") or {}
+    lista = []
+    for it in cand.get("itens") or []:
+        if it.get("estado") != "confirmado":
+            continue
+        lista.append({"uid": str(it.get("uid")), "card": str(it.get("card")), "tf": str(it.get("tf")),
+                      "lado": int(it.get("lado")), "modo": str(it.get("modo")),
+                      "sinal_abre_utc": _cv_utc(it.get("ts_sinal"), off_s), "sinal_fecha_utc": _cv_utc(it.get("ts_sinal_fecha"), off_s),
+                      "confirmado_utc": _cv_utc(it.get("ts_confirmacao"), off_s), "vence_utc": _cv_utc(it.get("ts_vence"), off_s),
+                      "preco_ref": "%.6f" % float(it.get("preco_ref")), "stop": "%.6f" % float(it.get("stop")),
+                      "corte_do_ciclo_agora": 1 if it.get("corte_ciclo_contra_agora") else 0,
+                      "dir_do_timeframe": (por_tf.get(str(it.get("tf"))) or {}).get("dir")})
+    slot = (cand.get("confirmacao") or {}).get("slot_agora") or {}
+    corpo = {k: at[k] for k in ("bot_token_hash", "versao_motor", "simbolo", "magic", "ts_barra_m15", "cv1", "cv2")}
+    corpo.update({"contrato": "r01v5", "confirmacao": str((cand.get("confirmacao") or {}).get("contrato")),
+                  "leitor": str(cand.get("leitor")), "cards": str((cand.get("codigo") or {}).get("cards")),
+                  "blindagem_agora": 1 if (slot.get("B1") or slot.get("B5")) else 0,
+                  "candidatos": lista})
+    return _cvat5.assinar(corpo)
 
 
 def _d_agora_utc():

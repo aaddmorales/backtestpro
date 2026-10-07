@@ -128,7 +128,7 @@ def test_8_leitor_acorda_logo_depois_da_virada():
     """v1.2 — visto na plataforma: o 1º snapshot da barra chegava antes de o motor publicar
     (intervalo fixo de 20 s) e a barra abria como espelho_atrasado."""
     import bt_motor_leitura_hml as L
-    assert L.LEITOR_VERSAO == "1.4-hml"
+    assert L.LEITOR_VERSAO == "1.5-hml"
     base = 900 * 2_000_000
     assert L._espera(20, base + 400, 2_000_000) == 20            # meio da barra: intervalo normal
     assert L._espera(20, base + 890, 2_000_000) == 12            # virada em 10 s: acorda 2 s depois dela
@@ -145,7 +145,7 @@ def test_9_leitor_registra_o_canal_ema20_de_cada_tempo_e_confere_com_o_mt5(leito
     d, _r = leitor
     pasta = os.path.join(d, FM.ler(d, "ATUAL.json")["pasta"])
     cand = FM.ler(pasta, "candidatos.json"); lm = FM.ler(pasta, "leitura_motor.json")
-    assert cand["versao"] == "cand-2" and cand["leitor"] == "1.4-hml"
+    assert cand["versao"] == "cand-3" and cand["leitor"] == "1.5-hml"
     cn = cand["canais"]
     assert set(cn) == {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
     srv = int(time.time()) + FM.OFF

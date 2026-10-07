@@ -120,6 +120,20 @@ def _cmd_linha(cmd):
             return None, "lote_invalido"
         if not (p.get("decisao") or {}).get("id") or not p.get("uid"):
             return None, "abertura_sem_decisao_dos_ciclos"      # só a RPC cria abertura
+        _ver = ((p.get("decisao") or {}).get("veredito") or {})
+        if _ver.get("contrato") == "r01v5":                     # hml11: abertura por candidato assinado
+            _c = _ver.get("candidato") or {}
+            if not _c.get("uid") or not _c.get("card") or _c.get("tf") not in ("M15", "M30", "H1"):
+                return None, "abertura_r01v5_sem_candidato"
+            if (1 if tipo == "buy" else -1) != _c.get("lado"):
+                return None, "abertura_r01v5_lado_diferente_do_candidato"
+            if not (float(limpo.get("sl") or 0) > 0):
+                return None, "abertura_r01v5_sem_stop"          # o stop do candidato é obrigatório
+            try:
+                if abs(float(limpo["sl"]) - float(_c.get("stop"))) > 1e-6:
+                    return None, "abertura_r01v5_stop_diferente_do_assinado"
+            except Exception:
+                return None, "abertura_r01v5_stop_ilegivel"
     return f"{cid}|{tipo}|{json.dumps(limpo, separators=(',', ':'))}", None
 
 

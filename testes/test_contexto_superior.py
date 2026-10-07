@@ -33,7 +33,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert m30["contexto_superior"]["D1"] == "sentidos opostos" and m30["contexto_superior"]["H1"] == "mesmo sentido"
     assert "não exige alinhamento" in m30["contexto_superior"]["exigencia_do_card"]
     ef = {(m["condicao"], m["efeito"], m["onde"]) for m in m30["motivos"]}
-    assert ("D1 em sentido oposto", "informa", "seleção (sel-2)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-2)") in ef
+    assert ("D1 em sentido oposto", "informa", "seleção (sel-3)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-3)") in ef
     assert ("autoridade em vigor não autorizaria este lado", "bloqueia a execução", "autoridade (R-CICLO-01 r01v4)") in ef
     assert ("bot em modo observar", "bloqueia a execução", "modo operacional do bot") in ef
     assert not any(m["efeito"] == "bloqueia" for m in m30["motivos"])                  # nada bloqueia a SELEÇÃO
@@ -44,7 +44,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert av["resumo"]["elegiveis_em_sentido_oposto_a_d1_ou_h4"] == 2
     # contratos nomeados; a seleção NÃO é apresentada como operacional
     K = av["contratos"]
-    assert av["versao"] == "sel-2" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
+    assert av["versao"] == "sel-3" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
     assert K["selecao_e_operacional"] is False and "NÃO operacional" in K["selecao"]["estado"] and K["autoridade"]["estado"] == "em vigor"
     assert K["autoridade_nesta_barra"] == {"veredito_do_motor": "bloqueada", "motivo_do_motor": "teste", "vetou_por_d1_h4": True}
     assert all(c["execucao"]["decisao"] is None for c in t)
@@ -98,6 +98,9 @@ def test_4_canal_registrado_barra_fechada_conferencias_e_barra_em_formacao(api, 
     det["cD"] = "4100,4130,4095,4120,10;4120,4170,4110,4160,10;4160,4162,4095,4099.8,10"        # fechada = 4120/4170/4110/4160; em formação cai
     det["c4h"] = "4150,4160,4140,4158,10;4158,4159,4095,4099.8,10"
     leit["linhas"] = [{"tf": "D1", "canal_ema20": "dentro"}, {"tf": "H4", "canal_ema20": "abaixo"}]
+    ep = lambda txt: int(datetime.strptime(txt, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
+    # carimbo do EA: abertura (hora da corretora) da última barra FECHADA de cada tempo — MN1.W1.D1.H4.H1.M30.M15.M5.M1
+    det["cvt"] = ".".join(["0", "0", str(ep("2026-10-06 00:00:00")), str(ep("2026-10-07 00:00:00")), "0", "0", "0", "0", "0"])
     sb = api._sb_admin()
     bot = sb.table("conector_bots").select("*").eq("id", amb["bots"]["A"]["id"]).execute().data[0]
     T._pg("delete from selecao_avaliacoes where bot_id=%s", bot["id"])
@@ -108,7 +111,9 @@ def test_4_canal_registrado_barra_fechada_conferencias_e_barra_em_formacao(api, 
     assert d1["barra_corretora"] == "2026-10-06 00:00:00"
     assert d1["barra_abriu_utc"] == "2026-10-05T21:00:00+00:00" and d1["barra_fechou_utc"] == "2026-10-06T21:00:00+00:00"   # fuso da corretora descontado
     assert d1["conferencia_mt5"]["ohlc_confere"] is True and d1["conferencia_mt5"]["ema_confere"] is True
-    assert d1["conferencia_ea"]["confere"] is True and d1["conferencia_ea"]["ohlc_do_ea_na_ultima_fechada"]["c"] == 4160.0
+    assert d1["conferencia_ea"]["estado"] == "confere" and d1["conferencia_ea"]["confere"] is True
+    assert d1["conferencia_ea"]["ohlc_do_ea_na_ultima_fechada"]["c"] == 4160.0 and d1["conferencia_ea"]["timeframe"] == "D1"
+    assert d1["conferencia_ea"]["barra_do_ea_corretora"] == d1["conferencia_ea"]["barra_do_motor_corretora"] == "2026-10-06 00:00:00"
     ba = d1["barra_atual"]
     assert (ba["abriu"], ba["preco"], ba["movimento"], ba["posicao_no_canal_segundo_o_ea"]) == (4160.0, 4099.8, "caindo", "dentro")
     assert ba["variacao_pct"] == round((4099.8 - 4160.0) / 4160.0 * 100, 2) and "FORMAÇÃO" in ba["base"]
@@ -121,6 +126,17 @@ def test_4_canal_registrado_barra_fechada_conferencias_e_barra_em_formacao(api, 
     det["cD"] = "4100,4130,4095,4120,10;4120,4170,4110,4161.5,10;4160,4162,4095,4099.8,10"
     av2 = api._sel_avaliar(sb, bot, det, leit, ciclos, int(time.time()))
     assert av2["contexto_superior"]["tempos"]["D1"]["conferencia_ea"]["confere"] is False
+    assert av2["contexto_superior"]["tempos"]["D1"]["conferencia_ea"]["estado"] == "diverge"
+    # VIRADA: o EA já carimba o dia seguinte e o motor ainda está no anterior → aguardando sincronização, não "cálculo errado"
+    det["cvt"] = ".".join(["0", "0", str(ep("2026-10-07 00:00:00")), str(ep("2026-10-07 00:00:00")), "0", "0", "0", "0", "0"])
+    av2b = api._sel_avaliar(sb, bot, det, leit, ciclos, int(time.time()))
+    ce = av2b["contexto_superior"]["tempos"]["D1"]["conferencia_ea"]
+    assert ce["estado"] == "aguardando sincronização" and ce["confere"] is None and "ohlc_do_ea_na_ultima_fechada" not in ce
+    det["simbolo"] = "XAUUSD"; det["cv_motor"]["candidatos"]["canais"]["D1"]["simbolo"] = "BTCUSD"      # símbolo antes do OHLC
+    det["cvt"] = ".".join(["0", "0", str(ep("2026-10-06 00:00:00")), str(ep("2026-10-07 00:00:00")), "0", "0", "0", "0", "0"])
+    ce2 = api._sel_avaliar(sb, bot, det, leit, ciclos, int(time.time()))["contexto_superior"]["tempos"]["D1"]["conferencia_ea"]
+    assert ce2["estado"] == "símbolos diferentes" and ce2["confere"] is False
+    det["cv_motor"]["candidatos"]["canais"]["D1"]["simbolo"] = "XAUUSD"
     # sem os valores (leitor < 1.4): diz que não foram registrados; a direção e a frase continuam
     del det["cv_motor"]["candidatos"]["canais"]
     av3 = api._sel_avaliar(sb, bot, det, leit, ciclos, int(time.time()))
@@ -128,7 +144,7 @@ def test_4_canal_registrado_barra_fechada_conferencias_e_barra_em_formacao(api, 
     assert "não registrados" in d1c["valores"] and "ohlc" not in d1c and d1c["direcao"] == "alta"
 
 
-def test_5_frescor_horarios_alcance_e_regra_inalterada(api, amb):
+def test_5_leitor_antigo_frescor_horarios_e_alcance(api, amb):
     barra = T._barra_m15()
     cor = lambda dt: (dt + timedelta(seconds=S.OFF)).strftime("%Y-%m-%d %H:%M:%S")
     k_ult = barra - timedelta(minutes=15)                                   # abertura da última M15 fechada
@@ -144,17 +160,18 @@ def test_5_frescor_horarios_alcance_e_regra_inalterada(api, amb):
     por = {(c["estrategia"]["card"], c["timeframe"]): c for c in S._todos(av)}
     m15 = por[("card2_rompimento_caixa", "M15")]["frescor"]
     iso = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    assert m15["sinal_barra_fechou_utc"] == m15["entrada_estudada_utc"] == iso(k_ult - timedelta(minutes=15))
+    assert m15["sinal_barra_fechou_utc"] == m15["confirmado_utc"] == iso(k_ult - timedelta(minutes=15))
+    assert "retrospectivo" in m15["contrato_da_confirmacao"]                       # candidatos de leitor < 1.5
     assert m15["primeira_confirmacao_possivel_utc"] == m15["vence_utc"] == iso(k_ult + timedelta(minutes=15))   # uma única barra de avaliação
     assert m15["alcancavel"] is True and "barras M15" in m15["unidade"]
     assert por[("card2_rompimento_caixa", "M15")]["elegibilidade"] == "elegivel"
     h1 = por[("card2_rompimento_caixa", "H1")]
     f = h1["frescor"]
-    assert f["sinal_barra_fechou_utc"] == f["entrada_estudada_utc"] == iso(k_ult - timedelta(minutes=60))
+    assert f["sinal_barra_fechou_utc"] == f["confirmado_utc"] == iso(k_ult - timedelta(minutes=60))
     assert f["primeira_confirmacao_possivel_utc"] == iso(k_ult) and f["vence_utc"] == iso(k_ult - timedelta(minutes=30))
-    assert f["alcancavel"] is False and "nunca é visto dentro do prazo" in f["aviso"] and "NÃO foi alterada" in f["aviso"]
+    assert f["alcancavel"] is False and "nunca é visto no prazo" in f["aviso"] and "leitor 1.5 corrige" in f["aviso"]
     assert h1["elegibilidade"] == "vetada" and h1["primeiro_impedimento"].startswith("3. frescor")       # a regra continua valendo: limite 1
     assert next(p for p in h1["portoes"] if p["portao"].startswith("3."))["detalhe"] == "entrada há 4 barra(s) M15; limite 1"
     ag = por[("card10_donchian20", "M15")]["frescor"]
-    assert ag["confirmacao"].startswith("pendente") and ag["entrada_estudada_utc"] is None and ag["vence_utc"] is None
+    assert ag["confirmacao"].startswith("pendente") and ag["confirmado_utc"] is None and ag["vence_utc"] is None
     assert av["resumo"]["frescor_inalcancavel"] == 1
