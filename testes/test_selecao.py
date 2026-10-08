@@ -31,7 +31,7 @@ def _cand(card, tf, lado, estado="confirmado", idade=1, ent=4100.0, stop=4090.0,
 
 
 def _cenario(itens, barra_utc, dirs=None, veredito="neutra", jan=None, cv2=None, motor="ok", atest="verificado",
-             preco=4100.2, spr=12, barra_cand=None, ativo="XAUUSD"):
+             preco=4100.2, spr=12, barra_cand=None, ativo="XAUUSD", contrato_corte="corte-ciclo-2"):
     dirs = dirs or {"M1": 1, "M5": 1, "M15": 1, "M30": 1, "H1": 1, "H4": 1, "D1": 1}
     bc = barra_cand or (barra_utc - timedelta(seconds=900) + timedelta(seconds=OFF)).strftime("%Y-%m-%d %H:%M:%S")
     det = {"simbolo": ativo, "preco": str(preco), "spr": str(spr), "pt": "0.01",
@@ -42,6 +42,11 @@ def _cenario(itens, barra_utc, dirs=None, veredito="neutra", jan=None, cv2=None,
                                        "codigo": {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"},
                                        "barra_m15_corretora": bc, "territorio_h4_h1_m30": 0,
                                        "tfs": {tf: {"barra_corretora": bc} for tf in ("M15", "M30", "H1")}, "itens": itens}}}
+    if contrato_corte:
+        import corte_util as CU
+        det["cv_motor"]["candidatos"]["cortes"] = CU.cortes(
+            agora_compra=any(i.get("corte_ciclo_contra_agora") and i["lado"] > 0 for i in itens),
+            agora_venda=any(i.get("corte_ciclo_contra_agora") and i["lado"] < 0 for i in itens), contrato=contrato_corte)
     leit = {"barra_m15_utc": barra_utc.isoformat()}
     ciclos = {"atestado": {"estado": atest, "motivo": None if atest == "verificado" else "leitura_vencida(900s)",
                            "cv1": {"veredito": veredito, "motivo": "teste", "janela": jan or {"M1": 1, "M5": 1, "M15": 1}},

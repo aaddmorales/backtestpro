@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml12"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml13"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml12"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml13"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -667,7 +667,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
     monkeypatch.setenv("BT_CV_SEGREDO", seg)
     cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
-    assert cand["versao"] == "cand-4" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert cand["versao"] == "cand-5" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
     assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
     assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
     s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",
@@ -691,16 +691,25 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     assert n5 == 5 and _cvat_t.verificar(at5, segredo=seg) == (True, None) and at5["contrato"] == "r01v5" and at5["confirmacao"] == "conf-rt-1"
     assert at5["bot_token_hash"] == at4["bot_token_hash"] and at5["ts_barra_m15"] == at4["ts_barra_m15"] and at5["magic"] == at4["magic"]
     conf_leitor = sorted(i["uid"] for i in cand["itens"] if i["estado"] == "confirmado")
-    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.6-hml"
+    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.7-hml"
     # hml12 (C27R24) — especificação do símbolo e gestão na MESMA assinatura; negócios assinados em todo snapshot
     e5, g5 = at5["especificacao"], at5["gestao"]
     assert e5["simbolo"] == "XAUUSD" and e5["tick_tamanho"] == "0.01" and e5["volume_min"] == "0.01" and e5["modo_de_negociacao"] == 4
     assert g5["contrato"] == "gestao-1" and set(g5["lados"]) == {"compra", "venda"} and g5["lados"]["venda"]["corte_do_ciclo"] in (0, 1)
     assert g5["barra_m15_utc"] < at5["ts_barra_m15"].replace("+00:00", "Z")
+    # hml13 (C27R25) — contrato de corte na MESMA assinatura: só o M15 decide; nenhuma origem cita M30/H1/H4/D1
+    k5 = at5["corte"]
+    assert k5["contrato"] == "corte-ciclo-2" and k5["andares"] == ["M1", "M5", "M10", "M15"] and set(k5["barras"]) == {"que_abre_agora", "ultima_fechada"}
+    for rot_ in k5["barras"].values():
+        for nome_ in ("compra", "venda"):
+            assert rot_[nome_]["corta"] in (0, 1) and all("-> M15:" in o and "H1" not in o and "M30" not in o for o in rot_[nome_]["origem"])
+    for nome_ in ("compra", "venda"):
+        assert isinstance(g5["lados"][nome_]["corte_origem"], list)
+    assert all(isinstance(c["corte_origem"], list) for c in at5["candidatos"])
     cur.execute("select count(*) filter (where detalhe_json ? 'cv_negocios'), (array_agg(detalhe_json->'cv_negocios' order by id desc))[1], "
                 "(array_agg(detalhe_json->'cv_motor'->>'versao_ponte_conector' order by id desc))[1] from conector_snapshots where bot_token=%s", (tok,))
     nn, neg5, ponte = cur.fetchone()
-    assert nn == 5 and ponte == "hml12" and _cvat_t.verificar(neg5, segredo=seg) == (True, None) and neg5["contrato"] == "neg-1"
+    assert nn == 5 and ponte == "hml13" and _cvat_t.verificar(neg5, segredo=seg) == (True, None) and neg5["contrato"] == "neg-1"
     assert neg5["bot_token_hash"] == at4["bot_token_hash"] and neg5["posicoes"] == [] and neg5["conta"]["equity"] == "10000.0"
     for c in at5["candidatos"]:
         assert isinstance(c["stop"], str) and isinstance(c["preco_ref"], str) and c["confirmado_utc"] <= at5["ts_barra_m15"].replace("+00:00", "Z")

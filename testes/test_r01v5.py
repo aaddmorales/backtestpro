@@ -60,7 +60,7 @@ def _rt(card, tf, lado, conf, preco=4100.0, stop=4110.0, modo="fechamento", cort
             "risco_pts": abs(preco - stop) / 0.01, "estudo_retro": None}
 
 
-def _det(b, itens, dirs, veredito, barra=None, preco="4099.80", assinar_cand=True, corte_slot=False, agora=None):
+def _det(b, itens, dirs, veredito, barra=None, preco="4099.80", assinar_cand=True, corte_slot=False, agora=None, contrato_corte="corte-ciclo-2"):
     """Snapshot completo: EA + atestado r01v4 + telemetria do motor com candidatos + atestado r01v5 (ponte real)."""
     import bt_cv_atestado as cvat
     barra = barra or T._barra_m15(agora)
@@ -74,6 +74,11 @@ def _det(b, itens, dirs, veredito, barra=None, preco="4099.80", assinar_cand=Tru
             "confirmacao": {"contrato": "conf-rt-1", "validade_s": 1800,
                             "slot_agora": {"corte_contra_compra": False, "corte_contra_venda": corte_slot, "B1": False, "B5": False}},
             "itens": itens}
+    import corte_util as CU
+    if contrato_corte:
+        cand["cortes"] = CU.cortes(agora_compra=any(i.get("corte_ciclo_contra_agora") and i["lado"] > 0 for i in itens),
+                                   agora_venda=bool(corte_slot or any(i.get("corte_ciclo_contra_agora") and i["lado"] < 0 for i in itens)),
+                                   contrato=contrato_corte)
     por_tf = {k: {"dir": v, "ultimo_topo": 4130.0, "ultimo_fundo": 4070.0} for k, v in dirs.items()}
     extra = {"cv_atestado": at, "preco": preco, "spr": "12", "pt": "0.01",
              "cv_motor": {"estado": "ok", "motivo": "teste", "off_ea_s": OFF, "por_tf": por_tf, "leitura": {"fase": {"fase": 3}}, "candidatos": cand}}
@@ -312,3 +317,53 @@ def test_5_validade_vencida_e_entrada_perdida_sem_reaproveitar(api, amb):
     # a autoridade também recusa o vencido, mesmo que alguém o apresente como escolhido
     r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=barra + timedelta(seconds=5))
     assert r["seria_emitida"] is False and "VENCIDA" in r["primeiro_impedimento"]
+
+
+# ═════════════ C27R25 — contrato de corte: só corte-ciclo-2 assinado; M30/H1 não cortam nem vetam ═════════════
+def test_6_corte_so_pelo_contrato_e_h1_m30_contra_nao_vetam(api, amb):
+    b = _bot(amb); sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("id", b["id"]).execute().data[0]
+    barra = T._barra_m15(); agora = barra + timedelta(seconds=30)
+    it = _rt("card5_engolfo", "M15", 1, barra, preco=4100.0, stop=4090.0)        # card de reversão: o canal do próprio tempo é contexto
+    c5 = lambda r: next(c for c in r["condicoes"] if c["condicao"].startswith("5."))
+    # (a) M30, H1, H4 e D1 TODOS contra a compra: sem corte no contrato, a condição 5 passa e nada é vetado por eles
+    contra = {"M1": 1, "M5": 1, "M15": 1, "M30": -1, "H1": -1, "H4": -1, "D1": -1}
+    det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert c5(r)["ok"] is True and "corte-ciclo-2" in c5(r)["detalhe"]
+    assert not any(c["ok"] is False and any(t in c["detalhe"] for t in ("H1", "M30", "H4", "D1")) for c in r["condicoes"])
+    assert r["contexto"]["corte"]["nao_cortam"] == ["M30", "H1", "H4", "D1", "W1", "MN1"] and r["contexto"]["corte"]["falha"] is None
+    # (b) leitor/conector sem o contrato de corte: dado indisponível — não autoriza
+    det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20", contrato_corte=None)
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert r["seria_emitida"] is False and c5(r)["ok"] is None and "dado indisponível: contrato_de_corte_ausente" in c5(r)["detalhe"]
+    # (c) contrato anterior (ficha completa, em que M30/H1/H4/D1 decidiam): não vale
+    det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20", contrato_corte="corte-ciclo-1")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert r["seria_emitida"] is False and c5(r)["ok"] is None and "contrato_de_corte_diferente" in c5(r)["detalhe"]
+    # (d) corte cuja origem cita H1 ou M30 como andar que decide: recusado mesmo assinado (fail-closed), nunca aplicado como corte
+    import corte_util as CU
+    for tf in ("M30", "H1", "H4", "Daily"):
+        blo = {"contrato": "corte-ciclo-2", "andares": ["M1", "M5", "M10", "M15"], "barras": {
+            k: {"compra": {"corta": 1, "origem": ["M5:x -> " + tf + ":y"]}, "venda": {"corta": 0, "origem": []}} for k in ("que_abre_agora", "ultima_fechada")}}
+        assert api._corte_assinado({"corte": blo})[0] is None and api._corte_assinado({"corte": blo})[1].startswith("corte_com_origem_fora_do_contrato")
+    # (e) corte legítimo do contrato (M15 decide): veta, com a origem no detalhe
+    det, _, _ = _det(b, [dict(it, corte_ciclo_contra_agora=True, corte_origem=CU.OR)], contra, "bloqueada", preco="4100.20")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert c5(r)["ok"] is False and "M15:fecha_abaixo_canal" in c5(r)["detalhe"] and r["contexto"]["corte"]["origem"] == ["M5:rompe_fundo -> M15:fecha_abaixo_canal"]
+    # (f) BabyMachine: contexto, confirmação de abertura e corte separados, com a origem de cada confirmação
+    leit = {"barra_m15_utc": barra.isoformat()}
+    ciclos = {"atestado": {"estado": "verificado", "motivo": None, "cv1": {"veredito": "bloqueada", "motivo": "teste", "janela": {"M1": 1, "M5": 1, "M15": 1}},
+                           "cv2": {"dirs": {"D1": -1, "H4": -1}}}}
+    det, _, _ = _det(b, [dict(it, origem_da_confirmacao={"timeframe_do_card": "M15", "card": "card5_engolfo", "leituras_usadas": "barras FECHADAS do M15",
+                                                       "tempos_maiores": "não participam da confirmação nem do corte"})], contra, "bloqueada", preco="4100.20")
+    av = api._sel_avaliar(sb, bot, det, leit, ciclos, int(agora.timestamp()))
+    S_ = av["separacao"]
+    assert set(S_) == {"contexto", "confirmacao_de_abertura", "corte"}
+    assert S_["contexto"]["tempos"] == {"D1": "baixa", "H4": "baixa", "H1": "baixa", "M30": "baixa"} and "não corta" in S_["contexto"]["papel"]
+    assert S_["confirmacao_de_abertura"]["origens"][0]["origem"]["timeframe_do_card"] == "M15"
+    assert S_["corte"]["contrato"] == "corte-ciclo-2" and S_["corte"]["assinado"] is True and S_["corte"]["nao_cortam"][:2] == ["M30", "H1"]
+    assert S_["corte"]["barras"]["que_abre_agora"]["compra"]["corta"] is False
+    c0 = next(c for g in av["grupos"].values() for c in g["candidatos"] if c["uid"] == it["uid"])
+    p4 = next(p for p in c0["portoes"] if p["portao"].startswith("4."))
+    assert p4["ok"] is True and "corte-ciclo-2" in p4["detalhe"] and c0["origem_da_confirmacao"]["card"] == "card5_engolfo"

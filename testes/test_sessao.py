@@ -64,19 +64,22 @@ def _det(b, itens=(), gestao=None, posicoes=(), negocios=(), preco=None, com_esp
                        "simbolo": sim, "magic": T._magic(b["tok"]), "ts_barra_m15": barra.isoformat(),
                        "cv1": {"janela": {k: dirs[k] for k in ("M1", "M5", "M15")}, "veredito": "bloqueada", "motivo": "item1_referencia_contra(D1)"},
                        "cv2": {"dirs": {"D1": dirs["D1"], "H4": dirs["H4"]}}}, segredo=T.SEGREDO)
-    cand = {"versao": "cand-4", "ativo": sim, "leitor": "1.6-hml", "codigo": {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"},
+    cand = {"versao": "cand-5", "ativo": sim, "leitor": "1.7-hml", "codigo": {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"},
             "barra_m15_corretora": R._cor(barra - timedelta(seconds=900)), "agora_corretora": R._cor(barra), "territorio_h4_h1_m30": 0,
             "tfs": {tf: {"barra_corretora": R._cor(barra - timedelta(seconds=900))} for tf in ("M15", "M30", "H1")},
             "confirmacao": {"contrato": "conf-rt-1", "validade_s": 1800,
                             "slot_agora": {"corte_contra_compra": False, "corte_contra_venda": False, "B1": False, "B5": False}},
             "itens": list(itens)}
+    import corte_util as CU
+    cand["cortes"] = CU.cortes(fech_venda=bool((gestao or {}).get("corte")), contrato=(gestao or {}).get("contrato_corte", "corte-ciclo-2"),
+                               origem=(gestao or {}).get("origem"))
     if com_esp:
         cand["especificacao"] = dict(esp or ESP[sim], lido_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     if gestao is not None:
         cand["gestao"] = {"contrato": "gestao-1", "barra_m15_corretora": R._cor(barra - timedelta(seconds=900)), "fechamento": 4099.0,
                           "B1": False, "B5": gestao.get("B5", False),
                           "lados": {"compra": {"corte_do_ciclo": False, "B3": False, "stop_estrutural": None, "stop_do_lado_certo": False},
-                                    "venda": {"corte_do_ciclo": gestao.get("corte", False), "B3": gestao.get("B3", False),
+                                    "venda": {"corte_do_ciclo": gestao.get("corte", False), "corte_origem": (gestao.get("origem", CU.OR) if gestao.get("corte") else []), "B3": gestao.get("B3", False),
                                               "stop_estrutural": gestao.get("stop"), "stop_do_lado_certo": gestao.get("stop") is not None}}}
     por_tf = {k: {"dir": v, "ultimo_topo": 4130.0, "ultimo_fundo": 4070.0} for k, v in dirs.items()}
     os.environ["BT_CV_SEGREDO"] = T.SEGREDO
@@ -88,7 +91,7 @@ def _det(b, itens=(), gestao=None, posicoes=(), negocios=(), preco=None, com_esp
     extra = {"simbolo": sim, "cv_atestado": at, "preco": preco or ("4099.80" if sim == "XAUUSD" else "86000.00"),
              "spr": "12" if sim == "XAUUSD" else "1200", "pt": "0.01",
              "cv_motor": {"estado": "ok", "motivo": "teste", "off_ea_s": OFF, "por_tf": por_tf, "leitura": {"fase": {"fase": 3}}, "candidatos": cand,
-                          "leitor": "1.6-hml", "versao_ponte_conector": "hml12"},
+                          "leitor": "1.7-hml", "versao_ponte_conector": "hml13"},
              "cv_atestado_cand": P["_cv_assinar_candidatos"](at, cand, {"por_tf": por_tf}, OFF),
              "cv_negocios": P["_cv_assinar_negocios"](at, neg, T._magic(b["tok"]))}
     return T._det(b["tok"], extra=extra), barra
@@ -389,11 +392,25 @@ def test_6_gestao_pelo_contrato_do_estudo_e_resultado_pelos_negocios(api, amb, s
     det, barra = _det(x, [it], gestao={"stop": 4108.0}, posicoes=pos)
     assert _snap(x, det, pos=1)[0] == 200 and n_cmd("mover_sl") == 0
     assert T._pg("select gestao->0->>'acao' from sessao_aberturas where id=%s", ab_id)[0][0] == "manter"
+    # C27R25 — corte que NÃO é do contrato corte-ciclo-2 não fecha: (a) contrato anterior, (b) origem decidida por H1, (c) por M30
+    for g_ruim, falha in (({"corte": True, "contrato_corte": "corte-ciclo-1"}, "contrato_de_corte_diferente"),
+                          ({"corte": True, "origem": [{"identificado_em": ["M5:x"], "decidido_por": ["H1:y"]}]}, "corte_com_origem_fora_do_contrato"),
+                          ({"corte": True, "origem": [{"identificado_em": ["M1:x"], "decidido_por": ["M30:y"]}]}, "corte_com_origem_fora_do_contrato")):
+        T._pg("update sessao_aberturas set gestao='[]'::jsonb where id=%s", ab_id)
+        det, barra = _det(x, [it], gestao=g_ruim, posicoes=pos)
+        assert _snap(x, det, pos=1)[0] == 200 and n_cmd("close") == 0
+        gr = T._pg("select gestao->0 from sessao_aberturas where id=%s", ab_id)[0][0]
+        assert gr["acao"] == "manter" and gr["corte"]["ignorado"].startswith(falha) and gr["corte"]["exigido"] == "corte-ciclo-2"
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='gestao' and estado='aviso' and motivo like '%%corte do Ciclo IGNORADO%%'", x["id"])[0][0] >= 1
     T._pg("update sessao_aberturas set gestao='[]'::jsonb where id=%s", ab_id)
     det, barra = _det(x, [it], gestao={"corte": True, "stop": 4103.0}, posicoes=pos)
     assert _snap(x, det, pos=1)[0] == 200 and _snap(x, det, pos=1)[0] == 200
     c = T._pg("select params from mt5_comandos where bot_id=%s and tipo='close'", x["id"])
     assert len(c) == 1 and c[0][0]["ticket"] == 777001 and c[0][0]["motivo"] == "ciclo" and n_cmd("mover_sl") == 0
+    gr = T._pg("select gestao->0 from sessao_aberturas where id=%s", ab_id)[0][0]              # a regra original responsável fica no registro
+    assert gr["corte"]["contrato"] == "corte-ciclo-2" and gr["corte"]["origem"] == ["M5:rompe_fundo -> M15:fecha_abaixo_canal"]
+    assert "FichaSerie._cortes" in gr["corte"]["regra_original"] and gr["corte"]["nao_cortam"][:2] == ["M30", "H1"]
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='gestao' and motivo like '%%corte-ciclo-2%%M15:fecha_abaixo_canal%%'", x["id"])[0][0] == 1
     # stop mexido FORA da plataforma (trailing do próprio EA): registrado como aviso, o livro acompanha
     pos2 = [dict(pos[0], sl=4101.5), pos[1]]
     det, barra = _det(x, [it], gestao={"corte": True}, posicoes=pos2)

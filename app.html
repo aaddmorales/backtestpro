@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.60-sessao-ensaio-c27r24';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.61-corte-do-ciclo-c27r25';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9483,6 +9483,7 @@ function clmSelBox(botId, S){
     const moTxt = Mo ? `<b>Motivos, separados</b><br>${Mo.length ? Mo.map(m => `<span class="clm-st ${efCor(m.efeito)}">${_clmE(String(m.efeito||'').toUpperCase())}</span> ${_clmE(m.condicao)} <span class="clm-sub">— ${_clmE(m.onde||'')} · ${_clmE(m.categoria||'')} · ${_clmE(m.detalhe||'')}</span>`).join('<br>') : '<span class="clm-sub">nenhum</span>'}<br>` : '';
     const det = aberto ? `<tr class="clm-det"><td colspan="8"><div class="clm-grid2"><div class="clm-c"><b>Portões obrigatórios (ordem de aplicação)</b><br>${(c.portoes||[]).map(p => `${p.ok===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.ok===false?'<span class="clm-st clm-bad">FECHADO</span>':'<span class="clm-st clm-na">NÃO AVALIADO</span>')} ${_clmE(p.portao)} <span class="clm-sub">— ${_clmE(p.detalhe||'')} · ${_clmE(p.origem||'')}</span>`).join('<br>')}</div>
       <div class="clm-c">${moTxt}${frTxt}${(Cx.barra_atual||[]).length ? `<b>Tempos superiores agora (barra em formação, à parte)</b><br><span class="clm-sub">${Cx.barra_atual.map(_clmE).join('<br>')}</span><br>` : ''}${Cx.exigencia_do_card ? `<span class="clm-sub">${_clmE(Cx.exigencia_do_card)}</span><br>` : ''}<b>Níveis e contrato</b><br>entrada ${_clmE(N.entrada ?? '—')} · stop ${_clmE(N.stop ?? '—')} · risco ${_clmE(N.risco_pts ?? '—')} pts<br><span class="clm-sub">${_clmE(N.stop_regra||'')} · ${_clmE(N.saida_regra||'')}</span><br>
+        ${c.origem_da_confirmacao ? `<b>Origem da confirmação</b> <span class="clm-sub">${_clmE(c.origem_da_confirmacao.card)} no ${_clmE(c.origem_da_confirmacao.timeframe_do_card)} · ${_clmE(c.origem_da_confirmacao.leituras_usadas||'')} · tempos maiores: ${_clmE(c.origem_da_confirmacao.tempos_maiores||'')}</span><br>` : ''}${c.corte ? `<b>Corte contra este lado agora</b> ${c.corte.corta_agora ? '<span class="clm-st clm-bad">CORTA</span>' : '<span class="clm-st clm-ok">NÃO CORTA</span>'} <span class="clm-sub">contrato ${_clmE(c.corte.contrato||'ausente')}${(c.corte.origem||[]).length ? ' · origem: ' + c.corte.origem.map(o => _clmE((o.identificado_em||[]).join(' ') + ' → ' + (o.decidido_por||[]).join(' '))).join('; ') : ''}</span><br>` : ''}
         <b>Barreira contrária</b> ${c.barreira_contraria ? `${_clmE(c.barreira_contraria.tf)} em ${_clmE(c.barreira_contraria.nivel)} · ${_clmE(c.barreira_contraria.distancia_em_R)} R${c.barreira_contraria.aviso ? ' <span class="clm-warn">(menos de 1 R)</span>' : ''}` : '—'}<br>
         <b>Autoridade em vigor (R-CICLO-01 r01v4, na M15)</b> ${(c.configuracao_atual||{}).autorizaria ? '<span class="clm-st clm-ok">AUTORIZARIA</span>' : '<span class="clm-st clm-bad">NÃO AUTORIZARIA</span>'} <span class="clm-sub">${_clmE((c.configuracao_atual||{}).motivo||'')}</span><br>
         ${E.comparabilidade ? `<b>Estudo × ao vivo</b> <span class="clm-sub">medido: ${_clmE(E.comparabilidade.contrato_medido)} · ao vivo: ${_clmE(E.comparabilidade.contrato_ao_vivo)}<br>${(E.comparabilidade.diferencas||[]).map(d => '• ' + _clmE(d.item) + ': medido — ' + _clmE(d.medido) + '; ao vivo — ' + _clmE(d.ao_vivo)).join('<br>')}</span><br>` : ''}
@@ -9535,11 +9536,28 @@ function clmSelBox(botId, S){
     <div class="clm-grid2" style="margin-top:6px">
       <div class="clm-c"><b>Conclusão da barra ${_clmHora(A.barra_m15_utc)} · contrato da seleção ${_clmE(A.versao)} (em observação)</b><br>${R.elegiveis_proposto ? '<span class="clm-st clm-ok">'+_clmE(R.conclusao)+'</span>' : '<span class="clm-st clm-na">NENHUMA OPORTUNIDADE ELEGÍVEL</span>'}<br><span class="clm-sub">${_clmE(R.candidatos)} candidato(s) · ${_clmE((R.por_estado||{}).elegivel)} elegível(is) · ${_clmE((R.por_estado||{}).aguardando)} aguardando · ${_clmE((R.por_estado||{}).vetada)} vetado(s) · ${_clmE((R.por_estado||{}).sem_dados)} sem dados${R.em_sentido_oposto_a_d1_ou_h4 != null ? ' · ' + _clmE(R.em_sentido_oposto_a_d1_ou_h4) + ' em sentido oposto a D1/H4 (contexto)' : ''}${R.frescor_inalcancavel ? ' · <span class="clm-warn">' + _clmE(R.frescor_inalcancavel) + ' com frescor inalcançável</span>' : ''}${R.confirmados_validos != null ? ' · ' + _clmE(R.confirmados_validos) + ' confirmado(s) dentro da validade' : ''}${R.entradas_perdidas ? ' · <span class="clm-bad">' + _clmE(R.entradas_perdidas) + ' entrada(s) perdida(s)</span>' : ''}</span></div>
       <div class="clm-c"><b>Autoridade em vigor (R-CICLO-01 r01v4)</b><br><span class="clm-sub">${_clmE(R.conclusao_atual||'')}</span><br><span class="clm-sub">canal na última barra fechada: D1 ${_clmE(X.D1||'—')} · H4 ${_clmE(X.H4||'—')} · veredito do motor ${_clmE(X.topdown_do_motor||'—')} (${_clmE(X.motivo_do_motor||'')}) · território ${_clmE(X.territorio_h4_h1_m30 ?? '—')}</span></div>
-    </div>${tsup}
+    </div>${tsup}${clmSeparacao(A.separacao)}
     ${I.ok ? '' : `<div class="clm-bad" style="margin-top:6px">Integridade: ${_clmE((I.motivos||[]).join('; '))}</div>`}
     <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Identidade</th><th>Sinal</th><th>Estudo (referência)</th><th>Contexto superior</th><th>Elegibilidade</th><th>Pontuação</th><th>Escolha</th><th>Execução</th></tr></thead><tbody>${['M15','M30','H1'].map(grupo).join('')}</tbody></table></div>
     <div class="clm-sub" style="margin-top:6px">Sinais: ${_clmE((A.produtor_dos_sinais||{}).onde||'')} · leitor ${_clmE((A.produtor_dos_sinais||{}).leitor||'—')} · cards ${_clmE(((A.produtor_dos_sinais||{}).codigo||{}).cards||'—')} · <b>não assinados</b>. Resultado do estudo é histórico; a integridade é da barra atual. Clique num candidato para ver os portões.</div>
     ${ac}<div class="clm-sub" style="margin-top:4px">Últimas barras: ${hist}</div></div>`;
+}
+
+// C27R25 — três coisas separadas: CONTEXTO (informa), CONFIRMAÇÃO DE ABERTURA (card no seu tempo) e CORTE (contrato; só o M15 decide).
+function clmSeparacao(S){
+  if(!S) return '';
+  const X = S.contexto || {}, F = S.confirmacao_de_abertura || {}, K = S.corte || {}, B = K.barras || {};
+  const lado = (b, n) => { const x = (b || {})[n]; if(!x) return '<span class="clm-na">sem leitura</span>';
+    const og = (x.origem || []).map(o => _clmE((o.identificado_em||[]).join(' ') + ' → ' + (o.decidido_por||[]).join(' '))).join('; ');
+    return (x.corta ? '<span class="clm-st clm-bad">CORTA</span>' : '<span class="clm-st clm-ok">NÃO CORTA</span>') + (og ? ' <span class="clm-sub">' + og + '</span>' : '')
+      + (x.divergencia ? '<br><span class="clm-warn">' + _clmE(x.divergencia) + ' <span class="clm-sub">(' + _clmE(((x.integracao_anterior||{}).motivo)||'') + ')</span></span>' : ''); };
+  const barra = (t, b) => `<tr><td>${t}</td><td>${lado(b, 'compra')}</td><td>${lado(b, 'venda')}</td></tr>`;
+  return `<div class="clm-grid2" style="margin-top:6px">
+    <div class="clm-c"><b>1 · Contexto</b> <span class="clm-sub">(${_clmE(X.papel||'')})</span><br>${Object.entries(X.tempos||{}).map(([t, v]) => `${_clmE(t)} ${v ? _clmE(v) : '<span class="clm-na">sem leitura</span>'}`).join(' · ')}<br><span class="clm-sub">${_clmE(X.nota||'')}</span><br>
+      <b>2 · Confirmação de abertura</b> <span class="clm-sub">(${_clmE(F.contrato||'—')} · ${_clmE(F.papel||'')})</span><br>${(F.origens||[]).length ? F.origens.map(o => `<span class="clm-sub">• ${_clmE(o.card)} · ${_clmE(o.tf)} · ${o.lado > 0 ? 'compra' : 'venda'} — ${_clmE((o.origem||{}).leituras_usadas||'origem não informada pelo leitor')}</span>`).join('<br>') : '<span class="clm-na">nenhum sinal confirmado nesta barra</span>'}</div>
+    <div class="clm-c"><b>3 · Corte</b> <span class="clm-sub">contrato ${_clmE(K.contrato||'—')} · ${K.assinado ? 'assinado' : '<span class="clm-bad">NÃO assinado: ' + _clmE(K.falha_do_assinado||'') + '</span>'}</span><br><span class="clm-sub">${_clmE(K.regra_original||'')}</span><br><span class="clm-sub">identificam/decidem: ${_clmE((K.andares_do_contrato||[]).join(', '))} · <b>não cortam: ${_clmE((K.nao_cortam||[]).join(', '))}</b></span>
+      ${K.leitor_sem_o_contrato ? '<br><span class="clm-bad">leitor sem o contrato de corte: nenhuma abertura é autorizada e nenhum corte é aplicado</span>' : `<table style="min-width:0;margin-top:4px"><thead><tr><th>Barra M15</th><th>Contra compra</th><th>Contra venda</th></tr></thead><tbody>${barra('que abre agora (entrada)', B.que_abre_agora)}${barra('última fechada (gestão)', B.ultima_fechada)}</tbody></table>`}
+      <span class="clm-sub">${_clmE(K.divergencia_da_integracao_anterior||'')}</span></div></div>`;
 }
 
 // C27R15 — decisão REGISTRADA da barra × situação da integração AGORA (nunca se misturam).

@@ -29,7 +29,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"''', "H1-api_base")
 
 n = troca(n, 'APP_NOME = "BotTested Conector"', 'APP_NOME = "BotTested Conector HOMOLOG"', "H2-nome")
-n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml12"', "H2-versao")
+n = troca(n, 'APP_VERSAO = "v1.35"', 'APP_VERSAO = "v1.35-hml13"', "H2-versao")
 
 # H3 — log de depuração separado
 n = troca(n, '"BotTested_Conector_debug.log"', '"BotTested_Conector_HOMOLOG_debug.log"', "H3-log")

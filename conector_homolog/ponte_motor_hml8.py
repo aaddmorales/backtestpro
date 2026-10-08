@@ -69,7 +69,7 @@ def _cv_atestar(dados, bot_token=""):
     dados.pop("cv_atestado", None)
     dados.pop("cv_atestado_falha", None)
     dados.pop("cv_motor", None)
-    mot = {"versao_ponte_conector": "hml12"}
+    mot = {"versao_ponte_conector": "hml13"}
     dados["cv_motor"] = mot
 
     def falha(estado, motivo):
@@ -271,6 +271,16 @@ def _cv_assinar_candidatos(at, cand, resumo, off_s):
     do motor, com confirmação em tempo real (conf-rt-1). Números viajam como texto: a assinatura não
     pode depender de como cada lado escreve um decimal. Devolve None se não houver o que assinar."""
     import bt_cv_atestado as _cvat5
+
+    def _cv_corte_origem(o):
+        """Origem de um corte em texto estável para a assinatura: 'M5:ev_x M10:ev_y -> M15:ev_z' por ocorrência."""
+        out = []
+        for x in (o or []):
+            if isinstance(x, dict):
+                out.append((" ".join(str(y) for y in (x.get("identificado_em") or [])) + " -> "
+                            + " ".join(str(y) for y in (x.get("decidido_por") or []))).strip()[:200])
+        return out
+
     if not isinstance(cand, dict) or cand.get("erro") or not isinstance(cand.get("confirmacao"), dict):
         return None
     if str(cand.get("ativo")) != str(at.get("simbolo")):
@@ -288,6 +298,7 @@ def _cv_assinar_candidatos(at, cand, resumo, off_s):
                       "confirmado_utc": _cv_utc(it.get("ts_confirmacao"), off_s), "vence_utc": _cv_utc(it.get("ts_vence"), off_s),
                       "preco_ref": "%.6f" % float(it.get("preco_ref")), "stop": "%.6f" % float(it.get("stop")),
                       "corte_do_ciclo_agora": 1 if it.get("corte_ciclo_contra_agora") else 0,
+                      "corte_origem": _cv_corte_origem(it.get("corte_origem")),
                       "dir_do_timeframe": (por_tf.get(str(it.get("tf"))) or {}).get("dir")})
     slot = (cand.get("confirmacao") or {}).get("slot_agora") or {}
     corpo = {k: at[k] for k in ("bot_token_hash", "versao_motor", "simbolo", "magic", "ts_barra_m15", "cv1", "cv2")}
@@ -307,8 +318,19 @@ def _cv_assinar_candidatos(at, cand, resumo, off_s):
         corpo["gestao"] = _cv_txt({"contrato": ges.get("contrato"),
                                    "barra_m15_utc": _cv_utc(ges.get("barra_m15_corretora"), off_s),
                                    "fechamento": ges.get("fechamento"), "B1": ges.get("B1"), "B5": ges.get("B5"),
-                                   "lados": {k: {q: v.get(q) for q in ("corte_do_ciclo", "B3", "stop_estrutural", "stop_do_lado_certo")}
+                                   "lados": {k: dict({q: v.get(q) for q in ("corte_do_ciclo", "B3", "stop_estrutural", "stop_do_lado_certo")},
+                                                     corte_origem=_cv_corte_origem(v.get("corte_origem")))
                                              for k, v in ges["lados"].items() if k in ("compra", "venda")}})
+    # hml13 (C27R25): CONTRATO DE CORTE na mesma assinatura. Quem corta é o M15 (identificação em M1/M5/M10);
+    # M30, H1 e tempos maiores não cortam. A API só aceita corte (na entrada e na gestão) com este contrato assinado.
+    cor = cand.get("cortes")
+    if isinstance(cor, dict) and isinstance(cor.get("barras"), dict):
+        corpo["corte"] = {"contrato": str(cor.get("contrato")),
+                          "andares": [str(x) for x in (cor.get("andares_do_contrato") or [])],
+                          "barras": {rot: {nome: {"corta": 1 if (b.get(nome) or {}).get("corta") else 0,
+                                                  "origem": _cv_corte_origem((b.get(nome) or {}).get("origem"))}
+                                           for nome in ("compra", "venda")}
+                                     for rot, b in cor["barras"].items() if rot in ("que_abre_agora", "ultima_fechada")}}
     return _cvat5.assinar(corpo)
 
 

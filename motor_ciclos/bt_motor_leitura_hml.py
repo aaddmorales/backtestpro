@@ -37,8 +37,10 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.6-hml"
-CAND_VERSAO = "cand-4"
+LEITOR_VERSAO = "1.7-hml"
+CAND_VERSAO = "cand-5"
+CORTE_CONTRATO = "corte-ciclo-2"            # corte do motor (Feito00093) com o M15 como ÚNICO andar que decide (C27R25)
+CORTE_ANDARES = ("M1", "M5", "M10", "M15")  # M1/M5/M10 identificam, M15 decide; M30, H1 e acima NÃO cortam
 GESTAO_CONTRATO = "gestao-1"                # vida da posição pelo contrato do estudo (C27R24)
 CONF_CONTRATO = "conf-rt-1"                 # confirmação em TEMPO REAL (C27R23)
 VALIDADE_ENTRADA_S = 1800                   # 30 min a contar da confirmação (= IDADE_MAX de 1 barra M15 do executor congelado)
@@ -173,7 +175,7 @@ def _espelho_com_barra_aberta(pasta, destino):
     return destino
 
 
-def _confirmar_rt(B1, PC, F, F15, sinais, n_tf, n15):
+def _confirmar_rt(B1, PC, F, F15, sinais, n_tf, n15, corta=None):
     # F e F15 vêm da visão COM a barra aberta: têm uma casa a mais (índices n_tf e n15) que só serve para
     # ler corte/blindagem da barra que abre agora. Preços, sinais e stops usam apenas índices < n reais.
     """CONFIRMAÇÃO EM TEMPO REAL (contrato conf-rt-1). Mesmas condições do resolvedor do estudo
@@ -192,8 +194,10 @@ def _confirmar_rt(B1, PC, F, F15, sinais, n_tf, n15):
     A15 = F15.lt.andares[F15.andar_op]; atr15 = F15.D.atr14.values
     ign_b5 = bool(PC.IGNORAR_B5)
 
+    corta = corta if corta is not None else F15.corta     # 1.7: corte do CONTRATO (corte-ciclo-2); sem ele, o da ficha
+
     def casa(lado, k):                                    # k <= n15 (n15 = a barra que abre agora)
-        return bool(F15.corta[lado][k]), bool(F15.B1[k] or (F15.B5[k] and not ign_b5))
+        return bool(corta[lado][k]), bool(F15.B1[k] or (F15.B5[k] and not ign_b5))
 
     out = []
     for (i_sin, lado, nivel, modo) in sorted(sinais, key=lambda x: x[0]):
@@ -226,7 +230,7 @@ def _confirmar_rt(B1, PC, F, F15, sinais, n_tf, n15):
             r["motivo"] = "armado no nível; espera uma barra fechar com continuidade"
             for j in range(i_sin + 1, min(i_sin + 40, n)):
                 kj = int(np.searchsorted(ts15, ts[j], side="right")) - 1
-                if kj >= 0 and F15.corta[lado][kj]:
+                if kj >= 0 and corta[lado][kj]:
                     r.update(estado="cancelado", motivo="corte do Ciclo contra o lado com o gatilho armado"); break
                 if kj >= 0 and (F15.B1[kj] or (F15.B5[kj] and not ign_b5)):
                     continue
@@ -290,6 +294,7 @@ def _candidatos(pasta, ativo, spread_tick=None):
             for tf in TFS_CANDIDATOS:
                 if tf not in fichas_p and tf in ltp.andares:
                     fichas_p[tf] = B1.FichaSerie(ltp, tf, ativo)
+            CC = _corte_contrato(B1, pasta_ab, ativo, F15p)
         finally:
             shutil.rmtree(pasta_ab, ignore_errors=True)
     n15 = int(F15.n); k_ult = n15 - 1
@@ -299,13 +304,14 @@ def _candidatos(pasta, ativo, spread_tick=None):
     ponto = float(getattr(PC, "PONTO", 0) or 0)
     T = F15p.ts[n15]                                   # abertura da M15 que abre agora = fechamento da última do espelho
     ign_b5 = bool(PC.IGNORAR_B5)
-    slot = {"T": T, "corta": {1: bool(F15p.corta[1][n15]), -1: bool(F15p.corta[-1][n15])},
+    # 1.7: corte pelo contrato do motor com o M15 como único andar que decide (motor intocado)
+    slot = {"T": T, "corta": {1: bool(CC["corta"][1][n15]), -1: bool(CC["corta"][-1][n15])},
             "B1": bool(F15p.B1[n15]), "B5": bool(F15p.B5[n15] and not ign_b5),
             "B5_nota": ("B5 (fim de semana) vale nos 30 min finais de sexta no estudo; em tempo real o fim da sessão não é conhecido "
                         "e a blindagem fica ligada para a barra que abre agora" if (F15p.B5[n15] and not ign_b5) else None)}
     seg = lambda dt: int(dt / np.timedelta64(1, "s"))
     try:
-        gestao = _gestao(B1, PC, ltp, F15p, n15, ts_txt)
+        gestao = _gestao(B1, PC, ltp, F15p, n15, ts_txt, CC)
     except Exception as e:
         gestao = {"contrato": GESTAO_CONTRATO, "erro": f"{type(e).__name__}: {e}"[:200]}
     itens = []; cont = {"confirmado": 0, "aguardando": 0, "cancelado": 0, "expirado": 0, "invalido": 0}
@@ -323,7 +329,7 @@ def _candidatos(pasta, ativo, spread_tick=None):
                 sin = fn(F, F.D)
                 res = B2.resolver_entradas(F, sin, F15)          # resolvedor RETROSPECTIVO do estudo: só referência
                 sin_p = [x for x in fn(Fp, Fp.D) if int(x[0]) < int(F.n)]      # sinais só em barras FECHADAS
-                rt = _confirmar_rt(B1, PC, Fp, F15p, sin_p, int(F.n), n15)     # confirmação possível em TEMPO REAL
+                rt = _confirmar_rt(B1, PC, Fp, F15p, sin_p, int(F.n), n15, corta=CC["corta"])   # confirmação em TEMPO REAL
             passo_tf = (F.ts[1] - F.ts[0])
             val15 = max(1, int(B2.VALIDADE_FILA_TF * passo_tf / passo15))
             base = {"card": cid, "nome": nome, "tf": tf, "validade_m15": val15}
@@ -338,7 +344,11 @@ def _candidatos(pasta, ativo, spread_tick=None):
                 comum = dict(base, lado=lado, uid=uid, ts_sinal=ts_txt(F.ts[i_sin]),
                              ts_sinal_fecha=ts_txt(F.ts[i_sin] + passo_tf), modo=r["modo"],
                              nivel=(None if r["nivel"] is None else round(r["nivel"], 6)),
-                             corte_ciclo_contra_agora=bool(slot["corta"][lado]))
+                             corte_ciclo_contra_agora=bool(slot["corta"][lado]),
+                             corte_origem=CC["origem"][lado].get(n15) or [],
+                             origem_da_confirmacao={"timeframe_do_card": tf, "card": cid,
+                                                    "leituras_usadas": "barras FECHADAS do " + tf + " (sinal do card) e do M15 (relógio da entrada, stop e corte)",
+                                                    "tempos_maiores": "não participam da confirmação nem do corte"})
                 if r["estado"] == "confirmado":
                     idade_s = seg(T - r["t_conf"])
                     if idade_s > val15 * 900:                     # fora da janela de exibição (bem depois de vencido)
@@ -399,11 +409,74 @@ def _candidatos(pasta, ativo, spread_tick=None):
                                    "frescor_para_entrada_nova": "30 min a contar da confirmação em tempo real (IDADE_MAX de 1 barra M15 do vivo)",
                                    "validade_na_fila": "4 barras do TF do card"},
             "gestao": gestao,
+            "cortes": _cortes_relato(CC, F15p, n15),
             "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
             "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
 
 
-def _gestao(B1, PC, ltp, F15p, n15, ts_txt):
+def _corte_contrato(B1, pasta_ab, ativo, F15p, ts_txt=str):
+    """v1.7 — CORTE PELO CONTRATO VIGENTE DO MOTOR, restrito ao andar de decisão M15 (contrato corte-ciclo-2).
+    Regra original (bloco1_motor_v3, "DECISAO DE CORTE — A PARTIR DO M15, SEGUIDO DE CONFIRMACAO", Feito00093, e
+    FichaSerie._cortes, a mesma ficha que o estudo usa): M1/M5/M10 IDENTIFICAM e nunca cortam; o corte só existe
+    quando, na mesma barra M15, há identificação embaixo E um evento de reversão/exaustão no andar que DECIDE.
+    Adequação (ordem do dono, 08/out): o único andar que decide é o M15. M30, H1, H4, D1, W1 e MN1 não cortam.
+    Como: a MESMA classe congelada (FichaSerie), sem alteração, calculada sobre o espelho só com M1, M5, M10 e
+    M15 — os andares maiores simplesmente não estão lá para decidir. Devolve corta[lado][k] e a origem."""
+    import contextlib, io
+    lt = B1.LeitorMultiTF(pasta_ab, ativo).carregar()
+    for nm in [a for a in list(lt.andares) if a not in CORTE_ANDARES]:
+        lt.andares.pop(nm, None)
+    with contextlib.redirect_stdout(io.StringIO()):
+        Fr = B1.FichaSerie(lt, "M15", ativo)
+    n = int(F15p.n)
+    if int(Fr.n) != n or not (Fr.ts == F15p.ts).all():
+        raise AssertionError("ficha restrita com relógio M15 diferente da ficha completa")
+    corta = {1: Fr.corta[1].copy(), -1: Fr.corta[-1].copy()}
+    origem = {1: {}, -1: {}}
+    for lado in (1, -1):
+        for k in range(max(0, n - 40), n):                 # origem só das barras recentes (o que é exibido e assinado)
+            if not corta[lado][k]:
+                continue
+            mot = str(Fr.motivo[lado][k] or "")
+            ident, _s, dec = mot.partition("->")
+            item = {"identificado_em": [x for x in ident.split() if ":" in x],
+                    "decidido_por": [x.strip() for x in dec.split("->") if ":" in x]}
+            fora = [x for x in item["identificado_em"] + item["decidido_por"] if x.split(":")[0] not in CORTE_ANDARES]
+            if fora:
+                raise AssertionError(f"corte com andar fora do contrato: {fora}")
+            origem[lado][k] = [item]
+    return {"contrato": CORTE_CONTRATO, "corta": corta, "origem": origem}
+
+
+def _cortes_relato(CC, F15p, n15):
+    """Relato do corte nesta barra: o do CONTRATO (que vale) ao lado do que a integração anterior usava
+    (ficha do motor: FichaSerie.corta, em que M30/H1/H4/D1/W1/MN1 também decidem), com a divergência nomeada."""
+    def antigo(lado, k):
+        mot = str(F15p.motivo[lado][k] or "")
+        dec = sorted({p.split(":")[0].strip() for p in mot.split("->")[1:] if ":" in p}) if "->" in mot else []
+        return {"corta": bool(F15p.corta[lado][k]), "motivo": mot[:200], "andares_que_decidiram": dec}
+    out = {"contrato": CORTE_CONTRATO,
+           "regra": "motor congelado, 'corte a partir do M15, seguido de confirmação' (Feito00093; FichaSerie._cortes): "
+                    "identificação em M1/M5/M10 (que nunca cortam) + evento de reversão/exaustão no M15, na mesma barra M15",
+           "andares_do_contrato": list(CORTE_ANDARES),
+           "nao_cortam": ["M30", "H1", "H4", "D1", "W1", "MN1"], "barras": {}}
+    for rot, k in (("que_abre_agora", int(n15)), ("ultima_fechada", int(n15) - 1)):
+        b = {}
+        for nome, lado in (("compra", 1), ("venda", -1)):
+            a = antigo(lado, k)
+            c = bool(CC["corta"][lado][k])
+            fora = [x for x in a["andares_que_decidiram"] if x not in CORTE_ANDARES]
+            b[nome] = {"corta": c, "origem": CC["origem"][lado].get(k) or [],
+                       "integracao_anterior": a,
+                       "divergencia": (None if a["corta"] == c else
+                                       ("a integração anterior cortaria por " + ", ".join(fora) + "; o contrato não corta" if (a["corta"] and fora)
+                                        else ("a integração anterior cortaria; o contrato não corta" if a["corta"]
+                                              else "o contrato corta; a integração anterior não cortaria")))}
+        out["barras"][rot] = b
+    return out
+
+
+def _gestao(B1, PC, ltp, F15p, n15, ts_txt, CC=None):
     """v1.6 — VIDA DA POSIÇÃO pelo contrato do estudo (professor_bloco2.rodar_seletor, "100% Ciclo no relógio
     do M15"), lida na ÚLTIMA M15 FECHADA (índice n15-1 da visão com a barra aberta, onde o código congelado
     já a avalia). Para cada lado: corte do Ciclo (corta e não B1), B3 (tempo sem progresso), B5 e o stop
@@ -427,7 +500,9 @@ def _gestao(B1, PC, ltp, F15p, n15, ts_txt):
             pv = mp.ultimo_fundo[1] if lado > 0 else mp.ultimo_topo[1]
             nst = float(pv - lado * PC.BUFFER_ATR * ak)
         out["lados"]["compra" if lado > 0 else "venda"] = {
-            "corte_do_ciclo": bool(F15p.corta[lado][k] and not F15p.B1[k]),
+            "corte_do_ciclo": bool((CC["corta"] if CC else F15p.corta)[lado][k] and not F15p.B1[k]),
+            "corte_origem": ((CC["origem"][lado].get(k) or []) if CC else []),
+            "corte_contrato": (CORTE_CONTRATO if CC else "ficha do motor (integração anterior)"),
             "B3": bool(b3.get("corta")), "B3_motivo": str(b3.get("motivo"))[:160],
             "stop_estrutural": (None if nst is None else round(nst, 6)),
             "stop_do_lado_certo": bool(nst is not None and ((lado > 0 and nst < ck) or (lado < 0 and nst > ck)))}
