@@ -1,5 +1,5 @@
 -- 0013 — C27R27 · correção do drawdown diário em sessao_diario: o pico agora é o MÁXIMO CORRENTE do resultado acumulado
--- do dia (antes era o maior resultado individual, o que podia exagerar a queda). Só a função; nada é apagado.
+-- do dia (antes era o maior resultado individual, o que podia exagerar a queda); 'autoridade emitiria' conta SERIA/seria (ilike). Só a função; nada é apagado.
 create or replace function public.sessao_diario(p_sessao text, p_bots bigint[])
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare s public.sessoes_teste%rowtype; v_fuso text; out jsonb := '{}'::jsonb; b record; v jsonb; d record;
@@ -44,7 +44,7 @@ begin
                   select (sa.barra_m15 at time zone v_fuso)::date as dia, coalesce(split_part(c->>'primeiro_impedimento', ' — ', 1), 'elegível') as m, count(*) as n
                     from public.selecao_avaliacoes sa, jsonb_path_query(sa.avaliacao, '$.grupos.*.candidatos[*]') c
                    where sa.sessao_teste_id = p_sessao and sa.bot_id = b.id group by 1, 2) z group by dia),
-      obs as (select (t.ts at time zone v_fuso)::date as dia, count(*) filter (where t.etapa = 'autoridade_r01v5' and t.motivo like 'SOMBRA%seria emitida%') as autoridade_emitiria,
+      obs as (select (t.ts at time zone v_fuso)::date as dia, count(*) filter (where t.etapa = 'autoridade_r01v5' and t.motivo ilike 'SOMBRA%seria emitida%') as autoridade_emitiria,
                      count(*) filter (where t.etapa = 'limites' and t.estado = 'recusado') as recusadas_pelos_limites
                 from public.ciclo_trilha t where t.sessao_teste_id = p_sessao and t.bot_id = b.id group by 1),
       est as (select (a.ts_fechamento at time zone v_fuso)::date as dia,
