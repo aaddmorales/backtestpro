@@ -386,6 +386,12 @@ def test_6_gestao_pelo_contrato_do_estudo_e_resultado_pelos_negocios(api, amb, s
     assert c[0][3]["uid_gestao"].startswith(f"G-{ab_id}-")
     g = T._pg("select gestao from sessao_aberturas where id=%s", ab_id)[0][0]
     assert len(g) == 1 and g[0]["acao"] == "mover_sl" and g[0]["barras_de_posicao"] >= 1
+    # C27R25: o MT5 devolve o stop arredondado pela corretora (4103.0 → 4103.004 na bancada, < 1 ponto): é o do comando, não "FORA da plataforma"
+    pos_r = [dict(pos[0], sl=4103.004), pos[1]]
+    det, barra = _det(x, [it], gestao={"stop": 4103.0}, posicoes=pos_r)
+    assert _snap(x, det, pos=1)[0] == 200
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='gestao' and estado='aviso' and motivo like '%%FORA da plataforma%%'", x["id"])[0][0] == 0
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='gestao' and estado='ok' and motivo like 'stop vigente no MT5: 4103.004%%'", x["id"])[0][0] == 1
     # stop que AFROUXA nunca é enviado; corte do Ciclo fecha (outra barra: bancada limpa o registro da barra)
     T._pg("update sessao_aberturas set gestao='[]'::jsonb where id=%s", ab_id)
     T._pg("delete from mt5_comandos where bot_id=%s and tipo='mover_sl'", x["id"])

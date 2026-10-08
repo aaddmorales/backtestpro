@@ -367,3 +367,21 @@ def test_6_corte_so_pelo_contrato_e_h1_m30_contra_nao_vetam(api, amb):
     c0 = next(c for g in av["grupos"].values() for c in g["candidatos"] if c["uid"] == it["uid"])
     p4 = next(p for p in c0["portoes"] if p["portao"].startswith("4."))
     assert p4["ok"] is True and "corte-ciclo-2" in p4["detalhe"] and c0["origem_da_confirmacao"]["card"] == "card5_engolfo"
+
+
+def test_7_h1_e_contexto_na_condicao_6_e_m30_continua_regra_do_card(api, amb):
+    """C27R25 (linha única): a direção do H1 não aprova nem veta. Card de continuação H1 com o canal do H1 CONTRA:
+    condição 6 aprovada como contexto. No M30 a regra do card segue igual (não foi pedido mudar)."""
+    b = _bot(amb); sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("id", b["id"]).execute().data[0]
+    barra = T._barra_m15(); agora = barra + timedelta(seconds=30)
+    contra = {"M1": 1, "M5": 1, "M15": 1, "M30": -1, "H1": -1, "H4": -1, "D1": -1}
+    c6 = lambda r: next(c for c in r["condicoes"] if c["condicao"].startswith("6."))
+    it = _rt("card2_rompimento_caixa", "H1", 1, barra, preco=4100.0, stop=4090.0)
+    det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert c6(r)["ok"] is True and "contexto" in c6(r)["detalhe"] and "H1" in c6(r)["detalhe"]
+    it = _rt("card2_rompimento_caixa", "M30", 1, barra, preco=4100.0, stop=4090.0)
+    det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    assert c6(r)["ok"] is False
