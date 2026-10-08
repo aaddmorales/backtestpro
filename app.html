@@ -858,6 +858,8 @@ select option{background:#141920}
 .mon-btn-cockpit:hover{transform:translateY(-1px);border-color:var(--green);box-shadow:0 0 18px rgba(157,111,255,0.45)}
 @keyframes mbc-pulse{0%,100%{box-shadow:0 0 8px rgba(157,111,255,0.16)}50%{box-shadow:0 0 18px rgba(157,111,255,0.42)}}
 .mon-btn-cockpit .mbc-sair{display:none}
+.mon-btn-resumo{background:var(--green,#00d084);color:#04130c;border:0;border-radius:8px;padding:6px 10px;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;min-height:32px}
+@media (max-width:700px){.mon-btn-resumo{font-size:11px;padding:6px 8px}}
 .mon-card:fullscreen .mon-btn-cockpit{animation:none;background:var(--bg4);border-color:var(--border2);box-shadow:none;font-weight:700;text-transform:none}
 .mon-card:fullscreen .mon-btn-cockpit .mbc-abrir{display:none}
 .mon-card:fullscreen .mon-btn-cockpit .mbc-sair{display:inline}
@@ -1282,6 +1284,11 @@ select option{background:#141920}
   display:flex;justify-content:space-between;align-items:center;
   padding:14px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;flex-shrink:0
 }
+.lm-head{flex-wrap:wrap;gap:10px}
+.lm-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lm-resumo-btn{background:var(--green,#00d084);color:#04130c;border:0;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;min-height:36px}
+.lm-resumo-btn:focus-visible{outline:2px solid var(--text,#e8ecf1);outline-offset:2px}
+@media (max-width:700px){.lm-head{padding:12px}.lm-agregados{gap:10px;flex-wrap:wrap}.lm-acoes{width:100%}.lm-acoes>button{flex:1 1 auto}}
 .lm-titulo{display:flex;align-items:center;gap:12px}
 .lm-titulo-ic{font-size:22px;line-height:1}
 .lm-titulo-txt{font-size:14px;font-weight:800;color:var(--text);letter-spacing:.02em}
@@ -3943,7 +3950,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.62-campanha-continua-c27r26';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.63-resumo-babymachine-c27r27';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8320,6 +8327,7 @@ async function carregarBots(){
             <div class="mon-led ${b.online ? 'on' : ''}"></div>
             <span class="mon-led-txt ${b.online ? 'on' : ''}">${b.online ? 'ONLINE' : 'OFFLINE'}</span>
             <span class="mon-led-trade">● EM TRADE</span>
+            <button class="mon-btn-resumo" type="button" onclick="resAbrir(${b.id})" title="Resumo da BabyMachine: principais pontos da campanha para copiar ou baixar">📋 Resumo da BabyMachine</button>
             <button class="mon-btn-cockpit mon-btn-fs" onclick="toggleFullscreenBot(${b.id})" title="Análise completa: BOT × IA, veredito, Raio-X e Learning Machine"><span class="mbc-abrir">🚀 ${t('mon.cockpitAbrir')}</span><span class="mbc-sair">⛶ ${t('mon.cockpitSair')}</span></button>
             <button class="mon-btn-del" onclick="pedirExcluir(${b.id}, this)" title="Excluir bot">×</button>
           </div>
@@ -8493,7 +8501,7 @@ async function carregarBots(){
                 <div class="lm-agr-item"><span class="lm-agr-lbl">Abertas</span><b class="lm-agr-val aberta" id="lm-agr-aberta-${b.id}">—</b></div>
                 <div class="lm-agr-item"><span class="lm-agr-lbl">Fechadas</span><b class="lm-agr-val fechada" id="lm-agr-fechada-${b.id}">—</b></div>
               </div>
-              <button class="lm-rel-btn" style="background:transparent;color:inherit;border:1px solid var(--border,#263241);border-radius:8px;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap" onclick="relAbrir(${b.id})" title="Resumo auditável do período, com PDF e JSON">📄 Gerar relatório</button>
+              <div class="lm-acoes"><button class="lm-resumo-btn" type="button" onclick="resAbrir(${b.id})" title="Resumo dos principais pontos da campanha, para copiar ou baixar e enviar à IA auditora">📋 Resumo da BabyMachine</button><button class="lm-rel-btn" style="background:transparent;color:inherit;border:1px solid var(--border,#263241);border-radius:8px;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap" onclick="relAbrir(${b.id})" title="Resumo auditável do período, com PDF e JSON">📄 Gerar relatório</button></div>
             </div>
             <div class="lm-filtros">
               <div class="lm-filtro-grupo">
@@ -8988,7 +8996,7 @@ function relAbrir(botId){
       <button class="rel-b sec" id="rel-json" onclick="relBaixar('json')" disabled>Baixar JSON</button>
     </div>
     <div id="rel-out"><div class="rel-vazio">Escolha o período e clique em Gerar.</div></div></div>`;
-  document.body.appendChild(ov);
+  (document.fullscreenElement || document.body).appendChild(ov);   // C27R27: visível também no cockpit em tela cheia
   const temSes = !!((_sesUlt[botId] || {}).painel);
   const rec = document.getElementById('rel-rec');
   if (!temSes){ rec.value = 'tudo'; [...rec.options].forEach(o => { if (o.value !== 'tudo') o.disabled = true; }); [...document.getElementById('rel-per').options].forEach(o => { if (o.value === 'sessao') o.disabled = true; }); }
@@ -9002,6 +9010,93 @@ function relRecMudou(){
   if ((rec === 'sessao' || rec === 'consolidado')) per.value = 'sessao';
 }
 function relFechar(){ const o = document.getElementById('rel-ov'); if (o) o.remove(); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  v10.63 — C27R27 RESUMO DA BABYMACHINE ("📋 Resumo da BabyMachine")
+//  Só CONSULTA /learning/sessao/resumo (texto/Markdown montado no servidor com os mesmos dados do painel).
+//  Não inicia/encerra campanha, não altera limites, não libera entradas, não envia comando, não apaga nada.
+// ══════════════════════════════════════════════════════════════════════════════
+let _resBot = null, _resAtual = null;
+async function resAbrir(botId){
+  _resBot = botId; _resAtual = null;
+  if (!((_sesUlt[botId] || {}).painel)){
+    try { const r = await fetch(API + '/learning/sessao/painel', {method: 'POST', headers: await _authHeaders(), body: JSON.stringify({bot_id: botId})});
+          if (r.ok){ const d = await r.json(); if (d && d.painel) _sesUlt[botId] = d; } } catch(_){}
+  }
+  if (!document.getElementById('res-css')){
+    const st = document.createElement('style'); st.id = 'res-css';
+    st.textContent = `#res-ov{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:12px}
+#res-cx{background:var(--bg2,#0f141b);color:var(--text,#e8ecf1);border:1px solid var(--border,#263241);border-radius:12px;width:min(1100px,100%);padding:14px 16px;font-size:13px;line-height:1.5;box-sizing:border-box}
+#res-cx h2{font-size:17px;margin:0 0 4px}
+.res-barra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.res-barra label{display:flex;gap:6px;align-items:center;font-size:12px}
+.res-barra select{background:var(--bg,#0a0f14);color:inherit;border:1px solid var(--border,#263241);border-radius:6px;padding:6px 8px;font-size:13px;min-height:34px}
+.res-b{background:var(--green,#00d084);color:#04130c;border:0;border-radius:7px;padding:7px 13px;font-weight:700;cursor:pointer;font-size:13px;min-height:34px}
+.res-b.sec{background:transparent;color:inherit;border:1px solid var(--border,#263241)} .res-b:disabled{opacity:.45;cursor:not-allowed}
+.res-sit{color:var(--muted,#8a97a8);font-size:11.5px}
+#res-txt{width:100%;box-sizing:border-box;min-height:55vh;background:var(--bg,#0a0f14);color:inherit;border:1px solid var(--border,#263241);border-radius:8px;padding:10px;font:12px/1.45 var(--mono,monospace);white-space:pre;overflow:auto;resize:vertical}
+@media (max-width:700px){#res-cx{padding:12px}.res-barra>*{flex:1 1 140px}#res-txt{min-height:60vh;font-size:11px}}`;
+    document.head.appendChild(st);
+  }
+  const ant = document.getElementById('res-ov'); if (ant) ant.remove();
+  const P = ((_sesUlt[botId] || {}).painel) || null;
+  const sims = P ? Object.keys(P.ativos || {}) : [];
+  const meu = P ? (Object.values(P.ativos || {}).find(a => String((a.bot || {}).id) === String(botId)) || {}) : {};
+  const chip = _sesChip[botId];
+  const ativoPadrao = (chip === 'consolidado' || !meu.bot) ? 'todos' : String(meu.bot.simbolo);
+  const perPadrao = ({1:'hoje', 7:'7d', 30:'30d', 90:'90d'})[_lmDias] || 'campanha';
+  const ov = document.createElement('div'); ov.id = 'res-ov';
+  ov.innerHTML = `<div id="res-cx" role="dialog" aria-label="Resumo da BabyMachine">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h2>📋 Resumo da BabyMachine</h2>
+    <div class="res-sit">Só consulta o que está gravado. Não inicia nem encerra campanha, não altera limites, não libera entradas e não envia comandos.</div></div>
+    <button class="res-b sec" type="button" onclick="resFechar()">Fechar</button></div>
+    <div class="res-barra">
+      <label>Campanha <select id="res-ses">${P ? `<option value="${_clmE(P.sessao.sessao_teste_id)}">${_clmE(P.sessao.sessao_teste_id)}</option>` : '<option value="">(sem campanha)</option>'}</select></label>
+      <label>Período <select id="res-per">${[['campanha','Campanha inteira'],['hoje','Hoje (24 h)'],['7d','7 dias'],['30d','30 dias'],['90d','90 dias']].map(o => `<option value="${o[0]}"${o[0] === perPadrao ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>
+      <label>Ativo <select id="res-at"><option value="todos">Bitcoin + Gold</option>${sims.map(x => `<option value="${_clmE(x)}"${x === ativoPadrao ? ' selected' : ''}>${_clmE(x)}</option>`).join('')}</select></label>
+      <button class="res-b" type="button" id="res-gerar" onclick="resGerar()">Atualizar</button>
+      <button class="res-b sec" type="button" id="res-copiar" onclick="resCopiar()" disabled>Copiar resumo</button>
+      <button class="res-b sec" type="button" id="res-md" onclick="resBaixar('md')" disabled>Baixar .md</button>
+      <button class="res-b sec" type="button" id="res-txtb" onclick="resBaixar('txt')" disabled>Baixar .txt</button>
+    </div>
+    <div class="res-sit" id="res-estado" role="status">Gerando…</div>
+    <textarea id="res-txt" readonly spellcheck="false" aria-label="Texto do resumo"></textarea></div>`;
+  (document.fullscreenElement || document.body).appendChild(ov);   // no cockpit em tela cheia, só o elemento em tela cheia aparece
+  if (!P){ document.getElementById('res-estado').textContent = 'Este bot não tem campanha carregada no painel. Abra a BabyMachine e aguarde o quadro da campanha.'; document.getElementById('res-gerar').disabled = true; return; }
+  if (ativoPadrao === 'todos') document.getElementById('res-at').value = 'todos';
+  resGerar();
+}
+function resFechar(){ const o = document.getElementById('res-ov'); if (o) o.remove(); }
+async function resGerar(){
+  const est = document.getElementById('res-estado'), ta = document.getElementById('res-txt');
+  ['res-copiar','res-md','res-txtb'].forEach(i => { const e = document.getElementById(i); if (e) e.disabled = true; });
+  est.textContent = 'Gerando o resumo a partir dos dados gravados…';
+  try {
+    const r = await fetch(API + '/learning/sessao/resumo', {method: 'POST', headers: await _authHeaders(),
+      body: JSON.stringify({bot_id: _resBot, sessao: document.getElementById('res-ses').value || null, periodo: document.getElementById('res-per').value,
+                            ativo: document.getElementById('res-at').value, app_carregado: APP_VERSAO})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
+    _resAtual = j; ta.value = j.markdown || '';
+    est.textContent = `Gerado ${String(j.gerado_utc || '').replace('T', ' ').slice(0, 19)} UTC · campanha ${j.sessao} · ${j.ativos.join(' + ')} · ${(j.markdown || '').length} caracteres`;
+    ['res-copiar','res-md','res-txtb'].forEach(i => { const e = document.getElementById(i); if (e) e.disabled = false; });
+  } catch(e){ _resAtual = null; ta.value = ''; est.textContent = 'Não foi possível gerar: ' + e.message; }
+}
+async function resCopiar(){
+  const est = document.getElementById('res-estado'), ta = document.getElementById('res-txt');
+  if (!_resAtual) return;
+  try { await navigator.clipboard.writeText(_resAtual.markdown); est.textContent = 'Resumo copiado (' + _resAtual.markdown.length + ' caracteres). Cole na conversa com a IA auditora.'; }
+  catch(_){ ta.focus(); ta.select(); try { document.execCommand('copy'); est.textContent = 'Resumo copiado.'; } catch(__){ est.textContent = 'Cópia automática recusada: o texto está selecionado, use Ctrl+C.'; } }
+}
+function resBaixar(ext){
+  if (!_resAtual) return;
+  const nome = `resumo_${_resAtual.sessao}_${_resAtual.periodo}_${_resAtual.ativos.join('-')}_${String(_resAtual.gerado_utc || '').replace(/[-:]/g, '').slice(0, 15)}.${ext}`;
+  const blob = new Blob([_resAtual.markdown], {type: ext === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; (document.fullscreenElement || document.body).appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  document.getElementById('res-estado').textContent = 'Arquivo baixado: ' + nome;
+}
+
 async function relGerar(){
   const out = document.getElementById('rel-out'), bt = document.getElementById('rel-gerar'); if (!out) return;
   const per = document.getElementById('rel-per').value, corpo = {bot_id: _relBot, periodo: per, fuso: document.getElementById('rel-fuso').value};
@@ -9233,7 +9328,7 @@ function sesHtml(P, chip){
     ['Início', S.inicio ? `${_sesDt(S.inicio)} <span class="ses-sit">1ª barra M15 da sessão: ${_sesDt(S.primeira_barra)}</span>` : '<b>ainda não iniciada</b> — nenhum registro pertence à sessão'],
     ['Término previsto', (S.fim_previsto ? _sesDt(S.fim_previsto) : '<b>sem término</b> — campanha contínua até ordem explícita do dono') + (S.fim ? ` · encerrada ${_sesDt(S.fim)}` : '')],
     ['Bots', (S.bots || []).map(b => `${_clmE(_SES_ROT[b.simbolo] || b.simbolo)}: ${_clmE(b.nome)} (id ${_clmE(b.id)}, magic ${_clmE(b.magic)})`).join(' · ')],
-    ['Limites', `risco por operação ${_clmE(cfg.risco_pct_patrimonio)}% do patrimônio até US$ ${_clmE(cfg.risco_max_por_operacao_usd)} · máx. ${_clmE(cfg.max_aberturas)} aberturas · 1 posição por ativo, ${_clmE(cfg.max_posicoes_simultaneas)} simultâneas · risco agregado US$ ${_clmE(cfg.risco_agregado_max_usd)} · para após ${_clmE(cfg.max_perdas_consecutivas)} perdas seguidas ou US$ ${_clmE(cfg.perda_realizada_max_usd)} de perda realizada`]
+    ['Limites', `risco por operação ${_clmE(cfg.risco_pct_patrimonio)}% do patrimônio até US$ ${_clmE(cfg.risco_max_por_operacao_usd)} · ${cfg.max_aberturas_por_dia ? 'máx. ' + _clmE(cfg.max_aberturas_por_dia) + ' aberturas por dia' : 'máx. ' + _clmE(cfg.max_aberturas) + ' aberturas'} · 1 posição por ativo, ${_clmE(cfg.max_posicoes_simultaneas)} simultâneas · risco agregado US$ ${_clmE(cfg.risco_agregado_max_usd)} · para após ${_clmE(cfg.max_perdas_consecutivas)} perdas seguidas · perda realizada máx. US$ ${_clmE(cfg.perda_realizada_max_usd_por_dia || cfg.perda_realizada_max_usd)}${cfg.perda_realizada_max_usd_por_dia ? ' por dia' : ''}`]
   ].map(p => `<span>${p[0]}</span><span>${p[1]}</span>`).join('') + '</div>';
   h += sesCampanhaHtml(P, chip);
   const linhas = Object.keys(A).map(sym => [_SES_ROT[sym] || sym].concat(_SES_CONT.map(k => (A[sym].contadores || {})[k[0]])));

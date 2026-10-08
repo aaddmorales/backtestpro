@@ -174,12 +174,12 @@ begin
                     round(coalesce(sum(coalesce(a.comissao, 0) + coalesce(a.swap, 0)), 0), 2) as custos,
                     count(*) filter (where a.resultado_usd > 0) as ganhos, count(*) filter (where a.resultado_usd < 0) as perdas
                from public.sessao_aberturas a where a.sessao_teste_id = p_sessao and a.bot_id = b.id and a.estado = 'fechada' group by 1),
-      dd as (select dia, round(min(acum - pico), 2) as drawdown from (
-               select (a.ts_fechamento at time zone v_fuso)::date as dia,
-                      sum(a.resultado_usd) over (partition by (a.ts_fechamento at time zone v_fuso)::date order by a.ts_fechamento, a.id) as acum,
-                      greatest(0, max(sum(a.resultado_usd)) over (partition by (a.ts_fechamento at time zone v_fuso)::date order by a.ts_fechamento, a.id)) as pico
-                 from public.sessao_aberturas a where a.sessao_teste_id = p_sessao and a.bot_id = b.id and a.estado = 'fechada'
-                 group by a.ts_fechamento, a.id, a.resultado_usd) q group by dia),
+      dd as (select dia, round(min(acum - greatest(0, pico)), 2) as drawdown from (
+               select dia, acum, max(acum) over (partition by dia order by ts, id rows between unbounded preceding and current row) as pico from (
+                 select (a.ts_fechamento at time zone v_fuso)::date as dia, a.ts_fechamento as ts, a.id,
+                        sum(a.resultado_usd) over (partition by (a.ts_fechamento at time zone v_fuso)::date order by a.ts_fechamento, a.id) as acum
+                   from public.sessao_aberturas a where a.sessao_teste_id = p_sessao and a.bot_id = b.id and a.estado = 'fechada'
+                    and a.resultado_usd is not null) q1) q2 group by dia),
       vetoc as (select dia, jsonb_object_agg(m, n) as motivos from (
                   select (sa.barra_m15 at time zone v_fuso)::date as dia, coalesce(split_part(c->>'primeiro_impedimento', ' — ', 1), 'elegível') as m, count(*) as n
                     from public.selecao_avaliacoes sa, jsonb_path_query(sa.avaliacao, '$.grupos.*.candidatos[*]') c

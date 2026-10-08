@@ -163,3 +163,46 @@ def test_7_painel_mostra_estado_operacional_e_diario(amb, camp):
     assert set(e) >= {"coleta", "idade_dos_dados_s", "mercado", "retomada_em_verificacao"}
     assert P["campanha"]["aberturas"] in ("habilitadas", "suspensas") and "motivo_bloqueio" in P["campanha"]
     assert str(camp["x"]["id"]) in P["campanha"]["diario"] and P["consolidado"]["limites"]["escopo"] == "dia"
+
+
+def _resumo(amb, b, **kw):
+    s, j, _ = T._req("POST", SS.URL + "/learning/sessao/resumo", dict({"bot_id": b["id"], "app_carregado": "v-teste"}, **kw), tok=amb["sess"])
+    return s, j
+
+
+def test_8_resumo_da_babymachine_so_le_e_bate_com_os_dados(amb, camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    ini = T._pg("select sessao_dia_inicio(%s)", sid)[0][0]
+    _fechada(sid, b, -4.0, ini + timedelta(minutes=5), card="card7_rsi", tf="H1")
+    _fechada(sid, b, 1.5, ini + timedelta(minutes=60), card="card7_rsi", tf="H1")
+    _fechada(sid, b, -2.0, ini + timedelta(minutes=120), card="card2_canal", tf="M30")
+    antes = [T._pg(q)[0][0] for q in ("select count(*) from sessao_aberturas", "select count(*) from mt5_comandos",
+                                       "select count(*) from ciclo_decisoes", "select md5(string_agg(id||config::text||coalesce(aberturas_suspensas_em::text,''), ',' order by id)) from sessoes_teste")]
+    s, j = _resumo(amb, x, sessao=sid, periodo="campanha", ativo="todos")
+    assert s == 200, j
+    md = j["markdown"]
+    open(os.environ.get("BT_RESUMO_DUMP", "/dev/null"), "w").write(md)
+    for sec in ("## 1. Identificação", "## 2. Versões efetivas", "## 3. Estado agora por ativo", "## 4. Cobertura", "## 5. Limites",
+                "## 6. Operações executadas na DEMO", "## 7. Candidatos e observações sem execução", "## 8. Desempenho por estratégia",
+                "## 9. Cadeia das operações", "## 10. Pendências"):
+        assert sec in md, sec
+    assert sid in md and "Europe/Kyiv" in md and "sem término" in md
+    assert "US$ -4,50" in md                      # resultado líquido acumulado (−4 + 1,5 − 2)
+    assert "US$ -0,21" in md                      # custos = comissão + swap (3 × −0,07)
+    assert "Drawdown realizado** = maior queda" in md and "US$ -4,50" in md
+    assert "card7_rsi | H1 | 2 | 2 | US$ -2,50" in md
+    assert "não verificado" in md                 # sem snapshot recente: versões dos componentes do PC não confirmadas
+    assert "v-teste" in md and "DIFERENTE do servido" in md
+    assert x["tok"] not in md and b["tok"] not in md and "bot_token" not in md
+    # só um ativo: Gold sem operações -> 'não disponível', nunca zero
+    s, j = _resumo(amb, x, sessao=sid, periodo="hoje", ativo="XAUUSD")
+    assert s == 200 and j["ativos"] == ["XAUUSD"]
+    assert "| XAUUSD · período | 0 | 0 | 0 | não disponível | não disponível | não disponível |" in j["markdown"]
+    # nada foi escrito
+    depois = [T._pg(q)[0][0] for q in ("select count(*) from sessao_aberturas", "select count(*) from mt5_comandos",
+                                        "select count(*) from ciclo_decisoes", "select md5(string_agg(id||config::text||coalesce(aberturas_suspensas_em::text,''), ',' order by id)) from sessoes_teste")]
+    assert antes == depois
+    # sem sessão ou de outro usuário: recusado
+    s, _, _ = T._req("POST", SS.URL + "/learning/sessao/resumo", {"bot_id": x["id"]})
+    assert s in (401, 403)
