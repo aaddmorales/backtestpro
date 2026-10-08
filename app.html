@@ -824,6 +824,7 @@ select option{background:#141920}
 }
 .mon-head-nome{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text)}
 .mon-head-status{display:flex;align-items:center;gap:7px}
+@media (max-width:700px){.mon-head{flex-wrap:wrap;gap:6px}.mon-head-status{flex-wrap:wrap;justify-content:flex-end;gap:6px}}   /* C27R27: cabeçalho do bot quebra linha no telefone */
 .mon-led{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 /* v9.54 — LED VERDE PULSANDO (batimento cardiaco lento) quando ONLINE.
    Comunica 'sinal ao vivo' sem competir com o ambar que sinaliza 'em trade'. */
