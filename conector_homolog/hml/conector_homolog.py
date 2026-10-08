@@ -225,6 +225,14 @@ from conector_nucleo_homolog import (
 # aberto — a 2ª tentativa repassa o token pra ele e sai (sem abrir outra janela).
 _LOCK_PORT = 50574   # HOMOLOG H9 (produção usa 50573)
 
+
+def _snap_fresco(dados, limite_s=120):
+    # HOMOLOG H22: snapshot lido do LOG só vale se o relógio GMT do EA (tgmt) tiver até limite_s
+    try:
+        return abs(time.time() - int(str(dados.get("tgmt") or "").strip())) <= limite_s
+    except Exception:
+        return False
+
 try:
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -1084,6 +1092,8 @@ class ConectorApp:
                 tipo, dados = parse_linha_log(linha)
                 if tipo == "snapshot":
                     mg = self._magic_de(dados)   # 0 se sem magic (fallback p/ sessão)
+                    if not _snap_fresco(dados):
+                        continue                     # HOMOLOG H22: linha antiga do log não vira snapshot atual
                     self._snaps_por_magic[mg] = dados
                     # v1.26: benefício da dúvida no boot — envia 1x; se o bot não
                     # escrever nada novo em 35s, o watchdog sinaliza a parada.
@@ -1335,6 +1345,8 @@ class ConectorApp:
                         elif tipo == "snapshot":
                             # guarda o último snapshot de CADA bot separadamente.
                             mg = self._magic_de(dados)
+                            if not _snap_fresco(dados):
+                                continue             # HOMOLOG H22: linha atrasada do log não vira atual
                             self._snaps_por_magic[mg] = dados
                             self._lido_por_magic[mg] = time.time()   # v1.26
                             self._parada_sinalizada.discard(mg)

@@ -814,3 +814,26 @@ def test_h21_dois_ativos_cada_um_com_o_seu_leitor(tmp_path, monkeypatch):
     # símbolo sem pasta própria: cai na pasta-base (vazia aqui) e NÃO usa o leitor de outro ativo
     d = FM.det_ea(333333, simbolo="EURUSD"); N._cv_atestar(d, "tok-eur")
     assert d["cv_motor"]["estado"] == "processo_parado" and d["cv_motor"]["pasta_do_ativo"] is None and "cv_atestado" not in d
+
+
+# ═════════════════════ H22 — o boot não reenvia snapshot velho do log como atual (C27R25) ═════════════════════
+def test_h22_boot_e_log_so_aceitam_snapshot_fresco():
+    """Em 08/10 01:15 UTC o conector recém-aberto pegou o último BOTTESTED_SNAPSHOT do log do MT5 (barra de 06/10)
+    e enviou como atual. Agora a linha do log só vira snapshot se o relógio GMT do EA (tgmt) tiver até 120 s."""
+    import ast, time as _t
+    src = (AQUI / "hml" / "conector_homolog.py").read_text(encoding="utf-8")
+    arv = ast.parse(src)
+    fn = next(n for n in arv.body if isinstance(n, ast.FunctionDef) and n.name == "_snap_fresco")
+    ns = {"time": _t}
+    exec(compile(ast.Module(body=[fn], type_ignores=[]), "h22", "exec"), ns)
+    f = ns["_snap_fresco"]
+    agora = int(_t.time())
+    assert f({"tgmt": str(agora - 5)}) is True
+    assert f({"tgmt": str(agora - 101700)}) is False          # o caso real: 28 h atrás
+    assert f({"tgmt": str(agora + 600)}) is False             # relógio adiantado também não vale
+    assert f({}) is False and f({"tgmt": "x"}) is False       # sem relógio: não entra (fail-closed)
+    # os dois pontos de entrada por LOG passam pelo filtro; o arquivo dedicado (bt_snap) segue com o limite de 120 s
+    ini = src[src.index("def _snapshot_inicial"):src.index("def _conector_minimizar")]
+    assert "if not _snap_fresco(dados):" in ini
+    laco = src[src.index("def _loop_monitor"):src.index("def _loop_comandos")]
+    assert laco.count("if not _snap_fresco(dados):") == 1 and "ler_snapshots_arquivo(self.mql5_dir" in laco

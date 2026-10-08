@@ -20,7 +20,7 @@ $ErrorActionPreference = "Stop"
 $API_HML = "https://homolog-homolog.up.railway.app"
 $MANIFESTO_SHA = "064e0e192a88bbaec7f0acf01e35bf309334a01ce711d2579dc569028d70925d"
 $CONECTOR_SHA = @{
-  "conector_homolog.py"        = "99801a024ee6bbc158a95be0792a804cc278632c5aa7d6e342626984e658131e"
+  "conector_homolog.py"        = "10779fa0e534b952c0b9c9abb3445005181dd442d67de33ad0aa622c7781c212"
   "conector_nucleo_homolog.py" = "490ba3b9913eaf059e80746d73cda458e2a38b5c7f6b47ec43b94642c7a51283"
 }
 function Pare([string]$m) { Write-Host "PARADO: $m" -ForegroundColor Red; Write-Host "Nada mais foi alterado a partir deste ponto."; exit 1 }

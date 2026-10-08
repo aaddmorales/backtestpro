@@ -444,6 +444,35 @@ c = troca(c, 'dbg(f"validar_pendente({tok[:8]}…) no loop: {e}")', 'dbg(f"valid
 c = troca(c, 'dbg(f"aberto via protocolo: {argv} |', 'dbg(f"aberto via protocolo: {len(argv)} arg(s) |', "H11-argv")
 assert "[:8]}" not in c
 
+# H22 (hml13, C27R25) — o boot NÃO reenvia snapshot velho como atual. Antes: _snapshot_inicial pegava o
+# último BOTTESTED_SNAPSHOT dos 64 KB finais do log do MT5 e marcava como lido AGORA ("benefício da
+# dúvida"), mesmo quando a linha era de dias antes (o EA hoje grava em bt_snap_<magic>.txt; o log só tem
+# linhas antigas). Foi o que mandou a barra de 06/10 às 01:15 UTC de 08/10. Agora: só entra se o relógio
+# GMT do EA na linha (tgmt) tiver até 120 s (mesmo limite do arquivo dedicado); sem tgmt, não entra.
+c = troca(c, """                if tipo == "snapshot":
+                    mg = self._magic_de(dados)   # 0 se sem magic (fallback p/ sessão)
+                    self._snaps_por_magic[mg] = dados""", """                if tipo == "snapshot":
+                    mg = self._magic_de(dados)   # 0 se sem magic (fallback p/ sessão)
+                    if not _snap_fresco(dados):
+                        continue                     # HOMOLOG H22: linha antiga do log não vira snapshot atual
+                    self._snaps_por_magic[mg] = dados""", "H22-boot-fresco")
+c = troca(c, """                        elif tipo == "snapshot":
+                            # guarda o último snapshot de CADA bot separadamente.
+                            mg = self._magic_de(dados)""", """                        elif tipo == "snapshot":
+                            # guarda o último snapshot de CADA bot separadamente.
+                            mg = self._magic_de(dados)
+                            if not _snap_fresco(dados):
+                                continue             # HOMOLOG H22: linha atrasada do log não vira atual""", "H22-log-fresco")
+c = troca(c, "_LOCK_PORT = 50574   # HOMOLOG H9 (produção usa 50573)", """_LOCK_PORT = 50574   # HOMOLOG H9 (produção usa 50573)
+
+
+def _snap_fresco(dados, limite_s=120):
+    # HOMOLOG H22: snapshot lido do LOG só vale se o relógio GMT do EA (tgmt) tiver até limite_s
+    try:
+        return abs(time.time() - int(str(dados.get("tgmt") or "").strip())) <= limite_s
+    except Exception:
+        return False""", "H22-funcao")
+
 (OUT / "conector_homolog.py").write_text(c, encoding="utf-8")
 
 for f in ("conector_homolog.py", "conector_nucleo_homolog.py"):
