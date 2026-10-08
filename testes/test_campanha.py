@@ -1,0 +1,165 @@
+"""C27R26 — CAMPANHA CONTÍNUA (sem término): limites por dia num fuso único, virada registrada, três perdas
+suspendem até revisão, exposição aberta sempre conta, retomada da coleta registrada e conferida antes de novas
+entradas, acompanhamento diário. BANCADA (ambiente isolado local): dados sintéticos; não é evidência da plataforma."""
+import json, os, sys, time, uuid
+from datetime import datetime, timedelta, timezone
+import pytest
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, AQUI)
+import test_ciclos_lm as T
+import test_selecao as S
+import test_sessao as SS
+
+amb = T.amb
+api = S.api
+CFG = {"risco_pct_patrimonio": 0.10, "risco_max_por_operacao_usd": 10, "max_aberturas_por_dia": 6, "max_posicoes_simultaneas": 2,
+       "max_posicoes_por_ativo": 1, "risco_agregado_max_usd": 20, "max_perdas_consecutivas": 3, "perda_realizada_max_usd_por_dia": 30,
+       "fuso_diario": "Europe/Kyiv", "conta": "52648209 ICMarketsSC-Demo",
+       "horarios": {"XAUUSD": [{"dias": [1, 2, 3, 4, 5], "de": "00:00", "ate": "01:00"}, {"dias": [6, 7], "de": "00:00", "ate": "24:00"}]}}
+
+
+@pytest.fixture(scope="module")
+def camp(amb):
+    T._pg("update sessoes_teste set padrao=false, estado='encerrada', fim=coalesce(fim, now()) where estado <> 'encerrada'")
+    x, b = SS._bot(amb, "XAUUSD"), SS._bot(amb, "BTCUSD")
+    uid = T._pg("select user_id from conector_bots where id=%s", x["id"])[0][0]
+    sid = "CAMP-TESTE-" + uuid.uuid4().hex[:8]
+    T._pg("insert into sessoes_teste (id, nome, user_id, bots, estado, tipo, fim_previsto, config) values (%s,%s,%s,%s,'preparada','continua',null,%s::jsonb)",
+          sid, "Campanha de bancada", uid, [x["id"], b["id"]], json.dumps(CFG))
+    T._pg("select sessao_iniciar(%s)", sid)
+    T._pg("update sessoes_teste set aberturas_habilitadas=true, aberturas_habilitadas_em=now(), primeira_barra=now() - interval '3 days' where id=%s", sid)
+    time.sleep(5.5)
+    yield {"id": sid, "x": x, "b": b, "uid": uid}
+    T._pg("update sessoes_teste set estado='encerrada', padrao=false, fim=coalesce(fim, now()) where id=%s", sid)
+
+
+def _fechada(sid, bot, res, quando, card="cardX", tf="M15"):
+    T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, "
+          "stop_inicial, risco_planejado_usd, estado, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, lucro, comissao, swap) "
+          "values (%s,%s,%s,%s,%s,%s,%s,%s,1,%s,0.01,4000,5,'fechada',%s,%s,%s,%s,%s,-0.07,0)",
+          sid, bot["id"], bot["sim"], T._magic(bot["tok"]), uuid.uuid4().hex, "u-" + uuid.uuid4().hex[:6], card, tf, quando, quando, quando,
+          quando + timedelta(minutes=30), res, res + 0.07)
+
+
+def _limpar(sid):
+    T._pg("delete from sessao_aberturas where sessao_teste_id=%s", sid)
+    T._pg("update sessoes_teste set aberturas_suspensas_em=null, motivo_suspensao=null where id=%s", sid)
+
+
+def test_1_sem_termino_e_limites_do_dia_no_fuso_da_campanha(camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    assert T._pg("select fim_previsto, tipo from sessoes_teste where id=%s", sid)[0] == (None, "continua")
+    ok, mot, _, uso = SS._res(sid, x)
+    assert ok and uso["escopo"] == "dia" and uso["fuso_diario"] == "Europe/Kyiv" and uso["aberturas_max"] == 6
+    ini = T._pg("select sessao_dia_inicio(%s)", sid)[0][0]
+    # 6 aberturas HOJE (ganhos, para não acionar outra regra) -> a 7ª do dia é recusada
+    for i in range(6):
+        _fechada(sid, b, 1.0, ini + timedelta(minutes=5 + i))
+    ok, mot, _, uso = SS._res(sid, x)
+    assert not ok and mot == "maximo_de_aberturas_do_dia" and uso["aberturas"] == 6
+    # as mesmas 6 ONTEM no fuso da campanha -> hoje está livre (a virada zera o contador do dia)
+    T._pg("update sessao_aberturas set ts_reserva = ts_reserva - interval '1 day', ts_fechamento = ts_fechamento - interval '1 day' where sessao_teste_id=%s", sid)
+    ok, mot, _, uso = SS._res(sid, x)
+    assert ok and uso["aberturas"] == 0
+    assert T._pg("select aberturas_suspensas_em from sessoes_teste where id=%s", sid)[0][0] is None
+
+
+def test_2_perda_do_dia_bloqueia_so_o_dia_e_nao_suspende(camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    ini = T._pg("select sessao_dia_inicio(%s)", sid)[0][0]
+    _fechada(sid, b, -16.0, ini + timedelta(minutes=5)); _fechada(sid, b, 5.0, ini + timedelta(minutes=50)); _fechada(sid, b, -20.0, ini + timedelta(minutes=90))
+    ok, mot, _, uso = SS._res(sid, x)
+    assert not ok and mot == "perda_realizada_do_dia_no_limite" and float(uso["resultado_realizado_usd"]) == -31.0
+    assert T._pg("select aberturas_suspensas_em from sessoes_teste where id=%s", sid)[0][0] is None     # não é suspensão: é o dia
+    T._pg("update sessao_aberturas set ts_reserva = ts_reserva - interval '1 day', ts_fechamento = ts_fechamento - interval '1 day' where sessao_teste_id=%s", sid)
+    ok, mot, _, _ = SS._res(sid, x)
+    assert ok
+
+
+def test_3_tres_perdas_suspendem_ate_revisao_mesmo_com_a_virada(camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    ontem = T._pg("select sessao_dia_inicio(%s)", sid)[0][0] - timedelta(hours=10)
+    for i in range(3):
+        _fechada(sid, b, -1.0, ontem + timedelta(minutes=40 * i))
+    ok, mot, _, uso = SS._res(sid, x)
+    assert not ok and mot == "tres_perdas_consecutivas" and uso["perdas_consecutivas"] == 3
+    susp, motivo = T._pg("select aberturas_suspensas_em, motivo_suspensao from sessoes_teste where id=%s", sid)[0]
+    assert susp is not None and motivo == "tres_perdas_consecutivas(revisao_do_dono)"
+    # outro dia, nenhum ganho: segue suspensa (não libera sozinha); só a revisão limpa a suspensão
+    T._pg("update sessao_aberturas set ts_reserva = ts_reserva - interval '2 days', ts_fechamento = ts_fechamento - interval '2 days' where sessao_teste_id=%s", sid)
+    ok, mot, _, _ = SS._res(sid, x)
+    assert not ok and mot.startswith("aberturas_suspensas(tres_perdas_consecutivas")
+
+
+def test_4_posicao_e_reserva_abertas_contam_sempre(camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    ok, _, ab_id, _ = SS._res(sid, x, reservar=True, risco=9.0)
+    assert ok and ab_id
+    T._pg("update sessao_aberturas set ts_reserva = ts_reserva - interval '2 days' where id=%s", ab_id)    # reservada há dois dias
+    ok, mot, _, uso = SS._res(sid, x, risco=5.0)
+    assert not ok and mot == "ativo_ja_tem_posicao_ou_reserva" and uso["posicoes_abertas"] == 1
+    ok, mot, _, uso = SS._res(sid, b, risco=9.0)
+    assert ok and float(uso["risco_aberto_usd"]) == 9.0                       # o outro ativo cabe nos US$ 20
+    ok, mot, _, _ = SS._res(sid, b, risco=11.5)
+    assert not ok and mot == "risco_acima_do_limite_por_operacao"              # US$ 10 por operação continua valendo
+
+
+def test_5_virada_registrada_uma_vez_e_diario_por_ativo(camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    T._pg("delete from sessao_dias where sessao_teste_id=%s", sid)
+    r1 = T._pg("select sessao_virar_dia(%s)", sid)[0][0]
+    r2 = T._pg("select sessao_virar_dia(%s)", sid)[0][0]
+    assert r1["novo"] is True and r2["novo"] is False and r1["fuso"] == "Europe/Kyiv"
+    assert "perdas_consecutivas" in r1["estado_na_virada"] and "risco_aberto_usd" in r1["estado_na_virada"]
+    ini = T._pg("select sessao_dia_inicio(%s)", sid)[0][0]
+    _fechada(sid, b, -2.0, ini + timedelta(minutes=5), card="card7_rsi", tf="H1"); _fechada(sid, b, 3.0, ini + timedelta(minutes=60), card="card7_rsi", tf="H1")
+    d = T._pg("select sessao_diario(%s,%s)", sid, [x["id"], b["id"]])[0][0]
+    hoje = [z for z in d[str(b["id"])]["dias"] if z["dia"] == str(ini.astimezone(timezone(timedelta(hours=3))).date()) or z["fechamentos"]][-1]
+    assert hoje["fechamentos"] == 2 and float(hoje["resultado_liquido_usd"]) == 1.0 and float(hoje["custos_usd"]) == -0.14
+    assert float(hoje["drawdown_realizado_usd"]) == -2.0 and hoje["por_estrategia_tf"]["card7_rsi · H1"]["n"] == 2
+    # cobertura: o ouro tem janelas fechadas declaradas (sábado e domingo inteiros) -> esperadas menores que o bitcoin
+    dx = {z["dia"]: z for z in d[str(x["id"])]["dias"]}; db = {z["dia"]: z for z in d[str(b["id"])]["dias"]}
+    assert any(dx[k]["barras_esperadas"] < db[k]["barras_esperadas"] for k in dx if k in db and db[k]["barras_esperadas"] > 8)
+
+
+def test_6_retomada_da_coleta_registrada_e_conferida_antes_de_entradas(api, camp):
+    sid, x = camp["id"], camp["x"]
+    sb = api._sb_admin()
+    ses = next(s for s in api._ses_lista(sb, True) if s["id"] == sid)
+    bot = sb.table("conector_bots").select("*").eq("id", x["id"]).execute().data[0]
+    agora = datetime.now(timezone.utc)
+    api._SES_ULT_SNAP[x["id"]] = agora - timedelta(minutes=47)
+    det_ruim = {"cv_motor": {"estado": "nao_configurado"}}
+    api._ses_coleta(sb, ses, bot, det_ruim, agora)
+    assert api._ses_retomada_pendente(bot) is True
+    r = T._pg("select motivo, ref from ciclo_trilha where bot_id=%s and etapa='falha_coleta' order by id desc limit 1", x["id"])[0]
+    assert "coleta RETOMADA após 47 min" in r[0] and r[1]["tipo"] == "retomada_coleta" and r[1]["barras_sem_leitura"] >= 3
+    # a execução real recusa enquanto a retomada não foi conferida
+    sombra = {"avaliacao": {"candidato_uid": "u", "ts_barra": agora.isoformat()}, "sessao": {"permitido": True, "plano": {}}}
+    out = api._ses_executar(sb, bot, sombra, {})
+    assert out["execucao_real"].startswith("nenhuma: retomada_em_verificacao")
+    # 60 s depois, com motor ok, atestado, negócios assinados e conta DEMO da campanha: liberada e registrada
+    api._SES_RETOMADA[x["id"]]["desde"] = agora - timedelta(seconds=61)
+    api._SES_ULT_SNAP[x["id"]] = agora
+    det_ok, _ = SS._det(x)
+    det_ok["cv_motor"] = dict(det_ok["cv_motor"], conta_demo=True, login="52648209")
+    api._ses_coleta(sb, ses, bot, det_ok, agora + timedelta(seconds=1))
+    assert api._ses_retomada_pendente(bot) is False
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and motivo like 'retomada CONFERIDA%%'", x["id"])[0][0] == 1
+
+
+def test_7_painel_mostra_estado_operacional_e_diario(amb, camp):
+    j = SS._painel(amb, camp["x"], camp["id"])
+    P = j["painel"]
+    assert P["campanha"]["tipo"] == "continua" and P["campanha"]["sem_termino"] is True and P["campanha"]["fuso_diario"] == "Europe/Kyiv"
+    assert P["sessao"]["fim_previsto"] is None
+    e = P["ativos"]["XAUUSD"]["estado_operacional"]
+    assert set(e) >= {"coleta", "idade_dos_dados_s", "mercado", "retomada_em_verificacao"}
+    assert P["campanha"]["aberturas"] in ("habilitadas", "suspensas") and "motivo_bloqueio" in P["campanha"]
+    assert str(camp["x"]["id"]) in P["campanha"]["diario"] and P["consolidado"]["limites"]["escopo"] == "dia"

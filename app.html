@@ -3943,7 +3943,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.61-corte-do-ciclo-c27r25';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.62-campanha-continua-c27r26';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9183,7 +9183,12 @@ function _sesT(cab, linhas){
   return '<div class="ses-tw"><table class="ses-t"><thead><tr>' + cab.map(c => `<th>${_clmE(c)}</th>`).join('') + '</tr></thead><tbody>'
     + linhas.map(l => '<tr>' + l.map(x => `<td>${x === null || x === undefined || x === '' ? '—' : _clmE(typeof x === 'object' ? JSON.stringify(x) : x)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
 }
-function _sesDt(v){ if (!v) return '—'; try { const d = new Date(v); return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC · ' + d.toLocaleString('pt-BR', {timeZone: 'Europe/Kiev', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + ' Kiev'; } catch(_){ return _clmE(v); } }
+function _sesTH(cab, linhas){   // C27R26: células já montadas e escapadas pelo chamador
+  if (!linhas || !linhas.length) return '<div class="ses-sit">sem registros</div>';
+  return '<div class="ses-tw"><table class="ses-t"><thead><tr>' + cab.map(c => `<th>${_clmE(c)}</th>`).join('') + '</tr></thead><tbody>'
+    + linhas.map(l => '<tr>' + l.map(x => `<td>${x === null || x === undefined || x === '' ? '—' : (typeof x === 'number' ? x : String(x))}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+}
+function _sesDt(v){ if (!v) return '—'; try { const d = new Date(v); return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC · ' + d.toLocaleString('pt-BR', {timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + ' Kiev'; } catch(_){ return _clmE(v); } }
 const _SES_CONT = [['barras', 'barras'], ['snapshots', 'snapshots'], ['candidatos', 'candidatos'], ['elegiveis', 'elegíveis'], ['vetos', 'vetos'], ['decisoes', 'decisões'],
                    ['comandos', 'comandos'], ['aberturas', 'aberturas'], ['fechamentos', 'fechamentos'], ['resultado_usd', 'resultado US$']];
 function sesAtivoHtml(sym, a){
@@ -9226,10 +9231,11 @@ function sesHtml(P, chip){
     ['Estado', `<span class="ses-tag ${S.estado === 'ativa' ? 'ok' : 'av'}">${_clmE(S.estado)}</span> · novas aberturas: <span class="ses-tag ${S.novas_aberturas === 'permitidas' ? 'ok' : 'av'}">${_clmE(S.novas_aberturas)}</span>`
       + ` <span class="ses-sit">habilitadas na sessão: ${S.aberturas_habilitadas ? 'sim' : 'não'} · contrato r01v5 ligado: ${S.contrato_r01v5_ligado ? 'sim' : 'não'}${S.aberturas_suspensas_em ? ' · suspensas: ' + _clmE(S.motivo_suspensao) : ''}</span>`],
     ['Início', S.inicio ? `${_sesDt(S.inicio)} <span class="ses-sit">1ª barra M15 da sessão: ${_sesDt(S.primeira_barra)}</span>` : '<b>ainda não iniciada</b> — nenhum registro pertence à sessão'],
-    ['Término previsto', _sesDt(S.fim_previsto) + (S.fim ? ` · encerrada ${_sesDt(S.fim)}` : '')],
+    ['Término previsto', (S.fim_previsto ? _sesDt(S.fim_previsto) : '<b>sem término</b> — campanha contínua até ordem explícita do dono') + (S.fim ? ` · encerrada ${_sesDt(S.fim)}` : '')],
     ['Bots', (S.bots || []).map(b => `${_clmE(_SES_ROT[b.simbolo] || b.simbolo)}: ${_clmE(b.nome)} (id ${_clmE(b.id)}, magic ${_clmE(b.magic)})`).join(' · ')],
     ['Limites', `risco por operação ${_clmE(cfg.risco_pct_patrimonio)}% do patrimônio até US$ ${_clmE(cfg.risco_max_por_operacao_usd)} · máx. ${_clmE(cfg.max_aberturas)} aberturas · 1 posição por ativo, ${_clmE(cfg.max_posicoes_simultaneas)} simultâneas · risco agregado US$ ${_clmE(cfg.risco_agregado_max_usd)} · para após ${_clmE(cfg.max_perdas_consecutivas)} perdas seguidas ou US$ ${_clmE(cfg.perda_realizada_max_usd)} de perda realizada`]
   ].map(p => `<span>${p[0]}</span><span>${p[1]}</span>`).join('') + '</div>';
+  h += sesCampanhaHtml(P, chip);
   const linhas = Object.keys(A).map(sym => [_SES_ROT[sym] || sym].concat(_SES_CONT.map(k => (A[sym].contadores || {})[k[0]])));
   linhas.push(['Ensaio consolidado'].concat(_SES_CONT.map(k => (C.contadores || {})[k[0]])));
   h += '<h4>Registros da sessão</h4>' + _sesT(['ativo'].concat(_SES_CONT.map(k => k[1])), linhas);
@@ -9250,6 +9256,33 @@ function sesHtml(P, chip){
     h += sesAtivoHtml(chip, A[chip]);
   }
   h += `<div class="ses-sit">${_clmE(S.regra_do_recorte)} · gerado ${_clmE(P.gerado_utc)}</div>`;
+  return h;
+}
+// C27R26 — campanha contínua: estado operacional por ativo, uso do DIA, viradas e acompanhamento diário
+function sesCampanhaHtml(P, chip){
+  const K = P.campanha || {}, A = P.ativos || {}, L = (P.consolidado || {}).limites || {};
+  const tag = (ok, t) => `<span class="ses-tag ${ok ? 'ok' : 'av'}">${_clmE(t)}</span>`;
+  let h = '<h4>Estado operacional agora</h4>' + _sesTH(['ativo', 'coleta', 'idade dos dados', 'mercado', 'aberturas'],
+    Object.keys(A).map(sym => { const e = A[sym].estado_operacional || {};
+      return [_SES_ROT[sym] || sym, tag(e.coleta === 'ativa', e.coleta || '—') + (e.retomada_em_verificacao ? ' <span class="ses-sit">retomada em verificação</span>' : ''),
+              e.idade_dos_dados_s == null ? '—' : e.idade_dos_dados_s + ' s', `${tag(e.mercado === 'negociando', e.mercado || '—')} <span class="ses-sit">${_clmE(e.mercado_texto || '')}</span>`,
+              tag(K.aberturas === 'habilitadas', K.aberturas || '—') + (K.motivo_bloqueio ? ` <span class="ses-sit">${_clmE(K.motivo_bloqueio)}</span>` : '')]; }));
+  if (K.tipo === 'continua'){
+    h += `<div class="ses-sit"><b>Campanha contínua</b> · dia no fuso <b>${_clmE(K.fuso_diario)}</b> · ${_clmE(K.nota || '')}</div>`;
+    if (L.escopo === 'dia') h += '<h4>Uso dos limites hoje (' + _clmE(L.dia) + ')</h4>' + _sesTH(['aberturas do dia', 'perda realizada do dia US$', 'posições abertas', 'risco aberto US$', 'perdas consecutivas', 'acumulado da campanha'],
+      [[`${L.aberturas} de ${L.aberturas_max}`, `${L.resultado_realizado_usd} (limite −${L.perda_realizada_max_usd})`, `${L.posicoes_abertas} de ${L.posicoes_simultaneas_max}`, `${L.risco_aberto_usd} de ${L.risco_agregado_max_usd}`, `${L.perdas_consecutivas} de ${L.perdas_consecutivas_max}`, `${(L.acumulado_campanha || {}).aberturas} aberturas · US$ ${(L.acumulado_campanha || {}).resultado_realizado_usd}`]]);
+    const D = K.diario || {};
+    Object.keys(D).forEach(bid => { const x = D[bid] || {}; if (chip !== 'consolidado' && chip !== x.simbolo) return;
+      h += `<h4>Por dia — ${_clmE(_SES_ROT[x.simbolo] || x.simbolo)} (fuso ${_clmE(x.fuso)})</h4>` + _sesTH(['dia', 'cobertura (recebidas/esperadas)', 'operações reais DEMO', 'fechamentos', 'resultado líquido US$', 'custos US$', 'drawdown realizado US$', 'observações sem execução', 'motivos de veto', 'por estratégia·TF'],
+        (x.dias || []).map(d => [d.dia, `${d.barras_recebidas}/${d.barras_esperadas}` + (d.cobertura_pct != null ? ` (${d.cobertura_pct}%)` : ''), d.operacoes_reais_demo, d.fechamentos, d.resultado_liquido_usd ?? '—', d.custos_usd ?? '—', d.drawdown_realizado_usd ?? '—',
+          `autoridade emitiria ${(d.observacoes_sem_execucao || {}).autoridade_emitiria} · recusadas pelos limites ${(d.observacoes_sem_execucao || {}).recusadas_pelos_limites}`,
+          Object.entries(d.motivos_de_veto || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${_clmE(k)}: ${n}`).join('<br>'),
+          Object.entries(d.por_estrategia_tf || {}).map(([k, v]) => `${_clmE(k)}: ${v.n} · US$ ${v.resultado_usd}`).join('<br>') || '—'])); });
+    if ((K.dias || []).length) h += '<h4>Viradas diárias registradas</h4>' + _sesTH(['dia', 'início (UTC)', 'registrada', 'estado na virada'],
+      K.dias.map(d => [d.dia, _sesDt(d.inicio_utc), _sesDt(d.registrado_em), _clmE(JSON.stringify(d.estado_na_virada || {}))]));
+  }
+  const I = [].concat(...Object.keys(A).map(sym => (A[sym].interrupcoes || []).map(i => [_SES_ROT[sym] || sym, _sesDt(i.ts), _clmE(i.motivo)])));
+  if (I.length) h += '<h4>Interrupções e retomadas da coleta</h4>' + _sesTH(['ativo', 'quando', 'registro'], I);
   return h;
 }
 function sesEscolher(botId, chip){
