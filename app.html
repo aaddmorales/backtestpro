@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.63-resumo-babymachine-c27r27';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.64-autoridade-na-tela-c27r28';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9636,7 +9636,7 @@ function clmSelBox(botId, S){
   const hist = (S.historico||[]).map(h => `<span class="clm-id" title="${_clmE(h.escolha||'sem escolha')}">${_clmHora(h.barra_m15)}: ${_clmE(h.candidatos)} cand · ${_clmE(h.elegiveis_proposto)}/${_clmE(h.elegiveis_atual)} eleg${h.escolha ? ' ★' : ''}${h.acompanhado ? ' ✓' : ''}</span>`).join(' ');
   const ac = S.acompanhamento ? `<div class="clm-sub" style="margin-top:4px">Acompanhamento (${_clmE(S.acompanhamento.janela)}): ${Object.keys(S.acompanhamento.itens||{}).length} candidato(s) medidos · ${_clmE(S.acompanhamento.nota||'')}</div>` : '';
   const S5 = A.autoridade_r01v5 || null, AN = K ? K.autoridade_nova : null;
-  const contr = K ? `<div class="clm-box" style="margin:6px 0;border-style:dashed"><b>${AN ? 'Três contratos' : 'Dois contratos'} — só um autoriza hoje</b><br>
+  const contr = K ? `<div class="clm-box" style="margin:6px 0;border-style:dashed"><b>${AN ? 'Três contratos' : 'Dois contratos'} — só um autoriza ${K.r01v5_emite && /EM VIGOR neste bot/.test(String((K.autoridade||{}).estado||'')) ? 'neste bot' : 'hoje'}</b><br>
       <span class="clm-st clm-na">SELEÇÃO · ${_clmE((K.selecao||{}).id)}</span> <span class="clm-sub">${_clmE((K.selecao||{}).estado)} · D1/H4: ${_clmE((K.selecao||{}).d1_h4)}${(K.selecao||{}).confirmacao ? ' · ' + _clmE(K.selecao.confirmacao) : ''}</span><br>
       <span class="clm-st clm-warn">AUTORIDADE EM VIGOR · ${_clmE((K.autoridade||{}).id)}</span> <span class="clm-sub">${_clmE((K.autoridade||{}).estado)} · D1/H4: ${_clmE((K.autoridade||{}).d1_h4)}</span><br>
       ${AN ? `<span class="clm-st clm-na">AUTORIDADE NOVA · ${_clmE(AN.id)}</span> <span class="clm-sub">${_clmE(AN.estado)} · D1/H4: ${_clmE(AN.d1_h4)} · ${_clmE(AN.veredito_do_motor)}</span><br>` : ''}
@@ -9731,7 +9731,7 @@ function clmRender(botId, d, tr){
       <div>2 · Ciclo calculado<b>C1 ${(E.ciclo_calculado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_calculado||{}).c2?'✔':'✖'}</b></div>
       <div>3 · Ciclo alinhado<b>C1 ${(E.ciclo_alinhado||{}).c1?'✔':'✖'} · C2 ${(E.ciclo_alinhado||{}).c2?'✔':'✖'}</b></div>
       <div>4 · Atestado válido (API)<b>${_e4 ? '✔ verificado' : '✖ não'}</b>${_regTag}</div>
-      <div>5 · Decisão do backend<b>${_e5}</b>${_e5c ? '<span class="clm-sub">'+_clmE(_e5c)+'</span>' : ''}${_regTag}</div>
+      ${(C.consolidada||{}).r01v4_so_registro ? `<div>5 · Veredito r01v4 (só registro)<b>${_e5}</b><span class="clm-sub">não decide neste bot · quem abre: ${_clmE((C.consolidada||{}).autoridade_do_bot||'r01v5')} — ver Seleção e Autoridade r01v5 abaixo</span>${_regTag}</div>` : `<div>5 · Decisão do backend<b>${_e5}</b>${_e5c ? '<span class="clm-sub">'+_clmE(_e5c)+'</span>' : ''}${_regTag}</div>`}
       <div>6 · Comando criado (esta barra)<b>${temCmd ? '✔ sim' : '✖ não'}</b></div>
       <div>7 · Ordem executada no MT5 (esta barra)<b>${temExec ? '✔ sim' : '✖ não'}</b></div>
     </div></div>`;

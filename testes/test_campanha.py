@@ -206,3 +206,19 @@ def test_8_resumo_da_babymachine_so_le_e_bate_com_os_dados(amb, camp):
     # sem sessão ou de outro usuário: recusado
     s, _, _ = T._req("POST", SS.URL + "/learning/sessao/resumo", {"bot_id": x["id"]})
     assert s in (401, 403)
+
+
+def test_9_bot_em_campanha_mostra_r01v5_em_vigor_e_r01v4_so_registro(api, camp):
+    T._pg("update autoridade_contratos set emissao_habilitada=true where contrato='r01v5'")
+    try:
+        sb = api._sb_admin(); api._ses_lista(sb, True)
+        bot = sb.table("conector_bots").select("*").eq("id", camp["x"]["id"]).execute().data[0]
+        K = api._sel_contratos_do_bot(sb, bot, {"autoridade": api.SEL_AUTORIDADE, "autoridade_nova": api.R05_CONTRATO,
+                                                 "autoridade_nesta_barra": {"vetou_por_d1_h4": True}, "aviso": "x"})
+        assert K["autoridade"]["id"] == "R-CICLO-01 r01v5" and "EM VIGOR neste bot" in K["autoridade"]["estado"]
+        assert "NÃO ATUA" in K["autoridade_nova"]["estado"] and K["autoridade_nesta_barra"]["vetou_por_d1_h4"] is False
+        assert K["autoridade_nesta_barra"]["veto_r01v4_registrado"] is True and camp["id"] in K["aviso"]
+        outro = dict(bot, id=-1)                                        # bot fora de campanha: texto original
+        assert api._sel_contratos_do_bot(sb, outro, {"autoridade": api.SEL_AUTORIDADE})["autoridade"]["id"] == "R-CICLO-01 r01v4"
+    finally:
+        T._pg("update autoridade_contratos set emissao_habilitada=false where contrato='r01v5'")
