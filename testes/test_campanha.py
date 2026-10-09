@@ -239,3 +239,31 @@ def test_10_bot_em_campanha_nao_grava_veto_r01v4_por_d1_h4(api, amb, camp):
         assert r and "não decide neste bot" in r[0][0]
     finally:
         T._pg("update autoridade_contratos set emissao_habilitada=false where contrato='r01v5'")
+
+
+def test_11_relatorio_leva_a_trilha_auditavel_inteira(amb, camp):
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    n_x = T._pg("select count(*) from ciclo_trilha where bot_id=%s and sessao_teste_id=%s", x["id"], sid)[0][0]
+    assert n_x > 5
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "UTC"}, tok=amb["sess"])
+    assert s == 200, j
+    TA = j["trilha_auditavel"]
+    assert TA["linhas"] == len(TA["itens"]) >= n_x - 2 and TA["truncada"] is False
+    assert all(t["bot_id"] == x["id"] for t in TA["itens"]) and all("ts_utc" in t and "etapa" in t and "motivo" in t for t in TA["itens"])
+    assert [t["id"] for t in TA["itens"]] == sorted(t["id"] for t in TA["itens"])                 # ordem cronológica
+    assert sum(TA["por_etapa_estado"].values()) == TA["linhas"]
+    assert "retomada CONFERIDA" in " ".join(str(t["motivo"]) for t in TA["itens"])                # etapa 'sessao' incluída (a tela filtrava)
+    # consolidado: trilha dos DOIS bots
+    s, jc, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "UTC", "consolidado": True}, tok=amb["sess"])
+    assert s == 200 and jc["escopo"] == "Ensaio consolidado"
+    assert set(jc["trilha_auditavel"]["bots"]) == {x["id"], b["id"]} and jc["trilha_auditavel"]["linhas"] >= TA["linhas"]
+    # PDF e JSON do gravado saem com a trilha
+    import urllib.request as rq
+    for fmt in ("json", "pdf"):
+        q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": jc["relatorio_id"], "formato": fmt}).encode(),
+                       headers={"Content-Type": "application/json", "Authorization": "Bearer " + amb["sess"]}, method="POST")
+        raw = rq.urlopen(q, timeout=180).read()
+        if fmt == "json":
+            assert json.loads(raw)["trilha_auditavel"]["linhas"] == jc["trilha_auditavel"]["linhas"]
+        else:
+            assert raw[:4] == b"%PDF" and len(raw) > 5000

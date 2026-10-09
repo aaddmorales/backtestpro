@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.64-autoridade-na-tela-c27r28';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.65-trilha-no-relatorio-c27r29';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9125,7 +9125,7 @@ async function relBaixar(fmt){
     const r = await fetch(API + '/learning/relatorio/baixar', {method:'POST', headers: await _authHeaders(), body: JSON.stringify({relatorio_id: _relAtual.relatorio_id, formato: fmt})});
     if (!r.ok){ let m = ''; try{ m = (await r.json()).detail || ''; }catch(_){ } alert('BT-R03 · Não consegui baixar o ' + fmt.toUpperCase() + ' (HTTP ' + r.status + '). ' + m); return; }
     const u = URL.createObjectURL(await r.blob()), a = document.createElement('a');
-    a.href = u; a.download = _relAtual.relatorio_id + '.' + fmt; document.body.appendChild(a); a.click(); a.remove();
+    a.href = u; a.download = _relAtual.relatorio_id + '.' + fmt; (document.fullscreenElement || document.body).appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 4000);
   }catch(e){ alert('BT-R04 · Falha de rede ao baixar o relatório.'); }
 }
@@ -9136,7 +9136,19 @@ function relRender(c){
   h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 ${_clmE(c.sha256_do_conteudo)}</div>`;
   h += `<div class="rel-q ${c.sessao_teste_id ? 'ok' : 'atencao'}"><b>Recorte: ${_clmE((c.recorte || {}).rotulo || 'sem recorte')}${c.escopo ? ' · ' + _clmE(c.escopo) : ''}</b>${c.sessao_teste_id ? 'sessao_teste_id ' + _clmE(c.sessao_teste_id) + ' — só registros desta sessão entram neste relatório.' : 'registros fora de sessão de ensaio.'}</div>`;
   if (c.sessao_teste){ _sesCss(); h += '<div class="ses">' + sesHtml(c.sessao_teste, c.escopo === 'Ensaio consolidado' ? 'consolidado' : (c.escopo || I.ativo || '')) + '</div>'; }
-  if (c.escopo === 'Ensaio consolidado') return h;
+  if (c.escopo === 'Ensaio consolidado'){
+    // C27R29 — trilha auditável INTEIRA do período (a mesma janela da BabyMachine, sem filtro de etapa)
+    const TA = c.trilha_auditavel || {}, TI = TA.itens || [];
+    if (TA.linhas !== undefined || TA.situacao){
+      const cnt = Object.entries(TA.por_etapa_estado || {}).sort((a, b) => b[1] - a[1]).map(x => `${_clmE(x[0])} ${x[1]}`).join(' · ');
+      let st = `<div class="rel-sit">${_clmE(TA.nota || TA.erro || '')}${TA.truncada ? ' · lista truncada em 20.000 linhas por bot' : ''}</div>` + (cnt ? `<div class="rel-sit" style="margin:4px 0">${cnt}</div>` : '');
+      st += _relTab(['Hora (UTC)', 'Bot', 'Barra', 'Etapa', 'Estado', 'Origem', 'Motivo'], TI.map(t => [
+        _clmE(String(t.ts_utc || '').slice(0, 19).replace('T', ' ')), _clmE(t.simbolo || t.bot_id), _clmE(String(t.barra_m15_utc || '').slice(11, 16)),
+        `<span class="rel-id">${_clmE(t.etapa)}</span>`, `<b>${_clmE(t.estado)}</b>`, _clmE(t.origem), _clmE(t.motivo)]));
+      h += _relSec(`Trilha auditável completa · ${_clmE(TA.linhas !== undefined ? TA.linhas : 'não consultada')} linha(s) · ${_clmE(TA.periodo || '')}`, st);
+    }
+    return h;
+  }
   h += '<h3>Resumo</h3>' + (R.perguntas || []).map(q => `<div class="rel-q ${_clmE(q.estado)}"><b>${_clmE(q.pergunta)}</b>${_clmE(q.resposta)}</div>`).join('');
   h += _relKV([
     ['Bot', `${_clmE((I.bot || {}).nome)} <span class="rel-sit">id ${_clmE((I.bot || {}).id)}</span>`], ['Ativo / magic', `${_clmE(I.ativo)} / ${_clmE(I.magic)}`],
@@ -9252,6 +9264,16 @@ function relRender(c){
     + _relTab(['Fechamento UTC', 'No fuso', 'Decisão', 'Regra', 'Snap.', 'Atestado', 'Motor', 'Seleção (cand./eleg.)'], (EV.barras_do_periodo || []).slice(0, 200).map(b =>
       [_clmE(b.fechamento_utc), _clmE(b.fechamento_local), _clmE(b.decisao), _clmE(b.regra), _clmE(b.snapshots), _clmE(b.atestado), _clmE(b.motor), b.selecao ? `${_clmE(b.selecao.candidatos)}/${_clmE(b.selecao.elegiveis)}` : '<span class="rel-sit">sem avaliação</span>']));
   h += _relSec('Evidência e barras do período', s);
+  // C27R29 — trilha auditável INTEIRA do período (a mesma janela da BabyMachine, sem filtro de etapa)
+  const TA = c.trilha_auditavel || {}, TI = TA.itens || [];
+  if (TA.linhas !== undefined || TA.situacao){
+    const cnt = Object.entries(TA.por_etapa_estado || {}).sort((a, b) => b[1] - a[1]).map(x => `${_clmE(x[0])} ${x[1]}`).join(' · ');
+    let st = `<div class="rel-sit">${_clmE(TA.nota || TA.erro || '')}${TA.truncada ? ' · lista truncada em 20.000 linhas por bot' : ''}</div>` + (cnt ? `<div class="rel-sit" style="margin:4px 0">${cnt}</div>` : '');
+    st += _relTab(['Hora (UTC)', 'Bot', 'Barra', 'Etapa', 'Estado', 'Origem', 'Motivo'], TI.map(t => [
+      _clmE(String(t.ts_utc || '').slice(0, 19).replace('T', ' ')), _clmE(t.simbolo || t.bot_id), _clmE(String(t.barra_m15_utc || '').slice(11, 16)),
+      `<span class="rel-id">${_clmE(t.etapa)}</span>`, `<b>${_clmE(t.estado)}</b>`, _clmE(t.origem), _clmE(t.motivo)]));
+    h += _relSec(`Trilha auditável completa · ${_clmE(TA.linhas !== undefined ? TA.linhas : 'não consultada')} linha(s) · ${_clmE(TA.periodo || '')}`, st);
+  }
   return h;
 }
 
