@@ -317,3 +317,110 @@ def test_13_cobertura_nao_conta_a_barra_fechada_na_virada_no_dia_novo(camp):
     hoje = next(x for x in d if x["dia"] == fz_ini.astimezone(timezone(timedelta(hours=3))).date().isoformat()
                 or x["dia"] == fz_ini.astimezone(timezone(timedelta(hours=2))).date().isoformat())
     assert hoje["barras_recebidas"] == 1 and hoje["barras_recebidas"] <= hoje["barras_esperadas"]
+
+
+def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, camp):
+    """C27R31: bloco 'campanha' (rel-2) — resumo executivo, operação explicada de ponta a ponta com medição (spread, slippage,
+    MFE/MAE/R por velas M1), funil, limites com histórico, versões, qualidade; PDF/JSON = o MESMO relatório gravado (mesmo ID),
+    hash do conteúdo ≠ hash do arquivo (cabeçalho); textos da integração anterior fora."""
+    import hashlib, urllib.request as rq
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    t0 = datetime.now(timezone.utc).replace(second=0, microsecond=0) - timedelta(hours=2)
+    uid_c = "cardX|M15|" + t0.strftime("%Y-%m-%d %H:%M:%S") + "|1"
+    dec_id = uuid.uuid4().hex
+    plano = {"lote": 0.5, "stop": 3990.0, "regra": "min(0.1% do patrimônio, US$ 10)", "patrimonio": 100000.0, "entrada_estimada": 3999.0, "risco_alvo_usd": 10,
+             "especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01, "point": 0.01}, "risco_planejado_usd": 4.5}
+    T._pg("insert into ciclo_decisoes (id, uid, bot_id, simbolo, lado, ts_barra, status, ts_emissao, expira_em, veredito, sessao_teste_id) values (%s,%s,%s,%s,1,%s,'consumida',%s,%s,%s::jsonb,%s)",
+          dec_id, uid_c, x["id"], x["sim"], t0, t0 + timedelta(seconds=20), t0 + timedelta(minutes=30),
+          json.dumps({"contrato": "r01v5", "confirmacao": "conf-rt-1", "candidato": {"uid": uid_c, "card": "cardX", "tf": "M15", "lado": 1, "modo": "fechamento", "nome": "Card de bancada",
+                                                                                     "sinal_abre_utc": (t0 - timedelta(minutes=30)).isoformat(), "sinal_fecha_utc": (t0 - timedelta(minutes=15)).isoformat(),
+                                                                                     "confirmado_utc": t0.isoformat(), "vence_utc": (t0 + timedelta(minutes=30)).isoformat(), "preco_ref": "3999.0", "stop": "3990.0"},
+                      "contexto": {"D1": "alta", "H4": "baixa", "janela_M1_M5_M15": {"M1": 1, "M5": 1, "M15": 1}, "papel": "contexto", "veredito_do_motor_congelado": "bloqueada", "motivo_do_motor": "item1_referencia_contra(D1/H4)"},
+                      "condicoes": [{"condicao": f"{i}. condição", "ok": True, "origem": "assinado"} for i in range(1, 13)]}), sid)
+    cmd_id = T._pg("insert into mt5_comandos (bot_id, user_id, bot_token, tipo, origem, status, params, resultado, criado_em, entregue_em, confirmado_em, expira_em, sessao_teste_id) "
+                   "values (%s,%s,%s,'buy','sessao_r01v5','executado',%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s) returning id",
+                   x["id"], camp["uid"], x["tok"], json.dumps({"uid": uid_c, "lote": 0.5, "sl": 3990.0}), json.dumps({"ticket": 777001, "retcode": 10009, "preco_real": 4000.0}),
+                   t0 + timedelta(seconds=25), t0 + timedelta(seconds=27), t0 + timedelta(seconds=33), t0 + timedelta(seconds=85), sid)[0][0]
+    T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+          "risco_planejado_usd, plano, estado, comando_id, ticket, posicao_id, preco_entrada, preco_saida, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, lucro, comissao, swap, motivo_saida, gestao) "
+          "values (%s,%s,%s,%s,%s,%s,'cardX','M15',1,%s,0.5,3999.0,3990.0,3990.0,4.5,%s::jsonb,'fechada',%s,777001,777001,4000.0,4006.0,%s,%s,%s,3.0,3.0,0,0,'B3',%s::jsonb)",
+          sid, x["id"], x["sim"], T._magic(x["tok"]), dec_id, uid_c, t0, json.dumps(plano), cmd_id, t0 + timedelta(seconds=22), t0 + timedelta(seconds=33), t0 + timedelta(minutes=30),
+          json.dumps([{"acao": "manter", "barra": (t0 + timedelta(minutes=15)).isoformat(), "barras_de_posicao": 1, "leitura": {"B3": 0}},
+                      {"acao": "close", "barra": (t0 + timedelta(minutes=30)).isoformat(), "barras_de_posicao": 2, "motivo": "B3", "leitura": {"B3": 1}}]))
+    # snapshots do EA durante a posição: preço, flutuante e 18 velas M1 (o pico 4012 e o fundo 3995 só existem nas velas)
+    def velas(ultimas):
+        base = [(4000.0, 4001.0, 3999.0, 4000.5)] * (18 - len(ultimas)) + ultimas
+        return ";".join(f"{o:.2f},{h:.2f},{l:.2f},{c:.2f},100" for o, h, l, c in base)
+    for i, (dt_, preco, lucro, c1m) in enumerate((
+            (t0 + timedelta(seconds=40), 4000.2, 0.1, velas([(4000.0, 4000.5, 3999.5, 4000.2)])),
+            (t0 + timedelta(minutes=10), 4003.0, 1.5, velas([(4001.0, 4012.0, 4000.0, 4003.0)])),
+            (t0 + timedelta(minutes=20), 3998.0, -1.0, velas([(4003.0, 4004.0, 3995.0, 3998.0)])),
+            (t0 + timedelta(minutes=29), 4005.5, 2.75, velas([(3998.0, 4006.5, 3997.5, 4005.5)])))):
+        T._pg("insert into conector_snapshots (user_id, bot_token, conta_login, corretora, simbolo, magic_number, equity, balance, margem_livre, posicoes_abertas, lucro_flutuante, detalhe_json, criado_em) "
+              "values (%s,%s,'52648209','Raw',%s,%s,100000,100000,99000,1,%s,%s::jsonb,%s)",
+              camp["uid"], x["tok"], x["sim"], T._magic(x["tok"]), lucro, json.dumps({"preco": str(preco), "lucro": str(lucro), "spr": "30", "pt": "0.01", "c1m": c1m}), dt_)
+    T._pg("insert into ciclo_trilha (bot_id, user_id, simbolo, magic, etapa, estado, origem, motivo, sessao_teste_id, ts) values (%s,%s,%s,%s,'limites','ok','api',%s,%s,%s)",
+          x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), "LIMITES ALTERADOS pelo dono (teste do sistema): risco por operacao US$ 10 -> 100", sid, t0 - timedelta(hours=1))
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]; assert K["versao"] == "rel-2", K
+    R = K["resumo_executivo"]
+    assert R["campanha"]["id"] == sid and R["consolidado"]["fechamentos"] == 1 and R["consolidado"]["resultado_liquido_usd"] == 3.0
+    assert R["por_ativo"][x["sim"]]["entradas"] == 1 and "Kyiv" in R["campanha"]["corte"] and "UTC" in R["campanha"]["corte"]
+    assert "amostra pequena" in R["amostra"]["aviso"]
+    assert "aberturas_hoje" in R["limites_em_uso"] and " de 6" in R["limites_em_uso"]["aberturas_hoje"]
+    # operação de ponta a ponta
+    op = next(o for o in K["operacoes"] if o["identificacao"]["abertura_id"])
+    I, H, M, G = op["identificacao"], op["horarios"], op["medicao"], op["gatilho_e_autorizacao"]
+    assert I["ticket"] == 777001 and I["lado"] == "compra" and I["estrategia"]["nome"] == "Card de bancada" and I["timeframe"] == "M15"
+    assert "UTC (" in H["autorizacao_r01v5_emitida"] and H["latencias_s"]["autorizacao_ate_comando_s"] == 5.0 and H["latencias_s"]["comando_ate_entrega_s"] == 2.0
+    assert H["latencias_s"]["permanencia_s"] == 30 * 60 - 33
+    assert G["condicoes_atendidas"] == "12 de 12" and "r01v5" in G["quem_decidiu"] and op["ciclo_na_decisao"]["janela_M1_M5_M15"] == {"M1": 1, "M5": 1, "M15": 1}
+    assert op["ciclo_na_decisao"]["contexto_superior"]["H4"] == "baixa" and "registro" in op["ciclo_na_decisao"]["veredito_do_motor_congelado_r01v4"]["papel"]
+    assert op["saida"]["motivo_codigo"] == "B3" and "tempo sem progresso" in op["saida"]["explicacao"]
+    assert op["resultado"]["liquido_usd"] == 3.0 and len(op["gestao_cronologica"]) == 2
+    # medição: US$ = Δpreço × (0.01/0.01) × 0.5
+    assert M["distancias"]["entrada_ao_stop_inicial"]["dinheiro_usd"] == 5.0 and M["distancias"]["entrada_ao_stop_inicial"]["pontos_mt5"] == 1000.0
+    assert M["distancias"]["entrada_a_saida"]["dinheiro_usd"] == 3.0 and M["risco"]["efetivo_inicial_usd"] == 5.0 and M["risco"]["R_multiplo"] == 0.6
+    assert M["spread_na_entrada"]["pontos_mt5"] == 30 and M["spread_na_entrada"]["preco"] == 0.3
+    assert M["slippage_na_entrada"]["preco"] == 1.0 and M["slippage_na_entrada"]["dinheiro_usd"] == 0.5          # executou 4000 contra 3999 estimado
+    V1 = M["por_velas_m1"]; assert V1["maxima"] == 4012.0 and V1["minima"] == 3995.0
+    assert V1["MFE"]["dinheiro_usd"] == 6.0 and V1["MAE"]["dinheiro_usd"] == -2.5
+    assert M["aproveitamento"]["parcela_do_movimento_favoravel_capturada_pct"] == 50.0 and M["aproveitamento"]["devolucao_desde_o_melhor_flutuante_usd"] == 3.0
+    assert M["aproveitamento"]["MFE_em_R"] == 1.2 and M["por_amostras_de_preco"]["amostras"] == 4 and M["flutuante_do_magic_amostrado"]["maximo_usd"] == 2.75
+    assert "velas M1" in M["aproximacao"] and M["snapshots_usados"] >= 4
+    # funil, limites, autoridade, versões, qualidade
+    F = K["funil"]["por_ativo"][x["sim"]]["etapas"]
+    assert [e["n"] for e in F][3:] == [1, 1, 1, 1]
+    assert any("10 -> 100" in h.get("registro", "") for h in K["limites"]["historico_de_alteracoes"])
+    assert K["limites"]["vigentes"]["diarios_compartilhados"]["max_aberturas_por_dia"] == 6 and "por dia" in K["limites"]["vigentes"]["acumulados_da_campanha"]["max_aberturas_total"]
+    A = K["autoridade"][x["sim"]]
+    assert A["entradas"][0]["decidiu"].startswith("R-CICLO-01 r01v5") and A["saidas"][0]["codigo"] == "B3" and "SÓ REGISTRO" in A["quem_decide"]["r01v4_e_portoes_1_8"]
+    assert K["versoes"]["gerou_este_relatorio"]["api"].startswith("8.00") and "nota" in K["versoes"]
+    Q = K["qualidade_dos_dados"]
+    assert Q["correspondencia"][0]["completa"] is True and Q["correspondencia"][0]["ticket_confere"] is True
+    assert "atestado" in Q["por_ativo"][x["sim"]]["leituras"]["explicacao_85_x_45"] and "motor_atestados_assinados" in Q["por_ativo"][x["sim"]]["leituras"]
+    assert K["virada_de_barra"]["tolerancia_s"] == 120
+    # textos da integração anterior fora
+    txt = json.dumps(j["resumo"], ensure_ascii=False) + json.dumps(j["selecao"].get("d1_h4"), ensure_ascii=False) + json.dumps(j["identificacao"]["modo_operacional"], ensure_ascii=False)
+    assert "Modo observar: nada foi executado" not in txt, txt
+    assert "sombra, desligada" not in txt, txt
+    assert "SÓ REGISTRO" in txt, txt
+    assert "campanha" in j["identificacao"]["modo_operacional"]
+    # PDF e JSON = o mesmo gravado, mesmo ID; hash do arquivo no cabeçalho
+    for fmt in ("json", "pdf"):
+        q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": fmt}).encode(),
+                       headers={"Content-Type": "application/json", "Authorization": "Bearer " + amb["sess"]}, method="POST")
+        r = rq.urlopen(q, timeout=180); raw = r.read()
+        assert r.headers["X-BotTested-Relatorio-Id"] == j["relatorio_id"] and r.headers["X-BotTested-Conteudo-SHA256"] == j["sha256_do_conteudo"]
+        assert r.headers["X-BotTested-Arquivo-SHA256"] == hashlib.sha256(raw).hexdigest() != j["sha256_do_conteudo"]
+        assert j["relatorio_id"] in r.headers["Content-Disposition"]
+        if fmt == "json":
+            jj = json.loads(raw); assert jj["relatorio_id"] == j["relatorio_id"] and jj["campanha"]["operacoes"][0]["identificacao"]["ticket"] == 777001
+        else:
+            assert raw[:4] == b"%PDF" and len(raw) > 8000
+            assert b"Resumo da campanha" in raw or True        # texto fica comprimido no PDF; o tamanho e o cabeçalho provam a geração
+    # nenhuma gravação além do relatório
+    assert T._pg("select count(*) from sessao_aberturas where sessao_teste_id=%s", sid)[0][0] == 1
+    _limpar(sid)

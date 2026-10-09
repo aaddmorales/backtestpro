@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.66-tela-da-campanha-c27r30';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.67-relatorio-da-campanha-c27r31';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9100,6 +9100,90 @@ function resBaixar(ext){
   document.getElementById('res-estado').textContent = 'Arquivo baixado: ' + nome;
 }
 
+// ═══ C27R31 — bloco da campanha no relatório (rel-2): resumo executivo, operações ponta a ponta, funil, diagnóstico ═══
+function _relJ(v){ return v === null || v === undefined ? '<span class="rel-sit">não disponível</span>' : (typeof v === 'object' ? _clmE(JSON.stringify(v)) : _clmE(v)); }
+function relCampanhaHtml(K){
+  if (K.situacao) return `<div class="rel-q atencao"><b>Bloco da campanha não montado</b>${_clmE(K.erro || K.situacao)}</div>`;
+  const R = K.resumo_executivo || {}, CP = R.campanha || {}, CO = R.consolidado || {}, LU = R.limites_em_uso || {}, PA = R.por_ativo || {};
+  let s = _relKV([['Campanha', `${_clmE(CP.id)} · ${_clmE(CP.nome)} <span class="rel-sit">${_clmE(CP.tipo)} · ${_clmE(CP.estado)}</span>`], ['Conta DEMO', _clmE(CP.conta)], ['Ativos', _clmE((CP.ativos || []).join(' · '))],
+    ['Início / 1ª barra', `${_clmE(CP.inicio)} / ${_clmE(CP.primeira_barra)}`], ['Término', _clmE(CP.termino)], ['Período', `${_clmE((CP.periodo_do_relatorio || {}).de)} → ${_clmE((CP.periodo_do_relatorio || {}).ate)}`],
+    ['Corte', _clmE(CP.corte)], ['Autoridade', `${_clmE(CP.autoridade)} · novas aberturas: ${_clmE(CP.novas_aberturas)}`]]);
+  s += '<h3>Estado por ativo</h3>' + _relTab(['Ativo', 'Coleta', 'Idade (s)', 'Mercado', 'Motor', 'Conector', 'EA / leitor'], Object.entries(PA).map(([sym, x]) =>
+    [`<b>${_clmE(sym)}</b>`, _clmE(x.coleta), _clmE(x.idade_dos_dados_s), _clmE(x.mercado), _clmE(x.motor), _clmE(x.conector), `${_clmE(x.ea)} / ${_clmE(x.leitor)}`]));
+  s += '<h3>Entradas, fechamentos, posições abertas e resultado líquido</h3>' + _relTab(['Ativo', 'Entradas', 'Fechamentos', 'Abertas', 'Resultado líquido US$', 'Risco aberto US$', 'Outros magics'],
+    Object.entries(PA).map(([sym, x]) => [`<b>${_clmE(sym)}</b>`, x.entradas, x.fechamentos, x.posicoes_abertas, _clmE(x.resultado_liquido_usd), _clmE(x.risco_aberto_usd), _clmE(x.operacoes_manuais_ou_outros_magics)])
+    .concat([[`<b>CONSOLIDADO</b>`, CO.entradas, CO.fechamentos, CO.posicoes_abertas, `<b>${_clmE(CO.resultado_liquido_usd)}</b>`, _clmE(CO.risco_aberto_usd), `bruto ${_clmE(CO.bruto_usd)} · custos ${_clmE(CO.custos_usd)} · ${_clmE(CO.ganhos)} ganhos / ${_clmE(CO.perdas)} perdas · DD ${_clmE(CO.drawdown_realizado_usd)}`]]));
+  const ct = CO.conta || {};
+  s += `<div class="rel-sit">Conta (uma vez): patrimônio ${_clmE(ct.equity)} · saldo ${_clmE(ct.balance)} · flutuante da conta ${_clmE(ct.flutuante_da_conta)} · ${_clmE(ct.nota)}</div>`;
+  s += '<h3>Risco aberto e uso dos limites vigentes</h3>' + _relKV([['Dia', _clmE(LU.dia)], ['Aberturas hoje', _clmE(LU.aberturas_hoje)], ['Perda realizada hoje', _clmE(LU.perda_realizada_hoje_usd)], ['Posições abertas', _clmE(LU.posicoes_abertas)],
+    ['Risco aberto', _clmE(LU.risco_aberto_usd)], ['Perdas consecutivas', _clmE(LU.perdas_consecutivas)], ['Acumulado da campanha', _relJ(LU.acumulado_da_campanha)]]);
+  s += '<h3>Principal motivo de ausência de entrada</h3>' + Object.entries(PA).map(([sym, x]) => { const m = x.principal_motivo_sem_entrada || {};
+    return `<div class="rel-q info"><b>${_clmE(sym)}</b>${_clmE(m.leitura)}<br><span class="rel-sit">seleção (1º portão, descrição): ${Array.isArray(m.na_selecao_primeiro_portao) ? _clmE(m.na_selecao_primeiro_portao.map(z => z.portao + ' ×' + z.vezes).join(' · ')) : _clmE(m.na_selecao_primeiro_portao)} · autoridade/limites: ${Array.isArray(m.na_autoridade_ou_limites) ? _clmE(m.na_autoridade_ou_limites.map(z => `${z.tf} ${z.motivo} ${z.limite || ''} ×${z.barras}`).join(' · ')) : _clmE(m.na_autoridade_ou_limites)}</span></div>`; }).join('');
+  s += '<h3>Pendências e inconsistências</h3>' + (R.pendencias_e_inconsistencias || []).map(x => `<div class="rel-q ${/nenhuma/.test(x) ? 'ok' : 'atencao'}">${_clmE(x)}</div>`).join('');
+  s += `<div class="rel-frase">Amostra: ${_clmE((R.amostra || {}).operacoes_fechadas)} operação(ões) fechada(s). ${_clmE((R.amostra || {}).aviso)}</div>`;
+  let h = _relSec('1. Resumo da campanha (primeira página)', s, true);
+  // operações
+  s = '';
+  for (const o of (K.operacoes || [])){
+    if (o.erro){ s += `<div class="rel-q falha">Abertura ${_clmE((o.identificacao || {}).abertura_id)}: ${_clmE(o.erro)}</div>`; continue; }
+    const I = o.identificacao || {}, H = o.horarios || {}, lat = H.latencias_s || {}, CI = o.ciclo_na_decisao || {}, G = o.gatilho_e_autorizacao || {}, EN = o.entrada || {}, so = EN.solicitada || {}, ex = EN.executada || {},
+      ST = o.stop || {}, SA = o.saida || {}, RS = o.resultado || {}, M = o.medicao || {}, RK = M.risco || {}, D = M.distancias || {}, V1 = M.por_velas_m1 || {}, PM = M.por_amostras_de_preco || {}, AP = M.aproveitamento || {}, sp = M.spread_na_entrada || {}, sl = M.slippage_na_entrada || {};
+    const d3 = x => x ? `${_clmE(x.preco)} preço · ${_clmE(x.pontos_mt5)} pts · US$ ${_clmE(x.dinheiro_usd)}` : '<span class="rel-sit">não disponível</span>';
+    s += `<h3>Operação #${_clmE(I.abertura_id)} · ${_clmE(I.ativo)} · ticket ${_clmE(I.ticket)} · magic ${_clmE(I.magic)} · ${_clmE((I.estrategia || {}).nome)} <span class="rel-id">${_clmE((I.estrategia || {}).card)}</span> · ${_clmE(I.timeframe)} · <b>${_clmE(I.lado)}</b> · ${_clmE(I.estado)}</h3>`;
+    s += _relKV([['Decisão / candidato', `${_clmE(I.decisao_id)} · <span class="rel-id">${_clmE(I.candidato_uid)}</span>`], ['Comando de abertura', _clmE(I.comando_id)]]);
+    const ordH = ['sinal_abriu', 'sinal_fechou', 'confirmacao_do_card', 'barra_m15_da_decisao_fechou', 'leitura_assinada_recebida', 'autorizacao_r01v5_emitida', 'reserva_de_risco', 'comando_criado', 'comando_entregue_ao_conector', 'execucao_confirmada_pelo_mt5', 'abertura_registrada', 'fechamento', 'validade_do_candidato'];
+    s += _relTab(['Etapa', 'Quando (UTC e fuso)'], ordH.filter(k => k in H).concat(Object.keys(H).filter(k => k !== 'latencias_s' && !ordH.includes(k))).map(k => [_clmE(k.replace(/_/g, ' ')), _clmE(H[k])]));
+    s += `<div class="rel-sit">Latências (s): ${_clmE(Object.entries(lat).map(x => x[0].replace(/_/g, ' ') + ' ' + (x[1] === null ? 'n/d' : x[1])).join(' · '))}</div>`;
+    s += _relKV([['Ciclo na decisão', _clmE(CI.leitura)], ['Corte', _relJ(CI.corte)], ['Contexto superior (não decide)', _relJ(CI.contexto_superior)], ['Veredito r01v4 (só registro)', _relJ(CI.veredito_do_motor_congelado_r01v4)],
+      ['Gatilho', _clmE(G.gatilho)], ['Condições', `${_clmE(G.condicoes_atendidas)}` + (Array.isArray(G.condicoes) ? '<br>' + G.condicoes.map(x => `${x.ok ? '✔' : '✖'} ${_clmE(x.condicao)} <span class="rel-sit">${_clmE(x.origem)}</span>`).join('<br>') : '')], ['Quem decidiu', _clmE(G.quem_decidiu)]]);
+    s += _relTab(['', 'Solicitada', 'Executada'], [['Tipo / lote', `${_clmE(so.tipo)} / ${_clmE(so.lote)}`, `ticket ${_clmE(ex.ticket)} · retcode ${_clmE(ex.retcode)} · ${_clmE(ex.status_do_comando)}`],
+      ['Preço', `ref. ${_clmE(so.preco_de_referencia)} · estimada ${_clmE(so.entrada_estimada_no_plano)}`, `<b>${_clmE(ex.preco)}</b>`], ['Stop', `inicial ${_clmE(so.stop)}`, `final ${_clmE(ST.final)}`],
+      ['Risco', `planejado US$ ${_clmE(so.risco_planejado_usd)} <span class="rel-sit">${_clmE(so.regra_do_lote)}</span>`, `efetivo US$ ${_clmE(RK.efetivo_inicial_usd)} = ${_clmE(RK.efetivo_pct_do_patrimonio)}% do patrimônio ${_clmE(RK.patrimonio_no_plano_usd)}`],
+      ['Spread na entrada', `${_clmE(sp.pontos_mt5)} pts = ${_clmE(sp.preco)} = US$ ${_clmE(sp.dinheiro_usd_no_lote)} no lote <span class="rel-sit">snapshot a ${_clmE(sp.distancia_da_abertura_s)} s</span>`, ''],
+      ['Slippage na entrada', `${_clmE(sl.preco)} = ${_clmE(sl.pontos_mt5)} pts = US$ ${_clmE(sl.dinheiro_usd)} <span class="rel-sit">${_clmE(sl.sinal)}</span>`, '']]);
+    s += '<h3>Gestão em ordem cronológica</h3>' + _relTab(['Barra M15', 'Barras de posição', 'Ação', 'Motivo', 'Leitura assinada', 'Comando'], (o.gestao_cronologica || []).map(g => [_clmE(g.barra_m15_utc), g.barras_de_posicao, `<b>${_clmE(g.acao)}</b>`, _clmE(g.motivo) + (g.explicacao ? `<br><span class="rel-sit">${_clmE(g.explicacao)}</span>` : ''), _relJ(g.leitura_assinada), g.comando ? `${_clmE(g.comando.id)} ${_clmE(g.comando.status)} ${_clmE(g.comando.confirmado_utc)}` : '—']));
+    s += `<div class="rel-q info"><b>Saída: ${_clmE(SA.motivo_codigo)}</b>${_clmE(SA.explicacao)} · preço ${_clmE(SA.preco)} · ${_clmE(SA.quando)} · comando ${_relJ(SA.comando_de_saida)}</div>`;
+    s += `<div class="rel-frase">Resultado: bruto US$ ${_clmE(RS.bruto_usd)} · comissão ${_clmE(RS.comissao_usd)} · swap ${_clmE(RS.swap_usd)} · <b>líquido US$ ${_clmE(RS.liquido_usd)}</b> <span class="rel-sit">${_clmE(RS.fonte)}</span></div>`;
+    s += '<h3>Medição</h3>' + _relTab(['Medida', 'Preço / pontos MT5 / dinheiro', 'Observação'], [
+      ['Entrada → stop inicial', d3(D.entrada_ao_stop_inicial), `risco efetivo US$ ${_clmE(RK.efetivo_inicial_usd)}`], ['Entrada → saída', d3(D.entrada_a_saida), _clmE((D.entrada_a_saida || {}).sinal)],
+      ['MFE (velas M1)', d3(V1.MFE), V1.MFE ? `${_clmE(V1.minutos_cobertos)} de ${_clmE(V1.minutos_da_posicao)} min cobertos · máx ${_clmE(V1.maxima)} mín ${_clmE(V1.minima)}` : _clmE(V1.situacao)], ['MAE (velas M1)', d3(V1.MAE), _clmE(V1.nota || V1.coleta_necessaria)],
+      ['MFE / MAE (amostras ~20 s)', PM.MFE ? d3(PM.MFE) + ' | ' + d3(PM.MAE) : '<span class="rel-sit">não disponível</span>', _clmE(PM.nota || '')], ['Flutuante do magic (amostrado)', _relJ(M.flutuante_do_magic_amostrado), ''],
+      ['R (resultado ÷ risco efetivo)', `<b>${_clmE(RK.R_multiplo)}</b>`, `MFE ${_clmE(AP.MFE_em_R)} R · MAE ${_clmE(AP.MAE_em_R)} R`],
+      ['Aproveitamento', `capturou ${_clmE(AP.parcela_do_movimento_favoravel_capturada_pct)}% do MFE (US$ ${_clmE(AP.MFE_usd)}) · devolveu US$ ${_clmE(AP.devolucao_desde_o_melhor_flutuante_usd)}`, _clmE(AP.nota || '')],
+      ['Permanência', `${_clmE(lat.permanencia_s)} s`, `barra fechou → execução ${_clmE(lat.barra_fechou_ate_execucao_s)} s`]]);
+    s += `<div class="rel-sit">${_clmE((M.formula || {}).dinheiro)} · pontos = ${_clmE((M.formula || {}).pontos_mt5)} · R = ${_clmE((M.formula || {}).R)} · especificação ${_relJ((M.formula || {}).especificacao_usada)} · ${_clmE(M.aproximacao)} · snapshots usados ${_clmE(M.snapshots_usados)}</div>`;
+    if ((o.trilha_da_operacao || []).length) s += '<details><summary>Trilha da operação (' + o.trilha_da_operacao.length + ')</summary>' + _relTab(['Hora (UTC)', 'Etapa', 'Estado', 'Motivo'], o.trilha_da_operacao.map(t => [_clmE(t.ts_utc), _clmE(t.etapa), _clmE(t.estado), _clmE(t.motivo)])) + '</details>';
+  }
+  h += _relSec(`2. Operações de ponta a ponta · ${(K.operacoes || []).length}`, s || '<div class="rel-vazio">Nenhuma operação na campanha até o corte.</div>', true);
+  // funil
+  const FU = K.funil || {};
+  s = `<div class="rel-sit">${_clmE(FU.nota)}</div>`;
+  for (const [sym, f] of Object.entries(FU.por_ativo || {})) s += `<h3>${_clmE(sym)} · ${_clmE(f.barras_avaliadas)} barras avaliadas · reservas canceladas ${_clmE(f.reservas_canceladas)}</h3>` + _relTab(['Etapa', 'n', 'Fonte'], (f.etapas || []).map(e => [_clmE(e.etapa), `<b>${_clmE(e.n)}</b>`, _clmE(e.fonte)])) + `<div class="rel-sit">${_clmE(f.nota_unidades)}</div>`;
+  const esc = FU.escolhidos_sem_operacao || [];
+  s += `<h3>Escolhidos que não viraram operação: ${esc.length} · ${_clmE(Object.entries(FU.escolhidos_sem_operacao_por_categoria || {}).map(x => x[0] + ' ' + x[1]).join(' · '))}</h3>` + _relTab(['Barra (UTC)', 'Ativo', 'Estratégia / TF / lado', 'Etapa que interrompeu', 'Motivo efetivo', 'Categoria'],
+    esc.map(x => [_clmE(String(x.barra_m15_utc || '').slice(0, 16).replace('T', ' ')), _clmE(x.ativo), `${_clmE(x.estrategia)} ${_clmE(x.timeframe)} ${_clmE(x.lado)}`, _clmE(x.etapa_que_interrompeu), _clmE(x.motivo_efetivo), `<b>${_clmE(x.categoria)}</b>`]));
+  h += _relSec('3. Oportunidades sem execução (funil candidatos → fechamentos)', s);
+  // diagnóstico
+  const LI = K.limites || {}, VG = LI.vigentes || {}, AU = K.autoridade || {}, VS = K.versoes || {}, VB = K.virada_de_barra || {}, QD = K.qualidade_dos_dados || {};
+  s = '<h3>Limites</h3>' + _relKV([['Por operação', _relJ(VG.por_operacao)], ['Diários (compartilhados)', _relJ(VG.diarios_compartilhados)], ['Simultâneos', _relJ(VG.simultaneos)], ['Sequência', _relJ(VG.sequencia)], ['Acumulados da campanha', _relJ(VG.acumulados_da_campanha)], ['Origem', `${_clmE(VG.origem)} · ${_clmE(VG.nota_do_dono)}`]])
+    + _relTab(['Quando', 'Registro', 'Fonte'], (LI.historico_de_alteracoes || []).map(x => [_clmE(x.quando || x.situacao), _clmE(x.registro), _clmE(x.fonte)])) + `<div class="rel-sit">Uso agora: ${_relJ(LI.uso_agora)}</div><div class="rel-sit">${_clmE(LI.texto_antigo_max_none)}</div>`;
+  s += '<h3>Autoridade: quem decidiu</h3>';
+  for (const [sym, a] of Object.entries(AU)) s += `<div class="rel-sit"><b>${_clmE(sym)}</b> · ${_clmE(Object.entries(a.quem_decide || {}).map(x => x[0] + ': ' + x[1]).join(' · '))}</div>` + _relTab(['Abertura', 'Entrada', 'Saída', 'Código / explicação'], (a.entradas || []).map(e => { const sd = (a.saidas || []).find(z => z.abertura_id === e.abertura_id) || {}; return [e.abertura_id, `${_clmE(e.decidiu)} (${_clmE(e.contrato)})`, _clmE(sd.decidiu || 'posição aberta'), sd.codigo ? `${_clmE(sd.codigo)}: ${_clmE(sd.explicacao)}` : '—']; })) + `<div class="rel-sit">Esperas e bloqueios: ${_relJ(a.esperas_e_bloqueios)}</div>`;
+  s += '<h3>Versões</h3>' + _relKV([['Gerou este relatório', _relJ(VS.gerou_este_relatorio)]]) + _relTab(['Ativo', 'De', 'Até', 'Barras', 'API', 'commit', 'implantada', 'EA', 'Conector', 'Leitor'], (VS.historico_no_periodo || []).map(x => [_clmE(x.ativo), _clmE(String(x.de_utc || '').slice(0, 16)), _clmE(String(x.ate_utc || '').slice(0, 16)), x.barras, _clmE(x.api), _clmE(x.commit_da_api), _clmE(x.implantada_utc), _clmE(x.ea), _clmE(x.conector), _clmE(x.leitor)]))
+    + _relTab(['API', 'commit', 'implantada na homolog (UTC)'], (VS.implantacoes_da_api_na_homolog || []).map(x => [_clmE(x.api), _clmE(x.commit), _clmE(x.implantada_utc)])) + `<div class="rel-sit">${_clmE(VS.nota)}</div>`;
+  s += '<h3>Virada de barra</h3>' + _relKV([['Correção em vigor desde', `${_clmE(VB.correcao_em_vigor_desde_utc)} · tolerância ${_clmE(VB.tolerancia_s)} s`], ['Avisos históricos preservados', _clmE(VB.avisos_historicos_preservados)], ['Depois da correção', _relJ(VB.eventos_depois_da_correcao)], ['Classes', _relJ(VB.classes)]]);
+  s += '<h3>Qualidade e reconciliação dos dados</h3>';
+  for (const [sym, q] of Object.entries(QD.por_ativo || {})){ const B = q.barras || {}, L = q.lacunas || {}, LE = q.leituras || {};
+    s += _relKV([[`${sym} barras`, `esperadas ${_clmE(B.esperadas)} / recebidas ${_clmE(B.recebidas)} · ${_clmE((B.por_dia || []).map(d => `${d.dia} ${d.recebidas}/${d.esperadas} (${d.cobertura_pct}%)`).join(' · '))}`], [`${sym} calendário`, _relJ(B.calendario)],
+      [`${sym} lacunas`, `faltando ${_clmE(L.barras_faltando)} · coleta ${_clmE(L.ausencia_de_coleta)} · mercado fechado ${_clmE(L.mercado_fechado)} · indeterminado ${_clmE(L.indeterminado)} <span class="rel-sit">${_clmE(L.evidencia_mercado_fechado)}</span>`],
+      [`${sym} frescor agora`, _relJ(q.frescor_agora)], [`${sym} leituras`, `EA M15 ${_clmE(LE.ea_m15)} · motor (dirs no último snapshot) ${_clmE(LE.motor_m15_pela_leitura_do_ultimo_snapshot)} · motor (atestados assinados) <b>${_clmE(LE.motor_atestados_assinados)}</b><br><span class="rel-sit">${_clmE(LE.explicacao_85_x_45)}</span>`],
+      [`${sym} EA × motor`, _relJ(q.divergencias_ea_x_motor_na_mesma_barra)], [`${sym} trilha`, _relJ(q.trilha)]]); }
+  s += _relTab(['Abertura', 'Ativo', 'Decisão', 'Comando', 'Status', 'Ticket cmd / abertura', 'Resultado MT5', 'Completa'], (QD.correspondencia || []).map(x => [x.abertura_id, _clmE(x.ativo), x.decisao ? 'sim' : 'NÃO', x.comando ? 'sim' : 'NÃO', _clmE(x.comando_status), `${_clmE(x.ticket_no_comando)} / ${_clmE(x.ticket_na_abertura)}`, x.resultado_do_mt5 === null ? '—' : (x.resultado_do_mt5 ? 'sim' : 'NÃO'), x.completa ? '✔' : '<b style="color:var(--red,#ff5c5c)">NÃO</b>']));
+  s += `<div class="rel-sit">Unidades: ${_relJ(K.contagens_unidades)}</div>`;
+  h += _relSec('4. Diagnóstico (limites, autoridade, versões, virada de barra, qualidade dos dados)', s);
+  return h;
+}
+
 async function relGerar(){
   const out = document.getElementById('rel-out'), bt = document.getElementById('rel-gerar'); if (!out) return;
   const per = document.getElementById('rel-per').value, corpo = {bot_id: _relBot, periodo: per, fuso: document.getElementById('rel-fuso').value};
@@ -9134,16 +9218,22 @@ async function relBaixar(fmt){
   try{
     const r = await fetch(API + '/learning/relatorio/baixar', {method:'POST', headers: await _authHeaders(), body: JSON.stringify({relatorio_id: _relAtual.relatorio_id, formato: fmt})});
     if (!r.ok){ let m = ''; try{ m = (await r.json()).detail || ''; }catch(_){ } alert('BT-R03 · Não consegui baixar o ' + fmt.toUpperCase() + ' (HTTP ' + r.status + '). ' + m); return; }
-    const u = URL.createObjectURL(await r.blob()), a = document.createElement('a');
+    const blob = await r.blob(), u = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = u; a.download = _relAtual.relatorio_id + '.' + fmt; (document.fullscreenElement || document.body).appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 4000);
+    // C27R31: o MESMO relatório gravado (mesmo ID e mesmo corte) em PDF e JSON; hash do conteúdo ≠ hash do arquivo
+    let hArq = r.headers.get('X-BotTested-Arquivo-SHA256') || '';
+    if (!hArq && window.crypto && crypto.subtle){ try{ const d = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()); hArq = Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join(''); }catch(_){ } }
+    const cx = document.getElementById('rel-arquivos');
+    if (cx) cx.insertAdjacentHTML('beforeend', `<div class="rel-sit">↓ ${_clmE(_relAtual.relatorio_id)}.${fmt} · ${blob.size.toLocaleString('pt-BR')} bytes · sha256 do arquivo ${_clmE(hArq || 'não informado')} · sha256 do conteúdo ${_clmE(String(_relAtual.sha256_do_conteudo || '').slice(0, 16))}…</div>`);
   }catch(e){ alert('BT-R04 · Falha de rede ao baixar o relatório.'); }
 }
 function relRender(c){
   const I = c.identificacao || {}, V = I.versoes || {}, P = c.periodo || {}, F = c.fuso || {}, R = c.resumo || {}, A = I.ambiente || {};
   let h = '';
   if (!c.persistido) h += `<div class="rel-q atencao"><b>Relatório não foi gravado no servidor</b>${_clmE(c.aviso_persistencia || '')} Sem gravação não há download.</div>`;
-  h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 ${_clmE(c.sha256_do_conteudo)}</div>`;
+  h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 do conteúdo ${_clmE(c.sha256_do_conteudo)}</div><div id="rel-arquivos"></div>`;
+  if (c.campanha) h += relCampanhaHtml(c.campanha);
   h += `<div class="rel-q ${c.sessao_teste_id ? 'ok' : 'atencao'}"><b>Recorte: ${_clmE((c.recorte || {}).rotulo || 'sem recorte')}${c.escopo ? ' · ' + _clmE(c.escopo) : ''}</b>${c.sessao_teste_id ? 'sessao_teste_id ' + _clmE(c.sessao_teste_id) + ' — só registros desta sessão entram neste relatório.' : 'registros fora de sessão de ensaio.'}</div>`;
   if (c.sessao_teste){ _sesCss(); h += '<div class="ses">' + sesHtml(c.sessao_teste, c.escopo === 'Ensaio consolidado' ? 'consolidado' : (c.escopo || I.ativo || '')) + '</div>'; }
   if (c.escopo === 'Ensaio consolidado'){

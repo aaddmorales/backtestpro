@@ -38,7 +38,7 @@ def test_2_app_versao_bate_com_o_arquivo():
     assert d["app_versao"] == ver
     assert d["sha256_arquivo"] == hashlib.sha256(bruto).hexdigest()
     assert d["bytes_arquivo"] == len(bruto)
-    assert d["api"].startswith("7.9")
+    assert d["api"].startswith("8.0")
     txt = corpo.decode().lower()
     assert "eyj" not in txt and "sb_secret" not in txt and "service_role" not in txt
 
