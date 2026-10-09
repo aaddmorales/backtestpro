@@ -20846,11 +20846,19 @@ def _clm_ingerir(sb, bot, snap, det, snapshot_id=None):
                     (f"verificado · motor {at.get('versao_motor')}" if at.get("estado") == "verificado" else
                      f"{at.get('motivo')} · elo que falhou: {(_elo_f or {}).get('elo')} — {(_elo_f or {}).get('motivo')}"),
                     barra=barra, correlacao=corr, ref=ref)
-        _clm_trilha(sb, bot, "decisao" if cons["decisao"] != "bloquear" else "veto",
-                    "ok" if cons["decisao"] != "bloquear" else "recusado", "api",
-                    (f"[{cons.get('classe_veto')}] " if cons.get("classe_veto") else "") +
-                            f"{cons['estado']} · {cons['decisao']} · {cons['regra']} · {cons['motivo']} · {cons['execucao']}",
-                    barra=barra, correlacao=corr, ref=ref)
+        if cons.get("r01v4_so_registro"):
+            # C27R28: bot em campanha — o veredito r01v4 (D1/H4 contra o M15) NÃO veta nada; vai para a trilha como
+            # registro do motor, nunca como "veto". A abertura é decidida de baixo para cima pela r01v5 (Ciclo do
+            # timeframe do card + confirmação + M15), com D1/H4 só como contexto.
+            _clm_trilha(sb, bot, "motor", "ok", "api",
+                        f"veredito r01v4 só registrado (não decide neste bot): {cons['decisao']} · {cons['motivo']} · {cons['execucao']}",
+                        barra=barra, correlacao=corr, ref=dict(ref, veredito_r01v4=cons.get("decisao"), classe=cons.get("classe_veto")))
+        else:
+            _clm_trilha(sb, bot, "decisao" if cons["decisao"] != "bloquear" else "veto",
+                        "ok" if cons["decisao"] != "bloquear" else "recusado", "api",
+                        (f"[{cons.get('classe_veto')}] " if cons.get("classe_veto") else "") +
+                                f"{cons['estado']} · {cons['decisao']} · {cons['regra']} · {cons['motivo']} · {cons['execucao']}",
+                        barra=barra, correlacao=corr, ref=ref)
         # posição no MT5 sem evento de abertura: divergência, nunca operação confirmada
         try:
             pos = int(getattr(snap, "posicoes_abertas", 0) or 0)

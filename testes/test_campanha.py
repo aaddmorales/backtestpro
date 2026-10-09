@@ -222,3 +222,20 @@ def test_9_bot_em_campanha_mostra_r01v5_em_vigor_e_r01v4_so_registro(api, camp):
         assert api._sel_contratos_do_bot(sb, outro, {"autoridade": api.SEL_AUTORIDADE})["autoridade"]["id"] == "R-CICLO-01 r01v4"
     finally:
         T._pg("update autoridade_contratos set emissao_habilitada=false where contrato='r01v5'")
+
+
+def test_10_bot_em_campanha_nao_grava_veto_r01v4_por_d1_h4(api, amb, camp):
+    """O veredito r01v4 (D1/H4 contra o M15) vai para a trilha como REGISTRO do motor, nunca como veto, em bot de campanha."""
+    T._pg("update autoridade_contratos set emissao_habilitada=true where contrato='r01v5'")
+    try:
+        x = camp["x"]
+        antes = T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='veto'", x["id"])[0][0]
+        det, barra = SS._det(x)                                    # atestado com cv1 'bloqueada' (item1_referencia_contra(D1))
+        s, j, _ = SS._snap(x, det)
+        assert s == 200, j
+        time.sleep(2)
+        assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='veto'", x["id"])[0][0] == antes
+        r = T._pg("select motivo from ciclo_trilha where bot_id=%s and etapa='motor' and motivo like 'veredito r01v4 só registrado%%' order by id desc limit 1", x["id"])
+        assert r and "não decide neste bot" in r[0][0]
+    finally:
+        T._pg("update autoridade_contratos set emissao_habilitada=false where contrato='r01v5'")
