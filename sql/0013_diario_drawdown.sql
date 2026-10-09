@@ -1,4 +1,4 @@
--- 0013 — C27R27 · correção do drawdown diário em sessao_diario: o pico agora é o MÁXIMO CORRENTE do resultado acumulado
+-- 0013 (rev. C27R30) — correção do drawdown diário em sessao_diario e da cobertura (barra fechada na virada conta no dia anterior): o pico agora é o MÁXIMO CORRENTE do resultado acumulado
 -- do dia (antes era o maior resultado individual, o que podia exagerar a queda); 'autoridade emitiria' conta SERIA/seria (ilike). Só a função; nada é apagado.
 create or replace function public.sessao_diario(p_sessao text, p_bots bigint[])
 returns jsonb language plpgsql stable security definer set search_path = public as $$
@@ -24,7 +24,7 @@ begin
                               and ((g - interval '1 minute') at time zone v_fuso)::time >= (f.janela->>'de')::time
                               and ((g - interval '1 minute') at time zone v_fuso)::time <  (f.janela->>'ate')::time)
          group by j.dia),
-      rec as (select (l.barra_m15 at time zone v_fuso)::date as dia, count(distinct l.barra_m15) as n
+      rec as (select ((l.barra_m15 - interval '1 minute') at time zone v_fuso)::date as dia, count(distinct l.barra_m15) as n   -- barra fechada exatamente na virada pertence ao dia anterior (como em esp)
                 from public.ciclo_leituras l where l.bot_id = b.id and l.sessao_teste_id = p_sessao group by 1),
       ab as (select (a.ts_reserva at time zone v_fuso)::date as dia, count(*) filter (where a.estado in ('aberta','fechada')) as aberturas,
                     count(*) filter (where a.estado = 'cancelada') as canceladas

@@ -267,3 +267,53 @@ def test_11_relatorio_leva_a_trilha_auditavel_inteira(amb, camp):
             assert json.loads(raw)["trilha_auditavel"]["linhas"] == jc["trilha_auditavel"]["linhas"]
         else:
             assert raw[:4] == b"%PDF" and len(raw) > 5000
+
+
+def test_12_virada_de_barra_e_transitoria_e_portoes_legados_sao_registro(api, amb, camp):
+    # (a) espelho_atrasado nos primeiros segundos da barra = virada (transitório), sem linha na trilha
+    import time as _t
+    seg = int(_t.time()) % 900
+    mot = {"estado": "espelho_atrasado", "motivo": "motor na barra anterior"}
+    e = api._ses_estado_mercado(mot, {"tick_idade_s": 1, "modo_de_negociacao": 4}, None, None)
+    if seg <= api._SES_VIRADA_TOLERANCIA_S:
+        assert e["classe"] == "virada de barra" and e.get("transitorio") is True and e["negociando"] is None
+    else:
+        assert e["classe"] == "sem barra nova" and not e.get("transitorio")
+    e2 = api._ses_estado_mercado({"estado": "ok"}, {"tick_idade_s": 1, "modo_de_negociacao": 4}, None, None)
+    assert e2["negociando"] is True
+    # (b) em bot de campanha, a 'autorização operacional' legada vira registro (sem veto) e os portões são marcados
+    T._pg("update autoridade_contratos set emissao_habilitada=true where contrato='r01v5'")
+    try:
+        sb = api._sb_admin(); api._ses_lista(sb, True)
+        x = camp["x"]
+        bot = sb.table("conector_bots").select("*").eq("id", x["id"]).execute().data[0]
+        det, _ = SS._det(x)
+        leit, ciclos = api._clm_avaliar(sb, bot, det)
+        cons = ciclos["consolidada"]
+        assert cons["r01v4_so_registro"] is True and "campanha" in cons["execucao"]
+        ref = api._ref_historica(sb, bot, leit.get("motor")) if False else None   # não necessário aqui
+        s, j, _ = T._req("POST", SS.URL + "/learning/ciclos/ao-vivo", {"bot_id": x["id"], "dias": 1}, tok=amb["sess"])
+        assert s == 200, j
+        A = ((j.get("historico") or j.get("referencia") or {}).get("autorizacao_operacional")) or j.get("autorizacao_operacional")
+        if A is None:
+            import json as _j
+            txt = _j.dumps(j)
+            assert '"legado_so_registro": true' in txt and '"decisao": "registro"' in txt and '"legado": true' in txt
+        else:
+            assert A["legado_so_registro"] is True and A["decisao"] == "registro" and all(p.get("legado") for p in A["portoes"])
+    finally:
+        T._pg("update autoridade_contratos set emissao_habilitada=false where contrato='r01v5'")
+
+
+def test_13_cobertura_nao_conta_a_barra_fechada_na_virada_no_dia_novo(camp):
+    sid, b = camp["id"], camp["b"]
+    fz_ini = T._pg("select sessao_dia_inicio(%s)", sid)[0][0]           # 00:00 Kyiv de hoje, em UTC
+    uid = camp["uid"]
+    T._pg("delete from ciclo_leituras where bot_id=%s and barra_m15 in (%s, %s)", b["id"], fz_ini, fz_ini + timedelta(minutes=15))
+    for k in (0, 1):   # barra que fecha exatamente na virada (dia anterior) e a seguinte (dia novo)
+        T._pg("insert into ciclo_leituras (bot_id, user_id, simbolo, magic, barra_m15, n_snapshots, completa, decisao, leituras, ciclos) "
+              "values (%s,%s,%s,%s,%s,1,true,'observar','{}'::jsonb,'{}'::jsonb)", b["id"], uid, b["sim"], T._magic(b["tok"]), fz_ini + timedelta(minutes=15 * k))
+    d = T._pg("select sessao_diario(%s,%s)", sid, [b["id"]])[0][0][str(b["id"])]["dias"]
+    hoje = next(x for x in d if x["dia"] == fz_ini.astimezone(timezone(timedelta(hours=3))).date().isoformat()
+                or x["dia"] == fz_ini.astimezone(timezone(timedelta(hours=2))).date().isoformat())
+    assert hoje["barras_recebidas"] == 1 and hoje["barras_recebidas"] <= hoje["barras_esperadas"]

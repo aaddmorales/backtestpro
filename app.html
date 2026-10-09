@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.65-trilha-no-relatorio-c27r29';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.66-tela-da-campanha-c27r30';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8923,7 +8923,7 @@ function _clmEstado(e){
 }
 function _clmDir(d){ const m={alta:['clm-buy','▲ alta'],baixa:['clm-sell','▼ baixa'],lateral:['clm-neu','◆ lateral'],indefinida:['clm-na','○ indefinida']}; const x=m[d]||m.indefinida; return `<span class="${x[0]}">${x[1]}</span>`; }
 function _clmDec(d, est){
-  const m = {comprar:['clm-buy','▲ COMPRAR'], vender:['clm-sell','▼ VENDER'], observar:['clm-neu','◆ OBSERVAR'], bloquear:['clm-bad','⛔ BLOQUEAR']};
+  const m = {comprar:['clm-buy','▲ COMPRAR'], vender:['clm-sell','▼ VENDER'], observar:['clm-neu','◆ OBSERVAR'], bloquear:['clm-bad','⛔ BLOQUEAR'], registro:['clm-na','▫ REGISTRO']};
   const x = m[d] || ['clm-na', String(d||'—').toUpperCase()];
   return `<span class="clm-dec-v ${x[0]}">${x[1]}</span> <span class="clm-st ${x[0]}">${_clmE(est)}</span>`;
 }
@@ -8993,6 +8993,8 @@ function relAbrir(botId){
       <label>Recorte <select id="rel-rec" onchange="relRecMudou()"><option value="sessao">Sessão de ensaio · este ativo</option><option value="consolidado">Sessão de ensaio · consolidado (Bitcoin + Gold)</option><option value="anterior">Histórico anterior</option><option value="tudo">Tudo (sem recorte)</option></select></label>
       <label>Fuso <select id="rel-fuso">${tzs.map(z => `<option>${_clmE(z)}</option>`).join('')}</select></label>
       <button class="rel-b" id="rel-gerar" onclick="relGerar()">Gerar</button>
+      <label title="Depois de gerar, baixa o arquivo automaticamente">Gerar arquivo <select id="rel-auto"><option value="">só na tela</option><option value="pdf">e baixar PDF</option><option value="json">e baixar JSON</option><option value="ambos">e baixar PDF + JSON</option></select></label>
+      <button class="rel-b" id="rel-gerar-pdf" onclick="relGerarEBaixar('pdf')" title="Gera o relatório e baixa o PDF em um clique">Gerar + baixar PDF</button>
       <button class="rel-b sec" id="rel-pdf" onclick="relBaixar('pdf')" disabled>Baixar PDF</button>
       <button class="rel-b sec" id="rel-json" onclick="relBaixar('json')" disabled>Baixar JSON</button>
     </div>
@@ -9116,8 +9118,16 @@ async function relGerar(){
     if (!r.ok){ out.innerHTML = `<div class="rel-q falha"><b>BT-R01 · Não consegui gerar o relatório (HTTP ${r.status})</b>${_clmE(d.detail || '')}</div>`; return; }
     _relAtual = d; out.innerHTML = relRender(d);
     ['rel-pdf', 'rel-json'].forEach(i => document.getElementById(i).disabled = !d.persistido);
+    // C27R30: gerar o arquivo junto — baixa o(s) formato(s) escolhido(s) assim que o relatório estiver gravado
+    const auto = (document.getElementById('rel-auto') || {}).value || '';
+    if (auto && d.persistido){ for (const f of (auto === 'ambos' ? ['pdf', 'json'] : [auto])) await relBaixar(f); }
+    else if (auto && !d.persistido){ out.insertAdjacentHTML('afterbegin', '<div class="rel-q atencao"><b>Arquivo não gerado:</b> o relatório não foi gravado no servidor.</div>'); }
   }catch(e){ out.innerHTML = '<div class="rel-q falha"><b>BT-R02 · Falha de rede ao gerar o relatório.</b></div>'; }
   finally{ bt.disabled = false; }
+}
+async function relGerarEBaixar(fmt){
+  const sel = document.getElementById('rel-auto'); if (sel) sel.value = fmt;
+  await relGerar();
 }
 async function relBaixar(fmt){
   if (!_relAtual || !_relAtual.relatorio_id) return;
@@ -9596,7 +9606,7 @@ function clmRefBox(R){
       <div class="clm-c"><b>2 · Pontuação do checklist</b><br><span class="clm-sub">condições atuais atendidas</span><br>${K.prontidao_pct!=null ? 'prontidão <b>'+_clmE(K.prontidao_pct)+'%</b> · '+_clmE(K.verdes)+' verdes, '+_clmE(K.vermelhos)+' vermelhos, '+_clmE(K.sem_dado)+' sem dado' : '<span class="clm-na">'+_clmE(K.mensagem||K.erro||'não calculado')+'</span>'}<br><span class="clm-sub">${itens}</span></div>
       <div class="clm-c clm-dec"><b>3 · Autorização operacional</b><br><span class="clm-sub">regras, Ciclos e portões</span><br><b>${_clmE(A.estado||'—')}</b> · ${_clmE(A.regra||'')}<br><span class="clm-sub">${_clmE(A.motivo||'')}</span><br><span class="clm-sub">o estudo influenciou? <b>${A.estudo_influenciou?'sim':'não'}</b> — ${_clmE(A.explicacao||'')}</span></div>
     </div>
-    <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Portão (ordem de aplicação)</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>${(A.portoes||[]).map(p => `<tr><td>${_clmE(p.portao)}</td><td>${p.aberto===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.aberto===false?'<span class="clm-st clm-bad">FECHADO (veto)</span>':'<span class="clm-st clm-na">NÃO AVALIADO AQUI</span>')}</td><td><span class="clm-sub">${_clmE(p.detalhe||'')}</span></td></tr>`).join('')}</tbody></table>
+    <div class="clm-mx" style="margin-top:8px"><table style="min-width:0"><thead><tr><th>Portão (ordem de aplicação)</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>${(A.portoes||[]).map(p => `<tr><td>${_clmE(p.portao)}</td><td>${p.legado ? '<span class="clm-st clm-na">' + (p.aberto===true?'aberto':(p.aberto===false?'fechado':'não avaliado')) + ' · só registro</span>' : (p.aberto===true?'<span class="clm-st clm-ok">ABERTO</span>':(p.aberto===false?'<span class="clm-st clm-bad">FECHADO (veto)</span>':'<span class="clm-st clm-na">NÃO AVALIADO AQUI</span>'))}</td><td><span class="clm-sub">${_clmE(p.detalhe||'')}</span></td></tr>`).join('')}</tbody></table>
       <div class="clm-sub" style="margin-top:4px">Pontuação ≠ veto ≠ autorização: prontidão % e estrelas são medidas; veto é um portão FECHADO${A.primeiro_fechado?' (primeiro: '+_clmE(A.primeiro_fechado)+')':''}; autorização exige os 8 avaliados e abertos — este quadro não autoriza nada. ${_clmE(K.papel||'')}</div>
     </div></div>`;
 }
@@ -9773,7 +9783,8 @@ function clmRender(botId, d, tr){
     <div class="clm-ciclos" style="margin-top:8px">
       ${cicloBox(c1, 'Ciclo 1 · ascendente M1 → M5 → M15', 'Degraus superiores: M30 '+_clmE((c1.extras||{}).M30||'—')+' · H1 '+_clmE((c1.extras||{}).H1||'—'))}
       ${cicloBox(c2, 'Ciclo 2 · descendente D1 → H4', 'Referência longa: MN1 '+_clmE((c2.extras||{}).MN1||'—')+' · W1 '+_clmE((c2.extras||{}).W1||'—'))}
-      <div class="clm-c clm-dec ${cons.decisao==='bloquear'?'clm-alerta':''}"><b>${_posVal ? 'Avaliação deste instante (validade da barra encerrada)' : 'Decisão consolidada do backend'}</b><br>
+      <div class="clm-c clm-dec ${cons.decisao==='bloquear' && !cons.r01v4_so_registro ?'clm-alerta':''}"><b>${cons.r01v4_so_registro ? 'Veredito r01v4 (só registro — não decide neste bot)' : (_posVal ? 'Avaliação deste instante (validade da barra encerrada)' : 'Decisão consolidada do backend')}</b><br>
+        ${cons.r01v4_so_registro ? '<span class="clm-sub">quem abre neste bot: ' + _clmE(cons.autoridade_do_bot||'r01v5') + ' — ver “Seleção de oportunidades” e “Autoridade r01v5”</span><br>' : ''}
         ${_posVal ? '<span class="clm-sub">a decisão que valeu na barra está no quadro “Decisão registrada”; esta é a situação de agora, até o 1º snapshot da barra nova</span><br>' : ''}
         ${_clmDec(cons.decisao, cons.estado)}<br>
         Regra: <b>${_clmE(cons.regra)}</b><br>
