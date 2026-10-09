@@ -281,6 +281,15 @@ def test_12_virada_de_barra_e_transitoria_e_portoes_legados_sao_registro(api, am
         assert e["classe"] == "sem barra nova" and not e.get("transitorio")
     e2 = api._ses_estado_mercado({"estado": "ok"}, {"tick_idade_s": 1, "modo_de_negociacao": 4}, None, None)
     assert e2["negociando"] is True
+    # (a2) C27R31b: leitor sem batimento logo após a virada (calculando a barra) = virada, transitório; parado de verdade continua aviso
+    e3 = api._ses_estado_mercado({"estado": "processo_parado", "motivo": "leitor do motor sem batimento há 110s", "heartbeat_idade_s": min(110, seg + 60)},
+                                 {"tick_idade_s": 1, "modo_de_negociacao": 4}, None, None)
+    if seg <= api._SES_VIRADA_LEITOR_S:
+        assert e3["classe"] == "virada de barra" and e3.get("transitorio") is True
+    else:
+        assert e3["classe"] == "leitor parado"
+    e4 = api._ses_estado_mercado({"estado": "processo_parado", "motivo": "sem batimento há 900s", "heartbeat_idade_s": 900}, {"tick_idade_s": 1, "modo_de_negociacao": 4}, None, None)
+    assert e4["classe"] == "leitor parado" and not e4.get("transitorio")
     # (b) em bot de campanha, a 'autorização operacional' legada vira registro (sem veto) e os portões são marcados
     T._pg("update autoridade_contratos set emissao_habilitada=true where contrato='r01v5'")
     try:
@@ -397,7 +406,7 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
     assert K["limites"]["vigentes"]["diarios_compartilhados"]["max_aberturas_por_dia"] == 6 and "por dia" in K["limites"]["vigentes"]["acumulados_da_campanha"]["max_aberturas_total"]
     A = K["autoridade"][x["sim"]]
     assert A["entradas"][0]["decidiu"].startswith("R-CICLO-01 r01v5") and A["saidas"][0]["codigo"] == "B3" and "SÓ REGISTRO" in A["quem_decide"]["r01v4_e_portoes_1_8"]
-    assert K["versoes"]["gerou_este_relatorio"]["api"].startswith("8.00") and "nota" in K["versoes"]
+    assert K["versoes"]["gerou_este_relatorio"]["api"].startswith("8.0") and "nota" in K["versoes"]
     Q = K["qualidade_dos_dados"]
     assert Q["correspondencia"][0]["completa"] is True and Q["correspondencia"][0]["ticket_confere"] is True
     assert "atestado" in Q["por_ativo"][x["sim"]]["leituras"]["explicacao_85_x_45"] and "motor_atestados_assinados" in Q["por_ativo"][x["sim"]]["leituras"]
