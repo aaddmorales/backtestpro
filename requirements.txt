@@ -11,3 +11,4 @@ stripe
 supabase
 fpdf2==2.8.9
 tzdata
+matplotlib

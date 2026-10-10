@@ -373,7 +373,7 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
           x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), "LIMITES ALTERADOS pelo dono (teste do sistema): risco por operacao US$ 10 -> 100", sid, t0 - timedelta(hours=1))
     s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
     assert s == 200, j
-    K = j["campanha"]; assert K["versao"] == "rel-2", K
+    K = j["campanha"]; assert K["versao"] in ("rel-2", "rel-3"), K
     R = K["resumo_executivo"]
     assert R["campanha"]["id"] == sid and R["consolidado"]["fechamentos"] == 1 and R["consolidado"]["resultado_liquido_usd"] == 3.0
     assert R["por_ativo"][x["sim"]]["entradas"] == 1 and "Kyiv" in R["campanha"]["corte"] and "UTC" in R["campanha"]["corte"]
@@ -433,3 +433,59 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
     # nenhuma gravação além do relatório
     assert T._pg("select count(*) from sessao_aberturas where sessao_teste_id=%s", sid)[0][0] == 1
     _limpar(sid)
+
+
+def test_15_coleta_de_auditoria_e_pacote_zip(amb, camp):
+    """C27R32: a cada snapshot de bot em campanha, candles M1..D1 (com hora UTC, fechado × em formação, carimbo) e 1 leitura viva
+    são gravados (sql/0015) e o início fica na trilha; o relatório ganha cronologia/fuso/inventário/gráfico e o download 'zip'
+    entrega o pacote de auditoria do MESMO relatório gravado, com manifesto e hashes."""
+    import hashlib, io, zipfile, urllib.request as rq
+    sid, x = camp["id"], camp["x"]
+    T._pg("delete from auditoria_candles where bot_id=%s", x["id"]); T._pg("delete from auditoria_leituras where bot_id=%s", x["id"])
+    agora = int(time.time()) - 120
+    velas = ";".join(f"{4100 + i},{4105 + i},{4095 + i},{4102 + i},{100 + i}" for i in range(18))
+    det = T._det(x["tok"], agora, extra={"c1m": velas, "c15m": velas})
+    s, j, _ = T._snap(x["tok"], det); assert s == 200, j
+    rows = T._pg("select tf, abertura_utc, fechamento_utc, o, h, l, c, vol, fechado, carimbo from auditoria_candles where bot_id=%s and tf='M1' order by abertura_utc", x["id"])
+    assert len(rows) == 18
+    assert rows[-1][8] is False and rows[-1][9] == 'ea' and rows[-2][8] is True and rows[-2][9] == 'ea' and rows[0][9] == 'aritmetico'
+    assert all((rows[i + 1][1] - rows[i][1]).total_seconds() == 60 for i in range(17)) and (rows[0][2] - rows[0][1]).total_seconds() == 60
+    assert float(rows[-1][3]) == 4117.0 and float(rows[-1][7]) == 117.0                   # última da lista = em formação
+    fech_m1 = int(det["cvt"].split(".")[-1]) - T.OFF
+    assert int(rows[-2][1].timestamp()) == fech_m1                                         # penúltima = última fechada informada pelo EA (cvt)
+    assert T._pg("select count(*) from auditoria_candles where bot_id=%s", x["id"])[0][0] == 18 * 6 + 12
+    lv = T._pg("select preco, spread_pts, point, off_servidor_s, barra_m15_utc, motor, zonas, sessao_teste_id from auditoria_leituras where bot_id=%s order by id desc limit 1", x["id"])[0]
+    assert float(lv[0]) == 4162.92 and float(lv[1]) == 12 and lv[3] == T.OFF and lv[4] is not None and lv[6]["z15"] == "dentro" and lv[7] == sid
+    # 2º snapshot: a vela em formação cresce (máxima só cresce) e continua 1 linha por abertura
+    velas2 = ";".join(f"{4100 + i},{4105 + i + (9 if i == 17 else 0)},{4095 + i},{4103 + i},{150 + i}" for i in range(18))
+    s, j, _ = T._snap(x["tok"], T._det(x["tok"], agora, extra={"c1m": velas2, "c15m": velas})); assert s == 200, j
+    r2 = T._pg("select h, c, vol, fechado from auditoria_candles where bot_id=%s and tf='M1' order by abertura_utc desc limit 1", x["id"])[0]
+    assert float(r2[0]) == 4131.0 and float(r2[1]) == 4120.0 and float(r2[2]) == 167.0 and r2[3] is False
+    assert T._pg("select count(*) from auditoria_candles where bot_id=%s and tf='M1'", x["id"])[0][0] == 18
+    assert T._pg("select count(*) from auditoria_leituras where bot_id=%s", x["id"])[0][0] == 2
+    # relatório rel-3 + pacote ZIP do mesmo gravado (o corte é truncado ao segundo: espera 2 s para as leituras entrarem no período)
+    time.sleep(2)
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]; assert K["versao"] == "rel-3"
+    assert K["fuso_servidor"][0]["off_servidor_s"] == T.OFF and "UTC+" in K["fuso_servidor"][0]["servidor"]
+    assert len(K["inventario_de_dados"]) >= 20 and all(k in K["inventario_de_dados"][0] for k in ("informacao", "fonte", "implementada_coletada", "evidencia", "limitacao"))
+    assert x["sim"] in K["cronologia"] and "escopo_dos_quadros" in K and K["coleta_de_auditoria"][x["sim"]]["inicio_utc"] != "ainda não iniciada"
+    assert isinstance(K["graficos"], list) and K["graficos"][0]["ativo"] == x["sim"]
+    q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "zip"}).encode(),
+                   headers={"Content-Type": "application/json", "Authorization": "Bearer " + amb["sess"]}, method="POST")
+    r = rq.urlopen(q, timeout=300); raw = r.read()
+    assert r.headers["X-BotTested-Relatorio-Id"] == j["relatorio_id"] and r.headers["X-BotTested-Arquivo-SHA256"] == hashlib.sha256(raw).hexdigest()
+    z = zipfile.ZipFile(io.BytesIO(raw)); nomes = z.namelist()
+    for n in ("manifest.json", "relatorio.json", f"candles_{x['sim']}_M1.csv", f"candles_{x['sim']}_M15.csv", f"leituras_vivas_{x['sim']}.csv", f"leituras_por_barra_{x['sim']}.csv", f"avaliacoes_{x['sim']}.jsonl", "trilha.csv", "operacoes.json"):
+        assert n in nomes, (n, nomes)
+    man = json.loads(z.read("manifest.json"))
+    assert man["relatorio_id"] == j["relatorio_id"] and man["sha256_do_conteudo"] == j["sha256_do_conteudo"] and man["periodo"]["de_utc"] == j["periodo"]["de_utc"]
+    for a in man["arquivos"]:
+        assert hashlib.sha256(z.read(a["arquivo"])).hexdigest() == a["sha256"], a["arquivo"]
+    rel = json.loads(z.read("relatorio.json")); assert rel["relatorio_id"] == j["relatorio_id"]
+    csv_m1 = z.read(f"candles_{x['sim']}_M1.csv").decode("utf-8").splitlines()
+    assert csv_m1[0].startswith("tf,abertura_utc,fechamento_utc,o,h,l,c,vol,tipo_volume,fechado,carimbo,fonte") and len(csv_m1) >= 19
+    assert any("coleta ao vivo" in l for l in csv_m1[1:])
+    lvcsv = z.read(f"leituras_vivas_{x['sim']}.csv").decode("utf-8").splitlines(); assert len(lvcsv) == 3
+    inv = [i for i in man["inventario"] if i.get("tf") == "M1"][0]; assert inv["coleta_ao_vivo"] >= 18 and inv["em_formacao"] >= 1
