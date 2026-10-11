@@ -710,7 +710,8 @@ def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
         assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência"), r
     aud = next(r for r in CS["linhas"] if r["requisito"].startswith("aud-2"))
     assert aud["estado"] == "verificado" and aud["evidencia_real"]["colunas_presentes"] is True and aud["evidencia_real"]["ultima_leitura_com_estrutura_utc"]
-    assert sum(CS["totais"].values()) == len(CS["linhas"]) and "trilha_ts" not in (CS["implantacoes"]["8.04"] or {}) or CS["implantacoes"]["8.04"]["bots"]
+    assert sum(CS["totais"].values()) == len(CS["linhas"]) and "agora" in CS["implantacoes"] and CS["implantacoes"]["agora"].get("api", "").startswith("8.")
+    r6 = next(r for r in CS["linhas"] if r["requisito"].startswith("6. rel-4")); assert r6["estado"].startswith("verificado")        # C27R39: API ≥ 8.04 gerou este rel-4
     # ZIP: leituras vivas com as três chaves
     import json
     q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "zip"}).encode(),
