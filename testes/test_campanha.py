@@ -707,7 +707,7 @@ def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
     assert "ORIGEM" in TE["determinacao"]["origem_x_conformidade"] and "InpBTTrailingBarra" in TE["determinacao"]["correcao"] and "operacoes" in TE["exposicao_na_campanha"]
     CS = K["consolidacao_das_ordens"]; assert CS["versao"] == "cons-1" and len(CS["linhas"]) >= 12
     for r in CS["linhas"]:
-        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35", "C27R38", "C27R40")
+        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35", "C27R38", "C27R40", "C27R41")
         assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência"), r
     aud = next(r for r in CS["linhas"] if r["requisito"].startswith("aud-2"))
     assert aud["estado"] == "verificado" and aud["evidencia_real"]["colunas_presentes"] is True and aud["evidencia_real"]["ultima_leitura_com_estrutura_utc"]
@@ -810,3 +810,52 @@ def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
     assert not any(isinstance(i.get("ref"), dict) and i["ref"].get("truncado") for i in (TA.get("itens") or []))
     T._pg("delete from babymachine_operacoes where id=%s", bm_id); T._pg("delete from sessao_aberturas where id in (%s,%s)", ab_id, ab_ant)
     T._pg("delete from sessoes_teste where id='ENS-ANTERIOR-19'")
+
+
+def test_20_risco_contra_stop_em_vigor_c27r41():
+    """C27R41: op 6 real (sell 4.93 @ 83010.81, stop inicial 83024.863677 movido para 82903.45, saída 82903.98 pelo stop, +526.67):
+    deslizamento do stop contra o stop EM VIGOR, movimento do stop separado, ganho dito como ganho, resíduo numérico."""
+    import api
+    ab = {"lado": -1, "lote": 4.93, "plano": {"especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01}}, "preco_ref": 83004.61,
+          "stop_inicial": 83024.863677, "stop_atual": 82903.45, "preco_entrada": 83010.81, "preco_saida": 82903.98,
+          "motivo_saida": "stop_trailing", "resultado_usd": 526.67, "comissao": 0, "swap": 0, "risco_planejado_usd": 99.85}
+    RX = api._rel_op_risco(ab)
+    assert RX["planejado_usd"] == 99.85 and RX["efetivo_na_entrada_usd"] == 69.28
+    assert RX["stop_movido"] is True and RX["stop_em_vigor_na_saida"] == 82903.45
+    assert RX["movimento_do_stop_usd"] == -598.57 and RX["deslizamento_do_stop_na_saida_usd"] == 2.61
+    assert RX["perda_realizada_usd"] is None and RX["ganho_realizado_usd"] == 526.67
+    assert RX["perda_explicada_usd"] == -526.68 and abs(RX["residuo_nao_explicado_usd"]) <= 0.02
+    assert RX["leitura"].startswith("GANHO realizado 526.67") and "movido" in RX["leitura"]
+    # op 2 preservada (stop não movido): mesma decomposição da 8.10
+    ab2 = {"lado": -1, "lote": 1.07, "plano": {"especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01}}, "preco_ref": 81852.25,
+           "stop_inicial": 81944.929465, "stop_atual": 81944.929465, "preco_entrada": 81847.18, "preco_saida": 81945.40,
+           "motivo_saida": "stop", "resultado_usd": -105.10, "comissao": 0, "swap": 0, "risco_planejado_usd": 99.17}
+    R2 = api._rel_op_risco(ab2)
+    assert R2["stop_movido"] is False and R2["movimento_do_stop_usd"] == 0.0 and R2["perda_realizada_usd"] == 105.1
+    assert R2["deslizamento_de_entrada_usd"] == 5.42 and R2["deslizamento_do_stop_na_saida_usd"] == 0.5 and R2["residuo_nao_explicado_usd"] == 0.01
+    assert R2["leitura"].startswith("perda realizada 105.1 = efetivo na entrada 104.59")
+    assert "stop_trailing" in api._REL_SAIDAS
+
+
+def test_21_b3_valores_internos_e_tratamento_do_risco_c27r41():
+    """C27R41: valores internos do B3 lidos do texto do motor congelado; tratamento do risco efetivo acima do planejado descrito
+    sem ação corretiva e sem tolerância inventada; parâmetros dos EAs declarados não verificáveis."""
+    import api
+    v = api._rel_b3_valores("B3: posicao vendida dentro de compressao [82850.10,82990.55] por 6 barras de M5 sem progresso (avanco a favor -12.30 = -0.41 ATR) — tese expirou")
+    assert v["corta"] is True and v["caixa_piso"] == 82850.10 and v["caixa_teto"] == 82990.55 and v["barras"] == 6 and v["andar"] == "M5"
+    assert v["avanco_a_favor_preco"] == -12.30 and v["avanco_a_favor_atr"] == -0.41
+    v2 = api._rel_b3_valores("sem compressao/lateral no andar do B3")
+    assert v2["corta"] is False and v2["estado"].startswith("SEM COMPRESSÃO")
+    v3 = api._rel_b3_valores("B3: ha progresso a favor (+8.75)")
+    assert v3["corta"] is False and v3["avanco_a_favor_preco"] == 8.75
+    assert api._rel_b3_valores("")["situacao"] == api._REL_ND
+    ab = {"lado": -1, "lote": 1.07, "plano": {"versao": "lote-2", "especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01, "ponto": 0.01},
+                                             "distancias": {"referencia_ao_stop": {"preco": 92.68}, "entrada_executavel_ao_stop": {"preco": 92.68}, "spread_na_saida": {"preco": 0.0}, "tolerancia_slippage": {"pontos_mt5": None}, "efetiva": {"preco": 92.68}}},
+          "preco_ref": 81852.25, "stop_inicial": 81944.929465, "stop_atual": 81944.929465, "preco_entrada": 81847.18, "preco_saida": 81945.40,
+          "motivo_saida": "stop", "resultado_usd": -105.10, "comissao": 0, "swap": 0, "risco_planejado_usd": 99.17}
+    TT = api._rel_op_risco(ab)["tratamento_do_risco_efetivo_acima_do_planejado"]
+    assert TT["antes_do_preenchimento"]["plano_de_lote"] == "lote-2" and TT["antes_do_preenchimento"]["distancias_do_plano"]["tolerancia_slippage_pts"] is None
+    assert TT["depois_do_preenchimento"]["acao_corretiva"].startswith("NENHUMA") and TT["depois_do_preenchimento"]["criterio_de_rejeicao_ou_alerta"].startswith("NÃO EXISTE")
+    N = TT["nesta_operacao"]; assert N["excesso_usd"] == 5.42 and N["acima_do_planejado"] is True and N["dentro_da_tolerancia"] is None and N["excesso_pts"] == 506.5
+    PE = api._REL_TRAILING_EA["trailing_do_ea"]["parametros_efetivos_dos_eas"]
+    assert PE["verificavel_pela_plataforma"] is False and "confirmação explícita do dono" in PE["criterio_de_liberacao"]

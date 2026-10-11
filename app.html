@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.76-vinculo-b3-risco-c27r40';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.77-risco-stop-em-vigor-c27r41';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9213,6 +9213,7 @@ function relTrailingEaHtml(TE){
   let h = `<div class="rel-q ${DT.integra_o_desenho_autorizado ? 'ok' : 'atencao'}"><b>${DT.integra_o_desenho_autorizado ? 'INTEGRA o desenho autorizado' : 'ATUA FORA do desenho autorizado'}</b><ul>${(DT.porque || []).map(x => '<li>' + _clmE(x) + '</li>').join('')}</ul></div>`;
   h += _relKV([['Desenho autorizado', _clmE(DA.contrato)], ['Papel do EA no contrato', _clmE(DA.papel_do_ea)], ['Onde está escrito', _clmE((DA.onde_esta_escrito || []).join(' · '))],
     ['Trailing do EA', `${_clmE(TR.rotina)} · ${_clmE(TR.regra)}`], ['Alcance / registro', `${_clmE(TR.alcance)} · ${_clmE(TR.registro)}`], ['Input', typeof TR.input === 'object' ? `${_clmE(TR.input.nome)} · padrão no código: ${_clmE(TR.input.padrao_no_codigo_do_ea_gerado)} · nos gráficos: ${_clmE(TR.input.valor_configurado_nos_graficos_da_campanha)} · <b>hipótese:</b> ${_clmE(TR.input.hipotese_explicita)}` : _clmE(TR.input)],
+    ['Parâmetros efetivos dos EAs', TR.parametros_efetivos_dos_eas ? `<b>${TR.parametros_efetivos_dos_eas.verificavel_pela_plataforma ? 'verificáveis' : 'NÃO verificáveis pela plataforma'}</b> · ${_clmE(TR.parametros_efetivos_dos_eas.porque)}<br><span class="rel-sit">evidências possíveis: ${_clmE((TR.parametros_efetivos_dos_eas.evidencias_possiveis || []).join(' · '))}<br>critério de liberação: ${_clmE(TR.parametros_efetivos_dos_eas.criterio_de_liberacao)}</span>` : '—'],   // C27R41
     ['Origem × conformidade', _clmE(DT.origem_x_conformidade)], ['Correção', _clmE(DT.correcao)]]);
   h += _relTab(['Abertura', 'Ativo', 'Stops vistos', 'Fora da plataforma', 'Origens', 'Saída pelo stop externo'], (EX.operacoes || []).map(x => [_clmE(x.abertura_id), _clmE(x.ativo), _clmE(x.valores_de_stop_vistos), _clmE(x.fora_da_plataforma), _clmE((x.origens_fora || []).join('; ')), x.saida_pelo_stop_externo ? 'sim' : '']));
   h += `<div class="rel-sit">Total: ${_clmE(EX.total_valores_de_stop)} valores de stop vistos · ${_clmE(EX.total_fora_da_plataforma)} fora da plataforma. ${_clmE(EX.leitura)}</div>`;
@@ -9284,9 +9285,15 @@ function relCampanhaHtml(K){
     if (RX.planejado_usd !== undefined) s += '<h3>Risco planejado × efetivo × realizado</h3>' + _relKV([['Planejado', `US$ ${_clmE(RX.planejado_usd)} <span class="rel-sit">${_clmE(RX.regra_do_planejado)}</span>`],
       ['Efetivo na entrada', `US$ ${_clmE(RX.efetivo_na_entrada_usd)} (diferença ${_clmE(RX.diferenca_efetivo_menos_planejado_usd)}) <span class="rel-sit">${_clmE(RX.regra_do_efetivo)}</span>`],
       ['Deslizamento de entrada', `US$ ${_clmE(RX.deslizamento_de_entrada_usd)} (${_clmE(RX.deslizamento_de_entrada_preco)} em preço)`],
-      ['Deslizamento do stop na saída', RX.saida_pelo_stop ? `US$ ${_clmE(RX.deslizamento_do_stop_na_saida_usd)} (${_clmE(RX.deslizamento_do_stop_na_saida_preco)} em preço)` : 'saída não foi pelo stop'],
-      ['Perda realizada / resíduo', `${_clmE(RX.perda_realizada_usd === null || RX.perda_realizada_usd === undefined ? '—' : 'US$ ' + RX.perda_realizada_usd)} · custos ${_clmE(RX.custos_usd)} · resíduo ${_clmE(RX.residuo_nao_explicado_usd)}`],
+      ['Movimento do stop', RX.stop_movido ? `US$ ${_clmE(RX.movimento_do_stop_usd)} (${_clmE(RX.movimento_do_stop_preco)} em preço) · stop em vigor na saída ${_clmE(RX.stop_em_vigor_na_saida)}` : 'stop não movido (em vigor na saída = inicial)'],
+      ['Deslizamento do stop na saída', RX.saida_pelo_stop ? `US$ ${_clmE(RX.deslizamento_do_stop_na_saida_usd)} (${_clmE(RX.deslizamento_do_stop_na_saida_preco)} em preço) <span class="rel-sit">${_clmE(RX.regra_do_deslizamento_do_stop)}</span>` : 'saída não foi pelo stop'],
+      ['Resultado realizado / resíduo', `${RX.perda_realizada_usd !== null && RX.perda_realizada_usd !== undefined ? '<b>PERDA US$ ' + _clmE(RX.perda_realizada_usd) + '</b>' : (RX.ganho_realizado_usd !== null && RX.ganho_realizado_usd !== undefined ? '<b>GANHO US$ ' + _clmE(RX.ganho_realizado_usd) + '</b>' : 'não disponível')} · custos ${_clmE(RX.custos_usd)} · resíduo ${RX.residuo_nao_explicado_usd === null || RX.residuo_nao_explicado_usd === undefined ? 'não se aplica (saída não foi pelo stop)' : _clmE(RX.residuo_nao_explicado_usd)}`],   // C27R41
       ['Leitura', `${_clmE(RX.leitura)}<br><span class="rel-sit">${_clmE(RX.causa_da_diferenca)}</span>`]]);   // C27R40
+    const TT = RX.tratamento_do_risco_efetivo_acima_do_planejado;
+    if (TT && typeof TT === 'object') { const A_ = TT.antes_do_preenchimento || {}, D_ = TT.depois_do_preenchimento || {}, N_ = TT.nesta_operacao || {};   // C27R41
+      s += '<h4>Tratamento previsto para risco efetivo acima do planejado</h4>' + _relKV([['Antes do preenchimento', `plano <b>${_clmE(A_.plano_de_lote)}</b>: ${_clmE(A_.regra)}<br><span class="rel-sit">distâncias do plano: ${_relJ(A_.distancias_do_plano)} · EA: ${_clmE(A_.ea)}</span>`],
+        ['Depois do preenchimento', `<b>${_clmE(D_.acao_corretiva)}</b><br>${_clmE(D_.o_que_acontece)}<br><span class="rel-sit">critério de rejeição/alerta: ${_clmE(D_.criterio_de_rejeicao_ou_alerta)}</span>`],
+        ['Nesta operação', `excesso US$ ${_clmE(N_.excesso_usd)} (${_clmE(N_.excesso_pts)} pts) · acima do planejado: ${_clmE(N_.acima_do_planejado)} · dentro da tolerância: ${N_.dentro_da_tolerancia === null || N_.dentro_da_tolerancia === undefined ? 'sem tolerância definida' : _clmE(N_.dentro_da_tolerancia)}<br><span class="rel-sit">${_clmE(N_.leitura)}</span>`]]); }
     if (o.conferencias) s += `<details><summary>Registrado ao vivo × conferido na geração (corte ${_clmE(o.conferencias.corte_do_relatorio_utc)})</summary><div class="rel-sit">ao vivo: ${_clmE((o.conferencias.registrado_ao_vivo || []).join(' · '))}</div>` + _relTab(['Bloco', 'Momento', 'Posterior ao corte'], (o.conferencias.conferido_na_geracao_posterior_ao_evento || []).map(x => [_clmE(x.bloco), _clmE(x.momento), x.posterior_ao_corte ? 'SIM' : 'não'])) + `<div class="rel-sit">${_clmE(o.conferencias.nota)}</div></details>`;   // C27R37
     s += `<div class="rel-q info"><b>Saída: ${_clmE(SA.motivo_codigo)}</b>${_clmE(SA.explicacao)} · preço ${_clmE(SA.preco)} · ${_clmE(SA.quando)} · comando ${_relJ(SA.comando_de_saida)}</div>`;
     s += `<div class="rel-frase">Resultado: bruto US$ ${_clmE(RS.bruto_usd)} · comissão ${_clmE(RS.comissao_usd)} · swap ${_clmE(RS.swap_usd)} · <b>líquido US$ ${_clmE(RS.liquido_usd)}</b> <span class="rel-sit">${_clmE(RS.fonte)}</span></div>`;
