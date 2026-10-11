@@ -676,6 +676,8 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     assert "BTvTrailingBarra" in CL["origem"]["inferida"] and CL["origem"]["confirmada"] is False and "Journal" in CL["origem"]["como_confirmar"]
     assert CL["conformidade_com_o_desenho"]["conforme"] is False and "trailing_do_ea" in CL["conformidade_com_o_desenho"]["ver"]
     assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
+    BQ = K["resumo_executivo"]["limites_em_uso"]["bloqueios_por_bot"]; assert not BQ["nenhum"] and any(b["bot_id"] == x["id"] and b["abertura_ref"] == ab_id and b["desde_utc"] for b in BQ["bots_bloqueados"])   # C27R37
+    assert "INFERIDA" in SP["conflito"] and "comprovad" not in SP["conflito"] and ext[0]["origem"]["grau"].startswith("inferida") and ext[0]["origem"]["confirmada"] is False
     assert op["plano_do_lote"]["situacao"].startswith("plano gravado sem o detalhe lote-2") and op["negocios_assinados_mt5"]["situacao"] == "não disponível"
     D = K["selecao_diagnostico"][x["sim"]]["catalogo_esperado_x_disponivel"]; assert D["esperadas"] == 39 and len(D["matriz"]) == 39 and "cards" in D["leitura"]
     # limpeza: libera o bot (como o dono faria) e remove a abertura de bancada
@@ -770,6 +772,16 @@ def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
     Gx = op["gestao_explicada"]; assert len(Gx) == 2
     assert Gx[0]["valores"]["por_que"].startswith("APERTA") and "NÃO aplicado" in next(p_["resultado"] for p_ in Gx[0]["valores"]["avaliacao_passo_a_passo"] if p_["regra"] == "B3")
     assert Gx[1]["valores"]["por_que"].startswith("APLICADO: B3=1 com posição de 3")
+    # C27R37: resultado do dia separado (líquido −0,6 = perdas −0,6 + ganhos 0 → consumo do teto 0,6), bloqueio por bot, vínculo da gestão ao snapshot, conferências
+    RD = K["resumo_executivo"]["limites_em_uso"]["resultado_do_dia"]
+    assert RD["resultado_liquido_hoje_usd"] == -0.6 and RD["perdas_realizadas_hoje_usd"] == -0.6 and RD["ganhos_realizados_hoje_usd"] == 0 and RD["consumo_do_teto_usd"] == 0.6 and ab_id in RD["ids_fechadas_hoje"]
+    assert K["resumo_executivo"]["limites_em_uso"]["bloqueios_por_bot"]["nenhum"] is True and K["limites"]["uso_agora"]["resultado_do_dia"]["resultado_liquido_hoje_usd"] == -0.6
+    W = Gx[1]["leitura_que_acionou"]["vinculo_com_o_snapshot_e_atestado_usados"]; assert W["referencia"] == "criação do comando" and W["referencia_utc"].startswith(str((t0 + timedelta(minutes=60, seconds=30)).isoformat())[:16])
+    assert W["snapshot_anterior_ao_comando"] in (True, None) and "B3" in Gx[1]["valores"]["verificabilidade"] and Gx[1]["valores"]["verificabilidade"].startswith("PARCIALMENTE")
+    CF = op["conferencias"]; assert CF["corte_do_relatorio_utc"] and any(x["bloco"] == "negocios_assinados_mt5" for x in CF["conferido_na_geracao_posterior_ao_evento"]) and all(x["posterior_ao_corte"] is False for x in CF["conferido_na_geracao_posterior_ao_evento"])
+    CS = K["consolidacao_das_ordens"]; b3row = next(r for r in CS["linhas"] if r["requisito"].startswith("3. B3")); assert b3row["estado"].startswith("PARCIALMENTE")
+    st_row = next(r for r in CS["linhas"] if r["requisito"].startswith("2. origem")); assert "inferida" in st_row["estado"] and "INFERIDA" in st_row["evidencia_real"]["origem_op_6"]
+    assert "INFERIDA" in K["trailing_do_ea"]["determinacao"]["origem_x_conformidade"]
     # vínculos na cadeia legada
     co = next(o for o in j["cadeia"]["operacoes"] if o["id"] == bm_id)
     assert co["ticket"] == 777019 and co["comando_id"] == c_ab and co["vinculos"]["abertura_id"] == ab_id and co["vinculos"]["decisao_id"] == "dec-19"
