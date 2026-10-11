@@ -676,6 +676,7 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     assert "BTvTrailingBarra" in CL["origem"]["inferida"] and CL["origem"]["confirmada"] is False and "Journal" in CL["origem"]["como_confirmar"]
     assert CL["conformidade_com_o_desenho"]["conforme"] is False and "trailing_do_ea" in CL["conformidade_com_o_desenho"]["ver"]
     assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
+    assert K["resumo_executivo"]["bloqueios_efetivos"]["bots_bloqueados"][0]["base_do_motivo"].startswith("hipótese explícita")   # C27R38
     BQ = K["resumo_executivo"]["limites_em_uso"]["bloqueios_por_bot"]; assert not BQ["nenhum"] and any(b["bot_id"] == x["id"] and b["abertura_ref"] == ab_id and b["desde_utc"] for b in BQ["bots_bloqueados"])   # C27R37
     assert "INFERIDA" in SP["conflito"] and "comprovad" not in SP["conflito"] and ext[0]["origem"]["grau"].startswith("inferida") and ext[0]["origem"]["confirmada"] is False
     assert op["plano_do_lote"]["situacao"].startswith("plano gravado sem o detalhe lote-2") and op["negocios_assinados_mt5"]["situacao"] == "não disponível"
@@ -782,6 +783,14 @@ def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
     CS = K["consolidacao_das_ordens"]; b3row = next(r for r in CS["linhas"] if r["requisito"].startswith("3. B3")); assert b3row["estado"].startswith("PARCIALMENTE")
     st_row = next(r for r in CS["linhas"] if r["requisito"].startswith("2. origem")); assert "inferida" in st_row["estado"] and "INFERIDA" in st_row["evidencia_real"]["origem_op_6"]
     assert "INFERIDA" in K["trailing_do_ea"]["determinacao"]["origem_x_conformidade"]
+    # C27R38: métricas período × acumulado, bloqueios no topo, reconstruído × comprovado, input do trailing como hipótese
+    MT = K["resumo_executivo"]["metricas"]; assert MT["acumulado_da_campanha"]["consolidado"]["fechamentos"] >= 1 and ab_id in MT["acumulado_da_campanha"]["por_ativo"][x["sim"]]["ids_fechamentos"]
+    assert ab_id in MT["no_periodo_do_relatorio"]["por_ativo"][x["sim"]]["ids_fechamentos"] and ab_ant not in MT["acumulado_da_campanha"]["por_ativo"][x["sim"]]["ids_fechamentos"]
+    assert list(K["resumo_executivo"].keys())[0] == "bloqueios_efetivos" and K["resumo_executivo"]["consolidado"]["escopo"].startswith("ACUMULADO")
+    assert W["situacao"].startswith("RECONSTRUÍDO") and W["snapshot_id_gravado_na_avaliacao"] is None
+    assert op["leitura_na_entrada"]["leitura_usada"]["snapshot_situacao"].startswith("RECONSTRUÍDO")
+    TI = K["trailing_do_ea"]["trailing_do_ea"]["input"]; assert "VERIFICADO" in TI["padrao_no_codigo_do_ea_gerado"] and "NÃO VERIFICADO" in TI["valor_configurado_nos_graficos_da_campanha"] and TI["hipotese_explicita"]
+    assert K["trailing_do_ea"]["exposicao_na_campanha"]["leitura"].startswith("HIPÓTESE")
     # vínculos na cadeia legada
     co = next(o for o in j["cadeia"]["operacoes"] if o["id"] == bm_id)
     assert co["ticket"] == 777019 and co["comando_id"] == c_ab and co["vinculos"]["abertura_id"] == ab_id and co["vinculos"]["decisao_id"] == "dec-19"

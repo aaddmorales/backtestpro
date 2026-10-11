@@ -390,6 +390,7 @@ def test_6_gestao_pelo_contrato_do_estudo_e_resultado_pelos_negocios(api, amb, s
     assert c[0][3]["uid_gestao"].startswith(f"G-{ab_id}-")
     g = T._pg("select gestao from sessao_aberturas where id=%s", ab_id)[0][0]
     assert len(g) == 1 and g[0]["acao"] == "mover_sl" and g[0]["barras_de_posicao"] >= 1
+    assert isinstance(g[0].get("snapshot_id"), int) and g[0].get("avaliado_utc") and T._pg("select count(*) from conector_snapshots where id=%s and bot_token=%s", g[0]["snapshot_id"], x["tok"])[0][0] == 1   # C27R38: snapshot comprovadamente usado
     # C27R25: o MT5 devolve o stop arredondado pela corretora (4103.0 → 4103.004 na bancada, < 1 ponto): é o do comando, não "FORA da plataforma"
     pos_r = [dict(pos[0], sl=4103.004), pos[1]]
     det, barra = _det(x, [it], gestao={"stop": 4103.0}, posicoes=pos_r)
