@@ -150,7 +150,7 @@ def test_1_sessao_preparada_comeca_zerada_e_o_historico_fica_inteiro(amb, ses):
     assert _snap(x, det)[0] == 200                      # antes do início: grava, mas SEM carimbo
     p = _painel(amb, x)
     assert p["recorte"]["sessao_teste_id"] == ses["id"] and p["painel"]["sessao"]["estado"] == "preparada"
-    assert p["painel"]["sessao"]["inicio"] is None and p["painel"]["sessao"]["novas_aberturas"] == "bloqueadas"
+    assert p["painel"]["sessao"]["inicio"] is None and p["painel"]["sessao"]["novas_aberturas"].startswith("bloqueadas")
     for sim in ("XAUUSD", "BTCUSD"):
         c = p["painel"]["ativos"][sim]["contadores"]
         assert all(c[k] == 0 for k in ("barras", "snapshots", "candidatos", "vetos", "decisoes", "comandos", "aberturas", "fechamentos", "eventos_da_trilha")), c

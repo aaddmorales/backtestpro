@@ -406,7 +406,7 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
     assert K["limites"]["vigentes"]["diarios_compartilhados"]["max_aberturas_por_dia"] == 6 and "por dia" in K["limites"]["vigentes"]["acumulados_da_campanha"]["max_aberturas_total"]
     A = K["autoridade"][x["sim"]]
     assert A["entradas"][0]["decidiu"].startswith("R-CICLO-01 r01v5") and A["saidas"][0]["codigo"] == "B3" and "SÓ REGISTRO" in A["quem_decide"]["r01v4_e_portoes_1_8"]
-    assert K["versoes"]["gerou_este_relatorio"]["api"].startswith("8.0") and "nota" in K["versoes"]
+    assert K["versoes"]["gerou_este_relatorio"]["api"].startswith("8.") and "nota" in K["versoes"]
     Q = K["qualidade_dos_dados"]
     assert Q["correspondencia"][0]["completa"] is True and Q["correspondencia"][0]["ticket_confere"] is True
     assert "atestado" in Q["por_ativo"][x["sim"]]["leituras"]["explicacao_85_x_45"] and "motor_atestados_assinados" in Q["por_ativo"][x["sim"]]["leituras"]
@@ -677,6 +677,7 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     assert CL["conformidade_com_o_desenho"]["conforme"] is False and "trailing_do_ea" in CL["conformidade_com_o_desenho"]["ver"]
     assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
     assert K["resumo_executivo"]["bloqueios_efetivos"]["bots_bloqueados"][0]["base_do_motivo"].startswith("hipótese explícita")   # C27R38
+    assert "bloquead" in j["sessao_teste"]["sessao"]["novas_aberturas"].lower() and "por bot" in j["sessao_teste"]["sessao"]["novas_aberturas"] and str(x["id"]) in j["sessao_teste"]["sessao"]["bloqueios_por_bot"]   # C27R40
     BQ = K["resumo_executivo"]["limites_em_uso"]["bloqueios_por_bot"]; assert not BQ["nenhum"] and any(b["bot_id"] == x["id"] and b["abertura_ref"] == ab_id and b["desde_utc"] for b in BQ["bots_bloqueados"])   # C27R37
     assert "INFERIDA" in SP["conflito"] and "comprovad" not in SP["conflito"] and ext[0]["origem"]["grau"].startswith("inferida") and ext[0]["origem"]["confirmada"] is False
     assert op["plano_do_lote"]["situacao"].startswith("plano gravado sem o detalhe lote-2") and op["negocios_assinados_mt5"]["situacao"] == "não disponível"
@@ -706,7 +707,7 @@ def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
     assert "ORIGEM" in TE["determinacao"]["origem_x_conformidade"] and "InpBTTrailingBarra" in TE["determinacao"]["correcao"] and "operacoes" in TE["exposicao_na_campanha"]
     CS = K["consolidacao_das_ordens"]; assert CS["versao"] == "cons-1" and len(CS["linhas"]) >= 12
     for r in CS["linhas"]:
-        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35")
+        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35", "C27R38", "C27R40")
         assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência"), r
     aud = next(r for r in CS["linhas"] if r["requisito"].startswith("aud-2"))
     assert aud["estado"] == "verificado" and aud["evidencia_real"]["colunas_presentes"] is True and aud["evidencia_real"]["ultima_leitura_com_estrutura_utc"]
@@ -792,6 +793,10 @@ def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
     assert op["leitura_na_entrada"]["leitura_usada"]["snapshot_situacao"].startswith("RECONSTRUÍDO")
     TI = K["trailing_do_ea"]["trailing_do_ea"]["input"]; assert "VERIFICADO" in TI["padrao_no_codigo_do_ea_gerado"] and "NÃO VERIFICADO" in TI["valor_configurado_nos_graficos_da_campanha"] and TI["hipotese_explicita"]
     assert K["trailing_do_ea"]["exposicao_na_campanha"]["leitura"].startswith("HIPÓTESE")
+    # C27R40: risco planejado × efetivo (compra 0,3 @ ref 4000 stop 3990 → 3,0; executada 4001 → 3,3; desl. entrada 0,3; saída por B3, não pelo stop)
+    RX = op["risco_planejado_x_efetivo"]; assert RX["planejado_usd"] == 3.0 and RX["efetivo_na_entrada_usd"] == 3.3 and RX["deslizamento_de_entrada_usd"] == 0.3 and RX["saida_pelo_stop"] is False
+    rows40 = [r for r in K["consolidacao_das_ordens"]["linhas"] if r["ordem"] in ("C27R38", "C27R40")]; assert len(rows40) == 4
+    assert all(("verificado" in r["estado"] or "não verificado" in r["estado"]) for r in rows40)
     # vínculos na cadeia legada
     co = next(o for o in j["cadeia"]["operacoes"] if o["id"] == bm_id)
     assert co["ticket"] == 777019 and co["comando_id"] == c_ab and co["vinculos"]["abertura_id"] == ab_id and co["vinculos"]["decisao_id"] == "dec-19"

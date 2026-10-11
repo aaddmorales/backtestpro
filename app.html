@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.75-conferencia-c27r39';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.76-vinculo-b3-risco-c27r40';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9280,6 +9280,13 @@ function relCampanhaHtml(K){
     s += '<h3>Gestão em ordem cronológica</h3>' + _relTab(['Barra M15', 'Barras de posição', 'Ação', 'Motivo', 'Leitura assinada', 'Comando'], (o.gestao_cronologica || []).map(g => [_clmE(g.barra_m15_utc), g.barras_de_posicao, `<b>${_clmE(g.acao)}</b>`, _clmE(g.motivo) + (g.explicacao ? `<br><span class="rel-sit">${_clmE(g.explicacao)}</span>` : ''), _relJ(g.leitura_assinada), g.comando ? `${_clmE(g.comando.id)} ${_clmE(g.comando.status)} ${_clmE(g.comando.confirmado_utc)}` : '—']));
     s += relGestaoExplicadaHtml(o.gestao_explicada || []);                          // C27R33
     s += relStopsHtml(o.stop_de_protecao || {}) + relNegociosHtml(o.negocios_assinados_mt5 || {}) + relPlanoLoteHtml(o.plano_do_lote || {});   // C27R34
+    const RX = o.risco_planejado_x_efetivo || {};
+    if (RX.planejado_usd !== undefined) s += '<h3>Risco planejado × efetivo × realizado</h3>' + _relKV([['Planejado', `US$ ${_clmE(RX.planejado_usd)} <span class="rel-sit">${_clmE(RX.regra_do_planejado)}</span>`],
+      ['Efetivo na entrada', `US$ ${_clmE(RX.efetivo_na_entrada_usd)} (diferença ${_clmE(RX.diferenca_efetivo_menos_planejado_usd)}) <span class="rel-sit">${_clmE(RX.regra_do_efetivo)}</span>`],
+      ['Deslizamento de entrada', `US$ ${_clmE(RX.deslizamento_de_entrada_usd)} (${_clmE(RX.deslizamento_de_entrada_preco)} em preço)`],
+      ['Deslizamento do stop na saída', RX.saida_pelo_stop ? `US$ ${_clmE(RX.deslizamento_do_stop_na_saida_usd)} (${_clmE(RX.deslizamento_do_stop_na_saida_preco)} em preço)` : 'saída não foi pelo stop'],
+      ['Perda realizada / resíduo', `${_clmE(RX.perda_realizada_usd === null || RX.perda_realizada_usd === undefined ? '—' : 'US$ ' + RX.perda_realizada_usd)} · custos ${_clmE(RX.custos_usd)} · resíduo ${_clmE(RX.residuo_nao_explicado_usd)}`],
+      ['Leitura', `${_clmE(RX.leitura)}<br><span class="rel-sit">${_clmE(RX.causa_da_diferenca)}</span>`]]);   // C27R40
     if (o.conferencias) s += `<details><summary>Registrado ao vivo × conferido na geração (corte ${_clmE(o.conferencias.corte_do_relatorio_utc)})</summary><div class="rel-sit">ao vivo: ${_clmE((o.conferencias.registrado_ao_vivo || []).join(' · '))}</div>` + _relTab(['Bloco', 'Momento', 'Posterior ao corte'], (o.conferencias.conferido_na_geracao_posterior_ao_evento || []).map(x => [_clmE(x.bloco), _clmE(x.momento), x.posterior_ao_corte ? 'SIM' : 'não'])) + `<div class="rel-sit">${_clmE(o.conferencias.nota)}</div></details>`;   // C27R37
     s += `<div class="rel-q info"><b>Saída: ${_clmE(SA.motivo_codigo)}</b>${_clmE(SA.explicacao)} · preço ${_clmE(SA.preco)} · ${_clmE(SA.quando)} · comando ${_relJ(SA.comando_de_saida)}</div>`;
     s += `<div class="rel-frase">Resultado: bruto US$ ${_clmE(RS.bruto_usd)} · comissão ${_clmE(RS.comissao_usd)} · swap ${_clmE(RS.swap_usd)} · <b>líquido US$ ${_clmE(RS.liquido_usd)}</b> <span class="rel-sit">${_clmE(RS.fonte)}</span></div>`;
