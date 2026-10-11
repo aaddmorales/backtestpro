@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.71-consolidacao-c27r35';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.72-escopo-vinculos-c27r36';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9003,7 +9003,7 @@ function relAbrir(botId){
   (document.fullscreenElement || document.body).appendChild(ov);   // C27R27: visível também no cockpit em tela cheia
   const temSes = !!((_sesUlt[botId] || {}).painel);
   const rec = document.getElementById('rel-rec');
-  if (!temSes){ rec.value = 'tudo'; [...rec.options].forEach(o => { if (o.value !== 'tudo') o.disabled = true; }); [...document.getElementById('rel-per').options].forEach(o => { if (o.value === 'sessao') o.disabled = true; }); }
+  if (!temSes){ rec.value = 'tudo'; }      // C27R36: nada travado — o servidor resolve a campanha ativa do bot mesmo sem recorte
   else if (sesRecorte(botId) === 'anterior'){ rec.value = 'anterior'; }
   else { rec.value = (_sesChip[botId] === 'consolidado') ? 'consolidado' : 'sessao'; document.getElementById('rel-per').value = 'sessao'; }
   relGerar();
@@ -9143,7 +9143,8 @@ function relGestaoExplicadaHtml(Gx){
     const R = g.regra || {}, C = g.condicao_detectada || {}, V = g.valores || {}, L = g.leitura_que_acionou || {}, H = g.horarios || {}, X = g.execucao || {};
     h += `<div class="rel-q ${g.acao === 'close' ? 'atencao' : 'ok'}"><b>${_clmE(g.barra_m15_fechou)} · ${_clmE(g.acao)}${g.codigo ? ' · ' + _clmE(g.codigo) : ''} — ${_clmE(R.nome)}</b>${_clmE(R.definicao)}<br><span class="rel-sit">parâmetros ${_relJ(R.parametros)} · fonte ${_clmE(R.fonte || '')} · ordem: ${_clmE(g.ordem_de_avaliacao)}</span></div>`;
     h += _relKV([['Condição detectada', `B5 ${_clmE(C.B5)} · B3 ${_clmE(C.B3)} · corte do Ciclo ${_clmE(C.corte_do_ciclo)} ${C.corte_origem && C.corte_origem.length ? '(' + _clmE(C.corte_origem.join('; ')) + ')' : ''} · stop estrutural ${_clmE(C.stop_estrutural)} × vigente ${_clmE(C.stop_vigente)} (lado certo: ${_clmE(C.stop_do_lado_certo)}) · barras de posição ${_clmE(C.barras_de_posicao)} · fechamento da barra ${_clmE(C.fechamento_da_barra)}`],
-      ['Valores', Object.keys(V).length ? _relJ(V) : '—'], ['Leitura que acionou', `janela M1/M5/M15 assinada ${_relJ(L.janela_M1_M5_M15_assinada)} · snapshot ${_clmE(L.snapshot_utc)} · barra do atestado ${_clmE(L.barra_do_atestado_utc)}<br>${_relEst(L.estrutura_M5_M15_no_snapshot)}`],
+      ['Por quê', V.por_que ? `<b>${_clmE(V.por_que)}</b>` + _relTab(['Regra', 'Valores usados', 'Resultado'], (V.avaliacao_passo_a_passo || []).map(p => [_clmE(p.regra), _clmE(Object.entries(p).filter(x => !['regra', 'resultado'].includes(x[0])).map(x => x[0] + '=' + (typeof x[1] === 'object' ? JSON.stringify(x[1]) : x[1])).join(' · ')), _clmE(p.resultado)])) : '—'],
+      ['Valores', Object.keys(V).length ? _relJ(Object.fromEntries(Object.entries(V).filter(x => !['por_que', 'avaliacao_passo_a_passo'].includes(x[0])))) : '—'], ['Leitura que acionou', `janela M1/M5/M15 assinada ${_relJ(L.janela_M1_M5_M15_assinada)} · snapshot ${_clmE(L.snapshot_utc)} · barra do atestado ${_clmE(L.barra_do_atestado_utc)}<br>${_relEst(L.estrutura_M5_M15_no_snapshot)}`],
       ['Horários', `barra fechou ${_clmE(H.barra_fechou)} · gatilho na trilha ${_clmE(H.gatilho_registrado_na_trilha)} · comando ${_clmE(H.comando_criado || '—')} · entregue ${_clmE(H.comando_entregue || '—')} · executado ${_clmE(H.execucao_confirmada_pelo_mt5 || '—')} · latências: barra→comando ${_clmE(H.latencia_barra_ate_comando_s)} s, comando→execução ${_clmE(H.latencia_comando_ate_execucao_s)} s`],
       ['Execução', X ? `preço ${_clmE(X.preco_real)} · retcode ${_clmE(X.retcode)} · fechados ${_clmE(X.fechados)}` : '—'], ['Componente', _clmE(g.componente)]]);
   }
@@ -9153,7 +9154,7 @@ function relGestaoExplicadaHtml(Gx){
 function relStopsHtml(S){
   if (!S.eventos) return '';
   let h = `<h3>Stop de proteção: linha do tempo e origem de cada alteração</h3><div class="rel-q ${S.alteracoes_fora_da_plataforma ? 'atencao' : 'ok'}"><b>${S.alteracoes_fora_da_plataforma ? S.alteracoes_fora_da_plataforma + ' alteração(ões) FORA da plataforma — ' + _clmE(S.conflito) : 'todas as alterações do stop vieram da plataforma'}</b>${_clmE(S.autoridade_de_gestao)}${S.nota_resultado ? '<br><b>' + _clmE(S.nota_resultado) + '</b>' : ''}</div>`;
-  h += _relTab(['Quando', 'Stop', 'Origem', 'Componente', 'Classificação / evidência'], S.eventos.map(e => [_clmE(e.quando), `<b>${_clmE(e.stop)}</b>`, _clmE(e.origem), _clmE(e.componente), e.classificacao ? `${_clmE(e.classificacao.origem)}<br><span class="rel-sit">${_clmE(e.classificacao.comprovacao)}</span>` : _relJ(e.evidencia)]));
+  h += _relTab(['Quando', 'Stop', 'Origem', 'Componente', 'Classificação / evidência'], S.eventos.map(e => [_clmE(e.quando), `<b>${_clmE(e.stop)}</b>`, _clmE(e.origem), _clmE(e.componente), e.classificacao ? (typeof e.classificacao.origem === 'object' ? `<b>observado:</b> ${_clmE((e.classificacao.alteracao_observada || {}).stop_anterior)} → ${_clmE((e.classificacao.alteracao_observada || {}).stop_novo)}<br><b>origem inferida:</b> ${_clmE(e.classificacao.origem.inferida)} (${_clmE(e.classificacao.origem.grau)}) · confirmada: ${e.classificacao.origem.confirmada ? 'sim' : 'NÃO'} — ${_clmE(e.classificacao.origem.como_confirmar)}<br><b>conformidade com o desenho:</b> ${(e.classificacao.conformidade_com_o_desenho || {}).conforme ? 'conforme' : 'NÃO conforme'} — ${_clmE((e.classificacao.conformidade_com_o_desenho || {}).porque)}` : `${_clmE(e.classificacao.origem)}<br><span class="rel-sit">${_clmE(e.classificacao.comprovacao)}</span>`) : _relJ(e.evidencia)]));
   return h;
 }
 function relNegociosHtml(N){
@@ -9188,6 +9189,22 @@ function relSelecaoDiagHtml(D){
     if ((d.com_selo_sem_sinal_no_periodo || []).length) h += `<div class="rel-sit">Com selo mas sem sinal no período: ${_clmE(d.com_selo_sem_sinal_no_periodo.map(c => c.card + ' · ' + c.timeframe).join(', '))}</div>`;
   }
   return h;
+}
+function relEscopoHtml(E){
+  if (!E || E.situacao) return E && E.erro ? `<div class="rel-q atencao">Escopo não montado: ${_clmE(E.erro)}</div>` : '';
+  const C = E.campanha || {}, PC = E.periodo_da_campanha || {}, PP = E.periodo_pedido || {}, RA = E.registros_anteriores_a_campanha || {}, CB = E.cobertura_separada || {};
+  const ant = RA.operacoes_de_outras_sessoes_no_periodo || [], bm = RA.babymachine_operacoes_antes_do_inicio || [];
+  let s = _relKV([['Gerador', _clmE(E.gerador)], ['Campanha', `<b>${_clmE(C.id)}</b> · ${_clmE(C.nome)} <span class="rel-sit">${_clmE(C.tipo)} · ${_clmE(C.estado)}</span>`],
+    ['Período da campanha', `${_clmE(PC.inicio_utc)} → ${_clmE(PC.fim_utc)} (UTC)`], ['Período pedido', `${_clmE(PP.rotulo)}: ${_clmE(PP.de_utc)} → ${_clmE(PP.ate_utc)} · recorte "${_clmE(E.recorte_pedido)}"`],
+    ['Bots da campanha', _clmE((E.bots_da_campanha || []).map(b => `${b.nome} (${b.ativo}, id ${b.id})${b.neste_relatorio ? ' ← este relatório' : ''}`).join(' · '))],
+    ['Este relatório cobre', `bloco campanha: ${_clmE((E.este_relatorio_cobre || {}).bloco_campanha)} · quadros legados: ${_clmE((E.este_relatorio_cobre || {}).quadros_legados)}`],
+    ['Operações da campanha', _clmE((E.operacoes_da_campanha || []).join(', ') || 'nenhuma')], ['Autoridade vigente', _clmE(E.autoridade_vigente)]]);
+  if (ant.length || bm.length) s += `<div class="rel-q atencao"><b>Registros ANTERIORES à campanha dentro do período pedido (fora do bloco campanha)</b>` +
+    _relTab(['Abertura', 'Sessão', 'Posição MT5', 'Comando', 'Abriu (UTC)', 'Fechou (UTC)', 'Resultado US$'], ant.map(a => [_clmE(a.abertura_id), _clmE(a.sessao), _clmE(a.posicao_id), _clmE(a.comando_id), _clmE(a.abriu_utc), _clmE(a.fechou_utc), _clmE(a.resultado_usd)])) +
+    (bm.length ? `<div class="rel-sit">babymachine_operacoes antes do início: ${_clmE(bm.map(o => o.id).join(', '))}</div>` : '') + `<div class="rel-sit">${_clmE(RA.nota)}</div></div>`;
+  const f = d => d ? `coleta ${_clmE(d.ausencia_de_coleta)} · mercado fechado ${_clmE(d.mercado_fechado)} · indeterminado ${_clmE(d.indeterminado)}` : '—';
+  s += `<div class="rel-sit"><b>Cobertura separada</b> · antes da campanha: ${f(CB.antes_da_campanha)} · dentro (quadro legado): ${f(CB.dentro_da_campanha_pelo_quadro_legado)} · dentro, intervalo exato: ${_clmE(typeof CB.dentro_da_campanha_no_intervalo_exato === 'string' ? CB.dentro_da_campanha_no_intervalo_exato : Object.entries(CB.dentro_da_campanha_no_intervalo_exato || {}).map(x => `${x[0]} ${x[1].recebidas}/${x[1].esperadas} esperadas`).join(' · '))}<br>${_clmE(CB.nota)}</div>`;
+  return _relSec('0. Escopo do relatório (campanha, período, bots, registros anteriores)', s, true);
 }
 function relTrailingEaHtml(TE){
   if (!TE || !TE.determinacao) return '';
@@ -9364,6 +9381,7 @@ function relRender(c){
   let h = '';
   if (!c.persistido) h += `<div class="rel-q atencao"><b>Relatório não foi gravado no servidor</b>${_clmE(c.aviso_persistencia || '')} Sem gravação não há download.</div>`;
   h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 do conteúdo ${_clmE(c.sha256_do_conteudo)}</div><div id="rel-arquivos"></div>`;
+  if (c.escopo_do_relatorio) h += relEscopoHtml(c.escopo_do_relatorio);      // C27R36
   if (c.campanha) h += relCampanhaHtml(c.campanha);
   h += `<div class="rel-q ${c.sessao_teste_id ? 'ok' : 'atencao'}"><b>Recorte: ${_clmE((c.recorte || {}).rotulo || 'sem recorte')}${c.escopo ? ' · ' + _clmE(c.escopo) : ''}</b>${c.sessao_teste_id ? 'sessao_teste_id ' + _clmE(c.sessao_teste_id) + ' — só registros desta sessão entram neste relatório.' : 'registros fora de sessão de ensaio.'}</div>`;
   if (c.sessao_teste){ _sesCss(); h += '<div class="ses">' + sesHtml(c.sessao_teste, c.escopo === 'Ensaio consolidado' ? 'consolidado' : (c.escopo || I.ativo || '')) + '</div>'; }

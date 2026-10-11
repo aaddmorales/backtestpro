@@ -671,6 +671,10 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     assert s == 200, j
     K = j["campanha"]; op = next(o for o in K["operacoes"] if o["identificacao"]["ticket"] == 777017)
     SP = op["stop_de_protecao"]; assert SP["alteracoes_fora_da_plataforma"] == 1 and "BTvTrailingBarra" in SP["conflito"] and SP["eventos"][0]["stop"] == 4105.0
+    ext_ = next(e for e in SP["eventos"] if e.get("classificacao") and e["classificacao"].get("conflito"))
+    CL = ext_["classificacao"]; assert CL["alteracao_observada"]["stop_novo"] == 4103.5 and CL["alteracao_observada"]["stop_anterior"] == 4105.0      # C27R36
+    assert "BTvTrailingBarra" in CL["origem"]["inferida"] and CL["origem"]["confirmada"] is False and "Journal" in CL["origem"]["como_confirmar"]
+    assert CL["conformidade_com_o_desenho"]["conforme"] is False and "trailing_do_ea" in CL["conformidade_com_o_desenho"]["ver"]
     assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
     assert op["plano_do_lote"]["situacao"].startswith("plano gravado sem o detalhe lote-2") and op["negocios_assinados_mt5"]["situacao"] == "não disponível"
     D = K["selecao_diagnostico"][x["sim"]]["catalogo_esperado_x_disponivel"]; assert D["esperadas"] == 39 and len(D["matriz"]) == 39 and "cards" in D["leitura"]
@@ -715,3 +719,67 @@ def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
     q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "pdf"}).encode(),
                    headers={"Authorization": "Bearer " + amb["sess"], "Content-Type": "application/json"}, method="POST")
     assert rq.urlopen(q, timeout=180).read()[:4] == b"%PDF"
+
+
+def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
+    """C27R36: (1) bot em campanha gera o bloco 'campanha' e o 'escopo_do_relatorio' MESMO com recorte 'tudo' (período 7 dias),
+    com registros anteriores à campanha separados; (2) cadeia.operacoes traz os vínculos abertura/decisão/comando/posição;
+    (3) gestão explicada diz POR QUÊ (B3 sinalizado com 1 barra de posição não aplica; com 3 aplica); (4) textos de autoridade:
+    r01v5 vigente, r01v4 só registro; (5) trilha exportada sem truncagem de 'ref'."""
+    sid, x = camp["id"], camp["x"]
+    _limpar(sid)
+    T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
+    mg = T._magic(x["tok"]); agora = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    t0 = agora - timedelta(hours=2)
+    def cmd(tipo, params, quando, origem="sessao_gestao"):
+        return T._pg("insert into mt5_comandos (bot_id, user_id, bot_token, tipo, origem, status, params, resultado, criado_em, entregue_em, confirmado_em, expira_em, sessao_teste_id) "
+                     "values (%s,%s,%s,%s,%s,'executado',%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s) returning id", x["id"], camp["uid"], x["tok"], tipo, origem, json.dumps(params),
+                     json.dumps({"ticket": 777019, "retcode": 10009, "preco_real": 4001.0}), quando, quando + timedelta(seconds=2), quando + timedelta(seconds=9), quando + timedelta(seconds=60), sid)[0][0]
+    c_ab = cmd("buy", {"uid": "u19", "lote": 0.3, "sl": 3990.0}, t0 + timedelta(seconds=30), "sessao_r01v5")
+    ab_id = T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+                  "risco_planejado_usd, plano, estado, comando_id, ticket, posicao_id, preco_entrada, preco_saida, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, lucro, comissao, swap, motivo_saida, gestao) "
+                  "values (%s,%s,%s,%s,'dec-19','u19','card8_bollinger','M15',1,%s,0.3,4000.0,3990.0,3990.5,3.0,'{}'::jsonb,'fechada',%s,777019,777019,4001.0,3999.0,%s,%s,%s,-0.6,-0.6,0,0,'B3','[]'::jsonb) returning id",
+                  sid, x["id"], x["sim"], mg, t0, c_ab, t0 + timedelta(seconds=29), t0 + timedelta(seconds=39), t0 + timedelta(minutes=60, seconds=40))[0][0]
+    c_sl = cmd("mover_sl", {"ticket": 777019, "sl": 3990.5, "abertura_id": ab_id}, t0 + timedelta(minutes=30, seconds=30))
+    c_cl = cmd("close", {"ticket": 777019, "motivo": "B3", "abertura_id": ab_id}, t0 + timedelta(minutes=60, seconds=30))
+    gest = [{"acao": "mover_sl", "barra": (t0 + timedelta(minutes=15)).isoformat(), "barras_de_posicao": 1, "motivo": "trailing estrutural (pivô ∓ 0,3×ATR14 do M15)", "comando_id": c_sl,
+             "leitura": {"B3": 1, "B5": 0, "corte_do_ciclo": 0, "stop_estrutural": "3990.5", "stop_vigente": "3990.0"}},
+            {"acao": "close", "barra": (t0 + timedelta(minutes=45)).isoformat(), "barras_de_posicao": 3, "motivo": "B3", "comando_id": c_cl,
+             "leitura": {"B3": 1, "B5": 0, "corte_do_ciclo": 0, "stop_estrutural": "3990.2", "stop_vigente": "3990.5"}}]
+    T._pg("update sessao_aberturas set gestao=%s::jsonb where id=%s", json.dumps(gest), ab_id)
+    bm_id = T._pg("insert into babymachine_operacoes (user_id, bot_id, ativo, timeframe, fonte, status, ts_entrada, ts_saida) values (%s,%s,%s,'M15','estrategia_compilada','fechada',%s,%s) returning id",
+                  camp["uid"], x["id"], x["sim"], t0 + timedelta(seconds=44), t0 + timedelta(minutes=60, seconds=45))[0][0]
+    # operação de OUTRA sessão (anterior, encerrada) dentro dos 7 dias
+    T._pg("delete from sessao_aberturas where sessao_teste_id='ENS-ANTERIOR-19'"); T._pg("delete from sessoes_teste where id='ENS-ANTERIOR-19'")
+    T._pg("insert into sessoes_teste (id, nome, user_id, bots, estado, fim_previsto, config) values ('ENS-ANTERIOR-19','ensaio anterior',%s,%s,'encerrada', now() - interval '2 day', '{}'::jsonb)",
+          camp["uid"], [x["id"]])
+    ab_ant = T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+                   "risco_planejado_usd, plano, estado, ticket, posicao_id, preco_entrada, preco_saida, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, motivo_saida, gestao) "
+                   "values ('ENS-ANTERIOR-19',%s,%s,%s,'dec-old','u-old','card7_rsi','H1',1,%s,0.02,3900.0,3890.0,3890.0,1.0,'{}'::jsonb,'fechada',777001,777001,3901.0,3900.9,%s,%s,%s,-0.01,'B3','[]'::jsonb) returning id",
+                   x["id"], x["sim"], mg, agora - timedelta(days=3), agora - timedelta(days=3), agora - timedelta(days=3), agora - timedelta(days=3, hours=-1))[0][0]
+    time.sleep(1)
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "7d", "sessao": "tudo", "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    assert j["recorte"]["recorte"] == "tudo" and j["recorte"]["campanha_ativa"] == sid and j["sessao_teste_id"] is None
+    E = j["escopo_do_relatorio"]; assert E["campanha"]["id"] == sid and E["recorte_pedido"] == "tudo" and ab_id in E["operacoes_da_campanha"]
+    assert any(a["abertura_id"] == ab_ant and a["sessao"] == "ENS-ANTERIOR-19" for a in E["registros_anteriores_a_campanha"]["operacoes_de_outras_sessoes_no_periodo"])
+    assert any(b["neste_relatorio"] for b in E["bots_da_campanha"]) and "r01v5" in E["autoridade_vigente"] and "cobertura_separada" in E
+    K = j["campanha"]; assert K["versao"] == "rel-4" and "consolidacao_das_ordens" in K and "trailing_do_ea" in K
+    op = next(o for o in K["operacoes"] if o["identificacao"]["abertura_id"] == ab_id)
+    assert all(int(a["abertura_id"]) != ab_ant for a in [o["identificacao"] for o in K["operacoes"]])          # a anterior fica fora do bloco campanha
+    Gx = op["gestao_explicada"]; assert len(Gx) == 2
+    assert Gx[0]["valores"]["por_que"].startswith("APERTA") and "NÃO aplicado" in next(p_["resultado"] for p_ in Gx[0]["valores"]["avaliacao_passo_a_passo"] if p_["regra"] == "B3")
+    assert Gx[1]["valores"]["por_que"].startswith("APLICADO: B3=1 com posição de 3")
+    # vínculos na cadeia legada
+    co = next(o for o in j["cadeia"]["operacoes"] if o["id"] == bm_id)
+    assert co["ticket"] == 777019 and co["comando_id"] == c_ab and co["vinculos"]["abertura_id"] == ab_id and co["vinculos"]["decisao_id"] == "dec-19"
+    assert co["vinculos"]["comando_de_abertura"]["ticket_na_resposta"] == 777019 and sorted(co["vinculos"]["comandos_de_gestao_e_saida"]) == sorted([c_sl, c_cl]) and co["vinculos"]["como_foi_vinculada"] == "entrada ±120 s"
+    assert next(c for c in j["cadeia"]["comandos"] if c["id"] == c_sl)["ticket"] == 777019
+    # autoridade: estado atual × configuração histórica
+    V = j["identificacao"]["versoes"]; assert "r01v5" in V["autoridade_vigente"] and "r01v4" in V["autoridade_historica_so_registro"]
+    assert not any("sombra, desligada" in str(q.get("resposta")) for q in j["resumo"]["perguntas"])
+    # trilha exportada sem truncagem de ref
+    TA = j.get("trilha_auditavel") or {}
+    assert not any(isinstance(i.get("ref"), dict) and i["ref"].get("truncado") for i in (TA.get("itens") or []))
+    T._pg("delete from babymachine_operacoes where id=%s", bm_id); T._pg("delete from sessao_aberturas where id in (%s,%s)", ab_id, ab_ant)
+    T._pg("delete from sessoes_teste where id='ENS-ANTERIOR-19'")
