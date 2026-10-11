@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.70-stop-lote-catalogo-c27r34';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.71-consolidacao-c27r35';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9189,6 +9189,27 @@ function relSelecaoDiagHtml(D){
   }
   return h;
 }
+function relTrailingEaHtml(TE){
+  if (!TE || !TE.determinacao) return '';
+  const DA = TE.desenho_autorizado || {}, TR = TE.trailing_do_ea || {}, DT = TE.determinacao || {}, EX = TE.exposicao_na_campanha || {};
+  let h = `<div class="rel-q ${DT.integra_o_desenho_autorizado ? 'ok' : 'atencao'}"><b>${DT.integra_o_desenho_autorizado ? 'INTEGRA o desenho autorizado' : 'ATUA FORA do desenho autorizado'}</b><ul>${(DT.porque || []).map(x => '<li>' + _clmE(x) + '</li>').join('')}</ul></div>`;
+  h += _relKV([['Desenho autorizado', _clmE(DA.contrato)], ['Papel do EA no contrato', _clmE(DA.papel_do_ea)], ['Onde está escrito', _clmE((DA.onde_esta_escrito || []).join(' · '))],
+    ['Trailing do EA', `${_clmE(TR.rotina)} · ${_clmE(TR.regra)}`], ['Alcance / registro', `${_clmE(TR.alcance)} · ${_clmE(TR.registro)}`], ['Input', _clmE(TR.input)],
+    ['Origem × conformidade', _clmE(DT.origem_x_conformidade)], ['Correção', _clmE(DT.correcao)]]);
+  h += _relTab(['Abertura', 'Ativo', 'Stops vistos', 'Fora da plataforma', 'Origens', 'Saída pelo stop externo'], (EX.operacoes || []).map(x => [_clmE(x.abertura_id), _clmE(x.ativo), _clmE(x.valores_de_stop_vistos), _clmE(x.fora_da_plataforma), _clmE((x.origens_fora || []).join('; ')), x.saida_pelo_stop_externo ? 'sim' : '']));
+  h += `<div class="rel-sit">Total: ${_clmE(EX.total_valores_de_stop)} valores de stop vistos · ${_clmE(EX.total_fora_da_plataforma)} fora da plataforma. ${_clmE(EX.leitura)}</div>`;
+  return h;
+}
+function relConsolidacaoHtml(CS){
+  if (!CS || !CS.linhas) return CS && CS.erro ? `<div class="rel-q falha">${_clmE(CS.erro)}</div>` : '';
+  const cls = e => String(e || '').startsWith('verificado') ? 'ok' : (String(e || '').startsWith('diverg') ? 'falha' : 'atencao');
+  let h = `<div class="rel-sit">${_clmE(CS.nota)} · totais: ${_clmE(Object.entries(CS.totais || {}).map(x => x[0] + ' ' + x[1]).join(' · '))}</div>`;
+  h += _relTab(['Ordem', 'Requisito', 'Componente existente', 'Implementação entregue', 'Evidência real', 'Estado', 'Pendência'], CS.linhas.map(r => [_clmE(r.ordem), _clmE(r.requisito), _clmE(r.componente_existente), _clmE(r.implementacao_entregue),
+    `<code class="rel-id">${_clmE(typeof r.evidencia_real === 'string' ? r.evidencia_real : JSON.stringify(r.evidencia_real))}</code>`, `<span class="rel-q ${cls(r.estado)}">${_clmE(r.estado)}</span>`, _clmE(r.pendencia || '')]));
+  const IM = CS.implantacoes || {};
+  h += `<div class="rel-sit">Implantações pela trilha: ${_clmE(Object.entries(IM).filter(x => x[0] !== 'agora').map(x => x[0] + ' → ' + ((x[1] || {}).trilha_ts || 'não encontrada')).join(' · '))} · agora: ${_clmE((IM.agora || {}).api)} (${_clmE((IM.agora || {}).commit)})</div>`;
+  return h;
+}
 function relCampanhaHtml(K){
   if (K.situacao) return `<div class="rel-q atencao"><b>Bloco da campanha não montado</b>${_clmE(K.erro || K.situacao)}</div>`;
   const R = K.resumo_executivo || {}, CP = R.campanha || {}, CO = R.consolidado || {}, LU = R.limites_em_uso || {}, PA = R.por_ativo || {};
@@ -9259,6 +9280,8 @@ function relCampanhaHtml(K){
     esc.map(x => [_clmE(String(x.barra_m15_utc || '').slice(0, 16).replace('T', ' ')), _clmE(x.ativo), `${_clmE(x.estrategia)} ${_clmE(x.timeframe)} ${_clmE(x.lado)}`, _clmE(x.etapa_que_interrompeu), _clmE(x.motivo_efetivo), `<b>${_clmE(x.categoria)}</b>`]));
   s += '<h3>Por que estas estratégias (diagnóstico do seletor na campanha)</h3>' + relSelecaoDiagHtml(K.selecao_diagnostico);     // C27R33
   h += _relSec('3. Oportunidades sem execução (funil candidatos → fechamentos) e diagnóstico do seletor', s);
+  if (K.trailing_do_ea) h += _relSec('3b. Trailing por barra do EA: integra o desenho autorizado ou atua fora dele?', relTrailingEaHtml(K.trailing_do_ea));   // C27R35
+  if (K.consolidacao_das_ordens) h += _relSec('3c. Consolidação das ordens de auditoria (requisito × componente × implementação × evidência real × pendência)', relConsolidacaoHtml(K.consolidacao_das_ordens));
   // C27R32 — cronologia das fases, gráficos, fuso do servidor e escopo dos quadros
   const CR = K.cronologia || {}, GR = K.graficos || [], FS = K.fuso_servidor || [], EQ = K.escopo_dos_quadros || {}, IV = K.inventario_de_dados || [], CA = K.coleta_de_auditoria || {};
   s = '';

@@ -677,3 +677,41 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     # limpeza: libera o bot (como o dono faria) e remove a abertura de bancada
     T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
     T._pg("delete from sessao_aberturas where id=%s", ab_id)
+
+
+def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
+    """C27R35: (1) aud-2 realmente gravada — estrutura_por_tf / gestao_assinada / atestado chegam ao banco (sql/0016: a RPC da
+    0015 ignorava as chaves); (2) o relatório traz a determinação do trailing do EA (fora do desenho autorizado; origem × conformidade)
+    e a matriz de consolidação das ordens com estado por linha e evidência real; (3) o ZIP exporta as três chaves."""
+    import io, zipfile, urllib.request as rq
+    sid, x = camp["id"], camp["x"]
+    _limpar(sid)
+    T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
+    det, barra = SS._det(x, [], gestao={"stop": None})
+    assert SS._snap(x, det)[0] == 200
+    lv = T._pg("select estrutura_por_tf, gestao_assinada, atestado from auditoria_leituras where bot_id=%s order by id desc limit 1", x["id"])[0]
+    assert isinstance(lv[0], dict) and "M15" in lv[0] and isinstance(lv[1], dict) and isinstance(lv[2], dict) and "cv2" in lv[2]
+    time.sleep(2)
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]
+    TE = K["trailing_do_ea"]; assert TE["determinacao"]["integra_o_desenho_autorizado"] is False and "BTvTrailingBarra" in TE["trailing_do_ea"]["rotina"]
+    assert "ORIGEM" in TE["determinacao"]["origem_x_conformidade"] and "InpBTTrailingBarra" in TE["determinacao"]["correcao"] and "operacoes" in TE["exposicao_na_campanha"]
+    CS = K["consolidacao_das_ordens"]; assert CS["versao"] == "cons-1" and len(CS["linhas"]) >= 12
+    for r in CS["linhas"]:
+        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35")
+        assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência"), r
+    aud = next(r for r in CS["linhas"] if r["requisito"].startswith("aud-2"))
+    assert aud["estado"] == "verificado" and aud["evidencia_real"]["colunas_presentes"] is True and aud["evidencia_real"]["ultima_leitura_com_estrutura_utc"]
+    assert sum(CS["totais"].values()) == len(CS["linhas"]) and "trilha_ts" not in (CS["implantacoes"]["8.04"] or {}) or CS["implantacoes"]["8.04"]["bots"]
+    # ZIP: leituras vivas com as três chaves
+    import json
+    q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "zip"}).encode(),
+                   headers={"Authorization": "Bearer " + amb["sess"], "Content-Type": "application/json"}, method="POST")
+    z = zipfile.ZipFile(io.BytesIO(rq.urlopen(q, timeout=180).read()))
+    nome = next(n for n in z.namelist() if "leituras_vivas" in n)
+    assert "estrutura_por_tf" in z.read(nome).decode("utf-8")
+    # PDF com as seções 3b/3c
+    q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "pdf"}).encode(),
+                   headers={"Authorization": "Bearer " + amb["sess"], "Content-Type": "application/json"}, method="POST")
+    assert rq.urlopen(q, timeout=180).read()[:4] == b"%PDF"
