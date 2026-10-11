@@ -212,7 +212,7 @@ def test_2_inicio_carimba_so_o_que_e_da_sessao_no_ativo_certo_e_nao_duplica(api,
     s5 = R._sel(x, barra)["autoridade_r01v5"]
     assert s5["seria_emitida"] is True and s5["emissao_habilitada"] is False and s5["sessao"]["permitido"] is False
     assert s5["sessao"]["motivo"] == "aberturas_nao_habilitadas" and s5["sessao"]["plano"]["lote"] == 0.01
-    assert s5["sessao"]["plano"]["risco_planejado_usd"] == 5.2 and s5["sessao"]["plano"]["risco_alvo_usd"] == 10.0
+    assert s5["sessao"]["plano"]["risco_planejado_usd"] == 5.32 and s5["sessao"]["plano"]["risco_alvo_usd"] == 10.0      # lote-2: venda sai no ask (+ spread 0,12)
     assert _cont(x) == (0, 0)
     # o mesmo snapshot de novo (página recarregada, conector reenviando, API reiniciada): não duplica nem zera
     antes = {k: cx[k] for k in ("barras", "candidatos", "elegiveis", "eventos_da_trilha", "avaliacoes_de_selecao")}
@@ -242,7 +242,11 @@ def test_3_lote_pelo_risco_com_a_especificacao_do_proprio_simbolo(api, amb, ses)
     bx = {"simbolo": "XAUUSD", "equity": 610000.0, "margem_livre": 600000.0}
     tx = lambda e: json.loads(json.dumps(P["_cv_txt"](e)))
     pl, m = api._ses_plano(S_, bx, {"especificacao": tx(ESP["XAUUSD"])}, cx, {"preco": "4099.80", "spr": "12", "pt": "0.01"})
-    assert m is None and pl["lote"] == 0.01 and pl["risco_planejado_usd"] == 5.2 and pl["risco_alvo_usd"] == 10.0
+    assert m is None and pl["lote"] == 0.01 and pl["risco_planejado_usd"] == 5.32 and pl["risco_alvo_usd"] == 10.0 and pl["versao"] == "lote-2"
+    assert pl["distancias"]["efetiva"]["preco"] == 5.32 and pl["distancias"]["spread_na_saida"]["preco"] == 0.12 and len(pl["controles"]) == 8 and "tolerancia_slippage_pts" in pl["parametros_a_definir"]
+    # tolerância de slippage e custo por lote só entram quando o dono os define
+    pl2, _m2 = api._ses_plano({"id": ses["id"], "config": dict(CFG, tolerancia_slippage_pts=10, custo_por_lote_usd=0.5)}, bx, {"especificacao": tx(ESP["XAUUSD"])}, cx, {"preco": "4099.80", "spr": "12", "pt": "0.01"})
+    assert pl2["distancias"]["efetiva"]["preco"] == 5.42 and pl2["perda_por_lote_usd"] == 542.5 and pl2["risco_planejado_usd"] == 5.42 and pl2["parametros_a_definir"] == ["exposicao_nocional_max_usd / lote_max_por_operacao"]
     # 0,10% do patrimônio quando é MENOR que US$ 10: conta de US$ 5.000 → alvo US$ 5 → o lote mínimo (US$ 5,20) não cabe
     pl, m = api._ses_plano(S_, dict(bx, equity=5000.0, margem_livre=5000.0), {"especificacao": tx(ESP["XAUUSD"])}, cx, {"preco": "4099.80", "spr": "12", "pt": "0.01"})
     assert pl is None and m.startswith("lote_minimo_nao_cabe_no_risco")
@@ -285,7 +289,7 @@ def test_4_abertura_real_so_com_chave_sessao_habilitada_e_limites(api, amb, ses)
         d = T._pg("select status, sessao_teste_id from ciclo_decisoes where bot_id=%s", x["id"])
         assert d == [("consumida", sid)]
         ab = T._pg("select estado, lote, risco_planejado_usd, comando_id, tf, lado from sessao_aberturas where sessao_teste_id=%s and bot_id=%s", sid, x["id"])
-        assert ab == [("reservada", 0.01, 5.2, c[0][0], "M30", -1)] or (ab[0][0] == "reservada" and float(ab[0][1]) == 0.01 and float(ab[0][2]) == 5.2)
+        assert ab == [("reservada", 0.01, 5.32, c[0][0], "M30", -1)] or (ab[0][0] == "reservada" and float(ab[0][1]) == 0.01 and float(ab[0][2]) == 5.32)
         # repetição: o mesmo candidato não abre de novo; o ativo já tem reserva
         s5b = api._ses_executar(sb, bot, sombra(), det)
         assert s5b["comando_criado"] is False and _cont(x) == (1, 1)
@@ -306,7 +310,7 @@ def test_4_abertura_real_so_com_chave_sessao_habilitada_e_limites(api, amb, ses)
         ab = T._pg("select estado, ticket, preco_entrada from sessao_aberturas where sessao_teste_id=%s and bot_id=%s", sid, x["id"])[0]
         assert ab[0] == "aberta" and ab[1] == 777001 and float(ab[2]) == 4099.75
         p = _painel(amb, x)["painel"]
-        assert p["ativos"]["XAUUSD"]["contadores"]["aberturas"] == 1 and p["consolidado"]["limites"]["risco_aberto_usd"] == 5.2
+        assert p["ativos"]["XAUUSD"]["contadores"]["aberturas"] == 1 and p["consolidado"]["limites"]["risco_aberto_usd"] == 5.32
         assert p["ativos"]["XAUUSD"]["por_timeframe"]["M30"]["aberturas"] == 1 and p["ativos"]["XAUUSD"]["por_timeframe"]["M15"]["aberturas"] == 0
         # posição de outro magic: fora do resultado, dentro da exposição
         outras = p["ativos"]["XAUUSD"]["saude"]["posicoes_de_outros_magics_no_simbolo"]
@@ -321,7 +325,7 @@ def test_5_limites_comuns_aos_dois_ativos(amb, ses):
     assert _res(sid, b, risco=10.01)[:2] == (False, "risco_acima_do_limite_por_operacao")
     assert _res(sid, b, risco=14.81)[1] == "risco_acima_do_limite_por_operacao"
     ok, mot, _i, uso = _res(sid, b, risco=10.0)                       # 5,20 (ouro) + 10 = 15,20 ≤ 20
-    assert ok is True and uso["risco_aberto_usd"] == 5.2 and uso["posicoes_abertas"] == 1
+    assert ok is True and uso["risco_aberto_usd"] == 5.32 and uso["posicoes_abertas"] == 1
     assert _res(sid, b, risco=9.0, barra=T._barra_m15() - timedelta(hours=1))[1] == "barra_anterior_ao_inicio_da_sessao"
     ok, mot, ab_b, _u = _res(sid, b, risco=10.0, reservar=True, dec="dec-b-1", lado=1)
     assert ok is True and ab_b

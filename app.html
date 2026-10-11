@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.69-leitura-selecao-gestao-c27r33';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.70-stop-lote-catalogo-c27r34';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9149,12 +9149,41 @@ function relGestaoExplicadaHtml(Gx){
   }
   return h;
 }
+// ═══ C27R34 — stop de proteção (linha do tempo e origem), negócios do MT5, plano do lote (lote-2) ═══
+function relStopsHtml(S){
+  if (!S.eventos) return '';
+  let h = `<h3>Stop de proteção: linha do tempo e origem de cada alteração</h3><div class="rel-q ${S.alteracoes_fora_da_plataforma ? 'atencao' : 'ok'}"><b>${S.alteracoes_fora_da_plataforma ? S.alteracoes_fora_da_plataforma + ' alteração(ões) FORA da plataforma — ' + _clmE(S.conflito) : 'todas as alterações do stop vieram da plataforma'}</b>${_clmE(S.autoridade_de_gestao)}${S.nota_resultado ? '<br><b>' + _clmE(S.nota_resultado) + '</b>' : ''}</div>`;
+  h += _relTab(['Quando', 'Stop', 'Origem', 'Componente', 'Classificação / evidência'], S.eventos.map(e => [_clmE(e.quando), `<b>${_clmE(e.stop)}</b>`, _clmE(e.origem), _clmE(e.componente), e.classificacao ? `${_clmE(e.classificacao.origem)}<br><span class="rel-sit">${_clmE(e.classificacao.comprovacao)}</span>` : _relJ(e.evidencia)]));
+  return h;
+}
+function relNegociosHtml(N){
+  if (!N.negocios) return N.situacao ? `<div class="rel-q atencao"><b>Negócios do MT5</b>${_clmE(N.situacao)} ${_clmE(N.coleta_necessaria || N.erro || '')}</div>` : '';
+  const C = N.confere_com_a_abertura || {}, T = N.totais || {};
+  let h = `<h3>Negócios assinados do MT5 (posição ${_clmE(N.posicao_id)})</h3>` + _relTab(['Ticket', 'Papel', 'Tipo', 'Volume', 'Preço', 'Lucro', 'Comissão', 'Swap', 'Motivo MT5', 'Hora (UTC)'], N.negocios.map(d => [_clmE(d.ticket), _clmE(d.papel), _clmE(d.tipo), _clmE(d.volume), _clmE(d.preco), _clmE(d.lucro), _clmE(d.comissao), _clmE(d.swap), `<b>${_clmE(d.motivo_mt5)}</b>`, _clmE(d.hora_utc)]));
+  h += `<div class="rel-q ${Object.values(C).every(v => v !== false) ? 'ok' : 'atencao'}"><b>Totais: lucro ${_clmE(T.lucro)} + comissão ${_clmE(T.comissao)} + swap ${_clmE(T.swap)} + taxa ${_clmE(T.taxa)} = líquido US$ ${_clmE(T.liquido)}</b>confere com a abertura: lote ${_clmE(C.lote)} · entrada ${_clmE(C.preco_entrada)} · saída ${_clmE(C.preco_saida)} · líquido ${_clmE(C.resultado_liquido)} · saída pelo MT5: ${_clmE(C.motivo_de_saida_mt5)} · ${_clmE(N.nota)}</div>`;
+  return h;
+}
+function relPlanoLoteHtml(Pl){
+  if (!Pl.controles) return Pl.situacao ? `<div class="rel-sit">Plano do lote: ${_clmE(Pl.situacao)} ${_relJ(Pl.plano)}</div>` : '';
+  const D = Pl.distancias || {}, E = Pl.especificacao || {}, M = Pl.margem || {}, N = Pl.nocional || {}, Ca = Pl.calculo || {};
+  let h = `<h3>Controle do lote (${_clmE(Pl.versao)}): ${_clmE(Pl.regra)} → alvo US$ ${_clmE(Pl.risco_alvo_usd)} · lote <b>${_clmE(Pl.lote)}</b> · risco planejado US$ ${_clmE(Pl.risco_planejado_usd)}</h3>`;
+  h += _relKV([['Especificação real (MT5)', `point ${_clmE(E.ponto)} · tick ${_clmE(E.tick_tamanho)} = US$ ${_clmE(E.tick_valor)} · contrato ${_clmE(E.contrato)} · volume ${_clmE(E.volume_min)}/${_clmE(E.volume_passo)}/${_clmE(E.volume_max)} · stop mínimo ${_clmE(E.distancia_minima_stop_pts)} pts · margem 1 lote ${_clmE(E.margem_1_lote)} · lida ${_clmE(E.lido_utc)}`],
+    ['Distâncias ao stop', `referência ${_relJ(D.referencia_ao_stop)} · entrada executável ${_relJ(D.entrada_executavel_ao_stop)} · spread na saída ${_relJ(D.spread_na_saida)} · tolerância de slippage ${_relJ(D.tolerancia_slippage)} · <b>efetiva ${_relJ(D.efetiva)}</b><br><span class="rel-sit">${_clmE(D.unidades)}</span>`],
+    ['Cálculo', `perda por lote: ${_clmE(Ca.perda_por_lote)} · lote: ${_clmE(Ca.lote)} · risco: ${_clmE(Ca.risco)}`], ['Nocional', `US$ ${_clmE(N.usd)} = ${_clmE(N.pct_do_patrimonio)}% do patrimônio (contrato ${_clmE(N.contrato)})`],
+    ['Margem', `livre ${_clmE(M.livre)} · usada antes ${_clmE(M.usada_antes)} · necessária ${_clmE(M.necessaria)} · <b>livre após ${_clmE(M.livre_apos)}</b> · nível após ${_clmE(M.nivel_apos_pct)}% · ${_clmE(M.regra)}`]]);
+  h += _relTab(['Controle', 'Valor', 'Limite', 'Origem', 'Resultado'], Pl.controles.map(c => [_clmE(c.controle), _clmE(c.valor !== undefined ? c.valor : (c.valor_pts !== undefined ? c.valor_pts + ' pts' : c.valor_preco)), _relJ(c.limite !== undefined ? c.limite : c.limite_pts), _clmE(c.origem), c.ok === true ? '<b>ok</b>' : c.ok === false ? '<b>FALHOU</b>' : 'só medido (sem teto)']));
+  if ((Pl.parametros_a_definir || []).length) h += `<div class="rel-q atencao"><b>Parâmetros a definir pelo dono (não inventados):</b> ${_clmE(Pl.parametros_a_definir.join(' · '))}</div>`;
+  return h;
+}
 function relSelecaoDiagHtml(D){
   let h = '';
   for (const [sym, d] of Object.entries(D || {})){
     if (d.erro){ h += `<div class="rel-q falha">${_clmE(sym)}: ${_clmE(d.erro)}</div>`; continue; }
     h += `<h3>${_clmE(sym)} · estratégias nas operações: ${_clmE((d.estrategias_nas_operacoes || []).join(', ') || 'nenhuma')} · ${_clmE(d.celulas_avaliadas)} células avaliadas · ${_clmE(d.celulas_com_selo_no_catalogo)} com selo no catálogo</h3><div class="rel-q info"><b>Causa: ${_clmE(d.causa)}</b>${_clmE(d.regua_do_selo)} · ${_clmE(d.nota)}</div>`;
     h += _relTab(['Estratégia', 'TF', 'Lado', 'Avaliações', 'Sinais', 'Elegíveis', 'Escolhidas', 'Selo', 'PF', 'Primeiro portão fechado (vezes)'], (d.por_estrategia_tf_lado || []).map(x => [`${_clmE(x.nome)} <span class="rel-id">${_clmE(x.card)}</span>`, _clmE(x.timeframe), _clmE(x.lado), x.avaliacoes, x.sinais, `<b>${x.elegiveis}</b>`, x.escolhidas, _clmE(x.selo), _clmE(x.profit_factor), _clmE(Object.entries(x.portoes || {}).map(z => z[0] + ' ×' + z[1]).join(' · '))]));
+    const CX = d.catalogo_esperado_x_disponivel || {};
+    if (CX.matriz) h += `<div class="rel-q ${(CX.faltando || []).length ? 'atencao' : 'ok'}"><b>Catálogo esperado × disponível: ${_clmE(CX.disponiveis)} de ${_clmE(CX.esperadas)} células (13 cards × M15/M30/H1) · com selo: ${_clmE((CX.com_selo || []).join(', ') || 'nenhuma')}</b>${_clmE(CX.leitura)} · estudo: ${_relJ(CX.versao_do_estudo)}</div>` +
+      _relTab(['Estratégia', 'TF', 'Disponível', 'Estudo', 'Período', 'PF', 'PF metades', 'Trades', 'Selo', 'Motivo de exclusão'], CX.matriz.map(m => [`${_clmE(m.nome)} <span class="rel-id">${_clmE(m.card)}</span>`, _clmE(m.timeframe), m.disponivel ? 'sim' : '<b>NÃO</b>', _clmE(m.estudo_id), _clmE(m.periodo), _clmE(m.profit_factor), _clmE((m.pf_metades || []).join(' / ')), _clmE(m.trades), m.selo ? '<b>sim</b>' : 'não', _clmE(m.motivo_de_exclusao || '—')]));
     h += '<details><summary>Catálogo do ativo (estudos) · ' + (d.catalogo_do_ativo || []).length + '</summary>' + _relTab(['Estratégia', 'TF', 'PF', 'PF metade 1 / 2', 'Trades', 'Selo', 'Período'], (d.catalogo_do_ativo || []).map(c => [`${_clmE(c.nome)} <span class="rel-id">${_clmE(c.card)}</span>`, _clmE(c.timeframe), _clmE(c.profit_factor), `${_clmE(c.pf_metade_1)} / ${_clmE(c.pf_metade_2)}`, c.trades, c.selo_da_lista ? '<b>sim</b>' : 'não', _clmE(c.periodo)])) + '</details>';
     if ((d.com_selo_sem_sinal_no_periodo || []).length) h += `<div class="rel-sit">Com selo mas sem sinal no período: ${_clmE(d.com_selo_sem_sinal_no_periodo.map(c => c.card + ' · ' + c.timeframe).join(', '))}</div>`;
   }
@@ -9203,6 +9232,7 @@ function relCampanhaHtml(K){
       ['Slippage na entrada', `${_clmE(sl.preco)} = ${_clmE(sl.pontos_mt5)} pts = US$ ${_clmE(sl.dinheiro_usd)} <span class="rel-sit">${_clmE(sl.sinal)}</span>`, '']]);
     s += '<h3>Gestão em ordem cronológica</h3>' + _relTab(['Barra M15', 'Barras de posição', 'Ação', 'Motivo', 'Leitura assinada', 'Comando'], (o.gestao_cronologica || []).map(g => [_clmE(g.barra_m15_utc), g.barras_de_posicao, `<b>${_clmE(g.acao)}</b>`, _clmE(g.motivo) + (g.explicacao ? `<br><span class="rel-sit">${_clmE(g.explicacao)}</span>` : ''), _relJ(g.leitura_assinada), g.comando ? `${_clmE(g.comando.id)} ${_clmE(g.comando.status)} ${_clmE(g.comando.confirmado_utc)}` : '—']));
     s += relGestaoExplicadaHtml(o.gestao_explicada || []);                          // C27R33
+    s += relStopsHtml(o.stop_de_protecao || {}) + relNegociosHtml(o.negocios_assinados_mt5 || {}) + relPlanoLoteHtml(o.plano_do_lote || {});   // C27R34
     s += `<div class="rel-q info"><b>Saída: ${_clmE(SA.motivo_codigo)}</b>${_clmE(SA.explicacao)} · preço ${_clmE(SA.preco)} · ${_clmE(SA.quando)} · comando ${_relJ(SA.comando_de_saida)}</div>`;
     s += `<div class="rel-frase">Resultado: bruto US$ ${_clmE(RS.bruto_usd)} · comissão ${_clmE(RS.comissao_usd)} · swap ${_clmE(RS.swap_usd)} · <b>líquido US$ ${_clmE(RS.liquido_usd)}</b> <span class="rel-sit">${_clmE(RS.fonte)}</span></div>`;
     s += '<h3>Medição</h3>' + _relTab(['Medida', 'Preço / pontos MT5 / dinheiro', 'Observação'], [

@@ -633,3 +633,47 @@ def test_16_leitura_na_entrada_selecao_gestao_explicada_e_contagem_exata(amb, ca
     assert "coerente com o fechamento" in txt and "fim de semana" in txt
     assert "falha de coleta" in A_._ses_ultimo_snapshot_vs_janela(cfg, "XAUUSD", "2026-10-09T12:00:00Z")
     Q = K["qualidade_dos_dados"]["por_ativo"][x["sim"]]["barras_no_periodo_exato_do_relatorio"]; assert "barra a barra" in Q["regra"] and isinstance(Q["faltando"], list) and Q["recebidas"] <= Q["esperadas"]   # (a bancada pode cair no fim de semana declarado do XAUUSD)
+
+
+def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
+    """C27R34: stop movido no MT5 sem comando da plataforma → origem classificada pelas candles (= máxima da barra M15 anterior:
+    trailing por barra do EA), registro permanente na operação e na trilha, NOVAS entradas do bot bloqueadas (gestão e proteção
+    seguem), pendência no relatório; relatório traz a linha do tempo do stop, os negócios do MT5 e o plano do lote."""
+    sid, x = camp["id"], camp["x"]
+    _limpar(sid)
+    T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
+    mg = T._magic(x["tok"])
+    ab_id = T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+                  "risco_planejado_usd, plano, estado, ticket, posicao_id, preco_entrada, ts_reserva, ts_abertura, gestao) values (%s,%s,%s,%s,'dec-17','u17','card8_bollinger','M15',-1,%s,0.01,4100.0,4105.0,4105.0,5.0,"
+                  "'{}'::jsonb,'aberta',777017,777017,4100.0, now() - interval '32 minutes', now() - interval '31 minutes', '[]'::jsonb) returning id",
+                  sid, x["id"], x["sim"], mg, T._barra_m15() - timedelta(minutes=30))[0][0]
+    pos = [{"ticket": 777017, "posicao_id": 777017, "magic": mg, "tipo": 1, "volume": "0.01", "preco_abertura": "4100.0", "sl": "4103.50", "tp": "0.0", "lucro": "-3.0", "swap": "0.0", "aberta_corretora": 1791698440}]
+    det, barra = SS._det(x, [], gestao={"stop": None}, posicoes=pos)
+    vela = "4099.00,4101.00,4098.00,4100.00,10"
+    det["c15m"] = ";".join([vela] * 16 + ["4100.00,4103.50,4097.00,4099.50,10", "4099.50,4100.20,4099.00,4099.80,5"])   # penúltima = última FECHADA: máxima 4103,50
+    assert SS._snap(x, det, pos=1)[0] == 200
+    tr = T._pg("select motivo, ref from ciclo_trilha where bot_id=%s and etapa='gestao' and estado='aviso' and motivo like 'stop vigente no MT5: 4103.5%%' order by id desc limit 1", x["id"])
+    assert tr and "FORA da plataforma" in tr[0][0] and "trailing por barra do EA" in tr[0][0] and tr[0][1]["classificacao"]["timeframe"] == "M15"
+    g = T._pg("select gestao, stop_atual from sessao_aberturas where id=%s", ab_id)[0]
+    ext = [e for e in g[0] if e.get("acao") == "stop_externo"]
+    assert len(ext) == 1 and ext[0]["stop_novo"] == 4103.5 and ext[0]["stop_anterior"] == 4105.0 and "BTvTrailingBarra" in ext[0]["origem"]["origem"] and float(g[1]) == 4103.5
+    bq = T._pg("select config->'bloqueios_por_bot' from sessoes_teste where id=%s", sid)[0][0]
+    assert str(x["id"]) in bq and "InpBTTrailingBarra" in bq[str(x["id"])]["motivo"] and "liberar" in bq[str(x["id"])]
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='limites' and estado='recusado' and motivo like 'NOVAS ENTRADAS BLOQUEADAS%%'", x["id"])[0][0] == 1
+    import api as A_
+    ses_ = {"config": {"bloqueios_por_bot": bq}}
+    assert A_._ses_bloqueio_do_bot(ses_, {"id": x["id"]})["motivo"].startswith("stop da abertura")
+    # segundo snapshot com o mesmo stop: nada novo (sem duplicar bloqueio nem registro)
+    assert SS._snap(x, det, pos=1)[0] == 200
+    assert T._pg("select count(*) from ciclo_trilha where bot_id=%s and etapa='limites' and estado='recusado' and motivo like 'NOVAS ENTRADAS BLOQUEADAS%%'", x["id"])[0][0] == 1
+    # relatório: linha do tempo do stop com a origem, pendência de bloqueio, plano sem lote-2 declarado
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]; op = next(o for o in K["operacoes"] if o["identificacao"]["ticket"] == 777017)
+    SP = op["stop_de_protecao"]; assert SP["alteracoes_fora_da_plataforma"] == 1 and "BTvTrailingBarra" in SP["conflito"] and SP["eventos"][0]["stop"] == 4105.0
+    assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
+    assert op["plano_do_lote"]["situacao"].startswith("plano gravado sem o detalhe lote-2") and op["negocios_assinados_mt5"]["situacao"] == "não disponível"
+    D = K["selecao_diagnostico"][x["sim"]]["catalogo_esperado_x_disponivel"]; assert D["esperadas"] == 39 and len(D["matriz"]) == 39 and "cards" in D["leitura"]
+    # limpeza: libera o bot (como o dono faria) e remove a abertura de bancada
+    T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
+    T._pg("delete from sessao_aberturas where id=%s", ab_id)
