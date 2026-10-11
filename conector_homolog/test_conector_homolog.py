@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.35-hml13"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.36-hml14"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.35-hml13"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.36-hml14"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -709,7 +709,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     cur.execute("select count(*) filter (where detalhe_json ? 'cv_negocios'), (array_agg(detalhe_json->'cv_negocios' order by id desc))[1], "
                 "(array_agg(detalhe_json->'cv_motor'->>'versao_ponte_conector' order by id desc))[1] from conector_snapshots where bot_token=%s", (tok,))
     nn, neg5, ponte = cur.fetchone()
-    assert nn == 5 and ponte == "hml13" and _cvat_t.verificar(neg5, segredo=seg) == (True, None) and neg5["contrato"] == "neg-1"
+    assert nn == 5 and ponte == "hml14" and _cvat_t.verificar(neg5, segredo=seg) == (True, None) and neg5["contrato"] == "neg-1"
     assert neg5["bot_token_hash"] == at4["bot_token_hash"] and neg5["posicoes"] == [] and neg5["conta"]["equity"] == "10000.0"
     for c in at5["candidatos"]:
         assert isinstance(c["stop"], str) and isinstance(c["preco_ref"], str) and c["confirmado_utc"] <= at5["ts_barra_m15"].replace("+00:00", "Z")

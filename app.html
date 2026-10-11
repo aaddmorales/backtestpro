@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.68-auditoria-no-relatorio-c27r32';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.69-leitura-selecao-gestao-c27r33';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9103,6 +9103,63 @@ function resBaixar(ext){
 
 // ═══ C27R31 — bloco da campanha no relatório (rel-2): resumo executivo, operações ponta a ponta, funil, diagnóstico ═══
 function _relJ(v){ return v === null || v === undefined ? '<span class="rel-sit">não disponível</span>' : (typeof v === 'object' ? _clmE(JSON.stringify(v)) : _clmE(v)); }
+// ═══ C27R33 — leitura na entrada, escolha do seletor, gestão explicada, diagnóstico do seletor ═══
+function _relTf(t){ if (!t) return '—'; return `<b>${_clmE(t.direcao)}</b> · ciclo ${_clmE(t.ciclo)} · ${_clmE(t.razao)}<br>estrutura ${_relJ(t.estrutura)} · níveis ${_relJ(t.niveis_topos_fundos)} · canal ${_clmE(t.canal_ema20)} · zona ${_clmE(t.zona)}<br><span class="rel-sit">${_clmE(t.fonte)} · lida ${_clmE(t.leitura_utc)} · dado ${_clmE(t.estado_do_dado)} há ${_clmE(t.idade_do_dado_s)} s · barra fechada ${_clmE(t.barra_fechada_utc)}</span>`; }
+function _relEst(e){ if (!e || typeof e !== 'object') return _clmE(e); return Object.entries(e).map(([tf, x]) => `<b>${_clmE(tf)}</b> dir ${_clmE(x.dir)} · ${_clmE(x.regime)} · caixa ${_clmE(x.caixa)} · ${_clmE(x.estrutura)} · ${_clmE(x.localizacao)} · topo ${_clmE(x.ultimo_topo)} / fundo ${_clmE(x.ultimo_fundo)} · ${_clmE((x.eventos || []).join(', '))}`).join('<br>'); }
+function relLeituraEntradaHtml(E){
+  if (E.situacao && !E.ciclo_m1_m5_m15) return `<div class="rel-q atencao"><b>Leitura na entrada</b>${_clmE(E.situacao)} ${_clmE(E.erro || '')}</div>`;
+  const LU = E.leitura_usada || {}, C = E.ciclo_m1_m5_m15 || {}, CS = E.contexto_superior || {}, N = E.niveis_e_indicadores_no_snapshot || {}, S = E.sinal_do_card || {}, BB = S.conferencia_bollinger, AT = C.atestado_assinado || {}, ST = S.stop || {}, ES = S.estudo_do_selo || {};
+  let h = `<h3>Leitura na entrada (o que o sistema via no instante da decisão)</h3><div class="rel-q info"><b>${_clmE(E.sintese)}</b>${_clmE(E.regra_de_evidencia)}</div>`;
+  h += _relKV([['Instante da decisão', _clmE(E.instante_da_decisao)], ['Leitura usada', `${_clmE(LU.qual)} · lida ${_clmE(LU.leitura_utc)} (dado há ${_clmE(LU.idade_do_dado_s)} s) · snapshot do EA ${_clmE(LU.snapshot_do_ea_utc)} (${_clmE(LU.snapshot_antes_da_decisao_s)} s antes da decisão) · preço ${_clmE(LU.preco_no_snapshot)} · spread ${_clmE(LU.spread_pts_no_snapshot)} pts · ${_clmE(LU.snapshots_na_barra)} snapshots na barra`],
+    ['Ciclo M1→M5→M15 (atestado assinado)', `${_clmE(C.leitura_de_baixo_para_cima)}<br><span class="rel-sit">veredito r01v4 ${_clmE(AT.veredito_r01v4)} (${_clmE(AT.motivo_r01v4)}) — ${_clmE(AT.papel_do_veredito_r01v4)} · motor ${_clmE(AT.versao_motor)} · assinatura ${_clmE(AT.assinatura)} · válido até ${_clmE(AT.valido_ate_utc)}</span>`]]);
+  const pt = C.por_timeframe_ea || {};
+  h += _relTab(['TF', 'Leitura do EA (BTvCicloTF) no instante', 'Estrutura do motor no snapshot'], ['M1', 'M5', 'M15'].map(tf => [`<b>${tf}</b>`, _relTf(pt[tf]), _relEst({[tf]: (C.estrutura_do_motor_no_snapshot || {})[tf]}).replace(/^<b>\w+<\/b> /, '')]));
+  const pc = CS.por_timeframe_ea || {};
+  h += `<div class="rel-sit">Contexto superior — ${_clmE(CS.papel)} · D1 ${_clmE(CS.D1)} (${_clmE(CS.D1_frente_ao_candidato)}) · H4 ${_clmE(CS.H4)} (${_clmE(CS.H4_frente_ao_candidato)}) · dirs assinadas ${_relJ(CS.dirs_assinadas_cv2)}</div>` +
+    _relTab(['TF', 'Leitura do EA', 'Estrutura do motor'], ['M30', 'H1', 'H4', 'D1'].filter(tf => pc[tf] || (CS.estrutura_do_motor_no_snapshot || {})[tf]).map(tf => [`<b>${tf}</b>`, _relTf(pc[tf]), _relEst({[tf]: (CS.estrutura_do_motor_no_snapshot || {})[tf]}).replace(/^<b>\w+<\/b> /, '')]));
+  h += '<h3>Níveis e indicadores no snapshot anterior à decisão</h3>' + _relKV([['Preço (bid) / spread / point', `${_clmE(N.preco_bid)} / ${_clmE(N.spread_pts)} pts / ${_clmE(N.point)}`], ['ATR14 M15 · EMA20 máx/mín M15', `${_clmE(N.atr14_m15)} · ${_clmE(N.ema20_maximas_m15)} / ${_clmE(N.ema20_minimas_m15)}`],
+    ['Zonas do canal por TF', _relJ(N.zonas_do_canal_por_tf)], ['Regime (EA)', _relJ(N.regime)], ['OffMind', _relJ(N.offmind)], ['Posições do magic', _clmE(N.posicoes_do_magic)], ['Fonte', `${_clmE(N.fonte || N.situacao)} ${_clmE(N.coleta_necessaria || '')} · ${_clmE(N.snapshot_utc || '')}`]]);
+  h += `<h3>Sinal do card: ${_clmE(S.nome)} <span class="rel-id">${_clmE(S.card)}</span></h3><div class="rel-sit">${_clmE(S.regra_do_card)}</div>` + _relKV([['Sinal', `modo ${_clmE(S.modo)} · estado ${_clmE(S.estado)} · nível <b>${_clmE(S.nivel_do_sinal)}</b> · barra do sinal ${_clmE(S.barra_do_sinal_abriu_utc)} → ${_clmE(S.barra_do_sinal_fechou_utc)} · confirmado ${_clmE(S.confirmado_utc)} · idade ${_clmE(S.idade_m15_na_decisao)} de ${_clmE(S.validade_barras_m15)} barras M15 · vence ${_clmE(S.vence_utc)}`],
+    ['Entrada / stop', `ref. ${_clmE((S.entrada || {}).referencia)} (${_clmE((S.entrada || {}).base)}) · stop <b>${_clmE(ST.valor)}</b> = ${_clmE(ST.regra)} (${_clmE(ST.base)}) · risco ${_clmE(ST.risco_pts)} pts · saída: ${_clmE(S.saida)}`],
+    ['Estudo do selo', `${_clmE(ES.estudo_id)} · ${_clmE(ES.periodo)} · ${_clmE(ES.trades)} trades · PF ${_clmE(ES.profit_factor)} (metades ${_clmE(ES.pf_metade_1)} / ${_clmE(ES.pf_metade_2)}) · win ${_clmE(ES.win_rate_pct)}% · selo ${_clmE(ES.selo_da_lista)} · equivalência com o vivo: ${_clmE(ES.equivalencia_com_o_vivo)} <span class="rel-sit">${_clmE(ES.nota)}</span>`]]);
+  if (BB) h += BB.parametros ? `<div class="rel-q ${BB.atendido_na_conferencia ? 'ok' : 'atencao'}"><b>Conferência BB(${_clmE(BB.parametros.periodo)}, ${_clmE(BB.parametros.desvios)}σ): ${BB.atendido_na_conferencia ? 'critério atendido' : 'critério NÃO reproduzido'}</b>${_clmE(BB.criterio)}<br>barra anterior ${_clmE((BB.barra_anterior || {}).abertura_utc)}: fechamento ${_clmE((BB.barra_anterior || {}).fechamento)} × banda sup. ${_clmE((BB.barra_anterior || {}).banda_superior)} (média ${_clmE((BB.barra_anterior || {}).media)}, inf. ${_clmE((BB.barra_anterior || {}).banda_inferior)})<br>barra do sinal ${_clmE((BB.barra_do_sinal || {}).abertura_utc)}: O ${_clmE((BB.barra_do_sinal || {}).abertura)} H ${_clmE((BB.barra_do_sinal || {}).maxima)} L ${_clmE((BB.barra_do_sinal || {}).minima)} C <b>${_clmE((BB.barra_do_sinal || {}).fechamento)}</b> × banda sup. ${_clmE((BB.barra_do_sinal || {}).banda_superior)} (média ${_clmE((BB.barra_do_sinal || {}).media)}, inf. ${_clmE((BB.barra_do_sinal || {}).banda_inferior)})<br><span class="rel-sit">candles: ${_clmE((BB.fonte_das_candles || []).join(' · '))} · ${_clmE(BB.nota)}</span></div>` : `<div class="rel-q atencao"><b>Conferência Bollinger</b>${_clmE(BB.situacao)} · ${_clmE(BB.motivo || '')} ${_clmE(BB.coleta_necessaria || BB.erro || '')}</div>`;
+  const CV = E.condicoes_com_valores;
+  h += '<h3>As 12 condições da r01v5 com os valores usados</h3>' + (Array.isArray(CV) ? _relTab(['Condição', 'Origem', 'Valores'], CV.map(c => [`${c.ok ? '✔' : '✖'} ${_clmE(c.condicao)}`, _clmE(c.origem), _relJ(c.valores)])) : `<div class="rel-vazio">${_clmE(CV)}</div>`);
+  h += `<div class="rel-sit">Fontes: ${_clmE((E.fontes || []).join(' · '))}</div>`;
+  return h;
+}
+function relSelecaoBarraHtml(Se){
+  if (Se.situacao) return `<div class="rel-q atencao"><b>Escolha do seletor</b>${_clmE(Se.situacao)} ${_clmE(Se.coleta_necessaria || Se.erro || '')}</div>`;
+  let h = `<h3>Escolha do seletor nesta barra · ${_clmE(Se.avaliadas)} avaliadas · ${_clmE(Se.elegiveis)} elegíveis</h3><div class="rel-q info"><b>Motivo da escolha: ${_clmE(Se.motivo_da_escolha)}</b>${_clmE(Se.contrato)} · barra ${_clmE(Se.barra_m15_utc)} · gravada ${_clmE(Se.gravada_utc)} · ${_clmE(Se.nota)}</div>`;
+  h += _relTab(['', 'Estratégia', 'TF', 'Lado', 'Elegível', 'Classif.', '1º portão fechado / portões não abertos', 'Sinal', 'Estudo'], (Se.estrategias || []).map(i => [i.escolhido ? '<b>★</b>' : '', `${_clmE(i.nome)} <span class="rel-id">${_clmE(i.card)}</span>`, _clmE(i.timeframe), _clmE(i.lado), i.elegivel ? '<b>sim</b>' : 'não', _clmE(i.classificacao_entre_elegiveis || ''),
+    `${_clmE(i.primeiro_portao_fechado || 'todos abertos')}<br><span class="rel-sit">${_clmE((i.portoes_nao_abertos || []).map(p => p.portao + ': ' + (p.detalhe || '')).join(' · '))}</span>`, `${_clmE((i.sinal || {}).estado)} · ${_clmE(String((i.sinal || {}).barra_utc || '').slice(0, 16))} · idade ${_clmE((i.sinal || {}).idade_m15)}`, `selo ${_clmE((i.estudo || {}).selo)} · PF ${_clmE((i.estudo || {}).profit_factor)} · ${_clmE((i.estudo || {}).trades)} tr.`]));
+  return h;
+}
+function relGestaoExplicadaHtml(Gx){
+  if (!Gx.length) return '';
+  let h = '<h3>Gestão explicada: regra, condição detectada, valores, leitura, horários e componente</h3>';
+  for (const g of Gx){
+    if (g.situacao){ h += `<div class="rel-q atencao">${_clmE(g.situacao)} ${_clmE(g.erro || '')}</div>`; continue; }
+    const R = g.regra || {}, C = g.condicao_detectada || {}, V = g.valores || {}, L = g.leitura_que_acionou || {}, H = g.horarios || {}, X = g.execucao || {};
+    h += `<div class="rel-q ${g.acao === 'close' ? 'atencao' : 'ok'}"><b>${_clmE(g.barra_m15_fechou)} · ${_clmE(g.acao)}${g.codigo ? ' · ' + _clmE(g.codigo) : ''} — ${_clmE(R.nome)}</b>${_clmE(R.definicao)}<br><span class="rel-sit">parâmetros ${_relJ(R.parametros)} · fonte ${_clmE(R.fonte || '')} · ordem: ${_clmE(g.ordem_de_avaliacao)}</span></div>`;
+    h += _relKV([['Condição detectada', `B5 ${_clmE(C.B5)} · B3 ${_clmE(C.B3)} · corte do Ciclo ${_clmE(C.corte_do_ciclo)} ${C.corte_origem && C.corte_origem.length ? '(' + _clmE(C.corte_origem.join('; ')) + ')' : ''} · stop estrutural ${_clmE(C.stop_estrutural)} × vigente ${_clmE(C.stop_vigente)} (lado certo: ${_clmE(C.stop_do_lado_certo)}) · barras de posição ${_clmE(C.barras_de_posicao)} · fechamento da barra ${_clmE(C.fechamento_da_barra)}`],
+      ['Valores', Object.keys(V).length ? _relJ(V) : '—'], ['Leitura que acionou', `janela M1/M5/M15 assinada ${_relJ(L.janela_M1_M5_M15_assinada)} · snapshot ${_clmE(L.snapshot_utc)} · barra do atestado ${_clmE(L.barra_do_atestado_utc)}<br>${_relEst(L.estrutura_M5_M15_no_snapshot)}`],
+      ['Horários', `barra fechou ${_clmE(H.barra_fechou)} · gatilho na trilha ${_clmE(H.gatilho_registrado_na_trilha)} · comando ${_clmE(H.comando_criado || '—')} · entregue ${_clmE(H.comando_entregue || '—')} · executado ${_clmE(H.execucao_confirmada_pelo_mt5 || '—')} · latências: barra→comando ${_clmE(H.latencia_barra_ate_comando_s)} s, comando→execução ${_clmE(H.latencia_comando_ate_execucao_s)} s`],
+      ['Execução', X ? `preço ${_clmE(X.preco_real)} · retcode ${_clmE(X.retcode)} · fechados ${_clmE(X.fechados)}` : '—'], ['Componente', _clmE(g.componente)]]);
+  }
+  return h;
+}
+function relSelecaoDiagHtml(D){
+  let h = '';
+  for (const [sym, d] of Object.entries(D || {})){
+    if (d.erro){ h += `<div class="rel-q falha">${_clmE(sym)}: ${_clmE(d.erro)}</div>`; continue; }
+    h += `<h3>${_clmE(sym)} · estratégias nas operações: ${_clmE((d.estrategias_nas_operacoes || []).join(', ') || 'nenhuma')} · ${_clmE(d.celulas_avaliadas)} células avaliadas · ${_clmE(d.celulas_com_selo_no_catalogo)} com selo no catálogo</h3><div class="rel-q info"><b>Causa: ${_clmE(d.causa)}</b>${_clmE(d.regua_do_selo)} · ${_clmE(d.nota)}</div>`;
+    h += _relTab(['Estratégia', 'TF', 'Lado', 'Avaliações', 'Sinais', 'Elegíveis', 'Escolhidas', 'Selo', 'PF', 'Primeiro portão fechado (vezes)'], (d.por_estrategia_tf_lado || []).map(x => [`${_clmE(x.nome)} <span class="rel-id">${_clmE(x.card)}</span>`, _clmE(x.timeframe), _clmE(x.lado), x.avaliacoes, x.sinais, `<b>${x.elegiveis}</b>`, x.escolhidas, _clmE(x.selo), _clmE(x.profit_factor), _clmE(Object.entries(x.portoes || {}).map(z => z[0] + ' ×' + z[1]).join(' · '))]));
+    h += '<details><summary>Catálogo do ativo (estudos) · ' + (d.catalogo_do_ativo || []).length + '</summary>' + _relTab(['Estratégia', 'TF', 'PF', 'PF metade 1 / 2', 'Trades', 'Selo', 'Período'], (d.catalogo_do_ativo || []).map(c => [`${_clmE(c.nome)} <span class="rel-id">${_clmE(c.card)}</span>`, _clmE(c.timeframe), _clmE(c.profit_factor), `${_clmE(c.pf_metade_1)} / ${_clmE(c.pf_metade_2)}`, c.trades, c.selo_da_lista ? '<b>sim</b>' : 'não', _clmE(c.periodo)])) + '</details>';
+    if ((d.com_selo_sem_sinal_no_periodo || []).length) h += `<div class="rel-sit">Com selo mas sem sinal no período: ${_clmE(d.com_selo_sem_sinal_no_periodo.map(c => c.card + ' · ' + c.timeframe).join(', '))}</div>`;
+  }
+  return h;
+}
 function relCampanhaHtml(K){
   if (K.situacao) return `<div class="rel-q atencao"><b>Bloco da campanha não montado</b>${_clmE(K.erro || K.situacao)}</div>`;
   const R = K.resumo_executivo || {}, CP = R.campanha || {}, CO = R.consolidado || {}, LU = R.limites_em_uso || {}, PA = R.por_ativo || {};
@@ -9137,12 +9194,15 @@ function relCampanhaHtml(K){
     s += `<div class="rel-sit">Latências (s): ${_clmE(Object.entries(lat).map(x => x[0].replace(/_/g, ' ') + ' ' + (x[1] === null ? 'n/d' : x[1])).join(' · '))}</div>`;
     s += _relKV([['Ciclo na decisão', _clmE(CI.leitura)], ['Corte', _relJ(CI.corte)], ['Contexto superior (não decide)', _relJ(CI.contexto_superior)], ['Veredito r01v4 (só registro)', _relJ(CI.veredito_do_motor_congelado_r01v4)],
       ['Gatilho', _clmE(G.gatilho)], ['Condições', `${_clmE(G.condicoes_atendidas)}` + (Array.isArray(G.condicoes) ? '<br>' + G.condicoes.map(x => `${x.ok ? '✔' : '✖'} ${_clmE(x.condicao)} <span class="rel-sit">${_clmE(x.origem)}</span>`).join('<br>') : '')], ['Quem decidiu', _clmE(G.quem_decidiu)]]);
+    s += relLeituraEntradaHtml(o.leitura_na_entrada || {});                       // C27R33
+    s += relSelecaoBarraHtml(o.selecao_desta_barra || {});
     s += _relTab(['', 'Solicitada', 'Executada'], [['Tipo / lote', `${_clmE(so.tipo)} / ${_clmE(so.lote)}`, `ticket ${_clmE(ex.ticket)} · retcode ${_clmE(ex.retcode)} · ${_clmE(ex.status_do_comando)}`],
       ['Preço', `ref. ${_clmE(so.preco_de_referencia)} · estimada ${_clmE(so.entrada_estimada_no_plano)}`, `<b>${_clmE(ex.preco)}</b>`], ['Stop', `inicial ${_clmE(so.stop)}`, `final ${_clmE(ST.final)}`],
       ['Risco', `planejado US$ ${_clmE(so.risco_planejado_usd)} <span class="rel-sit">${_clmE(so.regra_do_lote)}</span>`, `efetivo US$ ${_clmE(RK.efetivo_inicial_usd)} = ${_clmE(RK.efetivo_pct_do_patrimonio)}% do patrimônio ${_clmE(RK.patrimonio_no_plano_usd)}`],
       ['Spread na entrada', `${_clmE(sp.pontos_mt5)} pts = ${_clmE(sp.preco)} = US$ ${_clmE(sp.dinheiro_usd_no_lote)} no lote <span class="rel-sit">snapshot a ${_clmE(sp.distancia_da_abertura_s)} s</span>`, ''],
       ['Slippage na entrada', `${_clmE(sl.preco)} = ${_clmE(sl.pontos_mt5)} pts = US$ ${_clmE(sl.dinheiro_usd)} <span class="rel-sit">${_clmE(sl.sinal)}</span>`, '']]);
     s += '<h3>Gestão em ordem cronológica</h3>' + _relTab(['Barra M15', 'Barras de posição', 'Ação', 'Motivo', 'Leitura assinada', 'Comando'], (o.gestao_cronologica || []).map(g => [_clmE(g.barra_m15_utc), g.barras_de_posicao, `<b>${_clmE(g.acao)}</b>`, _clmE(g.motivo) + (g.explicacao ? `<br><span class="rel-sit">${_clmE(g.explicacao)}</span>` : ''), _relJ(g.leitura_assinada), g.comando ? `${_clmE(g.comando.id)} ${_clmE(g.comando.status)} ${_clmE(g.comando.confirmado_utc)}` : '—']));
+    s += relGestaoExplicadaHtml(o.gestao_explicada || []);                          // C27R33
     s += `<div class="rel-q info"><b>Saída: ${_clmE(SA.motivo_codigo)}</b>${_clmE(SA.explicacao)} · preço ${_clmE(SA.preco)} · ${_clmE(SA.quando)} · comando ${_relJ(SA.comando_de_saida)}</div>`;
     s += `<div class="rel-frase">Resultado: bruto US$ ${_clmE(RS.bruto_usd)} · comissão ${_clmE(RS.comissao_usd)} · swap ${_clmE(RS.swap_usd)} · <b>líquido US$ ${_clmE(RS.liquido_usd)}</b> <span class="rel-sit">${_clmE(RS.fonte)}</span></div>`;
     s += '<h3>Medição</h3>' + _relTab(['Medida', 'Preço / pontos MT5 / dinheiro', 'Observação'], [
@@ -9152,6 +9212,10 @@ function relCampanhaHtml(K){
       ['R (resultado ÷ risco efetivo)', `<b>${_clmE(RK.R_multiplo)}</b>`, `MFE ${_clmE(AP.MFE_em_R)} R · MAE ${_clmE(AP.MAE_em_R)} R`],
       ['Aproveitamento', `capturou ${_clmE(AP.parcela_do_movimento_favoravel_capturada_pct)}% do MFE (US$ ${_clmE(AP.MFE_usd)}) · devolveu US$ ${_clmE(AP.devolucao_desde_o_melhor_flutuante_usd)}`, _clmE(AP.nota || '')],
       ['Permanência', `${_clmE(lat.permanencia_s)} s`, `barra fechou → execução ${_clmE(lat.barra_fechou_ate_execucao_s)} s`]]);
+    const ME = M.entrada || {}, MR = ME.referencia_a_executada || {};
+    s += _relTab(['Entrada', 'Preço', 'Observação'], [['Referência do sinal', _clmE(ME.referencia_do_sinal), 'fechamento da barra do sinal (contrato do card)'], ['Solicitada (estimada no plano)', _clmE(ME.solicitada_estimada_no_plano), 'preço estimado na reserva de risco'],
+      ['Executada no MT5', `<b>${_clmE(ME.executada_no_mt5)}</b>`, `referência → executada: ${d3(MR)} <span class="rel-sit">${_clmE(MR.sinal)}</span>`],
+      ['Especificação real do símbolo', _relJ(ME.especificacao_real_do_simbolo), 'assinada pelo leitor no momento do plano'], ['Duração', `${_clmE((M.duracao || {}).permanencia_s)} s = ${_clmE((M.duracao || {}).barras_m15)} barras M15`, _clmE(M.unidades)]]);
     s += `<div class="rel-sit">${_clmE((M.formula || {}).dinheiro)} · pontos = ${_clmE((M.formula || {}).pontos_mt5)} · R = ${_clmE((M.formula || {}).R)} · especificação ${_relJ((M.formula || {}).especificacao_usada)} · ${_clmE(M.aproximacao)} · snapshots usados ${_clmE(M.snapshots_usados)}</div>`;
     if ((o.trilha_da_operacao || []).length) s += '<details><summary>Trilha da operação (' + o.trilha_da_operacao.length + ')</summary>' + _relTab(['Hora (UTC)', 'Etapa', 'Estado', 'Motivo'], o.trilha_da_operacao.map(t => [_clmE(t.ts_utc), _clmE(t.etapa), _clmE(t.estado), _clmE(t.motivo)])) + '</details>';
   }
@@ -9163,7 +9227,8 @@ function relCampanhaHtml(K){
   const esc = FU.escolhidos_sem_operacao || [];
   s += `<h3>Escolhidos que não viraram operação: ${esc.length} · ${_clmE(Object.entries(FU.escolhidos_sem_operacao_por_categoria || {}).map(x => x[0] + ' ' + x[1]).join(' · '))}</h3>` + _relTab(['Barra (UTC)', 'Ativo', 'Estratégia / TF / lado', 'Etapa que interrompeu', 'Motivo efetivo', 'Categoria'],
     esc.map(x => [_clmE(String(x.barra_m15_utc || '').slice(0, 16).replace('T', ' ')), _clmE(x.ativo), `${_clmE(x.estrategia)} ${_clmE(x.timeframe)} ${_clmE(x.lado)}`, _clmE(x.etapa_que_interrompeu), _clmE(x.motivo_efetivo), `<b>${_clmE(x.categoria)}</b>`]));
-  h += _relSec('3. Oportunidades sem execução (funil candidatos → fechamentos)', s);
+  s += '<h3>Por que estas estratégias (diagnóstico do seletor na campanha)</h3>' + relSelecaoDiagHtml(K.selecao_diagnostico);     // C27R33
+  h += _relSec('3. Oportunidades sem execução (funil candidatos → fechamentos) e diagnóstico do seletor', s);
   // C27R32 — cronologia das fases, gráficos, fuso do servidor e escopo dos quadros
   const CR = K.cronologia || {}, GR = K.graficos || [], FS = K.fuso_servidor || [], EQ = K.escopo_dos_quadros || {}, IV = K.inventario_de_dados || [], CA = K.coleta_de_auditoria || {};
   s = '';
@@ -9185,8 +9250,9 @@ function relCampanhaHtml(K){
     + _relTab(['API', 'commit', 'implantada na homolog (UTC)'], (VS.implantacoes_da_api_na_homolog || []).map(x => [_clmE(x.api), _clmE(x.commit), _clmE(x.implantada_utc)])) + `<div class="rel-sit">${_clmE(VS.nota)}</div>`;
   s += '<h3>Virada de barra</h3>' + _relKV([['Correção em vigor desde', `${_clmE(VB.correcao_em_vigor_desde_utc)} · tolerância ${_clmE(VB.tolerancia_s)} s`], ['Avisos históricos preservados', _clmE(VB.avisos_historicos_preservados)], ['Depois da correção', _relJ(VB.eventos_depois_da_correcao)], ['Classes', _relJ(VB.classes)]]);
   s += '<h3>Qualidade e reconciliação dos dados</h3>';
-  for (const [sym, q] of Object.entries(QD.por_ativo || {})){ const B = q.barras || {}, L = q.lacunas || {}, LE = q.leituras || {};
-    s += _relKV([[`${sym} barras`, `esperadas ${_clmE(B.esperadas)} / recebidas ${_clmE(B.recebidas)} · ${_clmE((B.por_dia || []).map(d => `${d.dia} ${d.recebidas}/${d.esperadas} (${d.cobertura_pct}%)`).join(' · '))}`], [`${sym} calendário`, _relJ(B.calendario)],
+  for (const [sym, q] of Object.entries(QD.por_ativo || {})){ const B = q.barras || {}, L = q.lacunas || {}, LE = q.leituras || {}, EX = q.barras_no_periodo_exato_do_relatorio || {};
+    s += _relKV([[`${sym} barras no período exato`, EX.esperadas !== undefined ? `<b>esperadas ${_clmE(EX.esperadas)} / recebidas ${_clmE(EX.recebidas)} / faltando ${_clmE(EX.faltando_total)}</b> · ${_clmE((EX.intervalo || {}).horas)} h (${_clmE((EX.intervalo || {}).de_utc)} → ${_clmE((EX.intervalo || {}).ate_utc)}) · 1ª ${_clmE(EX.primeira_esperada_utc)} · última ${_clmE(EX.ultima_esperada_utc)}<br><span class="rel-sit">${_clmE(EX.regra)}${(EX.faltando || []).length ? ' · faltando: ' + _clmE(EX.faltando.map(x => String(x).slice(0, 16)).join(', ')) : ''}</span>` : _clmE(EX.situacao || EX.erro)],
+      [`${sym} barras por dia civil`, `esperadas ${_clmE(B.esperadas)} / recebidas ${_clmE(B.recebidas)} · ${_clmE((B.por_dia || []).map(d => `${d.dia} ${d.recebidas}/${d.esperadas} (${d.cobertura_pct}%)`).join(' · '))} <span class="rel-sit">${_clmE(B.nota || '')}</span>`], [`${sym} calendário`, _relJ(B.calendario)],
       [`${sym} lacunas`, `faltando ${_clmE(L.barras_faltando)} · coleta ${_clmE(L.ausencia_de_coleta)} · mercado fechado ${_clmE(L.mercado_fechado)} · indeterminado ${_clmE(L.indeterminado)} <span class="rel-sit">${_clmE(L.evidencia_mercado_fechado)}</span>`],
       [`${sym} frescor agora`, _relJ(q.frescor_agora)], [`${sym} leituras`, `EA M15 ${_clmE(LE.ea_m15)} · motor (dirs no último snapshot) ${_clmE(LE.motor_m15_pela_leitura_do_ultimo_snapshot)} · motor (atestados assinados) <b>${_clmE(LE.motor_atestados_assinados)}</b><br><span class="rel-sit">${_clmE(LE.explicacao_85_x_45)}</span>`],
       [`${sym} EA × motor`, _relJ(q.divergencias_ea_x_motor_na_mesma_barra)], [`${sym} trilha`, _relJ(q.trilha)]]); }

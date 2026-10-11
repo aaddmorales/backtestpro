@@ -1,6 +1,6 @@
 # instalar_motor_hml8.ps1 - C27R14 rev.2 - SOMENTE HOMOLOGACAO / MT5 DEMO
 # Instala o LEITOR DO MOTOR DOS CICLOS (motor congelado bt_ciclo_v1 2.4 + espelho do bt_vivo_sombra 7.4)
-# e o Conector HOMOLOG v1.35-hml13 (ponte do motor + canal de comando) a partir DESTE repositorio (branch de ensaio), conferindo hashes completos.
+# e o Conector HOMOLOG v1.36-hml14 (ponte do motor + canal de comando) a partir DESTE repositorio (branch de ensaio), conferindo hashes completos.
 # NAO contem segredo. O BT_CV_SEGREDO e digitado mascarado e conferido pela impressao publica da API homolog
 # (/conector/cv-impressao) - o valor nunca e exibido, gravado em log nem enviado.
 # Para em qualquer divergencia. Nao toca em main, producao, conector de producao nem conta real.
@@ -21,7 +21,7 @@ $API_HML = "https://homolog-homolog.up.railway.app"
 $MANIFESTO_SHA = "064e0e192a88bbaec7f0acf01e35bf309334a01ce711d2579dc569028d70925d"
 $CONECTOR_SHA = @{
   "conector_homolog.py"        = "10779fa0e534b952c0b9c9abb3445005181dd442d67de33ad0aa622c7781c212"
-  "conector_nucleo_homolog.py" = "490ba3b9913eaf059e80746d73cda458e2a38b5c7f6b47ec43b94642c7a51283"
+  "conector_nucleo_homolog.py" = "7028f36549b1d08dab3926f2be867f4f350f6314186584933d64f3df0506bee5"
 }
 function Pare([string]$m) { Write-Host "PARADO: $m" -ForegroundColor Red; Write-Host "Nada mais foi alterado a partir deste ponto."; exit 1 }
 function Ok([string]$m) { Write-Host "OK  $m" -ForegroundColor Green }
@@ -37,7 +37,7 @@ $repo = (Resolve-Path $Repo).Path
 if (-not (Test-Path -LiteralPath (Join-Path $repo "motor_ciclos\MANIFESTO_MOTOR.sha256"))) { Pare "motor_ciclos nao encontrado em $repo (use -Repo <pasta do clone>)" }
 $motorSrc = Join-Path $repo "motor_ciclos"
 $conSrc = Join-Path $repo "conector_homolog\hml"
-Write-Host "=== Instalador motor dos Ciclos + Conector HOMOLOG hml13 ===" -ForegroundColor Cyan
+Write-Host "=== Instalador motor dos Ciclos + Conector HOMOLOG hml14 ===" -ForegroundColor Cyan
 Write-Host "repositorio: $repo"
 
 # 1. repositorio limpo e na branch de ensaio
@@ -66,7 +66,7 @@ Ok "manifesto do motor: $($lista.Count) arquivos conferidos (bt_ciclo_v1 9ac1af9
 foreach ($n in $CONECTOR_SHA.Keys) {
   if ((Sha (Join-Path $conSrc $n)) -ne $CONECTOR_SHA[$n]) { Pare "hash divergente: conector_homolog\hml\$n" }
 }
-Ok "conector hml13 conferido"
+Ok "conector hml14 conferido"
 
 # 3. seguranca: nada executando ordens por fora da plataforma
 $procs = Get-CimInstance Win32_Process
@@ -127,7 +127,7 @@ foreach ($n in $CONECTOR_SHA.Keys) {
   Copy-Item -LiteralPath (Join-Path $conSrc $n) -Destination $d -Force
   if ((Sha $d) -ne $CONECTOR_SHA[$n]) { Pare "copia divergente: $d" }
 }
-Ok "Conector HOMOLOG hml13 instalado em $Destino (anteriores em $bak)"
+Ok "Conector HOMOLOG hml14 instalado em $Destino (anteriores em $bak)"
 $estado | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $motorDst "instalacao_hml8.json") -Encoding ASCII
 
 # 7. segredo: conferido pela impressao da API homolog, sem exibir
@@ -207,6 +207,6 @@ foreach ($a in $ativos) {
 
 # 9. reabre o Conector HOMOLOG com o ambiente novo
 Start-Process $py -ArgumentList "`"$Destino\conector_homolog.py`"", "--conectar" -WorkingDirectory $Destino
-Ok "Conector HOMOLOG v1.35-hml13 aberto (conexao automatica se ja houver token salvo)"
+Ok "Conector HOMOLOG v1.36-hml14 aberto (conexao automatica se ja houver token salvo)"
 Write-Host "Pronto. Os bots que ja estao nos graficos ($($ativos -join ', ')) da DEMO nao precisam ser reenviados: confira na janela do conector que eles conectaram." -ForegroundColor Cyan
-Write-Host "Canal de comando (hml13): so funciona com a DEMO conferida (botao 'Conferir MT5 DEMO') e Algo Trading ligado no MT5 demo." -ForegroundColor Cyan
+Write-Host "Canal de comando (hml14): so funciona com a DEMO conferida (botao 'Conferir MT5 DEMO') e Algo Trading ligado no MT5 demo." -ForegroundColor Cyan

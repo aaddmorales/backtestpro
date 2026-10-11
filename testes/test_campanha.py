@@ -341,7 +341,7 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
     plano = {"lote": 0.5, "stop": 3990.0, "regra": "min(0.1% do patrimônio, US$ 10)", "patrimonio": 100000.0, "entrada_estimada": 3999.0, "risco_alvo_usd": 10,
              "especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01, "point": 0.01}, "risco_planejado_usd": 4.5}
     T._pg("insert into ciclo_decisoes (id, uid, bot_id, simbolo, lado, ts_barra, status, ts_emissao, expira_em, veredito, sessao_teste_id) values (%s,%s,%s,%s,1,%s,'consumida',%s,%s,%s::jsonb,%s)",
-          dec_id, uid_c, x["id"], x["sim"], t0, t0 + timedelta(seconds=20), t0 + timedelta(minutes=30),
+          dec_id, f"{x['id']}-C-{dec_id[:24]}", x["id"], x["sim"], t0, t0 + timedelta(seconds=20), t0 + timedelta(minutes=30),      # C27R33: uid da decisão ≠ uid do candidato (como no banco real)
           json.dumps({"contrato": "r01v5", "confirmacao": "conf-rt-1", "candidato": {"uid": uid_c, "card": "cardX", "tf": "M15", "lado": 1, "modo": "fechamento", "nome": "Card de bancada",
                                                                                      "sinal_abre_utc": (t0 - timedelta(minutes=30)).isoformat(), "sinal_fecha_utc": (t0 - timedelta(minutes=15)).isoformat(),
                                                                                      "confirmado_utc": t0.isoformat(), "vence_utc": (t0 + timedelta(minutes=30)).isoformat(), "preco_ref": "3999.0", "stop": "3990.0"},
@@ -373,7 +373,7 @@ def test_14_relatorio_rel2_resumo_operacoes_ponta_a_ponta_funil_e_arquivos(amb, 
           x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), "LIMITES ALTERADOS pelo dono (teste do sistema): risco por operacao US$ 10 -> 100", sid, t0 - timedelta(hours=1))
     s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
     assert s == 200, j
-    K = j["campanha"]; assert K["versao"] in ("rel-2", "rel-3"), K
+    K = j["campanha"]; assert K["versao"] in ("rel-2", "rel-3", "rel-4"), K
     R = K["resumo_executivo"]
     assert R["campanha"]["id"] == sid and R["consolidado"]["fechamentos"] == 1 and R["consolidado"]["resultado_liquido_usd"] == 3.0
     assert R["por_ativo"][x["sim"]]["entradas"] == 1 and "Kyiv" in R["campanha"]["corte"] and "UTC" in R["campanha"]["corte"]
@@ -467,7 +467,7 @@ def test_15_coleta_de_auditoria_e_pacote_zip(amb, camp):
     time.sleep(2)
     s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
     assert s == 200, j
-    K = j["campanha"]; assert K["versao"] == "rel-3"
+    K = j["campanha"]; assert K["versao"] in ("rel-3", "rel-4")
     assert K["fuso_servidor"][0]["off_servidor_s"] == T.OFF and "UTC+" in K["fuso_servidor"][0]["servidor"]
     assert len(K["inventario_de_dados"]) >= 20 and all(k in K["inventario_de_dados"][0] for k in ("informacao", "fonte", "implementada_coletada", "evidencia", "limitacao"))
     assert x["sim"] in K["cronologia"] and "escopo_dos_quadros" in K and K["coleta_de_auditoria"][x["sim"]]["inicio_utc"] != "ainda não iniciada"
@@ -489,3 +489,147 @@ def test_15_coleta_de_auditoria_e_pacote_zip(amb, camp):
     assert any("coleta ao vivo" in l for l in csv_m1[1:])
     lvcsv = z.read(f"leituras_vivas_{x['sim']}.csv").decode("utf-8").splitlines(); assert len(lvcsv) == 3
     inv = [i for i in man["inventario"] if i.get("tf") == "M1"][0]; assert inv["coleta_ao_vivo"] >= 18 and inv["em_formacao"] >= 1
+
+
+def test_16_leitura_na_entrada_selecao_gestao_explicada_e_contagem_exata(amb, camp):
+    """C27R33: operação explicada com EVIDÊNCIA — leitura M1→M5→M15 no instante da decisão (nunca posterior), estruturas/níveis
+    do snapshot, sinal do card com números (conferência BB 20/2 do card8), 12 condições com valores; escolha do seletor na barra e
+    diagnóstico da campanha; B3 com regra/condição/valores/leitura/horários/componente; medição com referência/solicitada/
+    executada; elo decisão↔operação pelo decisao_id; barras esperadas no intervalo exato (24 h = 96, não 99)."""
+    sid, x, b = camp["id"], camp["x"], camp["b"]
+    _limpar(sid)
+    T._pg("delete from ciclo_leituras where bot_id=%s and sessao_teste_id=%s", x["id"], sid)
+    T._pg("delete from selecao_avaliacoes where bot_id=%s and sessao_teste_id=%s", x["id"], sid)
+    T._pg("delete from auditoria_candles where bot_id=%s and tf='M15'", x["id"])
+    t0 = datetime.now(timezone.utc).replace(second=0, microsecond=0) - timedelta(hours=3)
+    t0 = t0 - timedelta(minutes=t0.minute % 15)                     # barra M15 da decisão (abre em t0)
+    sin_abre = t0 - timedelta(minutes=30)                            # barra do sinal (fechou em t0-15; confirmada em t0)
+    uid_c = "card8_bollinger|M15|" + (sin_abre + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S") + "|-1"
+    dec_id = uuid.uuid4().hex; t_dec = t0 + timedelta(seconds=40)
+    # candles M15 fechadas (coleta de auditoria): 20 em torno de 4000 (±1), a anterior ao sinal fecha ACIMA da banda (4030) e a do sinal volta para dentro (4005)
+    closes = [4000.0 + (1 if i % 2 else -1) for i in range(22)] + [4030.0, 4005.0]
+    for i, c in enumerate(closes):
+        ab_ = sin_abre - timedelta(minutes=15 * (len(closes) - 1 - i))
+        T._pg("insert into auditoria_candles (bot_id, simbolo, tf, abertura_utc, fechamento_utc, o, h, l, c, vol, fechado, carimbo) values (%s,%s,'M15',%s,%s,%s,%s,%s,%s,10,true,'ea')",
+              x["id"], x["sim"], ab_, ab_ + timedelta(minutes=15), c - 1, c + 3, c - 3, c)
+    # snapshot do EA ANTES da decisão (t0+20s) com estrutura por TF, atestado e gestão; e outro DEPOIS (t0+60s) que não pode ser usado
+    por_tf = {"M1": {"dir": -1, "regime": "tendencia", "caixa": "nenhuma", "estrutura": "descendente", "ultimo_topo": 4031.0, "ultimo_fundo": 4002.0, "eventos": ["quebra_estrutura_baixa"]},
+              "M5": {"dir": -1, "regime": "compressao", "caixa": "ativa", "ultimo_topo": 4030.0, "ultimo_fundo": 4003.0},
+              "M15": {"dir": 0, "regime": "lateral", "ultimo_topo": 4035.0, "ultimo_fundo": 3990.0}, "H4": {"dir": -1, "regime": "tendencia"}, "D1": {"dir": 0, "regime": "lateral"}}
+    for dt_, preco in ((t0 + timedelta(seconds=20), 4004.5), (t0 + timedelta(seconds=60), 3950.0)):
+        T._pg("insert into conector_snapshots (user_id, bot_token, conta_login, corretora, simbolo, magic_number, equity, balance, margem_livre, posicoes_abertas, lucro_flutuante, detalhe_json, criado_em) "
+              "values (%s,%s,'52648209','Raw',%s,%s,100000,100000,99000,0,0,%s::jsonb,%s)",
+              camp["uid"], x["tok"], x["sim"], T._magic(x["tok"]),
+              json.dumps({"preco": str(preco), "spr": "25", "pt": "0.01", "atr": "6.5", "emaH": "4012.0", "emaL": "3996.0", "z15": "dentro", "posicoes": "0",
+                          "regime": {"estado": "lateral", "confianca": 40}, "cv_motor": {"estado": "ok", "por_tf": por_tf},
+                          "cv_atestado_cand": {"cv1": {"janela": {"M1": -1, "M5": -1, "M15": 0}}, "cv2": {"dirs": {"D1": 0, "H4": -1}}, "blindagem_agora": 0, "ts_barra_m15": t0.isoformat()}}), dt_)
+    # leitura gravada da barra (EA por TF, anterior à decisão) e atestado assinado
+    linhas = [{"tf": tf, "direcao": d, "ciclo": 1, "regra": f"BTCVTF.{tf}", "razao": "4+ das 5 barras fechadas em baixa", "fonte": "EA · BTvCicloTF",
+               "estrutura": {"exaustao": tf == "M1", "rompimento": False}, "niveis": [{"tipo": "topo", "nivel": 4030.0, "velas_atras": 2}], "canal_ema20": "dentro",
+               "leitura_utc": (t0 + timedelta(seconds=18)).isoformat(), "estado_dado": "atual", "idade_dado_s": 3} for tf, d in (("M1", "baixa"), ("M5", "baixa"), ("M15", "lateral"), ("H4", "baixa"), ("D1", "lateral"))]
+    leit = {"leitura_utc": (t0 + timedelta(seconds=18)).isoformat(), "idade_dado_s": 3, "idade_snapshot_s": 2, "linhas": linhas}
+    leit_ult = dict(leit, leitura_utc=(t0 + timedelta(minutes=14)).isoformat(), linhas=[dict(l, direcao="alta", leitura_utc=(t0 + timedelta(minutes=14)).isoformat()) for l in linhas])
+    T._pg("insert into ciclo_leituras (bot_id, user_id, simbolo, magic, barra_m15, leituras, leituras_ult, ciclos, versoes, n_snapshots, completa, decisao, sessao_teste_id) values (%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s::jsonb,40,true,'observar',%s)",
+          x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), t0, json.dumps(leit), json.dumps(leit_ult),
+          json.dumps({"atestado": {"cv1": {"janela": {"M1": -1, "M5": -1, "M15": 0}, "veredito": "neutra", "motivo": "referencia_neutra"}, "cv2": {"dirs": {"D1": 0, "H4": -1}},
+                                   "estado": "verificado", "assinatura": "abcd1234…", "valido_ate": (t0 + timedelta(minutes=15)).isoformat(), "versao_motor": "cv1-2.4"}}),
+          json.dumps({"api": "8.03-teste", "ea": "7.81", "conector": "v1.36-hml14"}), sid)
+    # avaliação da seleção na barra: 3 candidatos (o escolhido elegível; um sem selo; um vencido)
+    def cand(uid, lado, pi, selo, pf, nivel=None):
+        return {"uid": uid, "lado": lado, "timeframe": "M15", "nome": uid.split("|")[0], "primeiro_impedimento": pi, "sinal": {"estado": "confirmado", "nivel": nivel, "modo": "fechamento", "idade_m15": 0, "validade_na_fila_m15": 4,
+                "barra_do_sinal_utc": sin_abre.isoformat()}, "niveis": {"entrada": 4005.0, "stop": 4035.0, "risco_pts": 3000.0, "stop_regra": "pivô ∓ 0,3×ATR14", "stop_base": "última M15 fechada"},
+                "estudo": {"existe": True, "selo_da_lista": selo, "profit_factor": pf, "trades": 500, "pf_metade_1": 1.1, "pf_metade_2": 1.05, "estudo_id": "v2:1", "periodo": "12m"},
+                "portoes": [{"portao": "3. frescor do sinal", "ok": pi is None or not pi.startswith("3"), "detalhe": "idade 0 de 4"}, {"portao": "5. célula na Lista do Seletor (estudo com selo)", "ok": selo, "detalhe": "selo" if selo else "sem selo"}]}
+    aval = {"grupos": {"M15": {"timeframe": "M15", "candidatos": [cand(uid_c, "venda", None, True, 1.115, 4005.0), cand("card9_macd|M15|x|1", "compra", "5. célula na Lista do Seletor (estudo com selo) — sem selo", False, 0.9),
+                                                             cand("card4_canal_ema20|M15|y|-1", "venda", "3. frescor do sinal — vencido", False, 0.88)]}},
+            "escolha": {"uid": uid_c, "card": "card8_bollinger", "lado": "venda", "timeframe": "M15", "motivo": "maior PF do estudo entre os elegíveis (único elegível)", "entrada": 4005.0, "stop": 4035.0},
+            "autoridade_r01v5": {"motivo": "todas as condições obrigatórias atendidas", "seria_emitida": True, "decisao_emitida": True, "comando_criado": True}}
+    T._pg("insert into selecao_avaliacoes (bot_id, user_id, simbolo, magic, barra_m15, versao, n_candidatos, n_elegiveis, escolha_uid, avaliacao, sessao_teste_id) values (%s,%s,%s,%s,%s,'sel-3',3,1,%s,%s::jsonb,%s)",
+          x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), t0, uid_c, json.dumps(aval), sid)
+    cond = ["1. atestado r01v5 verificado", "2. candidato presente no atestado", "3. confirmação pelo contrato do card", "4. dentro da validade da entrada",
+            "5. Ciclo sem corte contra o lado e sem blindagem agora", "6. Ciclo na escala do card", "7. preço atual × referência e stop", "8. custo (spread × risco)",
+            "9. célula com selo no estudo (filtro herdado)", "10. bot sem posição aberta", "11. candidato e barra ainda sem decisão", "12. candidato é o escolhido pela seleção desta barra"]
+    T._pg("insert into ciclo_decisoes (id, uid, bot_id, simbolo, lado, ts_barra, status, ts_emissao, expira_em, veredito, sessao_teste_id) values (%s,%s,%s,%s,-1,%s,'consumida',%s,%s,%s::jsonb,%s)",
+          dec_id, f"{x['id']}-C-{dec_id[:24]}", x["id"], x["sim"], t0, t_dec, t0 + timedelta(minutes=30),
+          json.dumps({"contrato": "r01v5", "confirmacao": "conf-rt-1", "candidato": {"uid": uid_c, "card": "card8_bollinger", "tf": "M15", "lado": -1, "modo": "fechamento", "nome": "Bandas de Bollinger — Reversao",
+                                                                                     "sinal_abre_utc": sin_abre.isoformat(), "sinal_fecha_utc": (sin_abre + timedelta(minutes=15)).isoformat(), "confirmado_utc": t0.isoformat(),
+                                                                                     "vence_utc": (t0 + timedelta(minutes=30)).isoformat(), "preco_ref": "4005.0", "stop": "4035.0", "dir_do_timeframe": 0, "corte_do_ciclo_agora": 0},
+                      "contexto": {"D1": "lateral", "H4": "baixa", "janela_M1_M5_M15": {"M1": -1, "M5": -1, "M15": 0}, "papel": "contexto", "veredito_do_motor_congelado": "neutra", "motivo_do_motor": "referencia_neutra", "corte": {"origem": []}},
+                      "condicoes": [{"condicao": c, "ok": True, "origem": "assinado"} for c in cond]}), sid)
+    plano = {"lote": 0.5, "stop": 4035.0, "regra": "min(0.1% do patrimônio, US$ 100)", "patrimonio": 100000.0, "entrada_estimada": 4004.0, "risco_alvo_usd": 100,
+             "especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01, "point": 0.01, "volume_min": 0.01, "contrato": 1}, "risco_planejado_usd": 15.0}
+    cmd_ab = T._pg("insert into mt5_comandos (bot_id, user_id, bot_token, tipo, origem, status, params, resultado, criado_em, entregue_em, confirmado_em, expira_em, sessao_teste_id) "
+                   "values (%s,%s,%s,'sell','sessao_r01v5','executado',%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s) returning id",
+                   x["id"], camp["uid"], x["tok"], json.dumps({"uid": uid_c, "lote": 0.5, "sl": 4035.0}), json.dumps({"ticket": 777016, "retcode": 10009, "preco_real": 4003.0}),
+                   t_dec + timedelta(seconds=1), t_dec + timedelta(seconds=5), t_dec + timedelta(seconds=12), t_dec + timedelta(seconds=60), sid)[0][0]
+    g2 = t0 + timedelta(minutes=30)                                  # barra em que o B3 acionou (abriu em t0+30, fechou em t0+45)
+    cmd_cl = T._pg("insert into mt5_comandos (bot_id, user_id, bot_token, tipo, origem, status, params, resultado, criado_em, entregue_em, confirmado_em, expira_em, sessao_teste_id) "
+                   "values (%s,%s,%s,'close','sessao_gestao','executado',%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s) returning id",
+                   x["id"], camp["uid"], x["tok"], json.dumps({"ticket": 777016, "motivo": "B3"}), json.dumps({"retcode": 10009, "preco_real": 3998.0, "fechados": 1}),
+                   g2 + timedelta(minutes=15, seconds=26), g2 + timedelta(minutes=15, seconds=28), g2 + timedelta(minutes=15, seconds=35), g2 + timedelta(minutes=16), sid)[0][0]
+    T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+          "risco_planejado_usd, plano, estado, comando_id, ticket, posicao_id, preco_entrada, preco_saida, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, lucro, comissao, swap, motivo_saida, gestao) "
+          "values (%s,%s,%s,%s,%s,%s,'card8_bollinger','M15',-1,%s,0.5,4005.0,4035.0,4035.0,15.0,%s::jsonb,'fechada',%s,777016,777016,4003.0,3998.0,%s,%s,%s,2.5,2.5,0,0,'B3',%s::jsonb)",
+          sid, x["id"], x["sim"], T._magic(x["tok"]), dec_id, uid_c, t0, json.dumps(plano), cmd_ab, t_dec, t_dec + timedelta(seconds=12), g2 + timedelta(minutes=15, seconds=35),
+          json.dumps([{"acao": "manter", "barra": (t0 + timedelta(minutes=15)).isoformat(), "barras_de_posicao": 1, "leitura": {"B3": 0, "B5": 0, "corte_do_ciclo": 0, "stop_estrutural": "4028.1", "stop_vigente": "4035.0"}},
+                      {"acao": "close", "barra": g2.isoformat(), "barras_de_posicao": 2, "motivo": "B3", "comando_id": cmd_cl,
+                       "leitura": {"B3": 1, "B5": 0, "corte_do_ciclo": 1, "stop_estrutural": "4027.5", "stop_vigente": "4035.0", "B3_motivo": "B3: posicao vendida dentro de compressao [4003.00,4030.00] por 6 barras de M5 sem progresso (avanco a favor -0.50 = -0.08 ATR) — tese expirou"},
+                       "corte": {"contrato": "corte-ciclo-2", "corta": 1, "origem": ["M1:alerta_empilhado_3 -> M15:fundo_barra_rompido"]}}]))
+    T._pg("insert into ciclo_trilha (bot_id, user_id, simbolo, magic, barra_m15, etapa, estado, origem, motivo, ref, sessao_teste_id, ts) values (%s,%s,%s,%s,%s,'gestao','ok','api',%s,%s::jsonb,%s,%s)",
+          x["id"], camp["uid"], x["sim"], T._magic(x["tok"]), g2 + timedelta(minutes=15), "fechar — B3", json.dumps({"abertura_id": T._pg("select max(id) from sessao_aberturas where sessao_teste_id=%s", sid)[0][0], "comando_id": cmd_cl}), sid, g2 + timedelta(minutes=15, seconds=25))
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]; assert K["versao"] == "rel-4" and "leitura_na_entrada" in K["metodologia_da_auditoria"]
+    op = next(o for o in K["operacoes"] if o["identificacao"]["ticket"] == 777016)
+    # elo decisão↔operação pelo decisao_id (uid da decisão ≠ uid do candidato)
+    G = op["gatilho_e_autorizacao"]; assert G["condicoes_atendidas"] == "12 de 12" and op["ciclo_na_decisao"]["janela_M1_M5_M15"] == {"M1": -1, "M5": -1, "M15": 0}
+    assert "UTC (" in op["horarios"]["autorizacao_r01v5_emitida"] and op["horarios"]["latencias_s"]["autorizacao_ate_comando_s"] == 1.0
+    assert all(x_["decisao"] and x_["completa"] for x_ in K["qualidade_dos_dados"]["correspondencia"] if x_["ticket_na_abertura"] == 777016)
+    # 1. leitura na entrada: nada posterior à decisão
+    E = op["leitura_na_entrada"]
+    assert E["leitura_usada"]["qual"].startswith("primeira leitura") and E["leitura_usada"]["preco_no_snapshot"] == 4004.5          # snapshot de t0+20s, não o de t0+60s (3950)
+    assert E["leitura_usada"]["snapshot_antes_da_decisao_s"] == 20.0
+    C = E["ciclo_m1_m5_m15"]; assert C["atestado_assinado"]["janela"] == {"M1": -1, "M5": -1, "M15": 0} and "de baixo para cima" in C["leitura_de_baixo_para_cima"]
+    assert C["por_timeframe_ea"]["M1"]["direcao"] == "baixa" and C["por_timeframe_ea"]["M1"]["estrutura"] == {"exaustao": True} and C["por_timeframe_ea"]["M1"]["niveis_topos_fundos"][0]["nivel"] == 4030.0
+    assert C["estrutura_do_motor_no_snapshot"]["M5"]["regime"] == "compressao" and C["estrutura_do_motor_no_snapshot"]["M5"]["ultimo_topo"] == 4030.0
+    assert E["contexto_superior"]["H4"] == "baixa" and E["contexto_superior"]["por_timeframe_ea"]["H4"]["direcao"] == "baixa" and "não é condição" in E["contexto_superior"]["papel"]
+    N = E["niveis_e_indicadores_no_snapshot"]; assert N["atr14_m15"] == 6.5 and N["ema20_maximas_m15"] == 4012.0 and N["zonas_do_canal_por_tf"]["z15"] == "dentro" and N["spread_pts"] == 25
+    Sg = E["sinal_do_card"]; assert Sg["card"] == "card8_bollinger" and "BB(20, 2σ)" in Sg["regra_do_card"] and Sg["nivel_do_sinal"] == 4005.0 and Sg["stop"]["risco_pts"] == 3000.0
+    BB = Sg["conferencia_bollinger"]; assert BB["atendido_na_conferencia"] is True and BB["barra_anterior"]["fechamento"] == 4030.0 and BB["barra_do_sinal"]["fechamento"] == 4005.0
+    assert BB["barra_anterior"]["fechamento"] > BB["barra_anterior"]["banda_superior"] and BB["barra_do_sinal"]["fechamento"] < BB["barra_do_sinal"]["banda_superior"]
+    V = {c["condicao"][:2].strip("."): c["valores"] for c in E["condicoes_com_valores"]}
+    assert V["7"]["preco_bid_no_snapshot"] == 4004.5 and V["7"]["preco_do_lado_certo_do_stop"] is True and V["7"]["distancia_preco_ao_stop_pts"] == 3050.0
+    assert V["8"]["spread_pts"] == 25 and V["8"]["spread_sobre_risco_pct"] == 0.83 and V["9"]["profit_factor"] == 1.115 and V["4"]["restava_s"] == 1760.0
+    assert V["10"]["posicoes_do_magic_no_snapshot"] == "0" and V["12"]["escolha_uid"] == uid_c and "4005.0" in E["sintese"] and "−1/−1/0" in E["sintese"].replace("-1", "−1")
+    # 2. escolha do seletor na barra + diagnóstico da campanha
+    Se = op["selecao_desta_barra"]; assert Se["avaliadas"] == 3 and Se["elegiveis"] == 1 and "único elegível" in Se["motivo_da_escolha"]
+    esc = next(i for i in Se["estrategias"] if i["escolhido"]); assert esc["classificacao_entre_elegiveis"] == 1 and esc["elegivel"]
+    assert any(i["primeiro_portao_fechado"].startswith("5.") for i in Se["estrategias"] if not i["elegivel"])
+    D = K["selecao_diagnostico"][x["sim"]]; assert D["estrategias_nas_operacoes"] == ["card8_bollinger"] and "card8_bollinger" in str(D["causa"]) and "diversidade" in D["nota"]
+    assert any(c_["card"] == "card9_macd" and c_["elegiveis"] == 0 and "5. célula na Lista do Seletor (estudo com selo)" in c_["portoes"] for c_ in D["por_estrategia_tf_lado"])
+    # 3. B3 e gestão explicados
+    Gx = op["gestao_explicada"]; assert len(Gx) == 2 and Gx[0]["regra"]["nome"] == "manter" and Gx[1]["codigo"] == "B3"
+    b3 = Gx[1]; assert b3["regra"]["nome"].startswith("B3") and b3["regra"]["parametros"]["barras_sem_progresso"] == 6 and b3["regra"]["parametros"]["andar"] == "M5"
+    assert b3["condicao_detectada"]["B3"] == 1 and b3["condicao_detectada"]["barras_de_posicao"] == 2 and b3["condicao_detectada"]["stop_estrutural"] == "4027.5"
+    assert "compressao [4003.00,4030.00]" in b3["valores"]["B3_caixa_e_avanco"] and "UTC (" in b3["horarios"]["gatilho_registrado_na_trilha"]
+    assert b3["horarios"]["latencia_barra_ate_comando_s"] == 26.0 and b3["horarios"]["latencia_comando_ate_execucao_s"] == 9.0 and b3["execucao"]["preco_real"] == 3998.0
+    assert "gestao-1 na API" in b3["componente"] and "corretora" in b3["componente"] and "stop (corretora)" in b3["ordem_de_avaliacao"]
+    # 4. medição: referência / solicitada / executada, especificação real, duração, unidades
+    M = op["medicao"]; assert M["entrada"]["referencia_do_sinal"] == 4005.0 and M["entrada"]["solicitada_estimada_no_plano"] == 4004.0 and M["entrada"]["executada_no_mt5"] == 4003.0
+    assert M["entrada"]["referencia_a_executada"]["preco"] == 2.0 and M["entrada"]["especificacao_real_do_simbolo"]["volume_min"] == 0.01 and M["duracao"]["barras_m15"] == 2
+    assert "separados" in M["unidades"] and M["risco"]["efetivo_inicial_usd"] == 16.0 and M["risco"]["R_multiplo"] == 0.156
+    # 5. contagem no intervalo exato: 24 h em (de, ate] com símbolo 24/7 = 96 barras, e lista de faltantes (nunca 99)
+    from zoneinfo import ZoneInfo
+    cfg = {"fuso_diario": "Europe/Kyiv", "horarios": {"BTCUSD": [], "XAUUSD": [{"de": "00:00", "ate": "24:00", "dias": [6, 7], "nota": "fim de semana"}]}}
+    import api as A_
+    ate = datetime(2026, 10, 10, 21, 55, 46, tzinfo=timezone.utc); de = ate - timedelta(days=1)
+    r = A_._ses_barras_m15_janela(cfg, "BTCUSD", de, ate, [])
+    assert r["esperadas"] == 96 and r["faltando_total"] == 96 and r["primeira_esperada_utc"] == "2026-10-09T22:00:00Z" and r["ultima_esperada_utc"] == "2026-10-10T21:45:00Z"
+    r2 = A_._ses_barras_m15_janela(cfg, "XAUUSD", de, ate, [])
+    assert r2["esperadas"] == 0          # 09/10 22:00 UTC → 10/10 (sábado, Kyiv) inteiro: fim de semana declarado
+    r3 = A_._ses_barras_m15_janela(cfg, "XAUUSD", datetime(2026, 10, 8, 21, 0, tzinfo=timezone.utc), datetime(2026, 10, 9, 21, 0, tzinfo=timezone.utc), ["2026-10-09T10:00:00Z"])
+    assert r3["esperadas"] == 96 and r3["recebidas"] == 1
+    txt = A_._ses_ultimo_snapshot_vs_janela(cfg, "XAUUSD", "2026-10-09T20:57:50Z")
+    assert "coerente com o fechamento" in txt and "fim de semana" in txt
+    assert "falha de coleta" in A_._ses_ultimo_snapshot_vs_janela(cfg, "XAUUSD", "2026-10-09T12:00:00Z")
+    Q = K["qualidade_dos_dados"]["por_ativo"][x["sim"]]["barras_no_periodo_exato_do_relatorio"]; assert "barra a barra" in Q["regra"] and isinstance(Q["faltando"], list) and Q["recebidas"] <= Q["esperadas"]   # (a bancada pode cair no fim de semana declarado do XAUUSD)
