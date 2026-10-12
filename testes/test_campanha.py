@@ -859,3 +859,12 @@ def test_21_b3_valores_internos_e_tratamento_do_risco_c27r41():
     N = TT["nesta_operacao"]; assert N["excesso_usd"] == 5.42 and N["acima_do_planejado"] is True and N["dentro_da_tolerancia"] is None and N["excesso_pts"] == 506.5
     PE = api._REL_TRAILING_EA["trailing_do_ea"]["parametros_efetivos_dos_eas"]
     assert PE["verificavel_pela_plataforma"] is False and "confirmação explícita do dono" in PE["criterio_de_liberacao"]
+
+
+def test_22_perdas_consecutivas_informativo_c27r42():
+    """C27R42: o painel expõe o efeito das perdas consecutivas (bloqueia × informativo) a partir da config da campanha."""
+    import api
+    u = api._ses_uso_total([], {"max_perdas_consecutivas": 3})
+    assert u["perdas_consecutivas_bloqueia"] is True and u["perdas_consecutivas_efeito"].startswith("suspende")
+    u = api._ses_uso_total([], {"max_perdas_consecutivas": 3, "perdas_consecutivas_bloqueia": False})
+    assert u["perdas_consecutivas_bloqueia"] is False and u["perdas_consecutivas_efeito"].startswith("INFORMATIVO")

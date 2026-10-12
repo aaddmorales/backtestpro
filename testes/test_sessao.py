@@ -356,6 +356,14 @@ def test_5_limites_comuns_aos_dois_ativos(amb, ses):
     assert _res(sid, b, risco=5.0)[:2] == (False, "tres_perdas_consecutivas")
     assert _ses(sid, "motivo_suspensao") == "tres_perdas_consecutivas" and _ses(sid, "aberturas_suspensas_em") is not None
     assert _res(sid, b, risco=5.0)[1] == "aberturas_suspensas(tres_perdas_consecutivas)"
+    # C27R42 (sql/0017): com config.perdas_consecutivas_bloqueia=false as perdas seguem CONTADAS mas não bloqueiam nem suspendem
+    T._pg("update sessoes_teste set aberturas_suspensas_em=null, motivo_suspensao=null, config = config || '{\"perdas_consecutivas_bloqueia\": false}'::jsonb where id=%s", sid)
+    ok, mot, _i, uso = _res(sid, b, risco=5.0)
+    # (nesta sessão de ensaio o teto de 6 aberturas já foi atingido pelas linhas de teste → o motivo passa a ser esse, nunca as perdas)
+    assert mot == "maximo_de_aberturas_da_sessao" and uso["perdas_consecutivas"] == 3 and uso["perdas_consecutivas_bloqueia"] is False, (mot, uso)
+    assert _ses(sid, "aberturas_suspensas_em") is None and _ses(sid, "motivo_suspensao") is None
+    T._pg("update sessoes_teste set config = config - 'perdas_consecutivas_bloqueia' where id=%s", sid)
+    assert _res(sid, b, risco=5.0)[:2] == (False, "tres_perdas_consecutivas")      # sem a chave, volta ao comportamento da 0012
     T._pg("update sessoes_teste set aberturas_suspensas_em=null, motivo_suspensao=null where id=%s", sid)
     T._pg("delete from sessao_aberturas where sessao_teste_id=%s and decisao_id like 'seq-%%'", sid)
     # perda realizada acumulada de US$ 30 → para
