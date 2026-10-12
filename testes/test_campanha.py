@@ -955,3 +955,124 @@ def test_26_reproducao_cronologica_gold_1210_c27r44():
     # op 8 (compra real): a continuidade se perde em 02:45 (M15 canal 0 / mista) e o B3 fecha em 03:00 nas duas gestões
     o8 = {x["barra_utc"]: x for x in d["op8_real_gestao2"]}
     assert o8["02:45"]["continuidade"] == "PERDIDA" and o8["03:00"]["gestao1"] == "close" and o8["03:00"]["gestao2"] == "close"
+
+
+def test_27_relatorio_complementar_fases_oportunidades_quadro_justificativa_c27r45(amb, camp):
+    """C27R45 (ordem 12/10 'complementar o relatório'): fases separadas (operação que atravessa a mudança de versão), oportunidades
+    e recusas por barra com classes e motivo completo, quadro de correções com 'exercitado' × 'ainda não exercitado', catálogo
+    (revalidadas = 0, equivalência pendente), justificativa da gestão (B3/corte/trailing separados, classificação, propagação por TF),
+    estado efetivo com entradas restantes, eventos do gráfico com UTC/Kyiv/servidor e vínculos, relatório por fase (fase=2) e PDF."""
+    import re as _re, urllib.request as rq, io
+    sid, x = camp["id"], camp["x"]
+    _limpar(sid)
+    T._pg("update sessoes_teste set config = config - 'bloqueios_por_bot' where id=%s", sid)
+    mg = T._magic(x["tok"]); agora = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    t0 = agora - timedelta(hours=3); marco = t0 + timedelta(minutes=30)
+    T._pg("update sessoes_teste set config = config || %s::jsonb where id=%s",
+          json.dumps({"fases": [{"fase": 1, "inicio": (t0 - timedelta(days=2)).isoformat(), "fim": marco.isoformat(), "regras": "sel-3 + gestao-1"},
+                                {"fase": 2, "inicio": marco.isoformat(), "fim": None, "regras": "sel-4 + gestao-2", "marco": "deployment teste"}]}), sid)
+    def cmd(tipo, params, quando, origem="sessao_gestao"):
+        return T._pg("insert into mt5_comandos (bot_id, user_id, bot_token, tipo, origem, status, params, resultado, criado_em, entregue_em, confirmado_em, expira_em, sessao_teste_id) "
+                     "values (%s,%s,%s,%s,%s,'executado',%s::jsonb,%s::jsonb,%s,%s,%s,%s,%s) returning id", x["id"], camp["uid"], x["tok"], tipo, origem, json.dumps(params),
+                     json.dumps({"ticket": 777027, "retcode": 10009, "preco_real": 4001.0}), quando, quando + timedelta(seconds=2), quando + timedelta(seconds=9), quando + timedelta(seconds=60), sid)[0][0]
+    c_ab = cmd("sell", {"uid": "u27", "lote": 0.3, "sl": 4010.0}, t0 + timedelta(seconds=30), "sessao_r01v5")
+    ab_id = T._pg("insert into sessao_aberturas (sessao_teste_id, bot_id, simbolo, magic, decisao_id, candidato_uid, card, tf, lado, ts_barra, lote, preco_ref, stop_inicial, stop_atual, "
+                  "risco_planejado_usd, plano, estado, comando_id, ticket, posicao_id, preco_entrada, preco_saida, ts_reserva, ts_abertura, ts_fechamento, resultado_usd, lucro, comissao, swap, motivo_saida, gestao) "
+                  "values (%s,%s,%s,%s,'dec-27','card10_donchian20|M15|x|-1','card10_donchian20','M15',-1,%s,0.3,4000.0,4010.0,4008.0,3.0,'{}'::jsonb,'fechada',%s,777027,777027,4001.0,3995.0,%s,%s,%s,1.8,1.8,0,0,'ciclo','[]'::jsonb) returning id",
+                  sid, x["id"], x["sim"], mg, t0, c_ab, t0 + timedelta(seconds=29), t0 + timedelta(seconds=39), t0 + timedelta(minutes=60, seconds=40))[0][0]
+    c_sl = cmd("mover_sl", {"ticket": 777027, "sl": 4008.0, "abertura_id": ab_id}, t0 + timedelta(minutes=30, seconds=30))
+    c_cl = cmd("close", {"ticket": 777027, "motivo": "ciclo", "abertura_id": ab_id}, t0 + timedelta(minutes=60, seconds=30))
+    por_tf = {"M1": {"dir": -1, "estrutura": "descendente", "regime": "tendencia", "eventos": ["fundo_barra_rompido"], "persistencia": 3, "ultimo_topo": 4004.0, "ultimo_fundo": 3996.0},
+              "M5": {"dir": -1, "estrutura": "descendente", "regime": "compressao", "persistencia": 6, "ultimo_topo": 4005.0, "ultimo_fundo": 3996.5},
+              "M15": {"dir": -1, "estrutura": "descendente", "regime": "compressao", "ultimo_topo": 4009.0, "ultimo_fundo": 3996.0}, "M30": {"dir": -1, "estrutura": "descendente", "regime": "tendencia", "ultimo_topo": 4015.0},
+              "H1": {"dir": -1, "estrutura": "mista", "ultimo_topo": 4030.0}, "H4": {"dir": 1}, "D1": {"dir": 0}}
+    import api as _api
+    cont = _api._cont_continuidade(-1, por_tf, 3998.0)
+    assert cont["ok"] and cont["propagacao"]["a_favor"] == ["M1", "M5", "M15", "M30", "H1"] and cont["propagacao"]["contra"] == ["H4"] and "M1" in cont["propagacao"]["inicio_observado"]
+    cls = _api._cont_eventos_corte(["M1:fundo_barra_rompido M5:fundo_barra_rompido -> M15:fundo_barra_rompido"])
+    gest = [{"acao": "mover_sl", "barra": (t0 + timedelta(minutes=15)).isoformat(), "barras_de_posicao": 1, "motivo": "trailing estrutural (pivô ∓ 0,3×ATR14 do M15)", "comando_id": c_sl,
+             "leitura": {"B3": 0, "B5": 0, "corte_do_ciclo": 0, "stop_estrutural": "4008.0", "stop_vigente": "4010.0"}},
+            {"acao": "manter(protegido)", "barra": (t0 + timedelta(minutes=30)).isoformat(), "barras_de_posicao": 2, "motivo": "B3", "protegido_por": "B3",
+             "regras": {"contrato_gestao": "gestao-2", "contrato_corte": "corte-ciclo-2", "api": "8.15", "b3_espera_max": 1}, "continuidade": cont, "corte_classificacao": cls,
+             "explicacao": "B3 sinalizado mas continuidade INTACTA → proteger", "snapshot_id": 1,
+             "leitura": {"B3": 1, "B5": 0, "corte_do_ciclo": 1, "stop_estrutural": "4008.2", "stop_vigente": "4008.0", "B3_motivo": "B3: posicao vendida dentro de compressao [3996.00,4009.00] por 6 barras de M5 sem progresso (avanco a favor -1.00 = -0.40 ATR) — tese expirou"},
+             "corte": {"contrato": "corte-ciclo-2", "corta": 1, "origem": ["M1:fundo_barra_rompido M5:fundo_barra_rompido -> M15:fundo_barra_rompido"]}},
+            {"acao": "close", "barra": (t0 + timedelta(minutes=45)).isoformat(), "barras_de_posicao": 3, "motivo": "ciclo", "comando_id": c_cl,
+             "regras": {"contrato_gestao": "gestao-2", "contrato_corte": "corte-ciclo-2", "api": "8.15", "b3_espera_max": 1},
+             "continuidade": dict(cont, ok=False, situacao="PERDIDA", motivos=["fechamento 4009.5 rompeu o último topo do M15 (4009.0)"]),
+             "corte_classificacao": _api._cont_eventos_corte([{"identificado_em": ["M5:rompeu_ultimo_topo"], "decidido_por": ["M15:rompeu_ultimo_topo"]}]),
+             "explicacao": "corte do Ciclo com evento ESTRUTURAL no M15 (rompeu_ultimo_topo) → fechar",
+             "leitura": {"B3": 1, "B5": 0, "corte_do_ciclo": 1, "stop_estrutural": "4008.2", "stop_vigente": "4008.0"},
+             "corte": {"contrato": "corte-ciclo-2", "corta": 1, "origem": [{"identificado_em": ["M5:rompeu_ultimo_topo"], "decidido_por": ["M15:rompeu_ultimo_topo"]}]}}]
+    T._pg("update sessao_aberturas set gestao=%s::jsonb where id=%s", json.dumps(gest), ab_id)
+    # avaliação sel-4 na barra da entrada: 1 executado (u27), 1 elegível não escolhido, 1 recusado no portão 8 (valores), 1 aguardando
+    barra = t0
+    def cand(uid, tf, lado, estado, eleg, esc, portoes, pf):
+        return {"uid": uid, "lado": lado, "timeframe": tf, "estrategia": {"card": uid.split("|")[0]}, "sinal": {"estado": estado, "barra_do_sinal_utc": (barra - timedelta(minutes=30)).isoformat()},
+                "frescor": {"confirmado_utc": (barra - timedelta(minutes=15)).isoformat(), "vence_utc": (barra + timedelta(minutes=15)).isoformat(), "idade_s": 900, "situacao": "válida"},
+                "niveis": {"entrada": 4000.0, "stop": 4010.0, "risco_pts": 1000}, "elegibilidade": eleg, "escolha": {"escolhido": esc}, "primeiro_impedimento": next((p["portao"] + " — x" for p in portoes if p["ok"] is False), None),
+                "portoes": portoes, "estudo": {"selo_da_lista": True, "selo_fragil": False}, "pontuacao": {"pf": pf, "trades": 100}, "corte": {"corta_agora": False, "origem": []}, "execucao": {}}
+    ok9 = [{"portao": f"{i}. x", "ok": True, "detalhe": "ok"} for i in range(1, 10)]
+    p8 = [dict(q) for q in ok9]; p8[7] = {"portao": "8. preço atual × entrada e stop", "ok": False, "detalhe": "preço a 358 pts da entrada (> limite 130 pts = max(30, 10% de 1304 pts de risco))"}
+    av = {"versao": "sel-4", "preco_ea": 4000.5, "grupos": {"M15": {"candidatos": [cand("card10_donchian20|M15|x|-1", "M15", "venda", "confirmado", "elegivel", True, ok9, 1.2),
+                                                                                     cand("card12_engolfo|M15|x|-1", "M15", "venda", "confirmado", "elegivel", False, ok9, 1.1),
+                                                                                     cand("card9_macd|M15|x|-1", "M15", "venda", "confirmado", "nao_elegivel", False, p8, 1.3),
+                                                                                     cand("card2_rompimento_caixa|M15|x|-1", "M15", "venda", "aguardando", "nao_elegivel", False, ok9, 1.9)]}},
+          "continuidade": {"compra": _api._cont_continuidade(1, por_tf, 3998.0), "venda": cont}}
+    T._pg("delete from selecao_avaliacoes where bot_id=%s and barra_m15 > %s", x["id"], t0 - timedelta(hours=1))     # só as avaliações deste teste no período
+    T._pg("insert into selecao_avaliacoes (bot_id, user_id, simbolo, magic, barra_m15, versao, n_candidatos, n_elegiveis, escolha_uid, avaliacao, sessao_teste_id) values (%s,%s,%s,%s,%s,'sel-4',4,2,%s,%s::jsonb,%s)",
+          x["id"], camp["uid"], x["sim"], mg, barra, "card10_donchian20|M15|x|-1", json.dumps(av), sid)
+    s, j, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "personalizado", "de": (t0 - timedelta(hours=1)).isoformat(), "ate": (agora + timedelta(seconds=5)).isoformat(), "sessao": sid, "fuso": "Europe/Kyiv"}, tok=amb["sess"])
+    assert s == 200, j
+    K = j["campanha"]
+    for k in ("quadro_de_correcoes", "fases", "oportunidades_por_barra", "catalogo"):
+        assert k in K and not (K[k] or {}).get("erro"), (k, K.get(k))
+    # fases: a operação abriu na fase 1 e fechou na fase 2 → atravessa
+    F = K["fases"]["fases"]; assert [f["fase"] for f in F] == [1, 2] and F[1]["fim"].startswith("em curso")
+    f1 = F[0]["por_ativo"][x["sim"]]; assert ab_id in f1["operacoes_abertas_na_fase"] and f1["operacoes_que_atravessam_a_mudanca_de_versao"][0]["fase_do_fechamento"] == 2
+    f2 = F[1]["por_ativo"][x["sim"]]; assert ab_id in f2["fechadas_na_fase"] and f2["resultado_liquido_usd"] == 1.8 and f1["oportunidades"]["versoes_da_selecao"] == ["sel-4"] and f1["oportunidades"]["avaliacoes"] >= 1
+    # oportunidades por barra: classes, motivo completo, contagens distintas
+    O = K["oportunidades_por_barra"][x["sim"]]; CN = O["contagens"]
+    assert CN["avaliacoes_barras"] == 1 and CN["candidatos_linhas"] == 4 and CN["sinais_distintos"] == 4 and CN["elegiveis_distintos"] == 2 and CN["escolhidos_distintos"] == 1 and CN["operacoes_abertas_no_periodo"] == 1
+    cl = {c["uid"]: c for c in O["por_barra"][0]["candidatos"]}
+    assert cl["card10_donchian20|M15|x|-1"]["classe"] == "executado" and str(ab_id) in cl["card10_donchian20|M15|x|-1"]["detalhe_da_classe"]
+    assert cl["card12_engolfo|M15|x|-1"]["classe"] == "elegivel_nao_escolhido" and cl["card2_rompimento_caixa|M15|x|-1"]["classe"] == "sinal_nao_confirmado_ou_vencido"
+    r8 = cl["card9_macd|M15|x|-1"]; assert r8["classe"] == "recusa_por_leitura_preco_stop_ou_selo" and r8["detalhe_da_classe"] == "preço/stop" and "358 pts" in r8["motivo_completo"][7]["regra_e_valores"]
+    assert O["por_barra"][0]["fase"] == 1 and O["por_barra"][0]["continuidade_na_barra"]["venda"] == "INTACTA" and "M1" in O["por_barra"][0]["continuidade_na_barra"]["propagacao_venda"]
+    # quadro: execução real procurada nos registros (gestao-2 exercitada aqui: proteger B3 e fechar por corte estrutural)
+    Q = {q["problema"][:12]: q for q in K["quadro_de_correcoes"]["quadro"]}
+    qg = next(q for q in K["quadro_de_correcoes"]["quadro"] if q["problema"].startswith("Gestão: op 10"))
+    assert qg["execucao_real"]["estado"] == "exercitado" and qg["execucao_real"]["evidencia"]["proteger_B3"] and qg["execucao_real"]["evidencia"]["fechar_corte_estrutural"]
+    assert all(q["execucao_real"]["estado"] in ("exercitado", "ainda não exercitado", "não aplicável (pendência do dono)") for q in K["quadro_de_correcoes"]["quadro"])
+    assert "NÃO conta como prova" in K["quadro_de_correcoes"]["nota"]
+    # catálogo: nenhuma revalidada
+    C = K["catalogo"][x["sim"]]; assert C["celulas_revalidadas_com_cards_2_0"] == 0 and C["cards_ao_vivo"].startswith("2.0") and all(c["revalidada_com_cards_2_0"] is False for c in C["celulas"])
+    # justificativa da gestão (item 5)
+    op = next(o for o in K["operacoes"] if o["identificacao"]["abertura_id"] == ab_id)
+    GX = {g["barra_m15_abriu_utc"][:16]: g for g in op["gestao_explicada"]}
+    j2 = GX[(t0 + timedelta(minutes=30)).isoformat()[:16]]["valores"]["justificativa"]
+    assert j2["classificacao"].startswith("pullback") and "B3" in j2["regras_acionadas"] and j2["determinou_a_acao"].startswith("nenhuma regra fechou: PROTEGER (B3)") and j2["evidencia"].startswith("capturada ao vivo")
+    assert j2["corte_do_ciclo"]["classe"].startswith("fino") and j2["trailing"]["aperta"] is False and j2["preco_e_niveis"]["M15_ultimo_topo"] == 4009.0 and j2["continuidade_por_tf"]["propagacao"]["propagado_ate"] == "H1"
+    j3 = GX[(t0 + timedelta(minutes=45)).isoformat()[:16]]["valores"]["justificativa"]
+    assert j3["classificacao"].startswith("invalidação: 3º sinal ESTRUTURAL") and j3["determinou_a_acao"] == "corte do Ciclo" and "B3" in j3["regras_acionadas"]
+    j1 = GX[(t0 + timedelta(minutes=15)).isoformat()[:16]]["valores"]["justificativa"]
+    assert j1["evidencia"].startswith("reconstrução posterior") and j1["limitacao"]
+    # estado efetivo: entradas restantes e eventos do gráfico com 3 horários e vínculos
+    EE = K["resumo_executivo"]["estado_efetivo"]; bb = next(v for k, v in EE["bots"].items() if k.startswith(str(x["id"]) + " "))
+    assert bb["uso_dos_limites"]["entradas_restantes_no_dia"] is not None and EE["fase_atual"]["fase"] == 2
+    EV = K["graficos"][0]["eventos"]["eventos"]; tipos = [e["tipo"] for e in EV]
+    assert "entrada" in tipos and "saida" in tipos and "alteracao_de_stop" in tipos and "candidato_elegivel_nao_executado" in tipos
+    e_sl = next(e for e in EV if e["tipo"] == "alteracao_de_stop"); assert e_sl["stop_novo"] == 4008.0 and e_sl["comando_id"] == c_sl and e_sl["quando"]["utc"] and e_sl["quando"]["kyiv"] and e_sl["quando"]["servidor_mt5"]
+    e_en = next(e for e in EV if e["tipo"] == "entrada"); assert e_en["fase"] == 1 and e_en["ticket"] == 777027 and e_en["decisao_id"] == "dec-27"
+    # relatório por fase (fase 2) e PDF com as mesmas seções
+    s, j2r, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "Europe/Kyiv", "fase": "2"}, tok=amb["sess"])
+    assert s == 200, j2r
+    assert _api._rel_dt(j2r["periodo"]["de_utc"]) == marco and j2r["campanha"]["oportunidades_por_barra"][x["sim"]]["contagens"]["avaliacoes_barras"] == 0
+    s, jerr, _ = T._req("POST", SS.URL + "/learning/relatorio/gerar", {"bot_id": x["id"], "periodo": "sessao", "sessao": sid, "fuso": "UTC", "fase": "9"}, tok=amb["sess"]); assert s == 422
+    q = rq.Request(SS.URL + "/learning/relatorio/baixar", data=json.dumps({"relatorio_id": j["relatorio_id"], "formato": "pdf"}).encode(),
+                   headers={"Content-Type": "application/json", "Authorization": "Bearer " + amb["sess"]}, method="POST")
+    raw = rq.urlopen(q, timeout=300).read(); assert raw[:4] == b"%PDF"
+    from pypdf import PdfReader
+    txt = "\n".join((pg.extract_text() or "") for pg in PdfReader(io.BytesIO(raw)).pages)
+    for frag in ("Quadro de correções", "Fases da campanha", "Oportunidades e recusas por barra", "Catálogo", "Classificação", "eventos do gráfico", "Restantes"):
+        assert frag in txt, frag
