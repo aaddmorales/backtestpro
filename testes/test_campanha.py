@@ -881,3 +881,77 @@ def test_23_planejado_e_o_risco_reservado_c27r43():
     assert RX["diferenca_efetivo_menos_planejado_usd"] == -20.36 and RX["deslizamento_do_stop_na_saida_usd"] == 5.4 and RX["perda_realizada_usd"] == 84.94
     assert abs(RX["residuo_nao_explicado_usd"]) <= 0.01
     assert RX["tratamento_do_risco_efetivo_acima_do_planejado"]["nesta_operacao"]["acima_do_planejado"] is False
+
+
+def test_24_gestao2_continuidade_op10_e_op8_reais_c27r44():
+    """C27R44 (gestao-2) com as leituras REAIS gravadas (auditoria_leituras, homolog):
+    op 10 (XAU venda, 09:30 UTC de 12/10): B3=1 (2 barras) + corte FINO (M15:fundo_barra_rompido) com M15 descendente, canal −1,
+    último topo 4188,15 intacto (fechamento 4177,18), M30 −1 → gestao-2 PROTEGE (não fecha); na avaliação seguinte com B3 ainda
+    sinalizado e continuidade intacta → fecha (espera máx. 1). Corte ESTRUTURAL ou continuidade perdida → fecha."""
+    import api
+    por_tf = {"M15": {"dir": -1, "estrutura": "descendente", "regime": "compressao", "localizacao": "fundo_da_faixa", "ultimo_topo": 4188.15, "ultimo_fundo": 4172.82},
+              "M30": {"dir": -1, "estrutura": "descendente", "regime": "tendencia"}, "H1": {"dir": -1, "estrutura": "mista"}, "H4": {"dir": 0}, "D1": {"dir": 0}}
+    L = {"B3": 1, "corte_do_ciclo": 1, "corte_origem": ["M1:fundo_barra_rompido M1:fundo_barra_rompido M1:rompeu_ultimo_topo M1:fundo_barra_rompido M1:rompeu_ultimo_topo M1:fundo_barra_rompido M1:rompeu_ultimo_topo M5:fundo_barra_rompido -> M15:fundo_barra_"],
+         "B3_motivo": "B3: posicao vendida dentro de compressao [4172.82,4188.15] por 6 barras de M5 sem progresso (avanco a favor -1.20 = -0.45 ATR) — tese expirou", "stop_estrutural": 4189.655203}
+    g = {"B5": 0, "fechamento": 4177.18}
+    cls = api._cont_eventos_corte(L["corte_origem"])
+    assert cls["fino"] is True and cls["estrutural"] is False and cls["decidido_por_m15"] == ["fundo_barra_rompido"] and cls["origem_truncada_pelo_conector"] is True
+    cont = api._cont_continuidade(-1, por_tf, 4177.18)
+    assert cont["ok"] is True and cont["M15"]["pivo_contra_intacto"] is True and cont["M30"]["nao_contra"] is True
+    acao, motivo, c, k, exp = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 2, [{"acao": "mover_sl", "leitura": {"B3": 0}}, {"acao": "manter", "leitura": {"B3": 0}}])
+    assert acao == "proteger" and motivo == "B3" and "INTACTA" in exp and "pausa/pullback" in exp
+    # avaliação seguinte: B3 continua, continuidade intacta → espera esgotada → fecha
+    acao2, motivo2, _c, _k, exp2 = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 3, [{"acao": "manter(protegido)", "protegido_por": "B3", "barras_de_posicao": 2, "leitura": {"B3": 1}}])
+    assert (acao2, motivo2) == ("close", "B3") and "limite de espera" in exp2
+    # continuidade PERDIDA (fechamento rompe o último topo do M15) → B3 fecha na hora
+    acao3, motivo3, c3, _k, exp3 = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4188.40}, {"contrato": "corte-ciclo-2"}, por_tf, 2, [])
+    assert (acao3, motivo3) == ("close", "B3") and c3["ok"] is False and "rompeu o último topo" in "; ".join(c3["motivos"])
+    # corte ESTRUTURAL (3º sinal) fecha mesmo com continuidade intacta e sem B3
+    L2 = dict(L, B3=0, corte_origem=[{"identificado_em": ["M1:rompeu_ultimo_topo", "M5:rompeu_ultimo_topo"], "decidido_por": ["M15:rompeu_ultimo_topo"]}])
+    acao4, motivo4, _c, k4, _e = api._gestao2_decidir(-1, L2, g, {"contrato": "corte-ciclo-2"}, por_tf, 2, [])
+    assert (acao4, motivo4) == ("close", "ciclo") and k4["estrutural"] is True
+    # op 8 (XAU compra, 03:15 UTC, snapshot 41550 REAL): B3=1 com 3 barras; M15 canal 0 / estrutura MISTA (topo 4214,23, fundo 4200,07),
+    # fechamento 4203,79; M30 1 ascendente; H1 1 → a estrutura de alta do M15 se perdeu (mista sem canal a favor) → continuidade PERDIDA → B3 fecha (igual à gestao-1)
+    L8 = {"B3": 1, "corte_do_ciclo": 0, "corte_origem": [], "B3_motivo": "B3: posicao comprada dentro de compressao [4202.98,4207.90] por 6 barras de M5 sem progresso (avanco a favor -3.74 = -0.84 ATR) — tese expirou"}
+    por8 = {"M15": {"dir": 0, "estrutura": "mista", "regime": "compressao", "ultimo_topo": 4214.23, "ultimo_fundo": 4200.07}, "M30": {"dir": 1, "estrutura": "ascendente"}, "H1": {"dir": 1}}
+    acao8, motivo8, c8, _k, _e = api._gestao2_decidir(1, L8, {"B5": 0, "fechamento": 4203.79}, None, por8, 3, [])
+    assert (acao8, motivo8) == ("close", "B3") and c8["ok"] is False and c8["M15"]["estrutura_a_favor"] is False and c8["M15"]["pivo_contra_intacto"] is True
+    # B5 fecha sempre; sem nada → trailing
+    assert api._gestao2_decidir(1, L8, {"B5": 1}, None, por8, 3, [])[0] == "close"
+    assert api._gestao2_decidir(1, {"B3": 0, "corte_do_ciclo": 0}, {"B5": 0, "fechamento": 4205.0}, None, por8, 1, [])[0] is None
+
+
+def test_25_sel4_portao8_proporcional_ao_risco_c27r44():
+    """C27R44 (sel-4): o portão 8 tolera max(DESVIO_MAX do ativo, 10% da distância entrada→stop). Gold 12/10 05:30 UTC: card2 M15 venda
+    entrada 4184,63, stop ~4197,46 (risco 1283 pts), preço 4184,19 (44 pts) → passa (sel-3 recusava com limite 30); 358 pts (04:15) segue recusado."""
+    import api
+    assert api.SEL_VERSAO == "sel-4" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
+    lim = max(api._SEL_DESVIO_MAX["XAUUSD"], 1283 * api._SEL_DESVIO_FRAC_RISCO)
+    assert lim == 128.3 and 44 <= lim and 54 <= lim and 358 > lim and 162 > lim
+
+
+def test_26_reproducao_cronologica_gold_1210_c27r44():
+    """C27R44 item 7: reprodução cronológica do Gold de 12/10 (04:00–11:00 UTC) só com o que estava gravado em cada barra
+    (testes/reproducao_gold_1210.py). ANTES = sel-3 + gestao-1; DEPOIS = sel-4 + gestao-2. Inclui os casos em que manter foi PIOR."""
+    import api
+    from reproducao_gold_1210 import reproduzir
+    d = reproduzir(api)
+    # seleção: a 1ª venda elegível passa de 08:45 (op 10 real) para 04:00 (M30 card9, desvio 39 pts ≤ 10% do risco 1304)
+    assert d["primeira_venda_elegivel"]["antes"].startswith("08:45") and d["primeira_venda_elegivel"]["depois"].startswith("04:00")
+    sel = {(x["barra_utc"], x["tf"], x["card"]): x for x in d["selecao"]}
+    assert sel[("04:15", "M30", "c9_macd")]["elegivel_depois"] is False            # 358 pts > 130: o limite proporcional NÃO abre tudo
+    assert sel[("05:45", "M15", "c2_rompimento_caixa")]["elegivel_depois"] is False and sel[("05:45", "M15", "c2_rompimento_caixa")]["corte_classe"] == "indeterminada"   # fail_closed
+    assert sel[("07:00", "M15", "c12_engolfo")]["elegivel_depois"] is False       # corte ESTRUTURAL + sinal vencido: segue recusado
+    assert sel[("09:15", "M15", "c10_donchian20")]["portao4_sel4"] is True and sel[("09:15", "M15", "c10_donchian20")]["elegivel_depois"] is False   # fino informa, mas 438 pts recusa
+    assert sum(1 for x in d["selecao"] if x["elegivel_antes"]) == 1 and sum(1 for x in d["selecao"] if x["elegivel_depois"]) == 11
+    # op 10: gestao-2 PROTEGE em 09:15 (B3 + corte fino, continuidade intacta) e só fecha em 10:15 (continuidade PERDIDA) — PIOR que o real
+    o = d["op10_real_gestao2"]; p = {x["barra_utc"]: x for x in o["passos"]}
+    assert p["09:15"]["gestao1"] == "close" and p["09:15"]["gestao2"] == "mover_sl" and p["09:15"]["continuidade"] == "INTACTA"
+    assert p["10:00"]["gestao2"] == "mover_sl" and p["10:15"]["gestao2"] == "close" and p["10:15"]["continuidade"] == "PERDIDA"
+    assert o["saida_barra_utc"] == "10:15" and o["resultado_aprox_usd"] < -1.69
+    # venda hipotética 04:00 (sel-4): fecha em 05:45 por corte ESTRUTURAL (alerta_empilhado_3 no M15), com ganho; a de 06:15 perde (B3 em compressão + corte fino → espera esgotada)
+    h = d["venda_hipotetica_0400_gestao2"]; assert h["saida_barra_utc"] == "05:45" and h["resultado_aprox_usd"] > 0 and h["passos"][-1]["corte_classe"].startswith("estrutural")
+    h2 = d["venda_hipotetica_0615_gestao2"]; assert h2["saida_barra_utc"] == "07:00" and h2["resultado_aprox_usd"] < 0
+    # op 8 (compra real): a continuidade se perde em 02:45 (M15 canal 0 / mista) e o B3 fecha em 03:00 nas duas gestões
+    o8 = {x["barra_utc"]: x for x in d["op8_real_gestao2"]}
+    assert o8["02:45"]["continuidade"] == "PERDIDA" and o8["03:00"]["gestao1"] == "close" and o8["03:00"]["gestao2"] == "close"

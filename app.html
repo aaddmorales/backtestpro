@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.79-planejado-reservado-c27r43';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.80-continuidade-c27r44';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9234,6 +9234,9 @@ function relCampanhaHtml(K){
   const R = K.resumo_executivo || {}, CP = R.campanha || {}, CO = R.consolidado || {}, LU = R.limites_em_uso || {}, PA = R.por_ativo || {};
   const BE = R.bloqueios_efetivos || {};
   let s = (BE.nenhum ? '<div class="rel-q ok"><b>Bloqueios efetivos: nenhum bot bloqueado</b></div>' : `<div class="rel-q atencao"><b>BLOQUEIOS EFETIVOS DE NOVAS ENTRADAS</b>` + _relTab(['Bot', 'Desde', 'Motivo', 'Base do motivo', 'Liberação', 'Efeito'], (BE.bots_bloqueados || []).map(b => [_clmE(b.bot_id), _clmE(b.desde), _clmE(b.motivo), _clmE(b.base_do_motivo), _clmE(b.liberar), _clmE(b.efeito)])) + '</div>');
+  const EE = R.estado_efetivo || {};   // C27R44
+  if (EE.bots) s = `<div class="rel-q info"><b>ESTADO EFETIVO AGORA (${_clmE(EE.gerado_utc)})</b> · sessão ${_clmE((EE.sessao || {}).estado)} · aberturas habilitadas ${_clmE((EE.sessao || {}).aberturas_habilitadas)} · suspensão ${_clmE((EE.sessao || {}).motivo_suspensao || 'nenhuma')} · perdas consecutivas ${(EE.sessao || {}).perdas_consecutivas_bloqueiam === false ? 'informativas' : 'bloqueiam'}<br><span class="rel-sit">regras em vigor: ${_clmE(Object.entries(EE.regras_em_vigor || {}).map(x => x[0] + ' ' + x[1]).join(' · '))}</span>` +
+    _relTab(['Bot', 'Entradas', 'Coleta', 'Posição aberta', 'Último comando'], Object.entries(EE.bots).map(([k, v]) => [_clmE(k), `<b>${_clmE((v.entradas || {}).leitura || (v.entradas || {}).motivo)}</b>`, `${_clmE((v.coleta || {}).situacao)} (${_clmE((v.coleta || {}).idade_s)} s)`, v.posicao_aberta ? _relJ(v.posicao_aberta) : 'nenhuma', v.ultimo_comando ? `${_clmE(v.ultimo_comando.id)} ${_clmE(v.ultimo_comando.tipo)}/${_clmE(v.ultimo_comando.status)} ${_clmE(v.ultimo_comando.criado_utc)}` : '—'])) + '</div>' + s;
   const MT = R.metricas || {};
   if (MT.no_periodo_do_relatorio){ const f = m => `${_clmE(m.entradas)} entr. · ${_clmE(m.fechamentos)} fech. · ${_clmE(m.posicoes_abertas)} abertas · líquido <b>${_clmE(m.resultado_liquido_usd)}</b> (ganhos ${_clmE(m.ganhos_usd)} / perdas ${_clmE(m.perdas_usd)}; ${_clmE(m.ganhos)}G/${_clmE(m.perdas)}P)`;
     s += '<h3>Métricas: período do relatório × acumulado da campanha</h3>' + _relTab(['Escopo', 'Consolidado', ...Object.keys(MT.acumulado_da_campanha.por_ativo || {})],
