@@ -868,3 +868,16 @@ def test_22_perdas_consecutivas_informativo_c27r42():
     assert u["perdas_consecutivas_bloqueia"] is True and u["perdas_consecutivas_efeito"].startswith("suspende")
     u = api._ses_uso_total([], {"max_perdas_consecutivas": 3, "perdas_consecutivas_bloqueia": False})
     assert u["perdas_consecutivas_bloqueia"] is False and u["perdas_consecutivas_efeito"].startswith("INFORMATIVO")
+
+
+def test_23_planejado_e_o_risco_reservado_c27r43():
+    """C27R43: op 9 real — planejado = 99,90 reservado (lote-2), efetivo 79,54 → diferença −20,36; referência→stop (71,56) só informativa."""
+    import api
+    ab = {"lado": -1, "lote": 0.87, "plano": {"versao": "lote-2", "especificacao": {"tick_valor": 0.01, "tick_tamanho": 0.01, "ponto": 0.01}},
+          "preco_ref": 83907.12, "stop_inicial": 83989.371362, "stop_atual": 83989.371362, "preco_entrada": 83897.95, "preco_saida": 83995.58,
+          "motivo_saida": "stop", "resultado_usd": -84.94, "comissao": 0, "swap": 0, "risco_planejado_usd": 99.90}
+    RX = api._rel_op_risco(ab)
+    assert RX["planejado_usd"] == 99.9 and RX["planejado_referencia_ao_stop_usd"] == 71.56 and RX["efetivo_na_entrada_usd"] == 79.54
+    assert RX["diferenca_efetivo_menos_planejado_usd"] == -20.36 and RX["deslizamento_do_stop_na_saida_usd"] == 5.4 and RX["perda_realizada_usd"] == 84.94
+    assert abs(RX["residuo_nao_explicado_usd"]) <= 0.01
+    assert RX["tratamento_do_risco_efetivo_acima_do_planejado"]["nesta_operacao"]["acima_do_planejado"] is False

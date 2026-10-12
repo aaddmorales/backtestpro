@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.78-perdas-consecutivas-informativo-c27r42';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.79-planejado-reservado-c27r43';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9282,7 +9282,7 @@ function relCampanhaHtml(K){
     s += relGestaoExplicadaHtml(o.gestao_explicada || []);                          // C27R33
     s += relStopsHtml(o.stop_de_protecao || {}) + relNegociosHtml(o.negocios_assinados_mt5 || {}) + relPlanoLoteHtml(o.plano_do_lote || {});   // C27R34
     const RX = o.risco_planejado_x_efetivo || {};
-    if (RX.planejado_usd !== undefined) s += '<h3>Risco planejado × efetivo × realizado</h3>' + _relKV([['Planejado', `US$ ${_clmE(RX.planejado_usd)} <span class="rel-sit">${_clmE(RX.regra_do_planejado)}</span>`],
+    if (RX.planejado_usd !== undefined) s += '<h3>Risco planejado × efetivo × realizado</h3>' + _relKV([['Planejado', `US$ ${_clmE(RX.planejado_usd)} <span class="rel-sit">${_clmE(RX.regra_do_planejado)}</span>` + (RX.planejado_referencia_ao_stop_usd !== undefined ? `<br><span class="rel-sit">referência→stop US$ ${_clmE(RX.planejado_referencia_ao_stop_usd)} · ${_clmE(RX.regra_da_referencia)}</span>` : '')],
       ['Efetivo na entrada', `US$ ${_clmE(RX.efetivo_na_entrada_usd)} (diferença ${_clmE(RX.diferenca_efetivo_menos_planejado_usd)}) <span class="rel-sit">${_clmE(RX.regra_do_efetivo)}</span>`],
       ['Deslizamento de entrada', `US$ ${_clmE(RX.deslizamento_de_entrada_usd)} (${_clmE(RX.deslizamento_de_entrada_preco)} em preço)`],
       ['Movimento do stop', RX.stop_movido ? `US$ ${_clmE(RX.movimento_do_stop_usd)} (${_clmE(RX.movimento_do_stop_preco)} em preço) · stop em vigor na saída ${_clmE(RX.stop_em_vigor_na_saida)}` : 'stop não movido (em vigor na saída = inicial)'],
