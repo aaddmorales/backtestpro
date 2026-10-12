@@ -1076,3 +1076,15 @@ def test_27_relatorio_complementar_fases_oportunidades_quadro_justificativa_c27r
     txt = "\n".join((pg.extract_text() or "") for pg in PdfReader(io.BytesIO(raw)).pages)
     for frag in ("Quadro de correções", "Fases da campanha", "Oportunidades e recusas por barra", "Catálogo", "Classificação", "eventos do gráfico", "Restantes"):
         assert frag in txt, frag
+
+
+def test_28_regua_unica_do_desvio_selecao_e_r01v5_c27r45():
+    """C27R45: a condição 7 da r01v5 passa a usar a MESMA régua do portão 8 da sel-4 (max(DESVIO_MAX, 10% do risco)). Caso real:
+    Gold 22:15 UTC de 12/10, escolhido card12 M15 compra parado por 'preço a 33 pts; limite 30' enquanto o portão 8 abria."""
+    import api
+    lim, base = api._sel_desvio_limite("XAUUSD", 4166.61, 4174.18, 0.01)
+    assert base == 30 and abs(lim - 75.7) < 0.1 and 33 <= lim
+    assert api._sel_desvio_limite("XAUUSD", 4000.0, 4002.0, 0.01) == (30.0, 30)       # risco pequeno: vale o piso do ativo
+    assert api._sel_desvio_limite("ATIVO_SEM_LIMITE", 1.0, 0.9, 0.00001) == (None, None)
+    src = open(api.__file__, encoding="utf-8").read()
+    assert src.count("_sel_desvio_limite(") >= 3                                         # definição + portão 8 + condição 7
