@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.83-sel5-gestao3-c27r47';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.84-c27r48-limites-estrutura-degraus';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9343,6 +9343,12 @@ function relCampanhaHtml(K){
       ['Executada no MT5', `<b>${_clmE(ME.executada_no_mt5)}</b>`, `referência → executada: ${d3(MR)} <span class="rel-sit">${_clmE(MR.sinal)}</span>`],
       ['Especificação real do símbolo', _relJ(ME.especificacao_real_do_simbolo), 'assinada pelo leitor no momento do plano'], ['Duração', `${_clmE((M.duracao || {}).permanencia_s)} s = ${_clmE((M.duracao || {}).barras_m15)} barras M15`, _clmE(M.unidades)]]);
     s += `<div class="rel-sit">${_clmE((M.formula || {}).dinheiro)} · pontos = ${_clmE((M.formula || {}).pontos_mt5)} · R = ${_clmE((M.formula || {}).R)} · especificação ${_relJ((M.formula || {}).especificacao_usada)} · ${_clmE(M.aproximacao)} · snapshots usados ${_clmE(M.snapshots_usados)}</div>`;
+    const LT = o.linha_do_tempo || {};                                                   // C27R48 item 8
+    if ((LT.itens || []).length){ const ltTxt = x => { if (String(x.tipo || '').startsWith('leitura intrabar')){ const f = (m, k) => `${_clmE((m || {}).dir)} ${_clmE((m || {}).estrutura || '')} ${_clmE((m || {}).localizacao || (m || {}).regime || '')} ev ${_clmE(JSON.stringify((m || {}).eventos || []))} T/F ${_clmE((m || {}).ultimo_topo)}/${_clmE((m || {}).ultimo_fundo)} gx ${_clmE((m || {}).gatilho_exaustao || '—')}`; return `preço ${_clmE(x.preco)} · <b>M1</b> ${f(x.M1)} · <b>M5</b> ${f(x.M5)} · <b>M15</b> ${f(x.M15)} · <b>M30</b> ${_clmE((x.M30 || {}).dir)} ${_clmE((x.M30 || {}).regime)} ${_clmE((x.M30 || {}).momentum)} · corte ${_clmE(JSON.stringify(x.corte_origem || {}))}`; }
+        return Object.entries(x).filter(([k, v]) => !['ts_utc', 'hora', 'tipo', 'fonte'].includes(k) && v !== null && v !== undefined && v !== '' ).map(([k, v]) => `${_clmE(k)} ${_clmE(typeof v === 'object' ? JSON.stringify(v) : v)}`).join('; '); };
+      s += `<details><summary>Linha do tempo completa (${LT.contagem} itens; leituras intrabar só nas mudanças; fonte em cada item)${(LT.intervencoes_manuais_de_stop || []).length ? ' · <b>' + LT.intervencoes_manuais_de_stop.length + ' intervenção(ões) MANUAL(is) de stop</b>' : ''}</summary>`
+         + ((LT.intervencoes_manuais_de_stop || []).length ? `<div class="rel-q atencao">Intervenções manuais: ${_clmE(LT.intervencoes_manuais_de_stop.map(x => `${x.ts_utc} comando ${x.comando_id} SL ${x.sl_pedido}`).join('; '))}</div>` : '')
+         + _relTab(['Hora', 'Tipo', 'Fonte', 'Conteúdo'], LT.itens.map(x => [_clmE(x.hora), _clmE(x.tipo) + (x.intervencao_manual ? ' <b>[MANUAL]</b>' : ''), _clmE(x.fonte), ltTxt(x)])) + '</details>'; }
     if ((o.trilha_da_operacao || []).length) s += '<details><summary>Trilha da operação (' + o.trilha_da_operacao.length + ')</summary>' + _relTab(['Hora (UTC)', 'Etapa', 'Estado', 'Motivo'], o.trilha_da_operacao.map(t => [_clmE(t.ts_utc), _clmE(t.etapa), _clmE(t.estado), _clmE(t.motivo)])) + '</details>';
   }
   h += _relSec(`2. Operações de ponta a ponta · ${(K.operacoes || []).length}`, s || '<div class="rel-vazio">Nenhuma operação na campanha até o corte.</div>', true);
@@ -9371,6 +9377,15 @@ function relCampanhaHtml(K){
         bss.map(b => [_clmE(b.barra_m15_fechou), b.movimento_em_formacao ? `${_clmE(b.movimento_em_formacao.rotulo)}<br><span class="rel-sit">${_relJ(b.movimento_em_formacao.compatibilidade_por_familia)}</span>` : '—', `${_clmE(b.reavaliacoes_dentro_da_barra ?? 0)}${b.primeira_avaliacao_utc ? ' (1ª ' + _clmE(String(b.primeira_avaliacao_utc).slice(11, 19)) + ')' : ''}`,
           (b.sem_sinal || []).length ? _clmE((b.sem_sinal || []).map(z => `${z.estrategia} ${z.timeframe} ${z.familia || ''}`).join(' · ')) + `<br><span class="rel-sit">${_clmE((b.sem_sinal[0] || {}).motivo)}</span>` : '—'])); }
     h += _relSec('3a. Oportunidades e recusas por barra (período do relatório; só o gravado ao vivo na barra)', s); }
+  const PL = K.pos_limite_diario || {};                                                                    // C27R48 item 2
+  if (PL && !PL.erro && Object.keys(PL).length){ s = '';
+    for (const [sym, x] of Object.entries(PL)){ if (!x || x.situacao){ s += `<div class="rel-sit">${_clmE(sym)}: ${_clmE((x || {}).situacao || '—')}</div>`; continue; }
+      s += `<h3>${_clmE(sym)} · teto atingido ${_clmE(x.teto_atingido)} · ${_clmE(x.barras_apos_o_teto)} barras depois · impedidos pelo limite diário <b>${_clmE(x.elegiveis_impedidos_pelo_limite_diario)}</b> · por outra condição <b>${_clmE(x.elegiveis_impedidos_por_outra_condicao)}</b> · confirmados ${_clmE(x.sinais_confirmados_total)} · recusados ${_clmE(x.recusados_total)}</h3><div class="rel-sit">${_clmE(x.leitura)} · ${_clmE(x.regra_c27r48)}</div>`
+         + _relTab(['Barra fechou', 'Ciclo M15', 'Sinais confirmados', 'Recusados (1º portão)', 'Elegíveis / impedido / executado'], (x.por_barra || []).map(y => { const M = y.movimento_do_ciclo_M15 || {}; const I = y.elegivel_impedido;
+            return [_clmE(y.barra_m15_fechou), typeof M === 'object' ? `${_clmE(M.canal)}/${_clmE(M.estrutura)}/${_clmE(M.regime)} ${_clmE(JSON.stringify(M.eventos || []))}<br><span class="rel-sit">T/F ${_clmE(M.ultimo_topo)}/${_clmE(M.ultimo_fundo)}</span>` : _clmE(M),
+              _clmE((y.sinais_confirmados || []).join('; ') || '—'), _clmE((y.recusados_pela_selecao || []).map(r => `${r.candidato}: ${r.primeiro_portao}`).join('; ') || '—'),
+              _clmE((y.elegiveis || []).join('; ') || '—') + (I ? `<br><b>IMPEDIDO:</b> ${_clmE(I.candidato)} — ${_clmE(I.motivo)} <span class="rel-sit">[${_clmE(I.classe)}]</span>` : '') + ((y.executado || []).length ? `<br><b>EXECUTADO:</b> ${_clmE(y.executado.join('; '))}` : '')]; })); }
+    h += _relSec('3a-bis. Depois do teto diário: movimento do Ciclo × sinais confirmados × recusados × elegíveis impedidos (por barra; C27R48)', s); }
   if (K.consolidacao_das_ordens) h += _relSec('3c. Consolidação das ordens de auditoria (requisito × componente × implementação × evidência real × pendência)', relConsolidacaoHtml(K.consolidacao_das_ordens));
   // C27R32 — cronologia das fases, gráficos, fuso do servidor e escopo dos quadros
   const CR = K.cronologia || {}, GR = K.graficos || [], FS = K.fuso_servidor || [], EQ = K.escopo_dos_quadros || {}, IV = K.inventario_de_dados || [], CA = K.coleta_de_auditoria || {};

@@ -741,7 +741,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
         assert ts_["direcao"] in ("alta", "baixa", "lateral") and "FECHADA" in ts_["base"]
     assert all(c["contexto_superior"]["frases"] and "contexto, sem veto automático" in c["contexto_superior"]["frases"][-1] for c in todos)
     for c in todos:
-        assert len(c["portoes"]) == 9 and c["elegibilidade"] in ("elegivel", "aguardando", "vetada", "sem_dados")
+        assert len(c["portoes"]) == 10 and c["elegibilidade"] in ("elegivel", "aguardando", "vetada", "sem_dados")     # sel-5/C27R48: portão 10
         assert c["estudo"]["existe"] and c["estudo"]["equivalencia"]["nivel"] == "parcial_por_changelog"
         assert c["execucao"]["decisao"] is None and c["escolha"] is not None
         if c["elegibilidade"] == "elegivel":                          # portão fechado nunca é compensado por pontuação

@@ -167,7 +167,7 @@ def test_4_nenhuma_elegivel_motivos_e_unidade_da_idade(api, amb):
                     for e in ("elegivel", "aguardando", "vetada", "sem_dados")} for tf in ("M15", "M30", "H1")}
     for tf in ("M15", "M30", "H1"):
         assert {e: pe[tf][e] for e in gravado[tf]} == gravado[tf], tf
-        assert pe[tf]["candidatos"] == 1 and len(pe[tf]["todos_os_portoes"]) == 9
+        assert pe[tf]["candidatos"] == 1 and len(pe[tf]["todos_os_portoes"]) == 10          # sel-5/C27R48: portão 10 (estrutura na entrada)
     assert pe["H1"]["categorias_do_primeiro_bloqueador"] == {"sinal vencido": {"n": 1, "portoes": {"3. frescor do sinal": 1}}}
     assert list(pe["M15"]["categorias_do_primeiro_bloqueador"]) == ["sinal aguardando confirmação"]
     assert list(pe["M30"]["categorias_do_primeiro_bloqueador"]) == []                 # sel-5: estudo sem selo não bloqueia (informativo)
