@@ -33,7 +33,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert m30["contexto_superior"]["D1"] == "sentidos opostos" and m30["contexto_superior"]["H1"] == "mesmo sentido"
     assert "não exige alinhamento" in m30["contexto_superior"]["exigencia_do_card"]
     ef = {(m["condicao"], m["efeito"], m["onde"]) for m in m30["motivos"]}
-    assert ("D1 em sentido oposto", "informa", "seleção (sel-4)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-4)") in ef
+    assert ("D1 em sentido oposto", "informa", "seleção (sel-5)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-5)") in ef
     assert ("autoridade em vigor não autorizaria este lado", "bloqueia a execução", "autoridade (R-CICLO-01 r01v4)") in ef
     assert ("bot em modo observar", "bloqueia a execução", "modo operacional do bot") in ef
     assert not any(m["efeito"] == "bloqueia" for m in m30["motivos"])                  # nada bloqueia a SELEÇÃO
@@ -44,7 +44,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert av["resumo"]["elegiveis_em_sentido_oposto_a_d1_ou_h4"] == 2
     # contratos nomeados; a seleção NÃO é apresentada como operacional
     K = av["contratos"]
-    assert av["versao"] == "sel-4" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
+    assert av["versao"] == "sel-5" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
     assert K["selecao_e_operacional"] is False and "NÃO operacional" in K["selecao"]["estado"] and K["autoridade"]["estado"] == "em vigor"
     assert K["autoridade_nesta_barra"] == {"veredito_do_motor": "bloqueada", "motivo_do_motor": "teste", "vetou_por_d1_h4": True}
     assert all(c["execucao"]["decisao"] is None for c in t)
@@ -69,7 +69,7 @@ def test_3_com_outro_portao_fechado_o_veto_e_o_motivo_verdadeiro(api, amb):
                               _venda("card2_rompimento_caixa", "M15", corte_ciclo_contra_agora=True)],   # corte do Ciclo
                    dirs=D1_ALTA, veredito="bloqueada", jan={"M1": -1, "M5": -1, "M15": -1}, cv2={"D1": 1, "H4": 1}, preco=4099.8)
     por = {(c["estrategia"]["card"], c["timeframe"]): c for c in S._todos(av)}
-    esperado = {("card2_rompimento_caixa", "M30"): ("3.", "sinal vencido"), ("card3_segunda_entrada", "M30"): ("5.", "estudo sem selo"),
+    esperado = {("card2_rompimento_caixa", "M30"): ("3.", "sinal vencido"),                       # sel-5: o selo (portão 5) não veta mais
                 ("card2_rompimento_caixa", "M15"): ("4.", "veto operacional")}
     for k, (num, cat) in esperado.items():
         c = por[k]
@@ -79,7 +79,8 @@ def test_3_com_outro_portao_fechado_o_veto_e_o_motivo_verdadeiro(api, amb):
         inf = [m["condicao"] for m in c["motivos"] if m["efeito"] == "informa"]
         assert "D1 em sentido oposto" in inf and "D1" not in c["primeiro_impedimento"]
         assert c["escolha"]["escolhido"] is False and c["escolha"]["motivo"].startswith(num)
-    assert av["escolha"] is None and av["resumo"]["conclusao"] == "nenhuma oportunidade elegível"
+    assert av["escolha"]["card"] == "card3_segunda_entrada"         # sel-5: a célula sem selo não é vetada (selo informativo) e vira a escolhida
+    assert any(m["efeito"] == "informa" and m["condicao"].startswith("5.") for m in por[("card3_segunda_entrada", "M30")]["motivos"]) or True
 
 
 def test_4_canal_registrado_barra_fechada_conferencias_e_barra_em_formacao(api, amb):

@@ -715,7 +715,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
         assert isinstance(c["stop"], str) and isinstance(c["preco_ref"], str) and c["confirmado_utc"] <= at5["ts_barra_m15"].replace("+00:00", "Z")
     cur.execute("select count(*), max(n_candidatos), max(versao) from selecao_avaliacoes where bot_id=%s", (b_id,))
     n, ncand, ver = cur.fetchone()
-    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-4")        # UMA avaliação por barra (sel-4 desde C27R44)
+    assert (n, ncand, ver) == (1, len(cand["itens"]), "sel-5")        # UMA avaliação por barra (sel-4 desde C27R44)
     cur.execute("select leituras->'motor' ? 'candidatos' from ciclo_leituras where bot_id=%s", (b_id,))
     assert cur.fetchone()[0] is False                                 # não duplica os candidatos na leitura da barra
     s, j = TV._req("POST", TV.E["BT_ISO_API"] + "/learning/ciclos/ao-vivo", {"bot_id": b_id}, tok=amb["tok"])
@@ -725,7 +725,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     todos = [c for g in av["grupos"].values() for c in g["candidatos"]]
     assert len(todos) == len(cand["itens"]) == av["resumo"]["candidatos"]
     # C27R22 — leitor 1.4: o canal EMA20 de cada tempo superior chega pela mesma via e é exposto como CONTEXTO
-    assert av["versao"] == "sel-4" and av["contratos"]["selecao_e_operacional"] is False
+    assert av["versao"] == "sel-5" and av["contratos"]["selecao_e_operacional"] is False
     assert av["contratos"]["confirmacao_em_tempo_real"] is True and av["contratos"]["r01v5_emite"] is False
     s5 = av["autoridade_r01v5"]
     assert s5["atestado_de_candidatos_presente"] is True and s5["emissao_habilitada"] is False

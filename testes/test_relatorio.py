@@ -170,7 +170,7 @@ def test_4_nenhuma_elegivel_motivos_e_unidade_da_idade(api, amb):
         assert pe[tf]["candidatos"] == 1 and len(pe[tf]["todos_os_portoes"]) == 9
     assert pe["H1"]["categorias_do_primeiro_bloqueador"] == {"sinal vencido": {"n": 1, "portoes": {"3. frescor do sinal": 1}}}
     assert list(pe["M15"]["categorias_do_primeiro_bloqueador"]) == ["sinal aguardando confirmação"]
-    assert list(pe["M30"]["categorias_do_primeiro_bloqueador"]) == ["estudo sem selo"]
+    assert list(pe["M30"]["categorias_do_primeiro_bloqueador"]) == []                 # sel-5: estudo sem selo não bloqueia (informativo)
     U = Sel["ultima_avaliacao"]
     h1 = U["por_escala"]["H1"]["candidatos"][0]
     g_h1 = av["grupos"]["H1"]["candidatos"][0]
@@ -182,7 +182,7 @@ def test_4_nenhuma_elegivel_motivos_e_unidade_da_idade(api, amb):
     assert len(h1["motivos"]) == sum(1 for p in g_h1["portoes"] if p["ok"] is not True and not (p["portao"][0] == "3" and p["ok"] is None))
     m15 = U["por_escala"]["M15"]["candidatos"][0]
     assert m15["sinal"] == "aguardando" and m15["elegibilidade"] == g_m15_estado(av)
-    assert Sel["barras_com_elegivel"] == [] and j["resumo"]["perguntas"][2]["resposta"].startswith("Não.")
+    assert len(Sel["barras_com_elegivel"]) == 1                                         # sel-5: a célula M30 sem selo é elegível (selo informativo)
     assert "sinal vencido: 1" in j["resumo"]["perguntas"][3]["resposta"]
     assert Sel["ausencia_de_sinal"]["situacao"] == "não coletado por célula"
     s2, _, pdf = _baixar(amb, j["relatorio_id"], "pdf")

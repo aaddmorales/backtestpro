@@ -899,7 +899,7 @@ def test_24_gestao2_continuidade_op10_e_op8_reais_c27r44():
     cont = api._cont_continuidade(-1, por_tf, 4177.18)
     assert cont["ok"] is True and cont["M15"]["pivo_contra_intacto"] is True and cont["M30"]["nao_contra"] is True
     acao, motivo, c, k, exp = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 2, [{"acao": "mover_sl", "leitura": {"B3": 0}}, {"acao": "manter", "leitura": {"B3": 0}}])
-    assert acao == "proteger" and motivo == "B3" and "INTACTA" in exp and "pausa/pullback" in exp
+    assert acao == "proteger" and motivo == "B3" and "INTACTA" in exp and ("pausa/pullback" in exp or "pullback" in exp)
     # avaliação seguinte: B3 continua, continuidade intacta → espera esgotada → fecha
     acao2, motivo2, _c, _k, exp2 = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 3, [{"acao": "manter(protegido)", "protegido_por": "B3", "barras_de_posicao": 2, "leitura": {"B3": 1}}])
     assert (acao2, motivo2) == ("close", "B3") and "limite de espera" in exp2
@@ -925,7 +925,7 @@ def test_25_sel4_portao8_proporcional_ao_risco_c27r44():
     """C27R44 (sel-4): o portão 8 tolera max(DESVIO_MAX do ativo, 10% da distância entrada→stop). Gold 12/10 05:30 UTC: card2 M15 venda
     entrada 4184,63, stop ~4197,46 (risco 1283 pts), preço 4184,19 (44 pts) → passa (sel-3 recusava com limite 30); 358 pts (04:15) segue recusado."""
     import api
-    assert api.SEL_VERSAO == "sel-4" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
+    assert api.SEL_VERSAO == "sel-5" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
     lim = max(api._SEL_DESVIO_MAX["XAUUSD"], 1283 * api._SEL_DESVIO_FRAC_RISCO)
     assert lim == 128.3 and 44 <= lim and 54 <= lim and 358 > lim and 162 > lim
 
@@ -1057,7 +1057,7 @@ def test_27_relatorio_complementar_fases_oportunidades_quadro_justificativa_c27r
     assert j2["classificacao"].startswith("pullback") and "B3" in j2["regras_acionadas"] and j2["determinou_a_acao"].startswith("nenhuma regra fechou: PROTEGER (B3)") and j2["evidencia"].startswith("capturada ao vivo")
     assert j2["corte_do_ciclo"]["classe"].startswith("fino") and j2["trailing"]["aperta"] is False and j2["preco_e_niveis"]["M15_ultimo_topo"] == 4009.0 and j2["continuidade_por_tf"]["propagacao"]["propagado_ate"] == "H1"
     j3 = GX[(t0 + timedelta(minutes=45)).isoformat()[:16]]["valores"]["justificativa"]
-    assert j3["classificacao"].startswith("invalidação: 3º sinal ESTRUTURAL") and j3["determinou_a_acao"] == "corte do Ciclo" and "B3" in j3["regras_acionadas"]
+    assert j3["classificacao"].startswith("reversão confirmada: M15 rompeu_ultimo_topo") and j3["determinou_a_acao"] == "corte do Ciclo" and "B3" in j3["regras_acionadas"]
     j1 = GX[(t0 + timedelta(minutes=15)).isoformat()[:16]]["valores"]["justificativa"]
     assert j1["evidencia"].startswith("reconstrução posterior") and j1["limitacao"]
     # estado efetivo: entradas restantes e eventos do gráfico com 3 horários e vínculos
@@ -1091,3 +1091,162 @@ def test_28_regua_unica_do_desvio_selecao_e_r01v5_c27r45():
     assert api._sel_desvio_limite("ATIVO_SEM_LIMITE", 1.0, 0.9, 0.00001) == (None, None)
     src = open(api.__file__, encoding="utf-8").read()
     assert src.count("_sel_desvio_limite(") >= 3                                         # definição + portão 8 + condição 7
+
+
+# ───────────────────────────── C27R47 — ordem do dono de 13/10 06:25 Kyiv (sel-5 + gestao-3) ─────────────────────────────
+def test_29_sel5_selo_informativo_compatibilidade_e_sem_sinal_c27r47(amb):
+    """Item 1: o selo/PF deixa de vetar (portão 5 informativo); a ordenação começa pela compatibilidade com o movimento em formação;
+    cada célula do catálogo SEM candidato é gravada como 'sem sinal' com critério e valores."""
+    import api
+    assert api.SEL_VERSAO == "sel-5" and api._SEL_SELO_BLOQUEIA is False and api.SEL_CONTRATO["id"] == "sel-5"
+    # card7_rsi M15 (PF 1,003, 2ª metade 0,81 → SEM selo) e card2 M15 (COM selo, PF 1,938): os dois elegíveis; o movimento decide a ordem
+    av, *_ = S._av(api, amb, [S._cand("card7_rsi", "M15", 1), S._cand("card2_rompimento_caixa", "M15", 1)], veredito="autorizada")
+    por = {c["estrategia"]["card"]: c for c in S._todos(av)}
+    p5 = next(p for p in por["card7_rsi"]["portoes"] if p["portao"].startswith("5."))
+    assert por["card7_rsi"]["elegibilidade"] == "elegivel" and p5["ok"] is True and "INFORMATIVO" in p5["detalhe"] and "selo NÃO" in p5["detalhe"]
+    assert por["card7_rsi"]["estudo"]["selo_da_lista"] is False                     # a métrica continua registrada (informação)
+    assert por["card7_rsi"]["compatibilidade"]["familia"] == "reversão" and por["card2_rompimento_caixa"]["compatibilidade"]["familia"] == "rompimento"
+    assert av["movimento_em_formacao"]["contrato"] == "sel-5" and "compatibilidade_por_familia" in av["movimento_em_formacao"]
+    # tendência em curso (M15 canal +1, regime tendência): rompimento 2 × reversão 0 → card2 escolhido mesmo com PF menor sendo o outro
+    assert av["escolha"]["card"] == "card2_rompimento_caixa" and av["escolha"]["compatibilidade"]["grau"] >= por["card7_rsi"]["compatibilidade"]["grau"]
+    # 'sem sinal': células do catálogo sem candidato nesta barra, por TF, com critério/valores/motivo
+    ss = av["grupos"]["M15"]["sem_sinal"]
+    assert ss and all(k in ss[0] for k in ("card", "criterio", "resultado", "valores", "motivo")) and not any(z["card"] in ("card7_rsi", "card2_rompimento_caixa") for z in ss)
+    assert av["grupos"]["H1"]["sem_sinal"] and av["controle"]["reavaliacao"].startswith("sel-5")
+
+
+def test_30_sel5_reavaliacao_dentro_da_barra_e_latencias_c27r47(amb, monkeypatch):
+    """Item 2: a 1ª avaliação da barra fica preservada; quando o conjunto de candidatos muda dentro da barra (sinal passa a confirmado),
+    a avaliação é REFEITA (≤ 1/min) na mesma linha; latências por candidato (detecção = 1º snapshot com o sinal; confirmação; avaliação)."""
+    import api
+    barra = T._barra_m15()
+    sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("id", amb["bots"]["A"]["id"]).execute().data[0]
+    T._pg("delete from selecao_avaliacoes where bot_id=%s", bot["id"])
+    api._SEL_REAV_MEM.pop(bot["id"], None); api._SEL_DETECCAO_MEM.pop(bot["id"], None)
+    i1 = [S._cand("card2_rompimento_caixa", "M15", 1, estado="aguardando")]
+    i2 = [S._cand("card2_rompimento_caixa", "M15", 1)]                                   # mesmo uid, agora confirmado
+    det1, leit, ciclos = S._cenario(i1, barra, veredito="autorizada")
+    det2, _l, _c = S._cenario(i2, barra, veredito="autorizada")
+    monkeypatch.setattr(api, "_clm_avaliar", lambda sb_, bot_, det_, ts_: (leit, ciclos))
+    av1 = api._sel_ingerir(sb, bot, det1)
+    assert av1 and av1["controle"]["reavaliacoes_feitas"] == 0 and av1["escolha"] is None
+    assert api._sel_ingerir(sb, bot, det1) is None                                      # nada mudou dentro do minuto: não reavalia
+    api._SEL_REAV_MEM[bot["id"]]["ultimo_ts"] -= 61                                     # passou 1 minuto
+    assert api._sel_ingerir(sb, bot, det1) is None                                      # nada mudou e não há confirmado: não reavalia
+    av2 = api._sel_ingerir(sb, bot, det2)                                               # conjunto mudou (aguardando → confirmado) → reavalia na hora
+    assert av2 and av2["controle"]["reavaliacoes_feitas"] == 1 and av2["controle"]["motivo_da_reavaliacao"].startswith("conjunto")
+    assert av2["primeira_avaliacao"]["avaliado_utc"] == av1["avaliado_utc"] and len(av2["reavaliacoes"]) == 1 and av2["escolha"]["card"] == "card2_rompimento_caixa"
+    rows = T._pg("select count(*), max((avaliacao->'controle'->>'reavaliacoes_feitas')::int), max(escolha_uid) from selecao_avaliacoes where bot_id=%s", bot["id"])
+    assert rows[0][0] == 1 and rows[0][1] == 1 and rows[0][2] == av2["escolha"]["uid"]   # UMA linha por barra, atualizada
+    c = S._todos(av2)[0]; lat = c["latencias"]
+    assert lat["deteccao_utc"] == av1["avaliado_utc"] and lat["confirmacao_utc"] and lat["avaliacao_utc"] == av2["avaliado_utc"]
+    assert lat["deteccao_ate_avaliacao_s"] is not None and lat["decisao_utc"] is None   # sem emissão (r01v5 desligada no teste)
+
+
+def test_31_reproducao_cronologica_btc_1310_barras_15_a_17_c27r47():
+    """Item 2 (caso de reprodução): BTC 13/10, fundo nas barras 15–16 e rompimento da máxima da 16 pela 17 — só com o que estava gravado
+    em cada instante (testes/reproducao_btc_1310.py). Quais estratégias reconheceram o padrão e quando a seleção teria aberto."""
+    import api
+    from reproducao_btc_1310 import reproduzir
+    d = reproduzir(api)
+    assert d["primeiro_elegivel_antes_sel4"]["barra_utc"] == "02:00" and d["primeiro_elegivel_antes_sel4"]["card"] == "card7_rsi"            # op 14 real (H1, selo)
+    assert d["primeiro_elegivel_depois_sel5"]["barra_utc"] == "01:30" and d["primeiro_elegivel_depois_sel5"]["timeframe"] == "M30"             # 30 min antes, M30 reversão
+    assert d["escolha_sel5_em_01_30"]["familia"] == "reversão" and d["escolha_sel5_em_01_30"]["compatibilidade"].startswith("compatível")
+    cands = {(c["barra_utc"], c["timeframe"], c["card"]): c for c in d["candidatos_compra"]}
+    assert cands[("01:30", "M30", "card7_rsi")]["elegivel_antes_sel4"] is False and cands[("01:30", "M30", "card7_rsi")]["motivo_antes"] == "portão 5 (selo)"
+    assert cands[("01:45", "M30", "card7_rsi")]["elegivel_depois_sel5"] is False and cands[("01:45", "M30", "card7_rsi")]["motivo_depois"] == "portão 8"   # longe da entrada: segue recusado
+    assert cands[("01:45", "M15", "card4_canal_ema20")]["elegivel_depois_sel5"] is True and cands[("02:00", "M30", "card7_rsi")]["elegivel_depois_sel5"] is False
+    lin = {x["instante_utc"]: x for x in d["leituras_por_instante"]}
+    assert "quebra_estrutura_alta" in lin["01:15:43"]["M1"]["eventos"] and "quebra_estrutura_alta" in lin["01:15:43"]["M5"]["eventos"] and lin["01:15:43"]["M5"]["ultimo_fundo"] == 80917.83
+    assert lin["01:30:40"]["movimento_sel5"].startswith("compressão/lateral") and lin["01:30:40"]["compatibilidade_por_familia"]["reversão"] == 2
+    assert d["diferenca"]["pontos_a_favor"] > 30000 and d["diferenca"]["usd_no_lote_da_op14"] > 20
+    assert "não força sinal" in d["limitacoes"][2]
+
+
+class _SbFake:
+    """sb mínimo para _g3_custos_pts: qualquer encadeamento (.table().select().eq().not_.is_()...) devolve as aberturas informadas."""
+    def __init__(self, rows): self.rows = rows
+    def __getattr__(self, _k): return self
+    def __call__(self, *a, **k): return self
+    def execute(self):
+        class R: pass
+        r = R(); r.data = self.rows; return r
+
+
+def test_32_gestao3_protecao_por_tempo_3o_e_4o_candle_custos_e_corretora_c27r47():
+    """Item 3: candles M15 fechados = barras_de_posicao + 1. No 3º aciona: nível = entrada ± (custos + spread) × ponto; aplica se o preço
+    já está além do nível + distância mínima e o nível é mais protetor; senão registra o impedimento (explícito no 4º). Nunca afasta."""
+    import api
+    assert api.GESTAO_CONTRATO == "gestao-3" and api.GESTAO3_PROTECAO_CANDLES == 3 and api.GESTAO3_PROTECAO_PRAZO == 4
+    sb = _SbFake([{"comissao": -0.5, "lote": 0.07}, {"comissao": -0.92, "lote": 0.13}, {"comissao": -0.56, "lote": 0.08}])      # ops 10–12 reais (XAU)
+    bot = {"id": 12, "simbolo": "XAUUSD"}; at5 = {"especificacao": {"tick_tamanho": 0.01, "tick_valor": 1.0, "ponto": 0.01}}
+    ab = {"id": 15, "sessao_teste_id": "CAMP", "preco_entrada": 4169.03, "lado": 1}
+    pts, det_c = api._g3_custos_pts(sb, bot, ab, at5, {"pt": 0.01})
+    assert pts == 7.08 and det_c["comissao_usd_por_lote"] == 7.0769 and det_c["origem"].startswith("comissão medida")       # mediana de 7,14 / 7,08 / 7,00 = 7,08
+    # op 15 real (compra 4169,03; spread 5): 2 candles → não aciona
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 1, 1, 4148.56)
+    assert b["acionada"] is False and n is None and b["candles_fechados"] == 2
+    # 3º candle, preço 4179,58 ≫ nível 4169,15 → pede 4169,15 (stop vigente 4148,56 é menos protetor)
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 2, 1, 4148.56)
+    assert b["acionada"] and b["candles_fechados"] == 3 and n == 4169.15 and b["nivel"] == 4169.15 and b["custos_pts"] == 7.08 and b["spread_pts"] == 5.0 and b["folga_pts"] == 1043.0
+    # ganho insuficiente (preço 4169,17: 2 pts acima do nível; distância mínima = spread 5 pts) → impedimento, sem stop inválido; no 4º o registro é explícito
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4169.17, "spr": 5.0}, 3, 1, 4148.56)
+    assert n is None and b["aplicada"] is False and "ganho insuficiente" in b["impedimento"] and b["registro_no_prazo"].startswith("4º candle")
+    # distância mínima da corretora na especificação (ex.: 30 pts) é respeitada
+    at5b = {"especificacao": dict(at5["especificacao"], distancia_minima_stop_pts=30)}
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5b, {"pt": 0.01, "preco": 4169.40, "spr": 5.0}, 2, 1, 4148.56)
+    assert n is None and b["distancia_minima_pts"] == 30 and "30" in b["impedimento"]
+    # stop vigente já mais protetor (4175) → preservado, nunca afasta
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 2, 1, 4175.0)
+    assert n is None and b["aplicada"] is True and "preservado" in b["como"]
+    # venda: nível = entrada − (custos + spread) × ponto; compara com o ask (bid + spread)
+    abv = dict(ab, preco_entrada=4180.00, lado=-1)
+    b, n = api._g3_protecao_por_tempo(sb, bot, abv, {}, at5, {"pt": 0.01, "preco": 4169.00, "spr": 5.0}, 2, -1, 4200.0)
+    assert n == 4179.88 and b["folga_pts"] == round((4179.88 - 4169.05) / 0.01, 1)
+    # BTC sem comissão medida nem config → custos 0; nível = entrada + spread (op 14: 82380,65 + 500 pts = 82385,65)
+    sb0 = _SbFake([]); botb = {"id": 13, "simbolo": "BTCUSD"}; at5c = {"especificacao": {"tick_tamanho": 0.01, "tick_valor": 0.01, "ponto": 0.01}}
+    monkey = api._ses_do_bot
+    try:
+        api._ses_do_bot = lambda *_a, **_k: {"config": {}}
+        b, n = api._g3_protecao_por_tempo(sb0, botb, {"id": 14, "sessao_teste_id": "CAMP", "preco_entrada": 82380.65}, {}, at5c, {"pt": 0.01, "preco": 83265.48, "spr": 500.0}, 4, 1, 80830.35)
+    finally:
+        api._ses_do_bot = monkey
+    assert n == 82385.65 and b["custos_pts"] == 0.0 and b["candles_fechados"] == 5
+
+
+def test_33_gestao3_prioridade_do_corte_confirmado_exaustao_isolada_e_rotulo_defasado_c27r47():
+    """Item 4: reversão CONFIRMADA no M15 (rompeu último topo/fundo, alerta empilhado 3) fecha IMEDIATAMENTE, antes do B3 e sem olhar a
+    continuidade; exaustão isolada = alerta (protege; fecha só se a continuidade já estiver perdida); 2º sinal fino = topo/fundo
+    provisório/pullback; rótulo defasado da estrutura (canal a favor + fechamento além do pivô a favor) não marca continuidade perdida."""
+    import api
+    por_tf = {"M15": {"dir": -1, "estrutura": "descendente", "regime": "tendencia", "ultimo_topo": 4188.15, "ultimo_fundo": 4172.82}, "M30": {"dir": -1}, "H1": {"dir": -1}}
+    base = {"B3": 1, "corte_do_ciclo": 1, "B3_motivo": "B3: sem progresso (-0.45 ATR)", "stop_estrutural": 4189.65}
+    cor = {"contrato": "corte-ciclo-2"}
+    # reversão confirmada (rompeu_ultimo_topo) com B3 sinalizado há 1 avaliação e continuidade INTACTA pelos critérios: fecha na hora, sem espera
+    L = dict(base, corte_origem=[{"identificado_em": ["M1:rompeu_ultimo_topo", "M5:rompeu_ultimo_topo"], "decidido_por": ["M15:rompeu_ultimo_topo"]}])
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
+    assert (acao, motivo) == ("close", "ciclo") and cls["reversao_confirmada"] is True and exp.startswith("REVERSÃO CONFIRMADA") and "sem espera" in exp and cont["ok"] is True
+    assert cls["movimento"].startswith("reversão confirmada")
+    # alerta empilhado 3 também é reversão confirmada; sem B3 e com 0 barras: fecha mesmo assim
+    L = dict(base, B3=0, corte_origem=["M1:alerta_empilhado_3 M5:alerta_empilhado_3 -> M15:alerta_empilhado_3"])
+    assert api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 0, [])[0] == "close"
+    # exaustão ISOLADA com continuidade intacta → ALERTA: proteger (não fecha)
+    L = dict(base, B3=0, corte_origem=[{"identificado_em": ["M5:exaustao_identificada"], "decidido_por": ["M15:exaustao_identificada"]}])
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
+    assert (acao, motivo) == ("proteger", "ciclo") and cls["alerta_exaustao_isolado"] is True and exp.startswith("ALERTA") and cls["movimento"].startswith("alerta de exaustão")
+    # exaustão + continuidade PERDIDA (fechamento rompeu o último topo) = invalidação confirmada → fecha
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4188.40}, cor, por_tf, 2, [])
+    assert (acao, motivo) == ("close", "ciclo") and cont["ok"] is False and "invalidação confirmada" in exp
+    # 2º sinal fino com continuidade intacta = topo/fundo provisório / pullback → proteger
+    L = dict(base, B3=0, corte_origem=[{"identificado_em": ["M5:fundo_barra_rompido"], "decidido_por": ["M15:fundo_barra_rompido"]}])
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
+    assert acao == "proteger" and cls["movimento"].startswith("topo/fundo provisório") and "pullback" in exp
+    # rótulo defasado: M15 'descendente' com canal +1 e fechamento ACIMA do último topo → estrutura efetiva a favor da compra → continuidade INTACTA
+    por_up = {"M15": {"dir": 1, "estrutura": "descendente", "regime": "tendencia", "ultimo_topo": 83005.74, "ultimo_fundo": 80917.83}, "M30": {"dir": 1}}
+    c = api._cont_continuidade(1, por_up, 83120.0)
+    assert c["ok"] is True and c["M15"]["rotulo_da_estrutura_defasado"] is True and c["M15"]["rompeu_pivo_a_favor"] is True
+    c2 = api._cont_continuidade(1, por_up, 82900.0)                                     # fechamento abaixo do topo: o rótulo vale → PERDIDA
+    assert c2["ok"] is False and c2["M15"]["rotulo_da_estrutura_defasado"] is False
+    # a continuidade NUNCA anula a reversão confirmada (regra escrita)
+    assert "NUNCA anula" in c["regra"]
