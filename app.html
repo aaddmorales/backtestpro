@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.81-relatorio-complementar-c27r45';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.82-relatorio-rapido-c27r46';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8977,11 +8977,11 @@ function relAbrir(botId){
     document.head.appendChild(st);
   }
   const ant = document.getElementById('rel-ov'); if (ant) ant.remove();
-  const padrao = ({1:'hoje', 7:'7d', 30:'30d', 90:'90d'})[_lmDias] || 'hoje';
+  const padrao = '24h';                                   // C27R46: sempre as últimas 24 h por padrão
   let tzs = ['UTC']; try { tzs.unshift(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch(_){}
   ['America/Sao_Paulo', 'Europe/Helsinki', 'Europe/London', 'America/New_York'].forEach(z => { if (!tzs.includes(z)) tzs.push(z); });
   tzs = [...new Set(tzs)];
-  const op = [['sessao','Toda a sessão de ensaio'], ['hoje','Hoje (últimas 24 h)'], ['7d','7 dias'], ['30d','30 dias'], ['90d','90 dias'], ['ultima_barra','Última barra fechada'], ['personalizado','Personalizado']];
+  const op = [['24h','Últimas 24 h'], ['6h','Últimas 6 h'], ['12h','Últimas 12 h'], ['48h','Últimas 48 h'], ['3d','3 dias'], ['7d','7 dias'], ['30d','30 dias'], ['sessao','Toda a campanha (lento)'], ['ultima_barra','Última barra fechada'], ['personalizado','Personalizado']];
   const ov = document.createElement('div'); ov.id = 'rel-ov';
   ov.innerHTML = `<div id="rel-cx" role="dialog" aria-label="Relatório da BabyMachine">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h2>📄 Relatório da BabyMachine</h2>
@@ -9006,13 +9006,12 @@ function relAbrir(botId){
   const rec = document.getElementById('rel-rec');
   if (!temSes){ rec.value = 'tudo'; }      // C27R36: nada travado — o servidor resolve a campanha ativa do bot mesmo sem recorte
   else if (sesRecorte(botId) === 'anterior'){ rec.value = 'anterior'; }
-  else { rec.value = (_sesChip[botId] === 'consolidado') ? 'consolidado' : 'sessao'; document.getElementById('rel-per').value = 'sessao'; }
+  else { rec.value = (_sesChip[botId] === 'consolidado') ? 'consolidado' : 'sessao'; }      // C27R46: período fica em 24 h
   relGerar();
 }
 function relRecMudou(){
   const rec = document.getElementById('rel-rec').value, per = document.getElementById('rel-per');
-  if ((rec === 'anterior' || rec === 'tudo') && per.value === 'sessao') per.value = '7d';
-  if ((rec === 'sessao' || rec === 'consolidado')) per.value = 'sessao';
+  if ((rec === 'anterior' || rec === 'tudo') && per.value === 'sessao') per.value = '24h';   // C27R46: o recorte não força mais 'toda a sessão'
 }
 function relFechar(){ const o = document.getElementById('rel-ov'); if (o) o.remove(); }
 
@@ -9452,6 +9451,8 @@ function relRender(c){
   let h = '';
   if (!c.persistido) h += `<div class="rel-q atencao"><b>Relatório não foi gravado no servidor</b>${_clmE(c.aviso_persistencia || '')} Sem gravação não há download.</div>`;
   h += `<div class="rel-id">${_clmE(c.relatorio_id)} · sha256 do conteúdo ${_clmE(c.sha256_do_conteudo)}</div><div id="rel-arquivos"></div>`;
+  const DP = c.desempenho || {};                                                  // C27R46: tempo de geração por bloco
+  if (DP.tempos_s) h += `<div class="rel-q ${((DP.blocos_lentos || []).length) ? 'atencao' : 'ok'}"><b>Gerado em ${_clmE((DP.tempos_s || {}).total_ate_gravar_s)} s</b> · blocos: ${_clmE(Object.entries(DP.tempos_s).filter(x => typeof x[1] === 'number').map(x => x[0] + ' ' + x[1] + ' s').join(' · '))}${(DP.tempos_s.campanha_blocos) ? ' · campanha: ' + _clmE(Object.entries(DP.tempos_s.campanha_blocos).map(x => x[0] + ' ' + x[1] + ' s').join(' · ')) : ''}${(DP.blocos_lentos || []).length ? ' · <b>lentos: ' + _clmE(DP.blocos_lentos.join(', ')) + '</b>' : ''}</div>`;
   if (c.escopo_do_relatorio) h += relEscopoHtml(c.escopo_do_relatorio);      // C27R36
   if (c.campanha) h += relCampanhaHtml(c.campanha);
   h += `<div class="rel-q ${c.sessao_teste_id ? 'ok' : 'atencao'}"><b>Recorte: ${_clmE((c.recorte || {}).rotulo || 'sem recorte')}${c.escopo ? ' · ' + _clmE(c.escopo) : ''}</b>${c.sessao_teste_id ? 'sessao_teste_id ' + _clmE(c.sessao_teste_id) + ' — só registros desta sessão entram neste relatório.' : 'registros fora de sessão de ensaio.'}</div>`;

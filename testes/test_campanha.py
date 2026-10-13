@@ -1031,8 +1031,11 @@ def test_27_relatorio_complementar_fases_oportunidades_quadro_justificativa_c27r
     F = K["fases"]["fases"]; assert [f["fase"] for f in F] == [1, 2] and F[1]["fim"].startswith("em curso")
     f1 = F[0]["por_ativo"][x["sim"]]; assert ab_id in f1["operacoes_abertas_na_fase"] and f1["operacoes_que_atravessam_a_mudanca_de_versao"][0]["fase_do_fechamento"] == 2
     f2 = F[1]["por_ativo"][x["sim"]]; assert ab_id in f2["fechadas_na_fase"] and f2["resultado_liquido_usd"] == 1.8 and f1["oportunidades"]["versoes_da_selecao"] == ["sel-4"] and f1["oportunidades"]["avaliacoes"] >= 1
-    # oportunidades por barra: classes, motivo completo, contagens distintas
+    # oportunidades por barra: classes, motivo completo, contagens distintas (C27R46: vindas do RPC rel_oportunidades, sql/0018)
     O = K["oportunidades_por_barra"][x["sim"]]; CN = O["contagens"]
+    assert O["fonte"].startswith("rpc rel_oportunidades"), O["fonte"]
+    assert K["selecao_diagnostico"][x["sim"]]["fonte"].startswith("rpc rel_selecao_celulas"), K["selecao_diagnostico"][x["sim"]].get("fonte")
+    DP = j["desempenho"]; assert DP["tempos_s"]["total_ate_gravar_s"] < 90 and "campanha_blocos" in DP["tempos_s"] and "oportunidades_por_barra" in DP["tempos_s"]["campanha_blocos"]
     assert CN["avaliacoes_barras"] == 1 and CN["candidatos_linhas"] == 4 and CN["sinais_distintos"] == 4 and CN["elegiveis_distintos"] == 2 and CN["escolhidos_distintos"] == 1 and CN["operacoes_abertas_no_periodo"] == 1
     cl = {c["uid"]: c for c in O["por_barra"][0]["candidatos"]}
     assert cl["card10_donchian20|M15|x|-1"]["classe"] == "executado" and str(ab_id) in cl["card10_donchian20|M15|x|-1"]["detalhe_da_classe"]
