@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.84-c27r48-limites-estrutura-degraus';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.85-c27r49-fase-do-movimento';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9374,7 +9374,7 @@ function relCampanhaHtml(K){
       s += _relTab(['Barra fechou', 'Fase', 'Sel.', 'Candidato', 'Formação / confirmação / vencimento / idade', 'Sinal / elegib. / PF / escolha', 'Classe', 'Regra aplicada e valores'], linhas);
       const bss = (x.por_barra || []).filter(b => (b.sem_sinal || []).length || b.movimento_em_formacao);                      // C27R47 (sel-5)
       if (bss.length) s += `<h4>Movimento em formação, reavaliações e células SEM SINAL por barra (sel-5)</h4>` + _relTab(['Barra fechou', 'Movimento em formação (M15 + M5)', 'Reavaliações na barra', 'Sem sinal (card · TF · família · compat.)'],
-        bss.map(b => [_clmE(b.barra_m15_fechou), b.movimento_em_formacao ? `${_clmE(b.movimento_em_formacao.rotulo)}<br><span class="rel-sit">${_relJ(b.movimento_em_formacao.compatibilidade_por_familia)}</span>` : '—', `${_clmE(b.reavaliacoes_dentro_da_barra ?? 0)}${b.primeira_avaliacao_utc ? ' (1ª ' + _clmE(String(b.primeira_avaliacao_utc).slice(11, 19)) + ')' : ''}`,
+        bss.map(b => [_clmE(b.barra_m15_fechou), b.movimento_em_formacao ? `${_clmE(b.movimento_em_formacao.rotulo)}<br><span class="rel-sit">${_relJ(b.movimento_em_formacao.compatibilidade_por_familia)}</span>${b.movimento_em_formacao.fase ? `<br><span class="rel-sit">fase: ${_clmE(b.movimento_em_formacao.fase)}</span>` : ''}` : '—', `${_clmE(b.reavaliacoes_dentro_da_barra ?? 0)}${b.primeira_avaliacao_utc ? ' (1ª ' + _clmE(String(b.primeira_avaliacao_utc).slice(11, 19)) + ')' : ''}`,
           (b.sem_sinal || []).length ? _clmE((b.sem_sinal || []).map(z => `${z.estrategia} ${z.timeframe} ${z.familia || ''}`).join(' · ')) + `<br><span class="rel-sit">${_clmE((b.sem_sinal[0] || {}).motivo)}</span>` : '—'])); }
     h += _relSec('3a. Oportunidades e recusas por barra (período do relatório; só o gravado ao vivo na barra)', s); }
   const PL = K.pos_limite_diario || {};                                                                    // C27R48 item 2

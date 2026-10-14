@@ -1296,7 +1296,7 @@ def test_35_sel5_alertas_de_estrutura_e_portao_10_op12_real_c27r48(amb):
                    "M30": {"dir": 1, "estrutura": "mista", "regime": "compressao", "localizacao": "na_resistencia", "momentum": "enfraquecendo"}}
     mov = api._sel_movimento_em_formacao(por_tf_op12)
     al = api._sel_alertas_de_estrutura(1, mov)
-    assert [a["tf"] for a in al] == ["M1", "M30", "M15", "M5"] and any("aponta contra" in a["leitura"] for a in al)
+    assert [a["tf"] for a in al] == ["M1", "M15", "M30", "M5"] and any("aponta contra" in a["leitura"] for a in al)
     comp = api._sel_compatibilidade({"estrategia": {"card": "card4_canal_ema20"}, "lado_num": 1}, mov)
     assert comp["familia"] == "continuação" and comp["grau"] == 0 and "≥ 2 tempos" in comp["rotulo"] and len(comp["alertas_de_estrutura"]) == 4
     comp_r = api._sel_compatibilidade({"estrategia": {"card": "card7_rsi"}, "lado_num": 1}, mov)
@@ -1378,3 +1378,84 @@ def test_37_linha_do_tempo_por_operacao_com_fonte_e_intervencao_manual_c27r48():
     assert len(man) == 1 and man[0]["comando_id"] == 82 and man[0]["sl_pedido"] == 4169.15
     assert sum(1 for x in LT["itens"] if x.get("intervencao_manual")) == 3                         # comando, execução e gestão da mesma intervenção
     assert LT["itens"] == sorted(LT["itens"], key=lambda x: x["ts_utc"])
+
+
+def test_38_pontos_marcados_gold_1214_classificacao_e_portao_10_c27r49():
+    """C27R49 item 1/3: os pontos marcados pelo dono (1–7, 9–12; o 8 não está no gráfico) têm classe, candle UTC/Kyiv, pivô, eventos, leituras,
+    estratégias e decisão real; a conferência do portão 10 (estrutura na entrada, por tempo) com as leituras REAIS de entrada veta as ops 12/51/52/53
+    (compra na resistência/topo; venda no suporte/fundo) e as vendas de 18:00 do ponto 12 (no fundo), mas NÃO veta a op 48 (1 alerta) nem a reversão
+    da op 50 (card de reversão: alertas a favor). Regras de fase: quebra confirmada exige fechamento; topo/fundo provisório admite intrabar e não é entrada."""
+    import api
+    from testes import reproducao_gold_pontos_1214 as R
+    rep = R.reproduzir(api)
+    assert [p["ponto"] for p in rep["pontos"]] == [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]
+    classes = rep["classes"]
+    for p in rep["pontos"]:
+        assert p["candle_utc"] and p["kyiv"] and len(p["ohlc"]) == 4 and p["pivo"] and p["eventos"] and p["leituras"] and p["estrategias"] and p["fundamento"]
+        assert any(c in p["classificacao"] for c in classes), p["ponto"]
+    r = rep["resumo"]
+    assert r["nao_detectou"] == [1, 10] and 5 in r["interpretou_incorretamente"] and 4 in r["reagiu_tarde"] and r["executou_conforme_contrato"] == [6, 7, 9]
+    c = rep["conferencia_portao_10"]
+    veta = {k.split()[0] for k, v in c.items() if v["portao_10"] == "VETA"}
+    assert veta == {"op12", "op51", "op52", "op53", "ponto12"}
+    assert c["op48 04:30:45 13/10 compra"]["grau"] == 1 and c["op50 22:15:21 13/10 venda BTC"]["familia"] == "reversão"
+    assert c["op12 22:30:27 12/10 compra"]["alertas"] == ["M1:na_resistencia", "M15:topo_da_faixa", "M30:na_resistencia", "M5:E1/E2_baixa(persistente)"]
+    mov = api._sel_movimento_em_formacao(R.LEITURAS_ENTRADA["op52 01:00:24 14/10 venda"])
+    rf = mov["regras_da_fase"]
+    assert mov["fase"].startswith("topo/fundo PROVISÓRIO") and "sacudida" in rf["admite_intrabar"] and "N=2" in rf["pivo_confirmado"] and any("quebra" in x for x in rf["exige_fechamento"])
+    mov = api._sel_movimento_em_formacao(R.LEITURAS_ENTRADA["op12 22:30:27 12/10 compra"])
+    assert mov["fase"].startswith("quebra confirmada") and rf["exige_fechamento"]
+
+
+def test_39_sequencias_topo_quebra_queda_pullback_retomada_protecao_invalidacao_c27r49():
+    """C27R49 item 2 + item 5: a sequência topo → quebra da mínima relevante → queda → pullback → retomada → proteção → invalidação (e o espelho)
+    é lida como UM movimento (lado constante nas fases); cada fase alimenta a seleção (compatibilidade por família) e a gestão (gestao-3):
+    falso rompimento (sacudida) = alerta, não entrada e não saída; pullback que continua = manter/proteger; reversão que invalida (rompeu último
+    topo/fundo = degrau 3) fecha mesmo com os menores a favor. Nada aqui é ajuste ao gráfico: são as regras de fase e de degrau já existentes."""
+    import api
+    def ptf(dir15, est, reg, loc, ev15, d1=None, d5=None, ev5=None, loc1="meio_da_faixa", loc5="meio_da_faixa"):
+        return {"M1": {"dir": d1 if d1 is not None else dir15, "localizacao": loc1}, "M5": {"dir": d5 if d5 is not None else dir15, "localizacao": loc5, "eventos": ev5 or []},
+                "M15": {"dir": dir15, "estrutura": est, "regime": reg, "localizacao": loc, "eventos": ev15, "ultimo_topo": 4214.23, "ultimo_fundo": 4201.59}, "M30": {"dir": dir15, "regime": "tendencia", "momentum": "estavel", "localizacao": "meio_da_faixa"}}
+    seq = [("topo (exaustão)", ptf(1, "ascendente", "tendencia", "topo_da_faixa", ["exaustao_identificada"], d1=0, loc1="na_resistencia"), "topo/fundo PROVISÓRIO"),
+           ("quebra da mínima relevante", ptf(-1, "descendente", "tendencia", "meio_da_faixa", ["quebra_estrutura_baixa", "rompimento_confirmado(por_barra)"]), "quebra confirmada"),
+           ("pullback", ptf(-1, "descendente", "tendencia", "meio_da_faixa", ["pausa_sem_direcao"], d1=1, d5=1), "pullback"),
+           ("retomada", ptf(-1, "descendente", "tendencia", "fundo_da_faixa", ["rompimento_confirmado(por_barra)"]), "retomada/continuação"),
+           ("invalidação", ptf(1, "descendente", "tendencia", "meio_da_faixa", ["rompeu_ultimo_topo", "quebra_estrutura_alta"]), "invalidação")]
+    fases = [api._sel_movimento_em_formacao(p)["fase"] for _, p, _ in seq]
+    for (nome, _, esperado), f in zip(seq, fases):
+        assert f.startswith(esperado), (nome, f)
+    movs = [api._sel_movimento_em_formacao(p) for _, p, _ in seq]
+    assert all(m["regras_da_fase"]["pivo_confirmado"].startswith("último topo/fundo do mapa de pivôs N=2") for m in movs)
+    # fase → famílias compatíveis (alimentam a seleção): no topo provisório uma VENDA de continuação não é entrada; a reversão é;
+    # na quebra confirmada rompimento/continuação a favor; no pullback 'pullback/retomada'; na invalidação reversão/rompimento
+    comp = lambda i, card, lado: api._sel_compatibilidade({"estrategia": {"card": card}, "lado_num": lado}, movs[i])["grau"]
+    assert comp(0, "card4_canal_ema20", -1) <= 1 and comp(0, "card7_rsi", -1) == 2                        # topo provisório: só reversão
+    assert comp(1, "card10_donchian20", -1) == 2 and comp(1, "card10_donchian20", 1) == 0                    # quebra: rompimento a favor, contra = 0
+    assert comp(2, "card3_segunda_entrada", -1) == 2                                                        # pullback: 2ª entrada/retomada
+    assert comp(3, "card4_canal_ema20", -1) == 1                                                             # retomada NO fundo da faixa: 1 alerta (M15) rebaixa a 'neutra'
+    m_ret = api._sel_movimento_em_formacao(ptf(-1, "descendente", "tendencia", "meio_da_faixa", ["rompimento_confirmado(por_barra)"]))
+    assert api._sel_compatibilidade({"estrategia": {"card": "card4_canal_ema20"}, "lado_num": -1}, m_ret)["grau"] == 2       # retomada no meio: compatível
+    assert comp(4, "card7_rsi", 1) == 2 and comp(4, "card4_canal_ema20", -1) == 0                           # invalidação: reversão; continuação do lado antigo = 0
+    # gestão de uma VENDA aberta na quebra (lado −1) ao longo da mesma sequência:
+    cor = {"contrato": "corte-ciclo-2"}
+    # falso rompimento contra (sacudida_fundo = alerta de exaustão isolado) → proteger, não fechar
+    Lf = {"B3": 0, "corte_do_ciclo": 1, "corte_origem": ["M1:exaustao_identificada -> M15:exaustao_identificada"]}
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, Lf, {"B5": 0, "fechamento": 4190.0}, cor, seq[3][1], 3, [])
+    assert cls["degrau"] == 1 and acao == "proteger" and "ALERTA" in exp.upper()
+    # pullback que continua (M1/M5 a favor da alta, M15 ainda descendente, sem corte) → manter
+    Lp = {"B3": 0, "corte_do_ciclo": 0, "corte_origem": []}
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, Lp, {"B5": 0, "fechamento": 4192.0}, None, seq[2][1], 2, [])
+    assert acao is None and cont["ok"] is True and exp.startswith("sem B5/B3/corte")
+    # reversão que invalida (rompeu último topo = degrau 3) → fecha, mesmo com M1/M5 ainda −1
+    Li = {"B3": 0, "corte_do_ciclo": 1, "corte_origem": [{"identificado_em": ["M1:rompeu_ultimo_topo"], "decidido_por": ["M15:rompeu_ultimo_topo"]}]}
+    p_inv = dict(seq[4][1]); p_inv["M1"] = {"dir": -1}; p_inv["M5"] = {"dir": -1}
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, Li, {"B5": 0, "fechamento": 4200.0}, cor, p_inv, 4, [])
+    assert cls["degrau"] == 3 and (acao, motivo) == ("close", "ciclo") and exp.startswith("INVALIDAÇÃO ESTRUTURAL CONFIRMADA")
+    # espelho (fundo → quebra da máxima → subida → pullback → retomada → invalidação)
+    esp = [ptf(-1, "descendente", "tendencia", "fundo_da_faixa", ["exaustao_identificada"], d1=0, loc1="no_suporte"),
+           ptf(1, "ascendente", "tendencia", "meio_da_faixa", ["quebra_estrutura_alta", "rompimento_confirmado(por_barra)"]),
+           ptf(1, "ascendente", "tendencia", "meio_da_faixa", ["pausa_sem_direcao"], d1=-1, d5=-1),
+           ptf(1, "ascendente", "tendencia", "topo_da_faixa", ["rompimento_confirmado(por_barra)"]),
+           ptf(-1, "ascendente", "tendencia", "meio_da_faixa", ["rompeu_ultimo_fundo", "quebra_estrutura_baixa"])]
+    fe = [api._sel_movimento_em_formacao(p)["fase"] for p in esp]
+    assert [f.split(" ")[0] for f in fe] == [f.split(" ")[0] for f in fases]
