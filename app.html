@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.85-c27r49-fase-do-movimento';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.86-c27r49-progresso-do-relatorio';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -8970,6 +8970,11 @@ function relAbrir(botId){
 .rel-sec{border:1px solid var(--border,#263241);border-radius:8px;margin:8px 0} .rel-sec>summary{cursor:pointer;padding:8px 11px;font-weight:700;font-size:13px} .rel-corpo{padding:2px 11px 11px}
 .rel-tw{overflow:auto;max-width:100%} .rel-t{border-collapse:collapse;width:100%;font-size:11.5px;margin:5px 0} .rel-t th,.rel-t td{border:1px solid var(--border,#263241);padding:4px 6px;text-align:left;vertical-align:top}
 .rel-t th{background:rgba(255,255,255,.05);white-space:nowrap} .rel-sit{color:var(--muted,#8a97a8);font-size:10.5px} .rel-vazio{color:var(--muted,#8a97a8);padding:4px 0}
+.rel-prog{display:flex;align-items:center;gap:12px;border:1px solid var(--green,#00d084);border-radius:8px;padding:10px 14px;margin:6px 0;background:rgba(0,208,132,.07)}
+.rel-prog .rel-spin{width:22px;height:22px;flex:0 0 22px;border:3px solid rgba(0,208,132,.25);border-top-color:var(--green,#00d084);border-radius:50%;animation:fabSpin .9s linear infinite}
+.rel-prog b{display:block;font-size:13px} .rel-prog .rel-prog-t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--green,#00d084);font-size:15px;min-width:64px;text-align:right}
+.rel-prog .rel-prog-e{color:var(--muted,#8a97a8);font-size:11px;margin-top:2px}
+.rel-b[disabled]{opacity:.55;cursor:wait}
 .rel-frase{border:1px dashed var(--amber,#ffb830);border-radius:6px;padding:6px 10px;margin:6px 0;font-weight:700}
 .rel-id{font-family:var(--mono,monospace);font-size:11px;color:var(--muted,#8a97a8);word-break:break-all}
 .lm-rel-btn{background:transparent;color:var(--text,#e8ecf1);border:1px solid var(--border,#263241);border-radius:8px;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}
@@ -9434,8 +9439,21 @@ async function relGerar(){
     if (!a || !b){ out.innerHTML = '<div class="rel-q atencao">Preencha o início e o fim do período personalizado.</div>'; return; }
     corpo.de = new Date(a).toISOString(); corpo.ate = new Date(b).toISOString();
   }
-  bt.disabled = true; ['rel-pdf', 'rel-json', 'rel-zip'].forEach(i => { const e = document.getElementById(i); if (e) e.disabled = true; });
-  out.innerHTML = '<div class="rel-vazio">Lendo os registros…</div>';
+  if (_relEmCurso) return;                                                   // v10.86: um clique por vez (antes, o 2º clique gerava um 2º relatório sem aviso)
+  _relEmCurso = true;
+  const bts = ['rel-gerar', 'rel-gerar-pdf', 'rel-pdf', 'rel-json', 'rel-zip'].map(i => document.getElementById(i)).filter(Boolean);
+  bts.forEach(e => e.disabled = true); const txtBt = bt.textContent; bt.textContent = 'Gerando…';
+  const t0 = Date.now(), per0 = (document.getElementById('rel-per').selectedOptions[0] || {}).textContent || per;
+  out.innerHTML = `<div class="rel-prog" id="rel-prog" role="status" aria-live="polite"><div class="rel-spin"></div><div style="flex:1"><b>Gerando o relatório — ${_clmE(per0)}</b><div class="rel-prog-e" id="rel-prog-e">Pedido enviado à API; lendo os registros gravados (decisões, candidatos, gestão, comandos)…</div></div><div class="rel-prog-t" id="rel-prog-t">0 s</div></div>`;
+  try{ out.scrollIntoView({behavior: 'smooth', block: 'start'}); }catch(_){ }
+  const tick = setInterval(() => {
+    const s = Math.round((Date.now() - t0) / 1000), et = document.getElementById('rel-prog-t'), ee = document.getElementById('rel-prog-e');
+    if (!et){ clearInterval(tick); return; }
+    et.textContent = (s >= 60 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : s + ' s'); bt.textContent = 'Gerando… ' + et.textContent;
+    if (ee){ ee.textContent = s < 15 ? 'Pedido enviado à API; lendo os registros gravados (decisões, candidatos, gestão, comandos)…'
+                                     : s < 60 ? 'Montando os blocos (oportunidades, seletor, cronologia, operações)… períodos maiores demoram mais.'
+                                     : 'Ainda gerando — a API em uso monta o relatório lendo registro a registro (pode passar de 3 min em 24 h / 7 d). Não clique de novo: o pedido continua no servidor e o resultado aparece aqui.'; }
+  }, 1000);
   try{
     const r = await fetch(API + '/learning/relatorio/gerar', {method:'POST', headers: await _authHeaders(), body: JSON.stringify(corpo)});
     const d = await r.json();
@@ -9446,9 +9464,10 @@ async function relGerar(){
     const auto = (document.getElementById('rel-auto') || {}).value || '';
     if (auto && d.persistido){ for (const f of (auto === 'ambos' ? ['pdf', 'json'] : (auto === 'tudo' ? ['pdf', 'json', 'zip'] : [auto]))) await relBaixar(f); }
     else if (auto && !d.persistido){ out.insertAdjacentHTML('afterbegin', '<div class="rel-q atencao"><b>Arquivo não gerado:</b> o relatório não foi gravado no servidor.</div>'); }
-  }catch(e){ out.innerHTML = '<div class="rel-q falha"><b>BT-R02 · Falha de rede ao gerar o relatório.</b></div>'; }
-  finally{ bt.disabled = false; }
+  }catch(e){ out.innerHTML = `<div class="rel-q falha"><b>BT-R02 · Falha de rede ao gerar o relatório (após ${Math.round((Date.now() - t0) / 1000)} s).</b>Se demorou mais de ~5 min, o proxy pode ter cortado a resposta antes do fim; tente um período menor (6 h / 12 h).</div>`; }
+  finally{ clearInterval(tick); _relEmCurso = false; bt.textContent = txtBt; bts.forEach(e => { if (e.id === 'rel-gerar' || e.id === 'rel-gerar-pdf') e.disabled = false; }); }
 }
+let _relEmCurso = false;
 async function relGerarEBaixar(fmt){
   const sel = document.getElementById('rel-auto'); if (sel) sel.value = fmt;
   await relGerar();
