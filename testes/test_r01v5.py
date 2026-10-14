@@ -385,3 +385,18 @@ def test_7_h1_e_contexto_na_condicao_6_e_m30_continua_regra_do_card(api, amb):
     det, _, _ = _det(b, [it], contra, "bloqueada", preco="4100.20")
     r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
     assert c6(r)["ok"] is False
+
+
+def test_8_selo_informativo_tambem_na_condicao_9_da_r01v5_c27r49(api, amb):
+    """C27R49 (8.20): com o selo informativo (sel-5), a condição 9 da r01v5 não veta uma célula SEM selo (card8_bollinger H1 e card7_rsi M30
+    foram recusados ao vivo em 14/10 só por ela, enquanto o portão 5 do seletor já não vetava — contradição corrigida)."""
+    b = _bot(amb); sb = api._sb_admin()
+    bot = sb.table("conector_bots").select("*").eq("id", b["id"]).execute().data[0]
+    barra = T._barra_m15(); agora = barra + timedelta(seconds=30)
+    favor = {"M1": 1, "M5": 1, "M15": 1, "M30": 1, "H1": 1, "H4": 1, "D1": 1}
+    it = _rt("card8_bollinger", "H1", 1, barra, preco=4100.0, stop=4090.0)
+    det, _, _ = _det(b, [it], favor, "autorizada", preco="4100.20")
+    r = api._r05_avaliar(sb, bot, it["uid"], det=det, escolha_uid=it["uid"], agora=agora)
+    c9 = next(c for c in r["condicoes"] if c["condicao"].startswith("9."))
+    assert api._SEL_SELO_BLOQUEIA is False and c9["ok"] is True and c9["detalhe"].startswith("INFORMATIVO (sel-5)") and "não veta" in c9["detalhe"]
+    assert not any(c["ok"] is False and c["condicao"].startswith("9.") for c in r["condicoes"])
