@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.86-c27r49-progresso-do-relatorio';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.87-c27r50-autoridade-de-execucao';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9516,6 +9516,7 @@ function relRender(c){
     ['Bot', `${_clmE((I.bot || {}).nome)} <span class="rel-sit">id ${_clmE((I.bot || {}).id)}</span>`], ['Ativo / magic', `${_clmE(I.ativo)} / ${_clmE(I.magic)}`],
     ['Ambiente', `${_clmE(A.servico)} · conta ${_relN(A.conta)} · demo conferida pelo motor: ${A.conta_demo_conferida_pelo_motor === true ? 'sim' : (A.conta_demo_conferida_pelo_motor === false ? 'NÃO' : '—')}`],
     ['Modo operacional', _clmE(I.modo_operacional)], ['Estratégia do bot', _relN(I.estrategia)],
+    ['Autoridade de execução (C27R50)', (AE => AE && typeof AE === 'object' ? (AE.em_sessao ? `<b>${AE.executa ? 'EXECUTA' : 'NÃO EXECUTA'}</b> · sessão ${_clmE(AE.sessao_teste_id)} (${_clmE(AE.estado)}; bots ${_clmE(JSON.stringify(AE.bots_da_sessao))}; aberturas_habilitadas ${_clmE(AE.aberturas_habilitadas)}; chave r01v5 ${_clmE(((AE.chaves || {}).r01v5 || {}).emissao_habilitada)})<br><span class="rel-sit">${_clmE(AE.quem_abre)} · fecha: ${_clmE(AE.quem_fecha)}<br>bloqueios: ${_relJ(AE.bloqueios_desativados_nesta_sessao)} · modo legado '${_clmE(AE.modo_legado_do_detector)}' ${_clmE(AE.nota_modo_legado)}</span>` : `<b style="color:var(--amber,#ffb830)">FORA DE SESSÃO — NÃO EXECUTA</b><br><span class="rel-sit">${_clmE(AE.situacao)}<br>correção: ${_clmE(AE.correcao)}</span>`) : '—')(I.autoridade_de_execucao)],
     ['Período', `${_clmE(P.rotulo)} · ${_clmE(P.de_utc)} → ${_clmE(P.ate_utc)} <span class="rel-sit">UTC</span>`],
     [`No fuso ${F.nome || ''}`, `${_clmE(P.de_local)} → ${_clmE(P.ate_local)} <span class="rel-sit">UTC${_clmE(F.diferenca_para_utc)}</span>`],
     ['Gerado em (corte)', `${_clmE(c.gerado_utc)} <span class="rel-sit">UTC</span> · ${_clmE(c.gerado_local)} <span class="rel-sit">no fuso</span>`],
