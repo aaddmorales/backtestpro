@@ -112,7 +112,7 @@ def test_1_sombra_d1_contra_e_contexto_e_a_r01v4_continua_vetando(amb):
     det, barra, at4 = _det(b, [it], ALTA_CONTRA_VENDA, "bloqueada")
     assert T._snap(b["tok"], det)[0] == 200
     av = _sel(b, barra)
-    assert av and av["versao"] == "sel-5" and av["contratos"]["confirmacao_em_tempo_real"] is True
+    assert av and av["versao"] == "sel-6" and av["contratos"]["confirmacao_em_tempo_real"] is True
     c = av["grupos"]["M30"]["candidatos"][0]
     assert c["elegibilidade"] == "elegivel" and av["escolha"]["uid"] == it["uid"]
     assert c["frescor"]["situacao"] == "válida" and c["frescor"]["contrato_da_confirmacao"] == "conf-rt-1"

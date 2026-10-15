@@ -929,7 +929,7 @@ def test_25_sel4_portao8_proporcional_ao_risco_c27r44():
     """C27R44 (sel-4): o portão 8 tolera max(DESVIO_MAX do ativo, 10% da distância entrada→stop). Gold 12/10 05:30 UTC: card2 M15 venda
     entrada 4184,63, stop ~4197,46 (risco 1283 pts), preço 4184,19 (44 pts) → passa (sel-3 recusava com limite 30); 358 pts (04:15) segue recusado."""
     import api
-    assert api.SEL_VERSAO == "sel-5" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
+    assert api.SEL_VERSAO == "sel-6" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
     lim = max(api._SEL_DESVIO_MAX["XAUUSD"], 1283 * api._SEL_DESVIO_FRAC_RISCO)
     assert lim == 128.3 and 44 <= lim and 54 <= lim and 358 > lim and 162 > lim
 
@@ -1103,15 +1103,17 @@ def test_29_sel5_selo_informativo_compatibilidade_e_sem_sinal_c27r47(amb):
     """Item 1: o selo/PF deixa de vetar (portão 5 informativo); a ordenação começa pela compatibilidade com o movimento em formação;
     cada célula do catálogo SEM candidato é gravada como 'sem sinal' com critério e valores."""
     import api
-    assert api.SEL_VERSAO == "sel-5" and api._SEL_SELO_BLOQUEIA is False and api.SEL_CONTRATO["id"] == "sel-5"
+    assert api.SEL_VERSAO == "sel-6" and api._SEL_SELO_BLOQUEIA is False and api.SEL_CONTRATO["id"] == "sel-6"
     # card7_rsi M15 (PF 1,003, 2ª metade 0,81 → SEM selo) e card2 M15 (COM selo, PF 1,938): os dois elegíveis; o movimento decide a ordem
     av, *_ = S._av(api, amb, [S._cand("card7_rsi", "M15", 1), S._cand("card2_rompimento_caixa", "M15", 1)], veredito="autorizada")
     por = {c["estrategia"]["card"]: c for c in S._todos(av)}
     p5 = next(p for p in por["card7_rsi"]["portoes"] if p["portao"].startswith("5."))
-    assert por["card7_rsi"]["elegibilidade"] == "elegivel" and p5["ok"] is True and "INFORMATIVO" in p5["detalhe"] and "selo NÃO" in p5["detalhe"]
+    assert p5["ok"] is True and "INFORMATIVO" in p5["detalhe"] and "selo NÃO" in p5["detalhe"]          # o selo continua só informando
+    # sel-6 (C27R53): reversão de compra com o M15 em tendência de alta e sem 3º sinal → portão 11 (constituição §5.4/§5.5)
+    assert por["card7_rsi"]["elegibilidade"] == "vetada" and por["card7_rsi"]["primeiro_impedimento"].startswith("11.")
     assert por["card7_rsi"]["estudo"]["selo_da_lista"] is False                     # a métrica continua registrada (informação)
     assert por["card7_rsi"]["compatibilidade"]["familia"] == "reversão" and por["card2_rompimento_caixa"]["compatibilidade"]["familia"] == "rompimento"
-    assert av["movimento_em_formacao"]["contrato"] == "sel-5" and "compatibilidade_por_familia" in av["movimento_em_formacao"]
+    assert av["movimento_em_formacao"]["contrato"] == "sel-6" and "compatibilidade_por_familia" in av["movimento_em_formacao"]
     # tendência em curso (M15 canal +1, regime tendência): rompimento 2 × reversão 0 → card2 escolhido mesmo com PF menor sendo o outro
     assert av["escolha"]["card"] == "card2_rompimento_caixa" and av["escolha"]["compatibilidade"]["grau"] >= por["card7_rsi"]["compatibilidade"]["grau"]
     # 'sem sinal': células do catálogo sem candidato nesta barra, por TF, com critério/valores/motivo
@@ -1320,7 +1322,7 @@ def test_35_sel5_alertas_de_estrutura_e_portao_10_op12_real_c27r48(amb):
     p10 = next(p for p in por["card4_canal_ema20"]["portoes"] if p["portao"].startswith("10."))
     assert p10["ok"] is False and "VETA" in p10["detalhe"] and por["card4_canal_ema20"]["elegibilidade"] == "vetada" and por["card4_canal_ema20"]["primeiro_impedimento"].startswith("10.")
     p10r = next(p for p in por["card7_rsi"]["portoes"] if p["portao"].startswith("10."))
-    assert p10r["ok"] is True and "INFORMATIVO" in p10r["detalhe"] and por["card7_rsi"]["elegibilidade"] == "elegivel"
+    assert p10r["ok"] is False and "VETA" in p10r["detalhe"] and por["card7_rsi"]["elegibilidade"] == "vetada"      # sel-6 (C27R53): sem isenção — compra de reversão no topo da faixa/na resistência não é reversão no extremo
     # BTC 01:30 UTC de 13/10: M15 lateral (dir 0), sem alertas → card7 M30 reversão compatível, portão 10 aberto
     from reproducao_btc_1310 import LEITURAS, por_tf_de
     mov_btc = api._sel_movimento_em_formacao(por_tf_de(next(x for x in LEITURAS if x[1] == "01:30")))

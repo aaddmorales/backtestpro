@@ -112,14 +112,14 @@ def test_3_nenhuma_oportunidade_e_pontuacao_nao_compensa_portao(api, amb):
         _cand("card12_engolfo", "M30", 1, ent=4050.0, stop=4040.0),         # preço a 5050 pts da entrada
         _cand("card11_sr_dia_anterior", "M15", 1, estado="aguardando")])
     imp = {c["uid"].split("|")[0] + c["timeframe"]: (c["elegibilidade"], (c["primeiro_impedimento"] or "")[:2]) for c in _todos(av)}
-    assert imp["card7_rsiM15"] == ("elegivel", "")           # sel-5 (C27R47): portão 5 (selo) é informativo — não veta
+    assert imp["card7_rsiM15"] == ("vetada", "11")           # sel-6 (C27R53): reversão sem o 3º sinal no M15 (constituição §5.4/§5.5); o portão 5 (selo) segue informativo
     assert any(p["portao"].startswith("5.") and p["ok"] is True and "INFORMATIVO" in p["detalhe"] for c in _todos(av) if c["uid"].startswith("card7_rsi") for p in c["portoes"])
     assert imp["card2_rompimento_caixaM15"] == ("vetada", "3.")
     assert imp["card10_donchian20M15"] == ("vetada", "6.")
     assert imp["card2_rompimento_caixaM30"] == ("vetada", "7.")
     assert imp["card12_engolfoM30"] == ("vetada", "8.")
     assert imp["card11_sr_dia_anteriorM15"] == ("aguardando", "2.")
-    assert av["escolha"]["card"] == "card7_rsi"                   # sel-5: a célula sem selo é a única elegível e é escolhida (selo só informa)
+    assert av["escolha"] is None                                  # sel-6 (C27R53): a única que passava (reversão sem 3º sinal) é vetada pelo portão 11 → nenhuma elegível
 
 
 def test_4_dado_vencido_ou_desencontrado_vira_sem_dados(api, amb):
