@@ -676,7 +676,7 @@ def test_17_stop_alterado_fora_origem_bloqueio_e_relatorio(amb, camp):
     assert "BTvTrailingBarra" in CL["origem"]["inferida"] and CL["origem"]["confirmada"] is False and "Journal" in CL["origem"]["como_confirmar"]
     assert CL["conformidade_com_o_desenho"]["conforme"] is False and "trailing_do_ea" in CL["conformidade_com_o_desenho"]["ver"]
     assert any("NOVAS ENTRADAS BLOQUEADAS" in p_ for p_ in K["resumo_executivo"]["pendencias_e_inconsistencias"])
-    assert K["resumo_executivo"]["bloqueios_efetivos"]["bots_bloqueados"][0]["base_do_motivo"].startswith("hipótese explícita")   # C27R38
+    assert K["resumo_executivo"]["bloqueios_efetivos"]["bots_bloqueados"][0]["base_do_motivo"].startswith("assinatura do trailing")   # C27R38 → C27R54 (EA 7.82 informa tbar)
     assert "bloquead" in j["sessao_teste"]["sessao"]["novas_aberturas"].lower() and "por bot" in j["sessao_teste"]["sessao"]["novas_aberturas"] and str(x["id"]) in j["sessao_teste"]["sessao"]["bloqueios_por_bot"]   # C27R40
     BQ = K["resumo_executivo"]["limites_em_uso"]["bloqueios_por_bot"]; assert not BQ["nenhum"] and any(b["bot_id"] == x["id"] and b["abertura_ref"] == ab_id and b["desde_utc"] for b in BQ["bots_bloqueados"])   # C27R37
     assert "INFERIDA" in SP["conflito"] and "comprovad" not in SP["conflito"] and ext[0]["origem"]["grau"].startswith("inferida") and ext[0]["origem"]["confirmada"] is False
@@ -707,8 +707,8 @@ def test_18_consolidacao_das_ordens_trailing_do_ea_e_aud2_gravada(amb, camp):
     assert "ORIGEM" in TE["determinacao"]["origem_x_conformidade"] and "InpBTTrailingBarra" in TE["determinacao"]["correcao"] and "operacoes" in TE["exposicao_na_campanha"]
     CS = K["consolidacao_das_ordens"]; assert CS["versao"] == "cons-1" and len(CS["linhas"]) >= 12
     for r in CS["linhas"]:
-        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35", "C27R38", "C27R40", "C27R41")
-        assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência"), r
+        assert set(r) == {"ordem", "requisito", "componente_existente", "implementacao_entregue", "evidencia_real", "estado", "pendencia"} and r["ordem"] in ("C27R31", "C27R32", "C27R33", "C27R34", "C27R35", "C27R38", "C27R40", "C27R41", "C27R54")
+        assert str(r["estado"]).split(" ")[0] in ("verificado", "não", "divergência", "comprovado", "corrigido", "pendente"), r
     aud = next(r for r in CS["linhas"] if r["requisito"].startswith("aud-2"))
     assert aud["estado"] == "verificado" and aud["evidencia_real"]["colunas_presentes"] is True and aud["evidencia_real"]["ultima_leitura_com_estrutura_utc"]
     assert sum(CS["totais"].values()) == len(CS["linhas"]) and "agora" in CS["implantacoes"] and CS["implantacoes"]["agora"].get("api", "").startswith("8.")
@@ -903,7 +903,8 @@ def test_24_gestao2_continuidade_op10_e_op8_reais_c27r44():
     cont = api._cont_continuidade(-1, por_tf, 4177.18)
     assert cont["ok"] is True and cont["M15"]["pivo_contra_intacto"] is True and cont["M30"]["nao_contra"] is True
     acao, motivo, c, k, exp = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 2, [{"acao": "mover_sl", "leitura": {"B3": 0}}, {"acao": "manter", "leitura": {"B3": 0}}])
-    assert acao == "proteger" and motivo == "B3" and "INTACTA" in exp and ("pausa" in exp or "pullback" in exp)
+    # C27R54 (gestao-4): o 2º sinal fino com continuidade exige proteção EFETIVA (motivo 'ciclo'), antes da espera do B3
+    assert acao == "proteger" and motivo == "ciclo" and c["ok"] and k["estado"] == "necessidade de proteção" and "INTACTA" in exp and ("pausa" in exp or "pullback" in exp)
     # avaliação seguinte: B3 continua, continuidade intacta → espera esgotada → fecha
     acao2, motivo2, _c, _k, exp2 = api._gestao2_decidir(-1, L, g, {"contrato": "corte-ciclo-2"}, por_tf, 3, [{"acao": "manter(protegido)", "protegido_por": "B3", "barras_de_posicao": 2, "leitura": {"B3": 1}}])
     assert (acao2, motivo2) == ("close", "B3") and "limite de espera" in exp2
@@ -955,7 +956,8 @@ def test_26_reproducao_cronologica_gold_1210_c27r44():
     assert o["saida_barra_utc"] == "10:15" and o["resultado_aprox_usd"] < -1.69
     # venda hipotética 04:00: com a gestao-3 (C27R48) o alerta_empilhado_3 de 05:45 é degrau 2 e, sem M1/M5 gravados no replay (direção contrária
     # não confirmada) e continuidade intacta, PROTEGE; a venda segue até 06:45 (B3 com espera esgotada), com ganho maior; a de 06:15 perde
-    h = d["venda_hipotetica_0400_gestao2"]; assert h["saida_barra_utc"] == "06:45" and h["resultado_aprox_usd"] > 0 and "degrau 2" in next(p for p in h["passos"] if p["barra_utc"] == "05:45")["explicacao"]
+    # C27R54 (gestao-4): o alerta_empilhado_3 de 05:45 com corta=1 é corte estrutural confirmado → fecha em 05:45 (antes protegia até 06:45)
+    h = d["venda_hipotetica_0400_gestao2"]; assert h["saida_barra_utc"] == "05:45" and h["resultado_aprox_usd"] > 0 and "INVALIDAÇÃO ESTRUTURAL CONFIRMADA" in next(p for p in h["passos"] if p["barra_utc"] == "05:45")["explicacao"]
     h2 = d["venda_hipotetica_0615_gestao2"]; assert h2["saida_barra_utc"] == "07:00" and h2["resultado_aprox_usd"] < 0
     # op 8 (compra real): a continuidade se perde em 02:45 (M15 canal 0 / mista) e o B3 fecha em 03:00 nas duas gestões
     o8 = {x["barra_utc"]: x for x in d["op8_real_gestao2"]}
@@ -1185,7 +1187,7 @@ def test_32_gestao3_protecao_por_tempo_3o_e_4o_candle_custos_e_corretora_c27r47(
     """Item 3: candles M15 fechados = barras_de_posicao + 1. No 3º aciona: nível = entrada ± (custos + spread) × ponto; aplica se o preço
     já está além do nível + distância mínima e o nível é mais protetor; senão registra o impedimento (explícito no 4º). Nunca afasta."""
     import api
-    assert api.GESTAO_CONTRATO == "gestao-3" and api.GESTAO3_PROTECAO_CANDLES == 3 and api.GESTAO3_PROTECAO_PRAZO == 4
+    assert api.GESTAO_CONTRATO == "gestao-4" and api.GESTAO3_PROTECAO_CANDLES == 3 and api.GESTAO3_PROTECAO_PRAZO == 4   # C27R54: a gestao-4 herda a proteção por tempo
     sb = _SbFake([{"comissao": -0.5, "lote": 0.07}, {"comissao": -0.92, "lote": 0.13}, {"comissao": -0.56, "lote": 0.08}])      # ops 10–12 reais (XAU)
     bot = {"id": 12, "simbolo": "XAUUSD"}; at5 = {"especificacao": {"tick_tamanho": 0.01, "tick_valor": 1.0, "ponto": 0.01}}
     ab = {"id": 15, "sessao_teste_id": "CAMP", "preco_entrada": 4169.03, "lado": 1}
@@ -1238,24 +1240,23 @@ def test_33_gestao3_prioridade_do_corte_confirmado_exaustao_isolada_e_rotulo_def
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
     assert (acao, motivo) == ("close", "ciclo") and cls["reversao_confirmada"] is True and exp.startswith("INVALIDAÇÃO ESTRUTURAL CONFIRMADA") and "sem espera" in exp and cont["ok"] is True
     assert cls["movimento"].startswith("invalidação estrutural confirmada") and cls["degrau"] == 3
-    # alerta empilhado 3 = degrau 2 (reversão em formação): sem direção contrária em M1+M5 (ausentes) e continuidade intacta → protege;
-    # com M1 e M5 contra → fecha, mesmo sem B3 e com 0 barras
+    # C27R54 (gestao-4, ordem 15/10 22:48: "a continuidade não pode neutralizar um corte estrutural confirmado"): alerta empilhado 3 com
+    # corta=1 do contrato (constituição §5.5.1 / motor: "CORTE com posição a favor") FECHA, com ou sem direção contrária, mesmo sem B3 e com 0 barras
     L = dict(base, B3=0, corte_origem=["M1:alerta_empilhado_3 M5:alerta_empilhado_3 -> M15:alerta_empilhado_3"])
     a2 = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 0, [])
-    assert a2[0] == "proteger" and a2[3]["degrau"] == 2
+    assert a2[0] == "close" and a2[3]["estado"] == "invalidação estrutural confirmada" and "não neutraliza" in a2[4]
     a3 = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, dict(por_tf, M1={"dir": 1}, M5={"dir": 1}), 0, [])
-    assert a3[0] == "close" and "DIREÇÃO CONTRÁRIA" in a3[4]
-    # exaustão ISOLADA com continuidade intacta → ALERTA: proteger (não fecha)
+    assert a3[0] == "close"
+    # exaustão IDENTIFICADA com corta=1 (§5.4: "2º sinal → corte com posição aberta") fecha mesmo com continuidade intacta (antes: alerta/proteger)
     L = dict(base, B3=0, corte_origem=[{"identificado_em": ["M5:exaustao_identificada"], "decidido_por": ["M15:exaustao_identificada"]}])
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
-    assert (acao, motivo) == ("proteger", "ciclo") and cls["alerta_exaustao_isolado"] is True and exp.startswith("ALERTA") and cls["movimento"].startswith("alerta de exaustão")
-    # exaustão + continuidade PERDIDA (fechamento rompeu o último topo) = invalidação confirmada → fecha
+    assert (acao, motivo) == ("close", "ciclo") and cont["ok"] is True and cls["movimento"].startswith("invalidação estrutural confirmada")
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4188.40}, cor, por_tf, 2, [])
-    assert (acao, motivo) == ("close", "ciclo") and cont["ok"] is False and "invalidação confirmada" in exp
-    # 2º sinal fino com continuidade intacta = topo/fundo provisório / pullback → proteger
+    assert (acao, motivo) == ("close", "ciclo") and cont["ok"] is False and "invalidação estrutural confirmada" in exp.lower()
+    # 2º sinal fino com continuidade intacta = topo/fundo provisório / pullback → NECESSIDADE DE PROTEÇÃO (efetiva, aplicada em _ses_gerir)
     L = dict(base, B3=0, corte_origem=[{"identificado_em": ["M5:fundo_barra_rompido"], "decidido_por": ["M15:fundo_barra_rompido"]}])
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L, {"B5": 0, "fechamento": 4177.18}, cor, por_tf, 2, [])
-    assert acao == "proteger" and cls["movimento"].startswith("reversão em formação") and "pausa" in exp
+    assert acao == "proteger" and cls["movimento"].startswith("2º sinal fino") and "pausa" in exp and cls["protecao_efetiva_exigida"] is True
     # rótulo defasado: M15 'descendente' com canal +1 e fechamento ACIMA do último topo → estrutura efetiva a favor da compra → continuidade INTACTA
     por_up = {"M15": {"dir": 1, "estrutura": "descendente", "regime": "tendencia", "ultimo_topo": 83005.74, "ultimo_fundo": 80917.83}, "M30": {"dir": 1}}
     c = api._cont_continuidade(1, por_up, 83120.0)
@@ -1341,7 +1342,7 @@ def test_36_gestao3_op12_real_degrau2_direcao_contraria_e_canal_contra_c27r48():
                 "M15": {"dir": 0, "estrutura": "ascendente", "regime": "compressao", "ultimo_topo": 4175.92, "ultimo_fundo": 4163.32}, "M30": {"dir": 0, "estrutura": "mista"}, "H1": {"dir": -1}}
     acao, motivo, cont, cls, exp = api._gestao2_decidir(1, L_2245, {"B5": 0, "fechamento": 4169.36}, cor, ptf_2300, 1, [])
     assert cls["degrau"] == 2 and cls["reversao_em_formacao"] is True and cont["ok"] is True
-    assert (acao, motivo) == ("close", "ciclo") and exp.startswith("REVERSÃO EM FORMAÇÃO") and "DIREÇÃO CONTRÁRIA" in exp and "M1 -1 / M5 -1" in exp
+    assert (acao, motivo) == ("close", "ciclo") and exp.startswith("2º sinal fino") and "DIREÇÃO CONTRÁRIA" in exp and "M1 -1 / M5 -1" in exp   # C27R54: texto da gestao-4
     L_2300 = {"B3": 1, "corte_do_ciclo": 0, "corte_origem": [], "B3_motivo": "B3: sem progresso", "stop_estrutural": 4162.27}
     ptf_2315 = {"M1": {"dir": -1, "estrutura": "descendente"}, "M5": {"dir": -1, "estrutura": "mista"},
                 "M15": {"dir": -1, "estrutura": "ascendente", "regime": "compressao", "ultimo_topo": 4175.92, "ultimo_fundo": 4163.32}, "M30": {"dir": 0, "estrutura": "mista"}}
@@ -1351,7 +1352,7 @@ def test_36_gestao3_op12_real_degrau2_direcao_contraria_e_canal_contra_c27r48():
     # mesmo degrau 2 sem direção contrária e com continuidade intacta → protege (pausa/pullback)
     ptf_ok = {"M1": {"dir": 1}, "M5": {"dir": 1}, "M15": {"dir": 1, "estrutura": "ascendente", "regime": "tendencia", "ultimo_topo": 4175.92, "ultimo_fundo": 4163.32}, "M30": {"dir": 1}}
     acao, motivo, cont, cls, exp = api._gestao2_decidir(1, dict(L_2245, B3=0), {"B5": 0, "fechamento": 4170.0}, cor, ptf_ok, 1, [])
-    assert (acao, motivo) == ("proteger", "ciclo") and "SEM direção contrária" in exp and cls["movimento"].startswith("reversão em formação")
+    assert (acao, motivo) == ("proteger", "ciclo") and "SEM direção contrária" in exp and cls["movimento"].startswith("2º sinal fino") and cls["estado"] == "necessidade de proteção"
     # degrau 3 fecha mesmo com tudo a favor
     L3 = dict(L_2245, corte_origem=[{"identificado_em": ["M1:rompeu_ultimo_fundo"], "decidido_por": ["M15:rompeu_ultimo_fundo"]}])
     acao, motivo, cont, cls, exp = api._gestao2_decidir(1, L3, {"B5": 0, "fechamento": 4170.0}, cor, ptf_ok, 1, [])
@@ -1360,7 +1361,7 @@ def test_36_gestao3_op12_real_degrau2_direcao_contraria_e_canal_contra_c27r48():
     L13 = {"B3": 0, "corte_do_ciclo": 1, "corte_origem": ["M1:fundo_barra_rompido M1:exaustao_identificada M5:exaustao_identificada -> M15:alerta_empilhado_3"]}
     ptf_13 = {"M1": {"dir": 1}, "M5": {"dir": 1}, "M15": {"dir": 0, "estrutura": "ascendente", "regime": "compressao", "ultimo_topo": 4175.97, "ultimo_fundo": 4166.73}, "M30": {"dir": -1}}
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, L13, {"B5": 0, "fechamento": 4167.34}, cor, ptf_13, 2, [])
-    assert (acao, motivo) == ("close", "ciclo") and cls["degrau"] == 2 and "DIREÇÃO CONTRÁRIA" in exp
+    assert (acao, motivo) == ("close", "ciclo") and cls["degrau"] == 2 and cls["estado"] == "invalidação estrutural confirmada"   # C27R54: estrutural fecha com ou sem direção
 
 
 def test_37_linha_do_tempo_por_operacao_com_fonte_e_intervencao_manual_c27r48():
@@ -1447,10 +1448,14 @@ def test_39_sequencias_topo_quebra_queda_pullback_retomada_protecao_invalidacao_
     assert comp(4, "card7_rsi", 1) == 2 and comp(4, "card4_canal_ema20", -1) == 0                           # invalidação: reversão; continuação do lado antigo = 0
     # gestão de uma VENDA aberta na quebra (lado −1) ao longo da mesma sequência:
     cor = {"contrato": "corte-ciclo-2"}
-    # falso rompimento contra (sacudida_fundo = alerta de exaustão isolado) → proteger, não fechar
+    # C27R54 (gestao-4): exaustão IDENTIFICADA decidida pelo M15 com corta=1 = 2º sinal (§5.4) → fecha (antes: alerta/proteger);
+    # o alerta isolado é o evento contra SEM corta=1 do contrato → mantém
     Lf = {"B3": 0, "corte_do_ciclo": 1, "corte_origem": ["M1:exaustao_identificada -> M15:exaustao_identificada"]}
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, Lf, {"B5": 0, "fechamento": 4190.0}, cor, seq[3][1], 3, [])
-    assert cls["degrau"] == 1 and acao == "proteger" and "ALERTA" in exp.upper()
+    assert cls["degrau"] == 1 and acao == "close" and cls["estado"] == "invalidação estrutural confirmada"
+    pa = dict(seq[3][1]); pa["M5"] = dict(pa["M5"], eventos=["sacudida_fundo"])
+    acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, {"B3": 0, "corte_do_ciclo": 0}, {"B5": 0, "fechamento": 4190.0}, cor, pa, 3, [])
+    assert acao is None and cls["estado"] == "alerta de enfraquecimento" and cls["alertas_contrarios"] == ["M5:sacudida_fundo"]
     # pullback que continua (M1/M5 a favor da alta, M15 ainda descendente, sem corte) → manter
     Lp = {"B3": 0, "corte_do_ciclo": 0, "corte_origem": []}
     acao, motivo, cont, cls, exp = api._gestao2_decidir(-1, Lp, {"B5": 0, "fechamento": 4192.0}, None, seq[2][1], 2, [])

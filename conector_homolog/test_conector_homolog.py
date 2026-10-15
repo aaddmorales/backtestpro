@@ -62,7 +62,7 @@ def test_h1_destino_e_trava():
 
 
 def test_h2_identidade():
-    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.37-hml15"
+    assert N.APP_NOME == "BotTested Conector HOMOLOG" and N.APP_VERSAO == "v1.38-hml16"
 
 
 def test_h3_h4_arquivos_separados():
@@ -379,7 +379,7 @@ def test_h13_snapshot_leva_versao_do_conector(amb):
     mg = 100000 + (int(_h.sha1(("bot|" + tA).encode()).hexdigest()[:12], 16) % 1_900_000_000)
     assert N.enviar_snapshot(tA, {"magic": str(mg), "simbolo": "XAUUSD", "posicoes": "0", "equity": "1000"})
     r = TV._pg().cursor(); r.execute("select detalhe_json->>'conector_versao' from conector_snapshots where bot_token=%s order by id desc limit 1", (tA,))
-    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.37-hml15"
+    assert r.fetchone()[0] == "BotTested Conector HOMOLOG v1.38-hml16"
 
 
 # ═════════════════════ hml8 — ponte do motor real (leitor + motor congelado) ═════════════════════
@@ -691,7 +691,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     assert n5 == 5 and _cvat_t.verificar(at5, segredo=seg) == (True, None) and at5["contrato"] == "r01v5" and at5["confirmacao"] == "conf-rt-1"
     assert at5["bot_token_hash"] == at4["bot_token_hash"] and at5["ts_barra_m15"] == at4["ts_barra_m15"] and at5["magic"] == at4["magic"]
     conf_leitor = sorted(i["uid"] for i in cand["itens"] if i["estado"] == "confirmado")
-    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.7-hml"
+    assert sorted(c["uid"] for c in at5["candidatos"]) == conf_leitor and at5["leitor"] == "1.8-hml"
     # hml12 (C27R24) — especificação do símbolo e gestão na MESMA assinatura; negócios assinados em todo snapshot
     e5, g5 = at5["especificacao"], at5["gestao"]
     assert e5["simbolo"] == "XAUUSD" and e5["tick_tamanho"] == "0.01" and e5["volume_min"] == "0.01" and e5["modo_de_negociacao"] == 4

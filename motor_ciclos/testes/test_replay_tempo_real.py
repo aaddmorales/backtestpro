@@ -204,7 +204,7 @@ def test_8_confirmacao_gestao_e_relato_usam_o_corte_do_contrato(tmp_path):
     import bt_motor_leitura_hml as L
     d = str(tmp_path / "esp"); R.espelho_em(d, T_H1)
     c = L._candidatos(d, "XAUUSD", 12)
-    assert c["versao"] == "cand-5" and c["leitor"] == "1.7-hml"
+    assert c["versao"] == "cand-5" and c["leitor"] == "1.8-hml"
     r = c["cortes"]
     assert r["contrato"] == "corte-ciclo-2" and r["andares_do_contrato"] == ["M1", "M5", "M10", "M15"]
     assert r["nao_cortam"] == ["M30", "H1", "H4", "D1", "W1", "MN1"]

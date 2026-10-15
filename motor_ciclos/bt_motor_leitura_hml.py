@@ -37,7 +37,8 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.7-hml"
+LEITOR_VERSAO = "1.8-hml"
+INTRABARRA_CONTRATO = "janela-10-15-1"     # v1.8 (C27R54): leitura M1/M5 a cada minuto da janela 10→15 do M15 aberto (constituição §2.1)
 CAND_VERSAO = "cand-5"
 CORTE_CONTRATO = "corte-ciclo-2"            # corte do motor (Feito00093) com o M15 como ÚNICO andar que decide (C27R25)
 CORTE_ANDARES = ("M1", "M5", "M10", "M15")  # M1/M5/M10 identificam, M15 decide; M30, H1 e acima NÃO cortam
@@ -131,6 +132,8 @@ def _espera(intervalo, agora_s, periodo_publicado):
     falta = 900 - pos
     if pos < 60 and periodo_publicado != int(agora_s // 900):
         return 3
+    if 540 <= pos < 900:                  # v1.8: janela 10→15 — acorda 2 s depois de cada minuto (M1 recém-fechado)
+        return max(1, min(intervalo, 60 - (pos % 60) + 2))
     if falta < intervalo:
         return max(1, falta + 2)
     return intervalo
@@ -487,6 +490,7 @@ def _gestao(B1, PC, ltp, F15p, n15, ts_txt, CC=None):
     A15 = F15p.lt.andares[F15p.andar_op]
     mp = A15.mapas[k]; ak = float(F15p.D.atr14.values[k]); ck = float(F15p.D.close.values[k])
     out = {"contrato": GESTAO_CONTRATO, "barra_m15_corretora": ts_txt(F15p.ts[k]), "fechamento": ck,
+           "maxima": float(F15p.D.high.values[k]), "minima": float(F15p.D.low.values[k]),     # v1.8 (C27R54): extremos da barra de decisão (proteção efetiva)
            "B1": bool(F15p.B1[k]), "B5": bool(F15p.B5[k] and not PC.IGNORAR_B5),
            "ordem_do_estudo": "stop -> B5 -> B3 (posição com 2+ barras M15) -> corte do Ciclo -> trailing (só aperta)",
            "lados": {}}
@@ -686,6 +690,43 @@ def _canais(pasta, ativo, mt5=None):
     return out
 
 
+def _intrabarra_de_andares(CV1, A, calculado_utc=None):
+    """v1.8 (C27R54) — JANELA 10→15 (constituição §2.1) lida A CADA MINUTO na barra M15 ABERTA, só com barras FECHADAS de M1/M5.
+    Critério do motor congelado (bt_ciclo_v1.avaliar, janela): escada do M1 com degrau ≥ 2 E escada do M5 com degrau ≥ 1. O motor não
+    olha o lado; aqui a confirmação só vale CONTRA a posição (exaustão do M1 e do M5 apontando para o lado oposto). Parcial = alerta.
+    Fora da janela (menos de 10 barras de M1 dentro da M15 aberta) devolve None. Só descreve; quem decide é a API."""
+    import pandas as pd
+    if not all(k in A for k in ("M1", "M5", "M15")):
+        return None
+    a1, a5, a15 = A["M1"], A["M5"], A["M15"]
+    ts15 = pd.Timestamp(a15.ts[a15.n - 1]) + pd.Timedelta(minutes=15)       # a M15 ABERTA (a última do espelho é a fechada)
+    fim15 = ts15 + pd.Timedelta(minutes=15)
+    dentro = [k for k in range(max(0, a1.n - 20), a1.n) if ts15 <= pd.Timestamp(a1.ts[k]) < fim15]
+    pos = len(dentro)
+    if pos < CV1.P("N_JANELA_INI") or pos >= CV1.P("N_JANELA_FIM"):
+        return None
+    k1, k5 = dentro[-1], a5.n - 1
+    le1, le5 = CV1.leitura_andar(a1, k1), CV1.leitura_andar(a5, k5)
+    e1, e5 = le1["exaustao"], le5["exaustao"]
+    lados = {}
+    for nome, lado in (("compra", 1), ("venda", -1)):
+        c1 = int(e1["degrau"]) >= 2 and int(e1["lado"]) == -lado
+        c5 = int(e5["degrau"]) >= 1 and int(e5["lado"]) == -lado
+        a_ = (int(e1["degrau"]) >= 1 and int(e1["lado"]) == -lado) or c5
+        lados[nome] = {"corta": bool(c1 and c5), "alerta": bool(a_ and not (c1 and c5)),
+                       "texto": f"M1 degrau {e1['degrau']} lado {e1['lado']} ({e1['gatilho']}) · M5 degrau {e5['degrau']} lado {e5['lado']} ({e5['gatilho']})"}
+
+    def _r(le, a, k):
+        return {"barra": str(pd.Timestamp(a.ts[k])), "o": float(a.o[k]), "h": float(a.h[k]), "l": float(a.l[k]), "c": float(a.c[k]),
+                "dir": int(le["dir"]), "eventos": list(le["eventos"]),
+                "exaustao": {"degrau": int(le["exaustao"]["degrau"]), "lado": int(le["exaustao"]["lado"]), "gatilho": le["exaustao"]["gatilho"]},
+                "ultimo_topo": (le["pivos"] or {}).get("ultimo_topo"), "ultimo_fundo": (le["pivos"] or {}).get("ultimo_fundo")}
+    return {"contrato": INTRABARRA_CONTRATO, "leitor": LEITOR_VERSAO, "barra_m15_aberta": str(ts15), "minuto": pos,
+            "m1_ultima_fechada": str(pd.Timestamp(a1.ts[k1])), "m5_ultima_fechada": str(pd.Timestamp(a5.ts[k5])),
+            "M1": _r(le1, a1, k1), "M5": _r(le5, a5, k5), "lados": lados, "calculado_utc": calculado_utc,
+            "regra": "§2.1: da 10ª à 15ª barra de M1, confirmação = escada M1 degrau≥2 + M5 degrau≥1, as duas CONTRA a posição → corte; parcial → alerta"}
+
+
 def _ultima_linha_m15(pasta, ativo):
     import glob
     arqs = sorted(glob.glob(os.path.join(pasta, f"{ativo}_M15_*.csv")))
@@ -758,6 +799,7 @@ def main(argv=None):
           flush=True)
 
     periodo_pub = None
+    ult_ib = None
     _fuso_por_tick(mt5, a.ativo)          # 1ª amostra do tick (a medição exige tick NOVO)
     time.sleep(1.2)
     while True:
@@ -769,6 +811,16 @@ def main(argv=None):
                 off, off_fonte = None, f2
             ts_m15, _spread = S.puxar_e_espelhar(mt5, a.ativo)
             barra = str(ts_m15)
+            try:                                       # v1.8 (C27R54): janela 10→15, um registro por M1 fechada
+                ib = _intrabarra_de_andares(CV1, CV1.carregar_andares(staging, a.ativo), _iso(_agora()))
+                if ib and ib.get("m1_ultima_fechada") != ult_ib:
+                    _grava_json_atomico(os.path.join(dados, "INTRABARRA.json"), ib)
+                    ult_ib = ib["m1_ultima_fechada"]
+                    print(f"{_agora():%H:%M:%S}Z janela 10→15 · M15 {ib['barra_m15_aberta']} minuto {ib['minuto']} · "
+                          f"compra {'CORTA' if ib['lados']['compra']['corta'] else ('alerta' if ib['lados']['compra']['alerta'] else '-')} · "
+                          f"venda {'CORTA' if ib['lados']['venda']['corta'] else ('alerta' if ib['lados']['venda']['alerta'] else '-')}", flush=True)
+            except Exception as _eib:
+                print(f"[aviso] INTRABARRA.json não gravado: {type(_eib).__name__}: {_eib}", flush=True)
             if barra != ult_pub:
                 nome = ts_m15.strftime("%Y%m%d_%H%M")
                 destino = os.path.join(dados, "barras", nome)
