@@ -786,8 +786,12 @@ def test_19_escopo_sem_recorte_vinculos_e_por_que_da_gestao(amb, camp):
     st_row = next(r for r in CS["linhas"] if r["requisito"].startswith("2. origem")); assert "inferida" in st_row["estado"] and "INFERIDA" in st_row["evidencia_real"]["origem_op_6"]
     assert "INFERIDA" in K["trailing_do_ea"]["determinacao"]["origem_x_conformidade"]
     # C27R38: métricas período × acumulado, bloqueios no topo, reconstruído × comprovado, input do trailing como hipótese
-    MT = K["resumo_executivo"]["metricas"]; assert MT["acumulado_da_campanha"]["consolidado"]["fechamentos"] >= 1 and ab_id in MT["acumulado_da_campanha"]["por_ativo"][x["sim"]]["ids_fechamentos"]
-    assert ab_id in MT["no_periodo_do_relatorio"]["por_ativo"][x["sim"]]["ids_fechamentos"] and ab_ant not in MT["acumulado_da_campanha"]["por_ativo"][x["sim"]]["ids_fechamentos"]
+    MT = K["resumo_executivo"]["metricas"]; assert MT["acumulado_da_campanha"]["consolidado"]["fechamentos"] >= 1
+    pb_k = next(k for k in MT["acumulado_da_campanha"]["por_bot"] if k.startswith(x["sim"] + " · bot " + str(x["id"])))                     # C27R51: por bot (atual/histórico)
+    assert pb_k.endswith("(atual)") and ab_id in MT["acumulado_da_campanha"]["por_bot"][pb_k]["ids_fechamentos"] and ab_ant not in MT["acumulado_da_campanha"]["por_bot"][pb_k]["ids_fechamentos"]
+    assert ab_id in MT["no_periodo_do_relatorio"]["por_bot"][pb_k]["ids_fechamentos"] and MT["acumulado_da_campanha"]["por_ativo"][x["sim"]]["fechamentos"] >= 1
+    RC = MT["acumulado_da_campanha"]["reconciliacao"]; assert RC["confere_com_consolidado"] is True and RC["fechamentos"] == K["resumo_executivo"]["consolidado"]["fechamentos"]
+    assert K["resumo_executivo"]["consolidado"]["entradas"] == RC["entradas"]
     assert list(K["resumo_executivo"].keys())[0] == "bloqueios_efetivos" and K["resumo_executivo"]["consolidado"]["escopo"].startswith("ACUMULADO")
     assert W["situacao"].startswith("RECONSTRUÍDO") and W["snapshot_id_gravado_na_avaliacao"] is None
     assert op["leitura_na_entrada"]["leitura_usada"]["snapshot_situacao"].startswith("RECONSTRUÍDO")
@@ -1198,9 +1202,12 @@ def test_32_gestao3_protecao_por_tempo_3o_e_4o_candle_custos_e_corretora_c27r47(
     at5b = {"especificacao": dict(at5["especificacao"], distancia_minima_stop_pts=30)}
     b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5b, {"pt": 0.01, "preco": 4169.40, "spr": 5.0}, 2, 1, 4148.56)
     assert n is None and b["distancia_minima_pts"] == 30 and "30" in b["impedimento"]
-    # stop vigente já mais protetor (4175) → preservado, nunca afasta
-    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 2, 1, 4175.0)
-    assert n is None and b["aplicada"] is True and "preservado" in b["como"]
+    # stop vigente já mais protetor (4175) → preservado, nunca afasta; C27R51: só conta como proteção da PLATAFORMA se veio de comando nosso
+    sb_cmd = _SbFake([{"id": 1, "tipo": "mover_sl", "status": "executado", "params": {"sl": 4175.0, "abertura_id": ab.get("id")}, "comissao": -0.5, "lote": 0.07}])
+    b, n = api._g3_protecao_por_tempo(sb_cmd, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 2, 1, 4175.0)
+    assert n is None and b["aplicada"] is True and "preservado" in b["como"] and b["origem_do_stop_vigente"].startswith("comando da plataforma")
+    b, n = api._g3_protecao_por_tempo(sb, bot, ab, {}, at5, {"pt": 0.01, "preco": 4179.58, "spr": 5.0}, 2, 1, 4175.0)       # nenhum comando colocou 4175 → stop EXTERNO
+    assert n is None and b["aplicada"] is False and b["aplicada_pela_plataforma"] is False and "EXTERNO" in b["origem_do_stop_vigente"] and "preservado" in b["como"]
     # venda: nível = entrada − (custos + spread) × ponto; compara com o ask (bid + spread)
     abv = dict(ab, preco_entrada=4180.00, lado=-1)
     b, n = api._g3_protecao_por_tempo(sb, bot, abv, {}, at5, {"pt": 0.01, "preco": 4169.00, "spr": 5.0}, 2, -1, 4200.0)
