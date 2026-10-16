@@ -65,7 +65,7 @@ def _item(fita, dp):
 def test_1_nada_do_futuro_em_nenhum_instante(fita):
     for dp in PASSOS:
         c = fita[dp]["cand"]; agora = _cor(T_H1 + dp)
-        assert c["agora_corretora"] == agora and c["versao"] == "cand-5" and c["confirmacao"]["contrato"] == "conf-rt-1"
+        assert c["agora_corretora"] == agora and c["versao"] == "cand-6" and c["confirmacao"]["contrato"] == "conf-rt-1"
         assert fita[dp]["ult_m15"] == _cor(T_H1 + dp - 900)                     # última barra do espelho fechou exatamente agora
         for i in c["itens"]:
             assert i["ts_sinal_fecha"] <= agora, i                               # a barra do sinal já fechou
@@ -204,7 +204,7 @@ def test_8_confirmacao_gestao_e_relato_usam_o_corte_do_contrato(tmp_path):
     import bt_motor_leitura_hml as L
     d = str(tmp_path / "esp"); R.espelho_em(d, T_H1)
     c = L._candidatos(d, "XAUUSD", 12)
-    assert c["versao"] == "cand-5" and c["leitor"] == "1.8-hml"
+    assert c["versao"] == "cand-6" and c["leitor"] == "1.9-hml"
     r = c["cortes"]
     assert r["contrato"] == "corte-ciclo-2" and r["andares_do_contrato"] == ["M1", "M5", "M10", "M15"]
     assert r["nao_cortam"] == ["M30", "H1", "H4", "D1", "W1", "MN1"]

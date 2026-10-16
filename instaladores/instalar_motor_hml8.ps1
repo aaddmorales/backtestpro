@@ -18,7 +18,7 @@ param(
 # de aplicativo e aceita -Repo para rodar de fora do clone.
 $ErrorActionPreference = "Stop"
 $API_HML = "https://homolog-homolog.up.railway.app"
-$MANIFESTO_SHA = "5e9b8f43fb5b2b54628f0c93eea73005a6dae33fa12c6b16c49df309605f0afa"
+$MANIFESTO_SHA = "b0a49a6c57d647fe343acd74a2eff4897cf860452dfd98194e1dd266daa0b1e6"
 $CONECTOR_SHA = @{
   "conector_homolog.py"        = "10779fa0e534b952c0b9c9abb3445005181dd442d67de33ad0aa622c7781c212"
   "conector_nucleo_homolog.py" = "2b1bb2acd27245c2c53f04239ff3a9db1d44ef0a89e8112e8519093518281289"

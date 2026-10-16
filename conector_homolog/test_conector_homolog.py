@@ -667,7 +667,7 @@ def test_h19_candidatos_do_leitor_ate_a_selecao_em_observar(amb, motor_pc, monke
     seg = os.environ.get("BT_CV_SEGREDO_API", ""); assert seg
     monkeypatch.setenv("BT_CV_SEGREDO", seg)
     cand = FM.ler(os.path.join(str(motor_pc), FM.ler(str(motor_pc), "ATUAL.json")["pasta"]), "candidatos.json")
-    assert cand["versao"] == "cand-5" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
+    assert cand["versao"] == "cand-6" and cand["codigo"] == {"cards": "2.0", "bloco2": "1.7", "bloco1": "3.2.B"}
     assert set(cand["tfs"]) == {"M15", "M30", "H1"} and not cand.get("erro")
     assert all(i["tf"] in ("M15", "M30", "H1") and i["estado"] in ("confirmado", "aguardando") for i in cand["itens"])
     s, r = TV._req("POST", TV.E["BT_ISO_API"] + "/conector/registrar",

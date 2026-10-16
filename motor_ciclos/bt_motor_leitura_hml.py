@@ -37,9 +37,9 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.8-hml"
+LEITOR_VERSAO = "1.9-hml"
 INTRABARRA_CONTRATO = "janela-10-15-1"     # v1.8 (C27R54): leitura M1/M5 a cada minuto da janela 10→15 do M15 aberto (constituição §2.1)
-CAND_VERSAO = "cand-5"
+CAND_VERSAO = "cand-6"                      # v1.9 (C27R55): + evidência por card × TF e níveis do motor por andar
 CORTE_CONTRATO = "corte-ciclo-2"            # corte do motor (Feito00093) com o M15 como ÚNICO andar que decide (C27R25)
 CORTE_ANDARES = ("M1", "M5", "M10", "M15")  # M1/M5/M10 identificam, M15 decide; M30, H1 e acima NÃO cortam
 GESTAO_CONTRATO = "gestao-1"                # vida da posição pelo contrato do estudo (C27R24)
@@ -320,16 +320,24 @@ def _candidatos(pasta, ativo, spread_tick=None):
     itens = []; cont = {"confirmado": 0, "aguardando": 0, "cancelado": 0, "expirado": 0, "invalido": 0}
     comp = {"confirmados_rt": 0, "com_entrada_do_estudo": 0, "mesma_barra_de_entrada": 0, "mesmo_preco": 0,
             "estudo_posiciona_antes": 0, "estudo_ainda_nao_resolveu": 0}
+    aval = {}                                           # v1.9 (C27R55): evidência de execução de CADA card × TF, com ou sem sinal
     for cid, nome, fn in PC.CARDS:
         for tf in TFS_CANDIDATOS:
             F = fichas.get(tf)
             if F is None:
+                aval.setdefault(cid, {})[tf] = {"executado": False, "motivo": f"sem série do {tf} no espelho"}
                 continue
             Fp = fichas_p.get(tf)
             if Fp is None or int(Fp.n) != int(F.n) + 1:
+                aval.setdefault(cid, {})[tf] = {"executado": False, "motivo": "visão com a barra aberta inconsistente"}
                 continue
             with contextlib.redirect_stdout(io.StringIO()):
                 sin = fn(F, F.D)
+            try:
+                aval.setdefault(cid, {})[tf] = _evidencia_card(cid, F, sin, PC, ts_txt)
+            except Exception as _e_ev:
+                aval.setdefault(cid, {})[tf] = {"executado": True, "erro_da_evidencia": f"{type(_e_ev).__name__}: {_e_ev}"[:200]}
+            with contextlib.redirect_stdout(io.StringIO()):
                 res = B2.resolver_entradas(F, sin, F15)          # resolvedor RETROSPECTIVO do estudo: só referência
                 sin_p = [x for x in fn(Fp, Fp.D) if int(x[0]) < int(F.n)]      # sinais só em barras FECHADAS
                 rt = _confirmar_rt(B1, PC, Fp, F15p, sin_p, int(F.n), n15, corta=CC["corta"])   # confirmação em TEMPO REAL
@@ -413,7 +421,11 @@ def _candidatos(pasta, ativo, spread_tick=None):
                                    "validade_na_fila": "4 barras do TF do card"},
             "gestao": gestao,
             "cortes": _cortes_relato(CC, F15p, n15),
-            "itens": itens, "calculo_ms": int((time.time() - t0) * 1000),
+            "itens": itens,
+            "avaliacao_por_card": {"contrato": "evid-card-1", "por_card": aval,
+                                   "nota": ("cada card × TF foi executado no PC sobre as barras FECHADAS do TF; 'valores' = o que o critério do card "
+                                            "comparou na última barra fechada; 'ultimo_sinal' = o sinal mais recente na série (qualquer idade)")},
+            "calculo_ms": int((time.time() - t0) * 1000),
             "nota": "telemetria NÃO assinada: descreve candidatos; não autoriza abertura"}
 
 
@@ -613,6 +625,190 @@ def _ema20(valores):
     for v in valores[1:]:
         e = e + k * (float(v) - e)
     return e
+
+
+_AQUECIMENTO = {"card1_reversao_extremo": 25, "card2_rompimento_caixa": 25, "card3_segunda_entrada": 25, "card4_canal_ema20": 20,
+                "card5_ema_9_21": 21, "card6_tripla_media": 50, "card7_rsi": 15, "card8_bollinger": 20, "card9_macd": 35,
+                "card10_donchian20": 21, "card11_sr_dia_anterior": 2, "card12_engolfo": 20, "card13_topo_fundo_duplo": 15}
+
+
+def _r(x, n=6):
+    try:
+        import math
+        x = float(x)
+        return None if math.isnan(x) or math.isinf(x) else round(x, n)
+    except Exception:
+        return None
+
+
+def _evidencia_card(cid, F, sin, PC, ts_txt):
+    """v1.9 (C27R55) — EVIDÊNCIA de que o card foi executado e do que ele comparou na ÚLTIMA barra FECHADA do TF.
+    Usa as MESMAS funções e parâmetros do professor_cards (nada é recalculado de outro jeito); não decide nada.
+    Sem isso, 'sem sinal' não prova que o critério foi avaliado com dados suficientes (ordem do dono 16/10)."""
+    import numpy as np
+    df = F.D; n = int(len(df)); j = n - 1
+    c = df.close.values; o = df.open.values; h = df.high.values; l = df.low.values
+    aq = _AQUECIMENTO.get(cid, 20)
+    ult = sin[-1] if sin else None
+    out = {"executado": True, "barras": n, "aquecimento_minimo": aq, "dados_suficientes": bool(n > aq),
+           "ultima_barra": ts_txt(F.ts[j]), "fechamento": _r(c[j]),
+           "sinais_na_serie": len(sin),
+           "ultimo_sinal": ({"barra": ts_txt(F.ts[int(ult[0])]), "lado": int(ult[1]), "nivel": _r(ult[2]), "modo": ult[3],
+                             "barras_atras": int(j - int(ult[0]))} if ult else None),
+           "sinal_na_ultima_barra": bool(ult is not None and int(ult[0]) == j)}
+    v = {}
+    if cid in ("card1_reversao_extremo", "card2_rompimento_caixa"):
+        tipo = "reversao" if cid == "card1_reversao_extremo" else "rompimento"
+        gs = [g for g in (F.gatilhos or []) if g[3] == tipo]
+        if gs:
+            g = gs[-1]
+            v["ultimo_gatilho_da_ficha"] = {"barra": ts_txt(F.ts[int(g[0])]), "lado": int(g[1]), "nivel": _r(g[2]),
+                                            "estado": g[4], "barras_atras": int(j - int(g[0]))}
+        v["recusados_na_serie"] = sum(1 for g in gs if g[4] != "ok")
+        v["criterio"] = ("3º sinal de reversão da ficha (rompeu o último pivô contra a perna anterior/exaustão)" if tipo == "reversao"
+                         else "fechamento além da fronteira da caixa de compressão (≥ 3 barras), líquido de sacudida/absorção")
+    elif cid == "card3_segunda_entrada":
+        sac = F.sac[F.andar_op]
+        if sac:
+            i, e, det = sac[-1]
+            v["ultima_sacudida"] = {"barra": ts_txt(F.ts[int(i)]), "evento": e, "detalhe": str(det)[:120], "barras_atras": int(j - int(i))}
+        v["criterio"] = "sacudida (varreu pivô/limite e fechou de volta) arma no extremo oposto da barra"
+    elif cid == "card4_canal_ema20":
+        eh = df.ema20_h.values; el = df.ema20_l.values
+        v.update(ema20_maximas=_r(eh[j]), ema20_minimas=_r(el[j]), fechamento_anterior=_r(c[j - 1]) if j else None,
+                 ema20_maximas_anterior=_r(eh[j - 1]) if j else None, ema20_minimas_anterior=_r(el[j - 1]) if j else None,
+                 criterio="fechamento cruza para fora do canal (acima da EMA20 das máximas = compra; abaixo da EMA20 das mínimas = venda)")
+    elif cid in ("card5_ema_9_21", "card6_tripla_media"):
+        e9 = PC._ema(c, 9); e21 = PC._ema(c, 21)
+        v.update(ema9=_r(e9[j]), ema21=_r(e21[j]), ema9_anterior=_r(e9[j - 1]) if j else None, ema21_anterior=_r(e21[j - 1]) if j else None)
+        if cid == "card6_tripla_media":
+            e50 = PC._ema(c, 50)
+            v.update(ema50=_r(e50[j]), alinhada_alta=bool(e9[j] > e21[j] > e50[j]), alinhada_baixa=bool(e9[j] < e21[j] < e50[j]),
+                     criterio="1ª barra com 9 > 21 > 50 (compra) ou 9 < 21 < 50 (venda)")
+        else:
+            v["criterio"] = "EMA 9 cruza a EMA 21 no fechamento"
+    elif cid == "card7_rsi":
+        r = PC._rsi(c, 14)
+        v.update(rsi14=_r(r[j], 2), rsi14_anterior=_r(r[j - 1], 2) if j else None,
+                 criterio="RSI(14) sai da zona: cruza 30 para cima = compra; cruza 70 para baixo = venda")
+    elif cid == "card8_bollinger":
+        m, up, dn = PC._boll(c)
+        v.update(media20=_r(m[j]), banda_superior=_r(up[j]), banda_inferior=_r(dn[j]), fechamento_anterior=_r(c[j - 1]) if j else None,
+                 banda_superior_anterior=_r(up[j - 1]) if j else None, banda_inferior_anterior=_r(dn[j - 1]) if j else None,
+                 criterio="fechou fora da banda (20, 2) e a barra seguinte fechou de volta dentro")
+    elif cid == "card9_macd":
+        mm, sg = PC._macd(c)
+        v.update(macd=_r(mm[j]), sinal=_r(sg[j]), macd_anterior=_r(mm[j - 1]) if j else None, sinal_anterior=_r(sg[j - 1]) if j else None,
+                 criterio="linha MACD(12,26) cruza a linha de sinal (9)")
+    elif cid == "card10_donchian20":
+        if j >= 21:
+            v.update(maxima_20_anteriores=_r(np.max(h[j - 20:j])), minima_20_anteriores=_r(np.min(l[j - 20:j])))
+        v["criterio"] = "fechamento acima da máxima (compra) ou abaixo da mínima (venda) das 20 barras anteriores arma o gatilho"
+    elif cid == "card11_sr_dia_anterior":
+        import pandas as pd
+        dia = pd.Series(pd.to_datetime(df.ts.values)).dt.date.values
+        hoje = None; hi_ant = lo_ant = hi = lo = None
+        for i in range(n):
+            if dia[i] != hoje:
+                hi_ant, lo_ant = hi, lo; hi, lo = h[i], l[i]; hoje = dia[i]
+            else:
+                hi = max(hi, h[i]); lo = min(lo, l[i])
+        v.update(maxima_do_dia_anterior=_r(hi_ant), minima_do_dia_anterior=_r(lo_ant), dia_de_referencia=str(hoje),
+                 criterio="fechamento cruza a máxima (compra) ou a mínima (venda) do dia anterior (dia = data do servidor da corretora)")
+    elif cid == "card12_engolfo":
+        est = df.estado_canal.values
+        v.update(corpo=_r(abs(c[j] - o[j])), corpo_anterior=_r(abs(c[j - 1] - o[j - 1])) if j else None,
+                 cor=("alta" if c[j] > o[j] else "baixa" if c[j] < o[j] else "doji"),
+                 cor_anterior=(("alta" if c[j - 1] > o[j - 1] else "baixa" if c[j - 1] < o[j - 1] else "doji") if j else None),
+                 estado_canal=int(est[j]),
+                 criterio="corpo engole o anterior de cor oposta, a favor do estado do canal EMA20 H/L do TF")
+    elif cid == "card13_topo_fundo_duplo":
+        A = F.lt.andares[F.andar_op]; a = df.atr14.values
+        topo_ant = fundo_ant = topo_atu = fundo_atu = None
+        for i in range(4, n):
+            mp = A.mapas[i]
+            if mp.ultimo_topo and mp.ultimo_topo != topo_atu:
+                topo_ant, topo_atu = topo_atu, mp.ultimo_topo
+            if mp.ultimo_fundo and mp.ultimo_fundo != fundo_atu:
+                fundo_ant, fundo_atu = fundo_atu, mp.ultimo_fundo
+        tol = (0.3 * float(a[j])) if np.isfinite(a[j]) else None
+        pv = lambda p: ({"barra": ts_txt(F.ts[int(p[0])]), "preco": _r(p[1])} if p else None)
+        v.update(topo_anterior=pv(topo_ant), topo_atual=pv(topo_atu), fundo_anterior=pv(fundo_ant), fundo_atual=pv(fundo_atu),
+                 tolerancia_0_3_atr=_r(tol),
+                 topos_no_mesmo_nivel=bool(topo_ant and topo_atu and tol is not None and abs(topo_ant[1] - topo_atu[1]) <= tol),
+                 fundos_no_mesmo_nivel=bool(fundo_ant and fundo_atu and tol is not None and abs(fundo_ant[1] - fundo_atu[1]) <= tol),
+                 criterio="dois pivôs N=2 CONSECUTIVOS no mesmo nível (≤ 0,3×ATR14) + fechamento rompendo o pivô oposto")
+    out["valores"] = v
+    return out
+
+
+def _niveis_por_tf(pasta, ativo):
+    """v1.9 (C27R55) — os NÍVEIS que o motor congelado (bt_ciclo_v1) usa em cada andar, na MESMA barra de CV1.avaliar
+    (idx_ate do fim da M15), com o horário de cada pivô, ATR14, banda de 0,3×ATR e a regra que decidiu a 'localização'.
+    Recalcula a lista de pivôs com a mesma regra de CV1.pivos só para recuperar o HORÁRIO; confere os preços contra
+    CV1.pivos. Só telemetria: não entra no atestado e não muda nada no motor."""
+    import numpy as np
+    import pandas as pd
+    import bt_ciclo_v1 as CV1
+    A = CV1.carregar_andares(pasta, ativo)
+    if "M15" not in A:
+        return {"erro": "espelho sem M15"}
+    i15 = A["M15"].n - 1
+    fim15 = pd.Timestamp(A["M15"].ts[i15]) + pd.Timedelta(minutes=15)
+    N = CV1.P("PIVO_N"); lb = 120
+    out = {"contrato": "niveis-1",
+           "definicao": ("último topo/fundo = pivô N=2 mais recente; resistência/suporte = pivô N=2 ANTERIOR ao último "
+                         "(bt_ciclo_v1.pivos topos[-2]/fundos[-2]); localização: 'na_resistencia'/'no_suporte' quando |fechamento − nível| "
+                         "< 0,3×ATR14 do andar, senão posição na faixa das 21 últimas barras (> 0,8 topo; < 0,2 fundo)"),
+           "por_tf": {}}
+    for tf in CV1.ANDARES:
+        nm = CV1.NOME.get(tf, tf)
+        a = A.get(tf)
+        if a is None:
+            out["por_tf"][nm] = {"erro": "andar ausente no espelho"}
+            continue
+        i = a.idx_ate(fim15 - pd.Timedelta(seconds=1))
+        if i < 25:
+            out["por_tf"][nm] = {"erro": "amostra insuficiente"}
+            continue
+        ts = lambda k: (str(pd.Timestamp(a.ts[k])) if k is not None and 0 <= k < a.n else None)
+        topos, fundos = [], []
+        for k in range(max(N, i - lb), i - N + 1):
+            if a.h[k] == max(a.h[k - N:k + N + 1]):
+                topos.append(k)
+            if a.l[k] == min(a.l[k - N:k + N + 1]):
+                fundos.append(k)
+        piv = CV1.pivos(a, i)
+        atr = float(a.atr[i]) if np.isfinite(a.atr[i]) else None
+        c = float(a.c[i])
+        h20 = float(max(a.h[max(0, i - 20):i + 1])); l20 = float(min(a.l[max(0, i - 20):i + 1]))
+        faixa = max(h20 - l20, 1e-9); pos = (c - l20) / faixa; tol = 0.3 * (atr or faixa)
+
+        def nv(k, preco_motor, alto):
+            if k is None:
+                return None
+            p = float(a.h[k] if alto else a.l[k])
+            return {"preco": _r(p), "barra_do_pivo": ts(k), "confirmado_no_fechamento_de": ts(k + N),
+                    "confere_com_o_motor": bool(preco_motor is not None and abs(p - float(preco_motor)) < 1e-9),
+                    "distancia": _r(c - p), "distancia_atr": (_r((c - p) / atr, 3) if atr else None),
+                    "dentro_da_banda": bool(abs(c - p) < tol)}
+        loc = "topo_da_faixa" if pos > 0.8 else ("fundo_da_faixa" if pos < 0.2 else "meio_da_faixa")
+        regra = f"posição na faixa de 21 barras = {pos:.2f}"
+        if piv["resistencia"] and abs(c - piv["resistencia"]) < tol:
+            loc = "na_resistencia"; regra = f"|fechamento − resistência| = {abs(c - piv['resistencia']):.6g} < 0,3×ATR = {tol:.6g}"
+        if piv["suporte"] and abs(c - piv["suporte"]) < tol:
+            loc = "no_suporte"; regra = f"|fechamento − suporte| = {abs(c - piv['suporte']):.6g} < 0,3×ATR = {tol:.6g}"
+        out["por_tf"][nm] = {
+            "barra": ts(i), "fechamento": _r(c), "atr14": _r(atr), "banda_0_3_atr": _r(tol),
+            "faixa_21": {"max": _r(h20), "min": _r(l20), "posicao": _r(pos, 3)},
+            "ultimo_topo": nv(topos[-1] if topos else None, piv["ultimo_topo"], True),
+            "ultimo_fundo": nv(fundos[-1] if fundos else None, piv["ultimo_fundo"], False),
+            "resistencia": nv(topos[-2] if len(topos) > 1 else None, piv["resistencia"], True),
+            "suporte": nv(fundos[-2] if len(fundos) > 1 else None, piv["suporte"], False),
+            "topos_recentes": [{"preco": _r(a.h[k]), "barra": ts(k)} for k in topos[-4:]],
+            "fundos_recentes": [{"preco": _r(a.l[k]), "barra": ts(k)} for k in fundos[-4:]],
+            "sequencia": piv["sequencia"], "localizacao": loc, "regra_da_localizacao": regra}
+    return out
 
 
 def _canais(pasta, ativo, mt5=None):
@@ -848,6 +1044,10 @@ def main(argv=None):
                         cand["canais"] = _canais(tmp, a.ativo, mt5)
                     except Exception as e:
                         cand["canais"] = {"erro": f"{type(e).__name__}: {e}"[:300]}
+                    try:                               # v1.9 (C27R55): níveis do motor por andar (só telemetria)
+                        cand["niveis_por_tf"] = _niveis_por_tf(tmp, a.ativo)
+                    except Exception as e:
+                        cand["niveis_por_tf"] = {"erro": f"{type(e).__name__}: {e}"[:300]}
                     try:                               # v1.6: especificação do símbolo (lote por risco na API)
                         cand["especificacao"] = _especificacao(mt5, a.ativo, off)
                     except Exception as e:
