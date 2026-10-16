@@ -41,7 +41,7 @@ HOMOLOG = True
 _HML_HOST = "homolog-homolog.up.railway.app"
 INTERVALO_SNAPSHOT = 20      # segundos entre snapshots pra nuvem (v1.25: era 60 — presença mais viva e religar rápido)
 APP_NOME = "BotTested Conector HOMOLOG"
-APP_VERSAO = "v1.38-hml16"  # v1.38-hml16 (C27R54): gestão assinada leva máxima/mínima da barra de decisão (leitor 1.8) e as leituras intrabarra do M15 (janela 10→15). v1.37-hml15 (C27R44): origem do corte assinada sem truncagem (eventos deduplicados, cap 1000); nada mais muda.  # v1.36-hml14 (C27R33): o bloco de gestao do atestado leva B3_motivo (valores do B3: caixa, barras M5, avanco) para o relatorio; nada mais muda.  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
+APP_VERSAO = "v1.38-hml16"  # v1.38-hml16 (C27R54): selo do EA recebe o sinal de conexão (bt_link_<magic>.txt a cada snapshot aceito); gestão assinada leva máxima/mínima da barra de decisão (leitor 1.8) e as leituras intrabarra do M15 (janela 10→15). v1.37-hml15 (C27R44): origem do corte assinada sem truncagem (eventos deduplicados, cap 1000); nada mais muda.  # v1.36-hml14 (C27R33): o bloco de gestao do atestado leva B3_motivo (valores do B3: caixa, barras M5, avanco) para o relatorio; nada mais muda.  # v1.35: fila de envio de eventos + coalescencia de recusadas (conector.py) + backlog bt_ev_ 1a vez >90s drena sem emitir + fix do rotulo de versao (ficou v1.33 por engano na v1.34).  # v1.33: janela 520->620px + redimensionavel na vertical — a trilha da v1.31 empurrou a LINHA DE STATUS (diagnostico vivo) pra fora da janela fixa e o dono nao conseguia expandir. v1.32: radar de instalacao.  # v1.32: RADAR DE INSTALACAO — fix do dropdown que nao funcionava (deteccao SEMPRE forcava a instalacao [0] a cada abertura; escolha nunca sobrevivia ao restart) + a deteccao agora escolhe a instalacao com bt_snap_/bt_ev_ mais FRESCO, troca manual limpa os caches de leitura e mostra a pasta vigiada, e um radar de 12s troca SOZINHO pra instalacao com atividade quando a atual esta muda >120s — o usuario nunca mais adivinha qual MT5: o dado manda. v1.31: fix magic 0 (nome do arquivo) + trilha de conexao.  # v1.31: (1) FIX DO MAGIC 0 — ler_eventos_arquivo deriva o magic do NOME bt_ev_<magic>.txt (a linha do EA nao carimba magic=; conector assumia 0, roteava errado, backend rejeitava, BabyMachine cega — vale p/ todos os bots ja instalados, sem reenvio); (2) TRILHA DE CONEXAO no conector.py (desenho do dono): MT5 -> Conector -> Plataforma com circulacao viva.         # v1.30 F2: EVENTOS POR ARQUIVO (ler_eventos_arquivo le bt_ev_<magic>.txt append-consume — canal confiavel pra BabyMachine, log vira fallback anti-duplicado). AUTOSTART obrigatorio/silencioso/auto-curavel (sobe com o Windows -> reboot nunca deixa a plataforma cega; re-registra a cada abertura se algo remover) + FIX DA MENTIRA SISTEMATICA no parser de posicoes (campo "posicoes" ausente vira None, nao 0 -> nao dispara reconciliacao de orfas indevida, incidente v6.91). Botao de reabrir ja existe via bottested:// (plataforma).          # v1.29: presenca em lote (1 POST p/ todos os tokens; fila serial so p/ quem tem job). v1.28: refresh de tokens 30s->8s (token de bot NOVO descoberto antes da janela de ~25s do front — matava o "could not reach the connector" no 1o envio). v1.27: VALIDACAO RELAMPAGO — job pre_validado (nuvem v6.38: mesmo codigo ja aprovado antes) instala, reporta o veredito NA HORA e compila em 2o plano (so pra gerar o .ex5). Corta a validacao repetida de ~25-55s pra ~5-10s. v1.26: FIM DE VIDA (EA escreve BOTTESTED_FIM no OnDeinit -> parada sinalizada na hora) + WATCHDOG (dado >35s sem leitura nova NAO e reenviado e sinaliza parada -> snapshot velho nunca mais segura o OPERANDO vivo) + rede pesada em thread propria (loop de leitura nunca bloqueia). v1.25: (1) magic->token mapeado NA INSTALACAO (extrai o magic do proprio .mq5 baixado -> zero dependencia da nuvem pro bot novo); (2) RELIGAR imediato (gap >25s no arquivo bt_snap = bot voltou -> envia ja, sem esperar o intervalo); (3) INTERVALO 60->20s; (4) aviso de EA ORFAO (magic sem dono na nuvem). v1.24: snapshot por arquivo dedicado. v1.23: throttle proprio 2s + diagnostico com hora.
 
 
 # ── 0. Log de debug em arquivo ─────────────────────────────────────
@@ -1044,6 +1044,30 @@ def _d_agora_utc():
     return _d.now(_z.utc)
 
 
+def _hml_link_ok(magic):
+    """hml16 (C27R54): sinal de conexão para o selo do EA 7.83 — grava <MQL5>/Files/bt_link_<magic>.txt com o epoch UTC
+    do último snapshot ACEITO pela plataforma (HTTP 200). Sem aceite, o arquivo envelhece e o EA apaga o pulso. Só escreve o horário."""
+    try:
+        import time as _t
+        pin = ler_mt5_pin()
+        if not pin or not int(magic or 0):
+            return
+        pasta = os.path.join(pin, "Files")
+        if not os.path.isdir(pasta):
+            return
+        destino = os.path.join(pasta, f"bt_link_{int(magic)}.txt")
+        tmp = destino + ".tmp"
+        with open(tmp, "w", encoding="ascii") as f:
+            f.write(str(int(_t.time())))
+        try:
+            os.replace(tmp, destino)
+        except Exception:
+            with open(destino, "w", encoding="ascii") as f:      # o EA pode estar lendo: tenta a escrita direta
+                f.write(str(int(_t.time())))
+    except Exception as e:
+        dbg(f"bt_link: {e}")
+
+
 def enviar_snapshot(bot_token, dados):
     """Manda snapshot pro /conector/snapshot. Read-only.
     hml8: antes do POST, anexa saúde do motor (cv_motor) e, se toda a cadeia
@@ -1084,6 +1108,7 @@ def enviar_snapshot(bot_token, dados):
         r = requests.post(f"{API_BASE}/conector/snapshot", json=body, timeout=20)
         if r.status_code == 200:
             dbg(f"snapshot -> 200 OK (simbolo={body['simbolo']} equity={body['equity']})")
+            _hml_link_ok(body.get("magic_number"))
         else:
             dbg(f"snapshot -> {r.status_code} | resposta: {r.text[:300]}")
         return r.status_code == 200

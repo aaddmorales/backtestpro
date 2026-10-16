@@ -185,10 +185,15 @@ def test_6_ea_782_trailing_local_desligado_e_informado(api):
            '      "|cvt0=%s|m15h=%s|cD=%s|cW=%s|cMN=%s",\n      cvt0,m15h,cD,cW,cMN);\n "|eav=7.81-ciclos-lm2|"')
     t = api._ea_782_patch(src)
     assert "InpBTTrailingBarra" not in t and "input bool   InpBTTrailingLocal = false;" in t and "if(!InpBTTrailingLocal) return;" in t
-    assert "|tbar=%d" in t and "(int)InpBTTrailingLocal);" in t and "eav=7.82-ciclos-lm2" in t
+    assert "|tbar=%d" in t and "(int)InpBTTrailingLocal);" in t and "eav=7.83-ciclos-lm2" in t
     assert api._ea_782_patch(t) == t                                                        # idempotente
     assert api._ea_782_patch("EA nativo " + api._EA782_INPUT_ANTIGO) == "EA nativo " + api._EA782_INPUT_ANTIGO   # só o executor puro
-    assert '"|cvt0=%s|m15h=%s|cD=%s|cW=%s|cMN=%s|tbar=%d",' in api._BT_VISAO_MQL5           # todo EA novo informa o trailing
+    assert '"|cvt0=%s|m15h=%s|cD=%s|cW=%s|cMN=%s|tbar=%d",' in api._BT_VISAO_MQL5 and "eav=7.83-ciclos-lm2" in api._BT_VISAO_MQL5
+    # 7.83: sinal de conexão com a plataforma no selo (pulsa até 75 s do último snapshot aceito; cinza parado depois)
+    assert "BT_LINK_V1" in api._BT_PAINEL_MQL5 and "   BTLinkPlataforma();\n" + api._EA783_STATUS in api._BT_PAINEL_MQL5
+    sel = api._EA783_TICK_ANTES + "\n" + api._EA783_STATUS + "EXECUTOR PURO"
+    ps = api._ea_782_patch(sel)
+    assert ps.count("BT_LINK_V1") == 1 and "BTLinkPlataforma();" in ps and api._ea_782_patch(ps) == ps           # todo EA novo informa o trailing
     e = api._ea_trailing_estado({"eav": "7.82-ciclos-lm2", "tbar": "0"})
     assert e["tbar"] == 0 and "DESLIGADO" in e["estado"]
     assert api._ea_trailing_estado({"eav": "7.81-ciclos-lm2"})["tbar"] is None

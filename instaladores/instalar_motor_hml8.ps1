@@ -21,7 +21,7 @@ $API_HML = "https://homolog-homolog.up.railway.app"
 $MANIFESTO_SHA = "5e9b8f43fb5b2b54628f0c93eea73005a6dae33fa12c6b16c49df309605f0afa"
 $CONECTOR_SHA = @{
   "conector_homolog.py"        = "10779fa0e534b952c0b9c9abb3445005181dd442d67de33ad0aa622c7781c212"
-  "conector_nucleo_homolog.py" = "43945dced7b41b6c3bc7fcab0332f427bb16d25017bfb2dfa4338ab60ddacb42"
+  "conector_nucleo_homolog.py" = "2b1bb2acd27245c2c53f04239ff3a9db1d44ef0a89e8112e8519093518281289"
 }
 function Pare([string]$m) { Write-Host "PARADO: $m" -ForegroundColor Red; Write-Host "Nada mais foi alterado a partir deste ponto."; exit 1 }
 function Ok([string]$m) { Write-Host "OK  $m" -ForegroundColor Green }
@@ -211,11 +211,11 @@ Ok "Conector HOMOLOG v1.38-hml16 aberto (conexao automatica se ja houver token s
 Write-Host "Pronto. Os bots que ja estao nos graficos ($($ativos -join ', ')) da DEMO nao precisam ser reenviados: confira na janela do conector que eles conectaram." -ForegroundColor Cyan
 Write-Host "Canal de comando (hml16): so funciona com a DEMO conferida (botao 'Conferir MT5 DEMO') e Algo Trading ligado no MT5 demo." -ForegroundColor Cyan
 
-# 10. C27R54: EA 7.82 nos bots da campanha (13 BTCUSD, 14 XAUUSD) - reinstala da nuvem homolog e recompila com o MetaEditor da DEMO.
+# 10. C27R54: EA 7.83 (7.82 + sinal de conexao no selo) nos bots da campanha (13 BTCUSD, 14 XAUUSD) - reinstala da nuvem homolog e recompila com o MetaEditor da DEMO.
 #     O MT5 recarrega sozinho o EA recompilado nos graficos; o input novo InpBTTrailingLocal nasce false. Tokens nunca sao impressos.
 $eaHelper = Join-Path $repo "instaladores\atualizar_ea_782.py"
 $eap = $ErrorActionPreference; $ErrorActionPreference = "Continue"
 & $py $eaHelper $Destino "13,14"
 $okEa = $LASTEXITCODE; $ErrorActionPreference = $eap
-if ($okEa -ne 0) { Write-Host "aviso: EA 7.82 nao foi instalado/compilado nos dois bots (ver linhas acima). Leitor e conector seguem instalados." -ForegroundColor Yellow }
-else { Ok "EA 7.82 instalado e compilado nos bots 13 e 14 (o MT5 recarrega o EA nos graficos)" }
+if ($okEa -ne 0) { Write-Host "aviso: EA 7.83 nao foi instalado/compilado nos dois bots (ver linhas acima). Leitor e conector seguem instalados." -ForegroundColor Yellow }
+else { Ok "EA 7.83 instalado e compilado nos bots 13 e 14 (o MT5 recarrega o EA nos graficos)" }

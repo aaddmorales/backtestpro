@@ -1,5 +1,5 @@
 """atualizar_ea_782.py - C27R54 - SOMENTE HOMOLOGACAO / MT5 DEMO.
-Reinstala e RECOMPILA os EAs dos bots da campanha (BTCUSD id 13, XAUUSD id 14) com o EA 7.82 que a API homolog entrega:
+Reinstala e RECOMPILA os EAs dos bots da campanha (BTCUSD id 13, XAUUSD id 14) com o EA 7.83 que a API homolog entrega (7.82 + sinal de conexao com a plataforma no selo):
   - o snapshot passa a informar o trailing local do EA (|tbar=0/1);
   - o executor puro nasce com InpBTTrailingLocal=false (input renomeado: o valor true antigo do grafico nao e herdado).
 Tokens: lidos da configuracao do Conector HOMOLOG e da nuvem homolog; NUNCA impressos. Nao envia ordem, nao toca em conta real.
@@ -30,7 +30,7 @@ for bid in ids:
     if not ok:
         print(f"bot {bid}: reinstalar FALHOU: {destino}"); falhou = True; continue
     txt = open(destino, encoding="utf-8").read()
-    marcas = {"eav 7.82": "eav=7.82-ciclos-lm2" in txt, "tbar no snapshot": "|tbar=%d" in txt,
+    marcas = {"eav 7.83": "eav=7.83-ciclos-lm2" in txt, "sinal de conexao no selo": "BT_LINK_V1" in txt, "tbar no snapshot": "|tbar=%d" in txt,
               "trailing local desligado": "input bool   InpBTTrailingLocal = false;" in txt, "sem o input antigo": "InpBTTrailingBarra" not in txt}
     me = N.achar_metaeditor_hml(pin) if hasattr(N, "achar_metaeditor_hml") else None
     okc, log = N.compilar_mq5(destino, me)
