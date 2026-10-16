@@ -930,7 +930,7 @@ def test_25_sel4_portao8_proporcional_ao_risco_c27r44():
     """C27R44 (sel-4): o portão 8 tolera max(DESVIO_MAX do ativo, 10% da distância entrada→stop). Gold 12/10 05:30 UTC: card2 M15 venda
     entrada 4184,63, stop ~4197,46 (risco 1283 pts), preço 4184,19 (44 pts) → passa (sel-3 recusava com limite 30); 358 pts (04:15) segue recusado."""
     import api
-    assert api.SEL_VERSAO == "sel-6" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
+    assert api.SEL_VERSAO == "sel-7" and api._SEL_DESVIO_FRAC_RISCO == 0.10 and api._SEL_DESVIO_MAX["XAUUSD"] == 30
     lim = max(api._SEL_DESVIO_MAX["XAUUSD"], 1283 * api._SEL_DESVIO_FRAC_RISCO)
     assert lim == 128.3 and 44 <= lim and 54 <= lim and 358 > lim and 162 > lim
 
@@ -1105,7 +1105,7 @@ def test_29_sel5_selo_informativo_compatibilidade_e_sem_sinal_c27r47(amb):
     """Item 1: o selo/PF deixa de vetar (portão 5 informativo); a ordenação começa pela compatibilidade com o movimento em formação;
     cada célula do catálogo SEM candidato é gravada como 'sem sinal' com critério e valores."""
     import api
-    assert api.SEL_VERSAO == "sel-6" and api._SEL_SELO_BLOQUEIA is False and api.SEL_CONTRATO["id"] == "sel-6"
+    assert api.SEL_VERSAO == "sel-7" and api._SEL_SELO_BLOQUEIA is False and api.SEL_CONTRATO["id"] == "sel-7"
     # card7_rsi M15 (PF 1,003, 2ª metade 0,81 → SEM selo) e card2 M15 (COM selo, PF 1,938): os dois elegíveis; o movimento decide a ordem
     av, *_ = S._av(api, amb, [S._cand("card7_rsi", "M15", 1), S._cand("card2_rompimento_caixa", "M15", 1)], veredito="autorizada")
     por = {c["estrategia"]["card"]: c for c in S._todos(av)}
@@ -1115,7 +1115,7 @@ def test_29_sel5_selo_informativo_compatibilidade_e_sem_sinal_c27r47(amb):
     assert por["card7_rsi"]["elegibilidade"] == "vetada" and por["card7_rsi"]["primeiro_impedimento"].startswith("11.")
     assert por["card7_rsi"]["estudo"]["selo_da_lista"] is False                     # a métrica continua registrada (informação)
     assert por["card7_rsi"]["compatibilidade"]["familia"] == "reversão" and por["card2_rompimento_caixa"]["compatibilidade"]["familia"] == "rompimento"
-    assert av["movimento_em_formacao"]["contrato"] == "sel-6" and "compatibilidade_por_familia" in av["movimento_em_formacao"]
+    assert av["movimento_em_formacao"]["contrato"] == "sel-7" and "compatibilidade_por_familia" in av["movimento_em_formacao"]
     # tendência em curso (M15 canal +1, regime tendência): rompimento 2 × reversão 0 → card2 escolhido mesmo com PF menor sendo o outro
     assert av["escolha"]["card"] == "card2_rompimento_caixa" and av["escolha"]["compatibilidade"]["grau"] >= por["card7_rsi"]["compatibilidade"]["grau"]
     # 'sem sinal': células do catálogo sem candidato nesta barra, por TF, com critério/valores/motivo
@@ -1187,7 +1187,7 @@ def test_32_gestao3_protecao_por_tempo_3o_e_4o_candle_custos_e_corretora_c27r47(
     """Item 3: candles M15 fechados = barras_de_posicao + 1. No 3º aciona: nível = entrada ± (custos + spread) × ponto; aplica se o preço
     já está além do nível + distância mínima e o nível é mais protetor; senão registra o impedimento (explícito no 4º). Nunca afasta."""
     import api
-    assert api.GESTAO_CONTRATO == "gestao-4" and api.GESTAO3_PROTECAO_CANDLES == 3 and api.GESTAO3_PROTECAO_PRAZO == 4   # C27R54: a gestao-4 herda a proteção por tempo
+    assert api.GESTAO_CONTRATO == "gestao-5" and api.GESTAO3_PROTECAO_CANDLES == 3 and api.GESTAO3_PROTECAO_PRAZO == 4   # C27R54: a gestao-4 herda a proteção por tempo
     sb = _SbFake([{"comissao": -0.5, "lote": 0.07}, {"comissao": -0.92, "lote": 0.13}, {"comissao": -0.56, "lote": 0.08}])      # ops 10–12 reais (XAU)
     bot = {"id": 12, "simbolo": "XAUUSD"}; at5 = {"especificacao": {"tick_tamanho": 0.01, "tick_valor": 1.0, "ponto": 0.01}}
     ab = {"id": 15, "sessao_teste_id": "CAMP", "preco_entrada": 4169.03, "lado": 1}

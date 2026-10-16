@@ -104,10 +104,12 @@ def test_2_reproducao_cronologica_das_avaliacoes_gravadas(api):
             (mantidas if novo == r["esc"] else mudou).append((r["bot"], r["b"]))
         if novo is not None and novo != r["esc"]:
             novas.append((r["bot"], r["b"], novo))
-    # executadas mantidas: BTC 55 (03:30) e 61 (08:30); Gold 59 e 60 (bot 14). Bloqueadas: BTC 54, 57, 58, 62, 63, 64, 65; Gold 56
+    # executadas mantidas: BTC 55 (03:30) e 61 (08:30); Gold 60 (bot 14). Bloqueadas: BTC 54, 57, 58, 62, 63, 64, 65; Gold 56
+    # C27R55c (sel-7, C5): Gold 59 (bot 14, 06:45Z) passa a AGUARDAR — M15 com rompimento PENDENTE da caixa (§5.1/§5.2)
     assert (13, "2026-10-15T03:30") in mantidas and (13, "2026-10-15T08:30") in mantidas
     assert sorted(b for b in mudou) == sorted([(13, "2026-10-14T23:00"), (14, "2026-10-15T04:15"), (13, "2026-10-15T05:00"), (13, "2026-10-15T06:30"),
-                                              (13, "2026-10-15T10:00"), (13, "2026-10-15T12:15"), (13, "2026-10-15T14:30"), (13, "2026-10-15T17:00")])
+                                              (13, "2026-10-15T10:00"), (13, "2026-10-15T12:15"), (13, "2026-10-15T14:30"), (13, "2026-10-15T17:00"),
+                                              (14, "2026-10-15T06:45")])
     assert novas == []                                       # os portões novos não promovem nenhum outro candidato: só deixam de abrir
 
 

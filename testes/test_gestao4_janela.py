@@ -63,7 +63,7 @@ def _decide(c, api):
 
 
 def test_1_corte_estrutural_confirmado_fecha_mesmo_com_continuidade(api):
-    assert api.GESTAO_CONTRATO == "gestao-4"
+    assert api.GESTAO_CONTRATO == "gestao-5"
     for nome, c in CASOS.items():
         acao, motivo, cont, cls, exp = _decide(c, api)
         assert acao == "close" and motivo == "ciclo", (nome, acao, exp)

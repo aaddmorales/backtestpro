@@ -37,7 +37,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-LEITOR_VERSAO = "1.9-hml"
+LEITOR_VERSAO = "1.10-hml"   # 1.10 (C27R55c): + caixa do M15 (estado, estado anterior, lado do rompimento) no bloco de gestão — regra §5.3 (voltou pra compressão)
 INTRABARRA_CONTRATO = "janela-10-15-1"     # v1.8 (C27R54): leitura M1/M5 a cada minuto da janela 10→15 do M15 aberto (constituição §2.1)
 CAND_VERSAO = "cand-6"                      # v1.9 (C27R55): + evidência por card × TF e níveis do motor por andar
 CORTE_CONTRATO = "corte-ciclo-2"            # corte do motor (Feito00093) com o M15 como ÚNICO andar que decide (C27R25)
@@ -317,6 +317,11 @@ def _candidatos(pasta, ativo, spread_tick=None):
         gestao = _gestao(B1, PC, ltp, F15p, n15, ts_txt, CC)
     except Exception as e:
         gestao = {"contrato": GESTAO_CONTRATO, "erro": f"{type(e).__name__}: {e}"[:200]}
+    try:                                               # 1.10 (C27R55c): caixa do M15 pelo motor congelado bt_ciclo_v1 (§5.1–5.3)
+        if isinstance(gestao, dict) and not gestao.get("erro"):
+            gestao["caixa_m15"] = _caixa_m15(pasta, ativo)
+    except Exception as e:
+        gestao["caixa_m15"] = {"erro": f"{type(e).__name__}: {e}"[:200]}
     itens = []; cont = {"confirmado": 0, "aguardando": 0, "cancelado": 0, "expirado": 0, "invalido": 0}
     comp = {"confirmados_rt": 0, "com_entrada_do_estudo": 0, "mesma_barra_de_entrada": 0, "mesmo_preco": 0,
             "estudo_posiciona_antes": 0, "estudo_ainda_nao_resolveu": 0}
@@ -740,6 +745,32 @@ def _evidencia_card(cid, F, sin, PC, ts_txt):
                  criterio="dois pivôs N=2 CONSECUTIVOS no mesmo nível (≤ 0,3×ATR14) + fechamento rompendo o pivô oposto")
     out["valores"] = v
     return out
+
+
+def _caixa_m15(pasta, ativo):
+    """1.10 (C27R55c) — ESTADO DA CAIXA DO M15 na última barra FECHADA, pela função congelada bt_ciclo_v1.caixa_estado (§5.1 caixa, §5.2 Lei de
+    Confirmação, §5.3 voltou pra compressão), e o estado na barra ANTERIOR. 'voltou_agora' = a barra fechou de volta DENTRO da MESMA caixa que
+    estava rompida (pendente ou confirmada) na barra anterior; 'lado_do_rompimento' = +1 rompeu para cima, −1 para baixo. Só descreve:
+    quem aplica a regra (corte de proteção da posição do lado do rompimento) é a API, sobre este bloco ASSINADO pelo conector (hml17+)."""
+    import pandas as pd
+    import bt_ciclo_v1 as CV1
+    A = CV1.carregar_andares(pasta, ativo)
+    a = A.get("M15")
+    if a is None:
+        return {"erro": "espelho sem M15"}
+    i = a.n - 1
+    ts = lambda k: (str(pd.Timestamp(a.ts[k])) if k is not None and 0 <= k < a.n else None)
+    cx = CV1.caixa_estado(a, i)
+    cp = CV1.caixa_estado(a, i - 1) if i > 0 else None
+    if not cx:
+        return {"contrato": "caixa-m15-1", "barra": ts(i), "estado": None, "estado_anterior": (cp or {}).get("estado"), "voltou_agora": False,
+                "fechamento": float(a.c[i])}
+    mesma = bool(cp and cp.get("k_arm") == cx.get("k_arm"))
+    voltou = bool(cx["estado"] == "voltou_compressao" and mesma and (cp or {}).get("estado") in ("rompida_pendente", "rompida_confirmada"))
+    return {"contrato": "caixa-m15-1", "barra": ts(i), "estado": cx["estado"], "estado_anterior": ((cp or {}).get("estado") if mesma else None),
+            "mesma_caixa_da_barra_anterior": mesma, "lado_do_rompimento": int(cx.get("lado") or 0), "topo": float(cx["topo"]), "fundo": float(cx["fundo"]),
+            "barra_que_armou": ts(cx.get("k_arm")), "barra_do_rompimento": ts(cx.get("k_romp")), "origem": cx.get("origem"),
+            "fechamento": float(a.c[i]), "voltou_agora": voltou}
 
 
 def _niveis_por_tf(pasta, ativo):

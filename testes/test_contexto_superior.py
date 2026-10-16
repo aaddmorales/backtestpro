@@ -33,7 +33,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert m30["contexto_superior"]["D1"] == "sentidos opostos" and m30["contexto_superior"]["H1"] == "mesmo sentido"
     assert "não exige alinhamento" in m30["contexto_superior"]["exigencia_do_card"]
     ef = {(m["condicao"], m["efeito"], m["onde"]) for m in m30["motivos"]}
-    assert ("D1 em sentido oposto", "informa", "seleção (sel-6)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-6)") in ef
+    assert ("D1 em sentido oposto", "informa", "seleção (sel-7)") in ef and ("H4 em sentido oposto", "informa", "seleção (sel-7)") in ef
     assert ("autoridade em vigor não autorizaria este lado", "bloqueia a execução", "autoridade (R-CICLO-01 r01v4)") in ef
     assert ("bot em modo observar", "bloqueia a execução", "modo operacional do bot") in ef
     assert not any(m["efeito"] == "bloqueia" for m in m30["motivos"])                  # nada bloqueia a SELEÇÃO
@@ -44,7 +44,7 @@ def test_1_venda_nos_tempos_menores_com_d1_e_h4_em_alta_e_so_contexto(api, amb):
     assert av["resumo"]["elegiveis_em_sentido_oposto_a_d1_ou_h4"] == 2
     # contratos nomeados; a seleção NÃO é apresentada como operacional
     K = av["contratos"]
-    assert av["versao"] == "sel-6" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
+    assert av["versao"] == "sel-7" == K["selecao"]["id"] and K["autoridade"]["id"] == "R-CICLO-01 r01v4"
     assert K["selecao_e_operacional"] is False and "NÃO operacional" in K["selecao"]["estado"] and K["autoridade"]["estado"] == "em vigor"
     assert K["autoridade_nesta_barra"] == {"veredito_do_motor": "bloqueada", "motivo_do_motor": "teste", "vetou_por_d1_h4": True}
     assert all(c["execucao"]["decisao"] is None for c in t)

@@ -1,0 +1,150 @@
+=== conferência (avaliações sel-6 gravadas ao vivo): elegibilidade recalculada com o código anterior == gravada: {True: 1971}
+=== C5/C7 — avaliações com mudança: 16
+
+XAUUSD 13/10 16:15 Kyiv (sel-4) mov: compressão/lateral (baixa) · quebra confirmada | M15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']
+   escolha gravada=card10_donchian20|M15|2026-10-13 15:45:00|-1 | anterior(recalc)=card10_donchian20|M15|2026-10-13 15:45:00|-1 | corrigida=card1_reversao_extremo|M15|2026-10-13 15:45:00|-1
+   card1_reversao_extremo|M15|2026-10-13 15:45:00|-1: vetada_12 -> elegivel (grau 0->2)
+
+XAUUSD 13/10 21:15 Kyiv (sel-4) mov: tendência com recuo (pullback) (baixa) · topo/fundo PROVISÓRIO | M15 ['sacudida_fundo', 'rompimento_pendente(por_barra)']
+   escolha gravada=None | anterior(recalc)=None | corrigida=None
+   card7_rsi|M15|2026-10-13 21:00:00|1: vetada_11 -> aguardando_caixa (grau 0->0)
+
+XAUUSD 13/10 23:30 Kyiv (sel-4) mov: compressão/lateral (baixa) · compressão | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card4_canal_ema20|M30|2026-10-13 23:00:00|-1 | anterior(recalc)=card4_canal_ema20|M30|2026-10-13 23:00:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-13 23:15:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card4_canal_ema20|M30|2026-10-13 23:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+XAUUSD 14/10 03:45 Kyiv (sel-4) mov: compressão/lateral (baixa) · topo/fundo PROVISÓRIO | M15 ['sacudida_fundo', 'rompimento_pendente(por_barra)']
+   escolha gravada=None | anterior(recalc)=card3_segunda_entrada|M15|2026-10-14 03:15:00|-1 | corrigida=None
+   card3_segunda_entrada|M15|2026-10-14 03:15:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card4_canal_ema20|M15|2026-10-14 03:30:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 13/10 20:30 Kyiv (sel-4) mov: compressão/lateral (baixa) · topo/fundo PROVISÓRIO | M15 ['sacudida_fundo', 'rompimento_pendente(por_barra)']
+   escolha gravada=None | anterior(recalc)=card4_canal_ema20|M15|2026-10-13 20:00:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-13 20:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 15/10 01:15 Kyiv (sel-5) mov: compressão/lateral (baixa) · topo/fundo PROVISÓRIO | M15 ['sacudida_fundo', 'rompimento_pendente(por_barra)']
+   escolha gravada=card4_canal_ema20|M15|2026-10-15 01:00:00|-1 | anterior(recalc)=card4_canal_ema20|M15|2026-10-15 01:00:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 01:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 15/10 05:30 Kyiv (sel-5) mov: compressão/lateral (baixa) · quebra confirmada | M15 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']
+   escolha gravada=card11_sr_dia_anterior|M15|2026-10-15 05:00:00|-1 | anterior(recalc)=card11_sr_dia_anterior|M15|2026-10-15 05:00:00|-1 | corrigida=None
+   card11_sr_dia_anterior|M15|2026-10-15 05:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 15/10 05:45 Kyiv (sel-5) mov: compressão/lateral (baixa) · quebra confirmada | M15 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']
+   escolha gravada=card9_macd|M15|2026-10-15 05:15:00|-1 | anterior(recalc)=card9_macd|M15|2026-10-15 05:15:00|-1 | corrigida=None
+   card8_bollinger|M15|2026-10-15 05:30:00|1: vetada_11 -> aguardando_caixa (grau 0->0)
+   card9_macd|M15|2026-10-15 05:15:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card9_macd|M30|2026-10-15 05:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card12_engolfo|M30|2026-10-15 05:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 15/10 06:15 Kyiv (sel-5) mov: compressão/lateral (baixa) · compressão | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card12_engolfo|M15|2026-10-15 06:00:00|-1 | anterior(recalc)=card12_engolfo|M15|2026-10-15 06:00:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 06:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card12_engolfo|M15|2026-10-15 06:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 15/10 08:15 Kyiv (sel-5) mov: tendência com recuo (pullback) (baixa) · indefinida | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card4_canal_ema20|M15|2026-10-15 08:00:00|-1 | anterior(recalc)=card4_canal_ema20|M15|2026-10-15 08:00:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 08:00:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 16/10 06:45 Kyiv (sel-6) mov: tendência com recuo (pullback) (baixa) · quebra confirmada | M15 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']
+   escolha gravada=card10_donchian20|M15|2026-10-16 05:45:00|-1 | anterior(recalc)=card10_donchian20|M15|2026-10-16 05:45:00|-1 | corrigida=None
+   card1_reversao_extremo|M15|2026-10-16 05:45:00|-1: vetada_12 -> aguardando_caixa (grau 0->2)
+   card10_donchian20|M15|2026-10-16 05:45:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+BTCUSD 16/10 17:45 Kyiv (sel-6) mov: compressão/lateral (sem direção) · compressão | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=None | anterior(recalc)=None | corrigida=None
+   card4_canal_ema20|M15|2026-10-16 17:15:00|1: vetada_11 -> aguardando_caixa (grau 1->1)
+   card3_segunda_entrada|M30|2026-10-16 16:30:00|1: vetada_11 -> aguardando_caixa (grau 1->1)
+   card5_ema_9_21|M30|2026-10-16 17:00:00|1: vetada_11 -> aguardando_caixa (grau 1->1)
+   card6_tripla_media|M30|2026-10-16 17:00:00|1: vetada_11 -> aguardando_caixa (grau 1->1)
+
+XAUUSD 14/10 23:00 Kyiv (sel-5) mov: tendência em curso (alta) · indefinida | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card5_ema_9_21|M15|2026-10-14 22:45:00|1 | anterior(recalc)=card5_ema_9_21|M15|2026-10-14 22:45:00|1 | corrigida=None
+   card5_ema_9_21|M15|2026-10-14 22:45:00|1: elegivel -> aguardando_caixa (grau 1->1)
+
+XAUUSD 15/10 09:45 Kyiv (sel-5) mov: tendência em curso (baixa) · indefinida | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card4_canal_ema20|M15|2026-10-15 09:30:00|-1 | anterior(recalc)=card4_canal_ema20|M15|2026-10-15 09:30:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 09:30:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+XAUUSD 15/10 14:15 Kyiv (sel-5) mov: tendência em curso (alta) · indefinida | M15 ['rompimento_pendente(por_barra)']
+   escolha gravada=card4_canal_ema20|M15|2026-10-15 13:45:00|1 | anterior(recalc)=card4_canal_ema20|M15|2026-10-15 13:45:00|1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 13:45:00|1: elegivel -> aguardando_caixa (grau 1->1)
+
+XAUUSD 15/10 15:45 Kyiv (sel-5) mov: compressão/lateral (baixa) · quebra confirmada | M15 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']
+   escolha gravada=card12_engolfo|M15|2026-10-15 15:30:00|-1 | anterior(recalc)=card12_engolfo|M15|2026-10-15 15:30:00|-1 | corrigida=None
+   card4_canal_ema20|M15|2026-10-15 15:30:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+   card12_engolfo|M15|2026-10-15 15:30:00|-1: elegivel -> aguardando_caixa (grau 1->1)
+
+=== C5 — aguardaram e ficaram ELEGÍVEIS numa barra seguinte (portão 9 neutralizado): 0
+
+=== C5 — sinais que passaram a AGUARDAR e o que aconteceu nas barras seguintes (só o gravado em cada barra):
+   XAUUSD card7_rsi|M15|2026-10-13 21:00:00|1: 13/10 21:15 aguardando_caixa → 13/10 21:30 vetada_1a9 [falhou 4,8,11] → 13/10 21:45 vetada_1a9 [falhou 3,8,11] → 13/10 22:00 vetada_1a9 [falhou 3,8,11] → 13/10 22:15 vetada_1a9 [falhou 3,8,11]
+   XAUUSD card4_canal_ema20|M15|2026-10-13 23:15:00|-1: 13/10 23:30 aguardando_caixa → 13/10 23:45 vetada_1a9 [falhou 7,8]
+   XAUUSD card4_canal_ema20|M30|2026-10-13 23:00:00|-1: 13/10 23:30 aguardando_caixa → 13/10 23:45 vetada_1a9 [falhou 7,8] → 14/10 01:15 vetada_1a9 [falhou 3,11] → 14/10 01:30 vetada_1a9 [falhou 3,8,11]
+   XAUUSD card3_segunda_entrada|M15|2026-10-14 03:15:00|-1: 14/10 03:45 aguardando_caixa → 14/10 04:00 vetada_1a9 [falhou 8] → 14/10 04:15 vetada_1a9 [falhou 3,8] → 14/10 04:30 vetada_1a9 [falhou 3,4,6,8,11] → 14/10 04:45 vetada_1a9 [falhou 3,8]
+   XAUUSD card4_canal_ema20|M15|2026-10-14 03:30:00|-1: 14/10 03:45 aguardando_caixa → 14/10 04:00 vetada_1a9 [falhou 8] → 14/10 04:15 vetada_1a9 [falhou 3,8] → 14/10 04:30 vetada_1a9 [falhou 3,4,6,8,11] → 14/10 04:45 vetada_1a9 [falhou 3,8]
+   BTCUSD card4_canal_ema20|M15|2026-10-13 20:00:00|-1: 13/10 20:30 aguardando_caixa → 13/10 20:45 vetada_1a9 [falhou 3,11] → 13/10 21:00 vetada_1a9 [falhou 3,8,11] → 13/10 21:15 vetada_1a9 [falhou 3,11]
+   BTCUSD card4_canal_ema20|M15|2026-10-15 01:00:00|-1: 15/10 01:15 aguardando_caixa → 15/10 01:30 vetada_1a9 [falhou 8] → 15/10 01:45 vetada_1a9 [falhou 3,8] → 15/10 02:00 vetada_1a9 [falhou 3,8] → 15/10 02:15 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card11_sr_dia_anterior|M15|2026-10-15 05:00:00|-1: 15/10 05:30 aguardando_caixa → 15/10 05:45 vetada_1a9 [falhou 8,11] → 15/10 06:00 vetada_1a9 [falhou 3,8,11] → 15/10 06:15 vetada_1a9 [falhou 3,8,11] → 15/10 06:30 vetada_1a9 [falhou 3,8]
+   BTCUSD card8_bollinger|M15|2026-10-15 05:30:00|1: 15/10 05:45 aguardando_caixa → 15/10 06:00 vetada_1a9 [falhou 8,11] → 15/10 06:15 vetada_1a9 [falhou 3,8,11] → 15/10 06:30 vetada_1a9 [falhou 3,8,11] → 15/10 06:45 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card9_macd|M15|2026-10-15 05:15:00|-1: 15/10 05:45 aguardando_caixa → 15/10 06:00 vetada_1a9 [falhou 8,11] → 15/10 06:15 vetada_1a9 [falhou 3,8,11] → 15/10 06:30 vetada_1a9 [falhou 3,8] → 15/10 06:45 vetada_1a9 [falhou 3,8]
+   BTCUSD card9_macd|M30|2026-10-15 05:00:00|-1: 15/10 05:45 aguardando_caixa → 15/10 06:00 vetada_1a9 [falhou 8,11] → 15/10 06:15 vetada_1a9 [falhou 3,8,11] → 15/10 06:30 vetada_1a9 [falhou 3,8] → 15/10 06:45 vetada_1a9 [falhou 3,8] → 15/10 07:00 vetada_1a9 [falhou 3,4,8] → 15/10 07:15 vetada_1a9 [falhou 3,8] → 15/10 07:30 vetada_1a9 [falhou 3,8,11] → 15/10 07:45 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card12_engolfo|M30|2026-10-15 05:00:00|-1: 15/10 05:45 aguardando_caixa → 15/10 06:00 vetada_1a9 [falhou 8,11] → 15/10 06:15 vetada_1a9 [falhou 3,8,11] → 15/10 06:30 vetada_1a9 [falhou 3,8] → 15/10 06:45 vetada_1a9 [falhou 3,8] → 15/10 07:00 vetada_1a9 [falhou 3,4,8] → 15/10 07:15 vetada_1a9 [falhou 3,8] → 15/10 07:30 vetada_1a9 [falhou 3,8,11] → 15/10 07:45 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card4_canal_ema20|M15|2026-10-15 06:00:00|-1: 15/10 06:15 aguardando_caixa → 15/10 06:30 vetada_1a9 [falhou 8] → 15/10 06:45 vetada_1a9 [falhou 3,8] → 15/10 07:00 vetada_1a9 [falhou 3,4,8] → 15/10 07:15 vetada_1a9 [falhou 3,8]
+   BTCUSD card12_engolfo|M15|2026-10-15 06:00:00|-1: 15/10 06:15 aguardando_caixa → 15/10 06:30 vetada_1a9 [falhou 8] → 15/10 06:45 vetada_1a9 [falhou 3,8] → 15/10 07:00 vetada_1a9 [falhou 3,4,8] → 15/10 07:15 vetada_1a9 [falhou 3,8]
+   BTCUSD card4_canal_ema20|M15|2026-10-15 08:00:00|-1: 15/10 08:15 aguardando_caixa → 15/10 08:30 vetada_1a9 [falhou 8] → 15/10 08:45 vetada_1a9 [falhou 3,8] → 15/10 09:00 vetada_1a9 [falhou 3,8] → 15/10 09:15 vetada_1a9 [falhou 3,8]
+   BTCUSD card1_reversao_extremo|M15|2026-10-16 05:45:00|-1: 16/10 06:45 aguardando_caixa → 16/10 07:00 vetada_1a9 [falhou 8,11] → 16/10 07:15 vetada_1a9 [falhou 3,8,11] → 16/10 07:30 vetada_1a9 [falhou 3,8,11] → 16/10 07:45 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card10_donchian20|M15|2026-10-16 05:45:00|-1: 16/10 06:45 aguardando_caixa → 16/10 07:00 vetada_1a9 [falhou 8,11] → 16/10 07:15 vetada_1a9 [falhou 3,8,11] → 16/10 07:30 vetada_1a9 [falhou 3,8,11] → 16/10 07:45 vetada_1a9 [falhou 3,8,11]
+   BTCUSD card4_canal_ema20|M15|2026-10-16 17:15:00|1: 16/10 17:45 aguardando_caixa → 16/10 18:00 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:30 vetada_1a9 [falhou 3,4,6,8,11]
+   BTCUSD card3_segunda_entrada|M30|2026-10-16 16:30:00|1: 16/10 17:45 aguardando_caixa → 16/10 18:00 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:30 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 18:45 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:00 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 19:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:30 vetada_1a9 [falhou 3,6,8,11] → 16/10 21:00 vetada_1a9 [falhou 3,6,8,11] → 16/10 21:15 vetada_1a9 [falhou 3,6,8,11]
+   BTCUSD card5_ema_9_21|M30|2026-10-16 17:00:00|1: 16/10 17:45 aguardando_caixa → 16/10 18:00 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:30 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 18:45 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:00 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 19:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:30 vetada_1a9 [falhou 3,6,8,11]
+   BTCUSD card6_tripla_media|M30|2026-10-16 17:00:00|1: 16/10 17:45 aguardando_caixa → 16/10 18:00 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 18:30 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 18:45 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:00 vetada_1a9 [falhou 3,4,6,8,11] → 16/10 19:15 vetada_1a9 [falhou 3,6,8,11] → 16/10 19:30 vetada_1a9 [falhou 3,6,8,11]
+   XAUUSD card5_ema_9_21|M15|2026-10-14 22:45:00|1: 14/10 23:00 aguardando_caixa → 14/10 23:15 vetada_11 [falhou 11] → 14/10 23:30 vetada_1a9 [falhou 3,11] → 14/10 23:45 vetada_1a9 [falhou 3,7,8,11]
+   XAUUSD card4_canal_ema20|M15|2026-10-15 09:30:00|-1: 15/10 09:45 aguardando_caixa → 15/10 10:00 vetada_1a9 [falhou 8,11] → 15/10 10:15 vetada_1a9 [falhou 3,6,8,11] → 15/10 10:30 vetada_1a9 [falhou 3,6,8,11] → 15/10 10:45 vetada_1a9 [falhou 3,6,8,11]
+   XAUUSD card4_canal_ema20|M15|2026-10-15 13:45:00|1: 15/10 14:15 aguardando_caixa → 15/10 14:30 vetada_10 [falhou 11] → 15/10 14:45 vetada_1a9 [falhou 3,4,8,11] → 15/10 15:00 vetada_1a9 [falhou 3,6,8,11] → 15/10 15:15 vetada_1a9 [falhou 3,8,11]
+   XAUUSD card4_canal_ema20|M15|2026-10-15 15:30:00|-1: 15/10 15:45 aguardando_caixa → 15/10 16:00 vetada_1a9 [falhou 8,11] → 15/10 16:15 vetada_1a9 [falhou 3,6,8,11] → 15/10 16:30 vetada_1a9 [falhou 3,6,8,11] → 15/10 16:45 vetada_1a9 [falhou 3,6,8,11]
+   XAUUSD card12_engolfo|M15|2026-10-15 15:30:00|-1: 15/10 15:45 aguardando_caixa → 15/10 16:00 vetada_1a9 [falhou 8,11] → 15/10 16:15 vetada_1a9 [falhou 3,6,8,11] → 15/10 16:30 vetada_1a9 [falhou 3,6,8,11] → 15/10 16:45 vetada_1a9 [falhou 3,6,8,11]
+
+=== C6 — saídas: regra §5.3 nas barras em que cada posição estava aberta (eventos M15 gravados) ===
+op 14 BTCUSD compra card7_rsi H1: aberta 13/10 05:01, saiu 13/10 07:31 (ciclo, 53.86) → sem disparo da §5.3 | voltou contra a posição (não fecha): 13/10 05:45 | barras avaliadas 10; eventos M15 de pullback/sacudida sem disparo: 13/10 05:15 ['rompimento_confirmado(por_barra)']; 13/10 05:30 ['rompimento_confirmado(por_barra)']; 13/10 05:45 ['voltou_compressao']; 13/10 06:00 ['voltou_compressao']; 13/10 06:15 ['voltou_compressao']; 13/10 06:30 ['voltou_compressao']; 13/10 06:45 ['rompimento_pendente(por_barra)', 'quebra_estrutura_alta']; 13/10 07:00 ['rompimento_pendente(por_barra)', 'quebra_estrutura_alta']; 13/10 07:15 ['
+op 15 XAUUSD compra card9_macd M30: aberta 13/10 05:31, saiu 13/10 07:00 (ciclo, 80.2) → sem disparo da §5.3 | barras avaliadas 6; eventos M15 de pullback/sacudida sem disparo: 13/10 05:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 06:00 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 06:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 06:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 06:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 07:00 ['rompimento_
+op 48 XAUUSD compra card10_donchian20 M15: aberta 13/10 07:31, saiu 13/10 08:15 (ciclo, 12.72) → sem disparo da §5.3 | barras avaliadas 3; eventos M15 de pullback/sacudida sem disparo: 13/10 07:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 08:00 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 13/10 08:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']
+op 49 BTCUSD venda card8_bollinger M15: aberta 13/10 11:31, saiu 13/10 12:30 (ciclo, 552.95) → sem disparo da §5.3 | barras avaliadas 4; eventos M15 de pullback/sacudida sem disparo: 13/10 11:45 ['sacudida_topo', 'voltou_compressao']; 13/10 12:00 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']; 13/10 12:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']; 13/10 12:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']
+op 50 BTCUSD venda card8_bollinger M15: aberta 14/10 01:15, saiu 14/10 01:30 (stop, -86.05) → sem disparo da §5.3 | barras avaliadas 1; eventos M15 de pullback/sacudida sem disparo: 
+op 51 XAUUSD compra card12_engolfo M15: aberta 14/10 03:15, saiu 14/10 03:33 (stop, -74.48) → FECHARIA na avaliação de 14/10 03:30 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 1; eventos M15 de pullback/sacudida sem disparo: 
+op 52 XAUUSD venda card4_canal_ema20 M30: aberta 14/10 04:00, saiu 14/10 04:30 (stop, -73.36) → sem disparo da §5.3 | barras avaliadas 2; eventos M15 de pullback/sacudida sem disparo: 14/10 04:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']; 14/10 04:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']
+op 53 XAUUSD compra card4_canal_ema20 M30: aberta 14/10 06:01, saiu 14/10 06:30 (ciclo, -4.48) → sem disparo da §5.3 | barras avaliadas 2; eventos M15 de pullback/sacudida sem disparo: 14/10 06:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 14/10 06:30 ['sacudida_topo', 'rompimento_confirmado(por_barra)']
+op 54 BTCUSD compra card8_bollinger M15: aberta 15/10 02:00, saiu 15/10 02:08 (stop, -114.75) → sem disparo da §5.3 | barras avaliadas 0; eventos M15 de pullback/sacudida sem disparo: 
+op 55 BTCUSD venda card4_canal_ema20 M30: aberta 15/10 06:30, saiu 15/10 07:47 (ciclo, -54.64) → FECHARIA na avaliação de 15/10 07:45 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 5; eventos M15 de pullback/sacudida sem disparo: 15/10 06:45 ['rompimento_confirmado(por_barra)']; 15/10 07:00 ['rompimento_confirmado(por_barra)']; 15/10 07:15 ['rompimento_confirmado(por_barra)']; 15/10 07:30 ['rompimento_confirmado(por_barra)']
+op 56 XAUUSD venda card3_segunda_entrada M15: aberta 15/10 07:17, saiu 15/10 08:32 (B3, 27.49) → sem disparo da §5.3 | barras avaliadas 5; eventos M15 de pullback/sacudida sem disparo: 15/10 08:30 ['sacudida_fundo']
+op 57 BTCUSD compra card7_rsi H1: aberta 15/10 08:03, saiu 15/10 08:32 (ciclo, -48.73) → sem disparo da §5.3 | barras avaliadas 2; eventos M15 de pullback/sacudida sem disparo: 15/10 08:15 ['rompimento_pendente(por_barra)']; 15/10 08:30 ['rompimento_confirmado(por_barra)']
+op 58 BTCUSD compra card8_bollinger M30: aberta 15/10 09:32, saiu 15/10 10:16 (B3, 12.63) → sem disparo da §5.3 | barras avaliadas 3; eventos M15 de pullback/sacudida sem disparo: 15/10 09:45 ['rompimento_confirmado(por_barra)']; 15/10 10:00 ['rompimento_confirmado(por_barra)']; 15/10 10:15 ['rompimento_confirmado(por_barra)']
+op 59 XAUUSD venda card4_canal_ema20 M15: aberta 15/10 09:47, saiu 15/10 10:32 (ciclo, -50.28) → sem disparo da §5.3 | barras avaliadas 3; eventos M15 de pullback/sacudida sem disparo: 15/10 10:15 ['rompimento_pendente(por_barra)']; 15/10 10:30 ['rompimento_confirmado(por_barra)']
+op 60 XAUUSD compra card3_segunda_entrada M30: aberta 15/10 10:47, saiu 15/10 13:16 (B3, 68.16) → FECHARIA na avaliação de 15/10 12:45 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 10; eventos M15 de pullback/sacudida sem disparo: 15/10 11:00 ['rompimento_confirmado(por_barra)']; 15/10 11:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 11:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 11:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 12:00 ['rompimento_confirmado(por_barra)']; 15/10 12:30 ['rompimento_pendente(por_barra)', 'quebra_estrutura_alta']; 15
+op 61 BTCUSD compra card5_ema_9_21 M15: aberta 15/10 11:32, saiu 15/10 12:47 (B3, -21.36) → sem disparo da §5.3 | barras avaliadas 5; eventos M15 de pullback/sacudida sem disparo: 
+op 62 BTCUSD venda card4_canal_ema20 H1: aberta 15/10 13:02, saiu 15/10 15:02 (B3, 144.72) → FECHARIA na avaliação de 15/10 14:00 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 8; eventos M15 de pullback/sacudida sem disparo: 15/10 13:15 ['quebra_estrutura_baixa']; 15/10 13:30 ['quebra_estrutura_baixa']; 15/10 13:45 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']; 15/10 14:15 ['voltou_compressao', 'quebra_estrutura_baixa']; 15/10 14:30 ['quebra_estrutura_baixa']
+op 63 BTCUSD venda card4_canal_ema20 M15: aberta 15/10 15:17, saiu 15/10 17:10 (stop_trailing, -1.5) → sem disparo da §5.3 | barras avaliadas 7; eventos M15 de pullback/sacudida sem disparo: 15/10 15:45 ['sacudida_fundo']; 15/10 16:00 ['rompimento_pendente(por_barra)', 'quebra_estrutura_baixa']; 15/10 16:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']; 15/10 16:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']; 15/10 16:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_baixa']; 15/10 17:00 ['rompimento_confirmado(por_barra)', 'quebra_estrutura
+op 64 BTCUSD compra card8_bollinger M15: aberta 15/10 17:32, saiu 15/10 19:30 (B3, 303.67) → sem disparo da §5.3 | barras avaliadas 8; eventos M15 de pullback/sacudida sem disparo: 15/10 17:45 ['rompimento_pendente(por_barra)', 'quebra_estrutura_alta']; 15/10 18:00 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 18:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 18:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 18:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 15/10 19:00 ['rompimento_co
+op 65 BTCUSD venda card8_bollinger H1: aberta 15/10 20:00, saiu 15/10 20:30 (ciclo, -32.33) → sem disparo da §5.3 | barras avaliadas 2; eventos M15 de pullback/sacudida sem disparo: 15/10 20:30 ['sacudida_topo', 'rompimento_pendente(por_barra)']
+op 66 BTCUSD compra card4_canal_ema20 M15: aberta 15/10 23:30, saiu 15/10 23:50 (stop_trailing, -56.14) → sem disparo da §5.3 | barras avaliadas 1; eventos M15 de pullback/sacudida sem disparo: 
+op 67 BTCUSD compra card4_canal_ema20 M30: aberta 16/10 00:45, saiu 16/10 02:09 (stop_trailing, 1.61) → sem disparo da §5.3 | barras avaliadas 5; eventos M15 de pullback/sacudida sem disparo: 16/10 01:00 ['sacudida_topo', 'rompimento_pendente(por_barra)']; 16/10 01:15 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 16/10 01:30 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']; 16/10 01:45 ['rompimento_confirmado(por_barra)', 'quebra_estrutura_alta']
+op 68 BTCUSD venda card4_canal_ema20 M15: aberta 16/10 02:30, saiu 16/10 03:15 (B3, -27.49) → sem disparo da §5.3 | barras avaliadas 3; eventos M15 de pullback/sacudida sem disparo: 16/10 02:45 ['rompimento_confirmado(por_barra)']; 16/10 03:00 ['rompimento_confirmado(por_barra)']
+op 69 BTCUSD venda card10_donchian20 M15: aberta 16/10 06:45, saiu 16/10 07:22 (stop_trailing, -28.7) → FECHARIA na avaliação de 16/10 07:00 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 2; eventos M15 de pullback/sacudida sem disparo: 16/10 07:15 ['voltou_compressao']
+op 70 BTCUSD compra card9_macd H1: aberta 16/10 15:00, saiu 16/10 16:15 (ciclo, -61.12) → FECHARIA na avaliação de 16/10 15:15 (§5.3, rompimento do lado da posição voltou para a caixa) | barras avaliadas 5; eventos M15 de pullback/sacudida sem disparo: 16/10 15:30 ['voltou_compressao']; 16/10 15:45 ['voltou_compressao']; 16/10 16:00 ['rompimento_pendente(por_barra)']; 16/10 16:15 ['rompimento_confirmado(por_barra)']
+
+=== C6 — conferência BTC com bt_ciclo_v1.caixa_estado nos candles coletados (sem dado posterior à barra) ===
+op 54: motor → sem disparo | gravado → sem disparo
+op 55: motor → voltou_agora 15/10 07:45 caixa [81337.28, 81774.31] rompida em 2026-10-15 06:00:00 (corretora) | gravado → 15/10 07:45
+op 57: motor → sem disparo | gravado → sem disparo
+op 58: motor → sem disparo | gravado → sem disparo
+op 61: motor → sem disparo | gravado → sem disparo
+op 62: motor → voltou_agora 15/10 14:00 caixa [80849.18, 81276.22] rompida em 2026-10-15 13:30:00 (corretora) | gravado → 15/10 14:00
+op 63: motor → sem disparo | gravado → sem disparo
+op 64: motor → sem disparo | gravado → sem disparo
+op 65: motor → sem disparo | gravado → sem disparo
+op 66: motor → sem disparo | gravado → sem disparo
+op 67: motor → sem disparo | gravado → sem disparo
+op 68: motor → sem disparo | gravado → sem disparo
+op 69: motor → voltou_agora 16/10 07:00 caixa [81879.43, 82112.71] rompida em 2026-10-16 06:30:00 (corretora) | gravado → 16/10 07:00
+op 70: motor → SEM DADO (candles da coleta terminam antes da barra) | gravado → 16/10 15:15

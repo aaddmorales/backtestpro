@@ -77,7 +77,7 @@ def test_2_evidencia_dos_cards_prova_o_sem_sinal_de_compra(L):
     finally:
         shutil.rmtree(d, ignore_errors=True)
     ev = c["avaliacao_por_card"]["por_card"]
-    assert c["versao"] == "cand-6" and c["leitor"] == "1.9-hml"
+    assert c["versao"] == "cand-6" and c["leitor"] == "1.10-hml"
     assert len(ev) == 13 and all(set(x) == {"M15", "M30", "H1"} for x in ev.values())
     assert all(v.get("executado") is True and not v.get("erro_da_evidencia") for x in ev.values() for v in x.values())
     m15 = {k: v["M15"] for k, v in ev.items()}
