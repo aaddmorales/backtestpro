@@ -1,0 +1,33 @@
+{
+ "fonte": "homolog hvraqquuvybzpqwkqlcu: sessao_aberturas.gestao (avaliações gravadas ao vivo), mt5_comandos, auditoria_candles M15 (consulta de 17/10 ~15:40 UTC). Contrafactual: manter com o stop vigente antes da decisão por 16 barras M15 (sai no stop se tocado; senão no fechamento da 16ª barra). R = diferença ÷ risco inicial da operação. Não usa o melhor preço posterior.",
+ "cortes": [
+  {"op": 55, "ativo": "BTCUSD", "barra": "15/10 04:30", "motivo": "ciclo (2º sinal fino + direção contrária)", "regras": "gestao-3", "R_mantendo": 0.35},
+  {"op": 56, "ativo": "XAUUSD", "barra": "15/10 05:15", "motivo": "B3 (continuidade perdida)", "regras": "gestao-3", "R_mantendo": -0.40},
+  {"op": 57, "ativo": "BTCUSD", "barra": "15/10 05:15", "motivo": "ciclo (2º sinal fino + direção contrária)", "regras": "gestao-3", "R_mantendo": -0.51},
+  {"op": 58, "ativo": "BTCUSD", "barra": "15/10 07:00", "motivo": "B3 (continuidade perdida)", "regras": "gestao-3", "R_mantendo": 0.22},
+  {"op": 59, "ativo": "XAUUSD", "barra": "15/10 07:15", "motivo": "ciclo (2º sinal fino + direção contrária)", "regras": "gestao-3", "R_mantendo": -0.46},
+  {"op": 60, "ativo": "XAUUSD", "barra": "15/10 10:00", "motivo": "B3 (2 avaliações sem progresso)", "regras": "gestao-3", "R_mantendo": -0.46},
+  {"op": 61, "ativo": "BTCUSD", "barra": "15/10 09:30", "motivo": "B3 (continuidade perdida)", "regras": "gestao-3", "R_mantendo": -0.23},
+  {"op": 62, "ativo": "BTCUSD", "barra": "15/10 11:45", "motivo": "B3 (2 avaliações sem progresso)", "regras": "gestao-3", "R_mantendo": -1.29},
+  {"op": 64, "ativo": "BTCUSD", "barra": "15/10 16:15", "motivo": "B3 (2 avaliações sem progresso)", "regras": "gestao-3", "R_mantendo": 0.82},
+  {"op": 65, "ativo": "BTCUSD", "barra": "15/10 17:15", "motivo": "ciclo (2º sinal fino + direção contrária)", "regras": "gestao-3", "R_mantendo": 0.11},
+  {"op": 68, "ativo": "BTCUSD", "barra": "16/10 00:00", "motivo": "B3 (continuidade perdida)", "regras": "gestao-3", "R_mantendo": 0.72},
+  {"op": 70, "ativo": "BTCUSD", "barra": "16/10 13:00", "motivo": "ciclo (invalidação confirmada: 2º sinal fino + direção contrária)", "regras": "gestao-4", "R_mantendo": -0.32}
+ ],
+ "alertas": [
+  {"op": 60, "ativo": "XAUUSD", "barra": "15/10 08:45", "acao": "manter(protegido)", "leitura": "fino (2º sinal)", "regras": "gestao-3", "R_mantendo": 0.04, "stop_tocado": false},
+  {"op": 60, "ativo": "XAUUSD", "barra": "15/10 09:30", "acao": "manter(protegido)", "leitura": "estrutural (alerta_empilhado_3) — D1", "regras": "gestao-3", "R_mantendo": -0.05, "stop_tocado": false},
+  {"op": 60, "ativo": "XAUUSD", "barra": "15/10 09:45", "acao": "manter(protegido)", "leitura": "B3 com continuidade", "regras": "gestao-3", "R_mantendo": -0.16, "stop_tocado": false},
+  {"op": 62, "ativo": "BTCUSD", "barra": "15/10 11:30", "acao": "manter(protegido)", "leitura": "B3 com continuidade", "regras": "gestao-3", "R_mantendo": -0.68, "stop_tocado": true},
+  {"op": 64, "ativo": "BTCUSD", "barra": "15/10 15:30", "acao": "manter(protegido)", "leitura": "estrutural (exaustão identificada) — D1", "regras": "gestao-3", "R_mantendo": 0.07, "stop_tocado": false},
+  {"op": 64, "ativo": "BTCUSD", "barra": "15/10 16:00", "acao": "manter(protegido)", "leitura": "B3 com continuidade", "regras": "gestao-3", "R_mantendo": -0.50, "stop_tocado": false},
+  {"op": 67, "ativo": "BTCUSD", "barra": "15/10 22:45", "acao": "manter(protegido)", "leitura": "B3 com continuidade", "regras": "gestao-3", "R_mantendo": -0.49, "stop_tocado": true},
+  {"op": 70, "ativo": "BTCUSD", "barra": "16/10 12:00", "acao": "manter", "leitura": "alerta isolado (M1 quebra de estrutura)", "regras": "gestao-4", "R_mantendo": -0.53, "stop_tocado": true},
+  {"op": 70, "ativo": "BTCUSD", "barra": "16/10 12:45", "acao": "manter", "leitura": "alerta isolado (M5 quebra de estrutura)", "regras": "gestao-4", "R_mantendo": -0.32, "stop_tocado": true}
+ ],
+ "protecoes_resumo": {"total": 28, "stop_novo_tocado_em_16_barras": 14, "util_mais_que_zero": 11, "neutra_zero": 2, "prematura": 1,
+   "prematura_caso": "op 71 · 17/10 12:15 · proteção por tempo (3º candle) em 81.470,04: tocado às 12:30; com o stop anterior a posição terminaria 16 barras depois +0,17 R → −0,39 R relativo",
+   "maiores_ganhos": "op 62 · 15/10 10:30 proteção por tempo (+1,02 R); op 61 · 08:45 trailing (+0,58 R); op 63 · 12:15 e 12:45 (+0,51 R cada); op 69 · 04:00 proteção efetiva gestao-4 (+0,49 R)"},
+ "latencias_s": {"gestao3_8.21_barra_ate_avaliacao": "91–177 (sem horário do snapshot gravado; coleta e decisão juntas)",
+                 "gestao4e5_barra_ate_snapshot": "21–52", "decisao_ate_comando": "0,1–1,1", "comando_ate_execucao": "6,8–47,2 (8.21) · 6,9–14,2 (8.24+)"}
+}

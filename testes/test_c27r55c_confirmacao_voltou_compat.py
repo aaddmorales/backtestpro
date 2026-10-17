@@ -46,7 +46,7 @@ def _elegib(api, cand, mov):
 
 
 def test_1_contratos(api):
-    assert api.SEL_VERSAO == "sel-7" and api.GESTAO_CONTRATO == "gestao-5" and api.API_VERSAO.startswith("8.27")
+    assert api.SEL_VERSAO == "sel-7" and api.GESTAO_CONTRATO == "gestao-5" and api.API_VERSAO.startswith(("8.27", "8.28"))
     assert api.SEL_CONTRATO["id"] == "sel-7" and "mudou_em_relacao_a_sel_6" in api.SEL_CONTRATO
     assert "voltou_compressao" in api._REL_SAIDAS
 
