@@ -1,3 +1,5 @@
+> **SUBSTITUÍDO** pelo `PROTOCOLO_VALIDACAO_v3.md` (17/10/2026): este pré-registro tratava o trecho "comparação temporal" como reserva; ele já foi visto e é dado de desenvolvimento. Mantido só como histórico.
+
 # Pré-registro — validação prospectiva da percepção (estudo v2), fixado em 17/10/2026 antes de qualquer dado novo
 
 Nada aqui emite comando. O motor em operação (A0, bt_ciclo_v1 sha256 9ac1af94…) e a configuração da DEMO (sel-7, gestao-5) não mudam.

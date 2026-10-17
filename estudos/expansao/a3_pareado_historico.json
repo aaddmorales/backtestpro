@@ -1,0 +1,336 @@
+{
+ "BTCUSD": {
+  "desenvolvimento": {
+   "n_oportunidades": 1963,
+   "n_sustentado": 1133,
+   "n_conf_A0": 1127,
+   "n_conf_A3": 804,
+   "medidas": {
+    "d_medio_atr": 0.003,
+    "d_prec_pp": 8.449,
+    "d_cob_pp": -17.299,
+    "prec_A0": 82.709,
+    "prec_A3": 91.158,
+    "cob_A0": 81.906,
+    "cob_A3": 64.607,
+    "r_A0": -0.017,
+    "r_A3": -0.015
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.016,
+      0.021
+     ],
+     "IC98.75": [
+      -0.022,
+      0.026
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      6.7,
+      10.5
+     ],
+     "IC98.75": [
+      6.3,
+      11.0
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -19.0,
+      -15.7
+     ],
+     "IC98.75": [
+      -19.3,
+      -15.4
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "sem diferença demonstrada",
+    "A3_aceito": false
+   }
+  },
+  "validação": {
+   "n_oportunidades": 859,
+   "n_sustentado": 553,
+   "n_conf_A0": 534,
+   "n_conf_A3": 380,
+   "medidas": {
+    "d_medio_atr": -0.058,
+    "d_prec_pp": 8.545,
+    "d_cob_pp": -17.902,
+    "prec_A0": 85.929,
+    "prec_A3": 94.474,
+    "cob_A0": 82.821,
+    "cob_A3": 64.919,
+    "r_A0": -0.007,
+    "r_A3": -0.064
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.087,
+      -0.03
+     ],
+     "IC98.75": [
+      -0.097,
+      -0.023
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      6.7,
+      10.4
+     ],
+     "IC98.75": [
+      6.2,
+      11.0
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -21.0,
+      -15.3
+     ],
+     "IC98.75": [
+      -21.7,
+      -14.6
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "pior",
+    "A3_aceito": false
+   }
+  },
+  "reserva": {
+   "n_oportunidades": 916,
+   "n_sustentado": 577,
+   "n_conf_A0": 581,
+   "n_conf_A3": 415,
+   "medidas": {
+    "d_medio_atr": 0.003,
+    "d_prec_pp": 7.767,
+    "d_cob_pp": -18.718,
+    "prec_A0": 85.938,
+    "prec_A3": 93.705,
+    "cob_A0": 85.789,
+    "cob_A3": 67.071,
+    "r_A0": -0.02,
+    "r_A3": -0.018
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.048,
+      0.043
+     ],
+     "IC98.75": [
+      -0.066,
+      0.054
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      5.5,
+      10.3
+     ],
+     "IC98.75": [
+      4.9,
+      10.9
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -21.4,
+      -16.1
+     ],
+     "IC98.75": [
+      -22.0,
+      -15.5
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "sem diferença demonstrada",
+    "A3_aceito": false
+   }
+  }
+ },
+ "XAUUSD": {
+  "desenvolvimento": {
+   "n_oportunidades": 1236,
+   "n_sustentado": 768,
+   "n_conf_A0": 798,
+   "n_conf_A3": 595,
+   "medidas": {
+    "d_medio_atr": -0.001,
+    "d_prec_pp": 7.726,
+    "d_cob_pp": -16.276,
+    "prec_A0": 85.876,
+    "prec_A3": 93.603,
+    "cob_A0": 88.672,
+    "cob_A3": 72.396,
+    "r_A0": 0.017,
+    "r_A3": 0.016
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.039,
+      0.034
+     ],
+     "IC98.75": [
+      -0.046,
+      0.04
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      5.9,
+      9.6
+     ],
+     "IC98.75": [
+      5.5,
+      10.1
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -18.8,
+      -13.8
+     ],
+     "IC98.75": [
+      -19.7,
+      -13.2
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "sem diferença demonstrada",
+    "A3_aceito": false
+   }
+  },
+  "validação": {
+   "n_oportunidades": 657,
+   "n_sustentado": 410,
+   "n_conf_A0": 420,
+   "n_conf_A3": 294,
+   "medidas": {
+    "d_medio_atr": 0.014,
+    "d_prec_pp": 6.949,
+    "d_cob_pp": -20.488,
+    "prec_A0": 85.542,
+    "prec_A3": 92.491,
+    "cob_A0": 86.585,
+    "cob_A3": 66.098,
+    "r_A0": -0.031,
+    "r_A3": -0.016
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.03,
+      0.057
+     ],
+     "IC98.75": [
+      -0.037,
+      0.069
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      4.6,
+      9.3
+     ],
+     "IC98.75": [
+      3.8,
+      9.8
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -25.4,
+      -15.9
+     ],
+     "IC98.75": [
+      -26.7,
+      -14.4
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "sem diferença demonstrada",
+    "A3_aceito": false
+   }
+  },
+  "reserva": {
+   "n_oportunidades": 674,
+   "n_sustentado": 431,
+   "n_conf_A0": 430,
+   "n_conf_A3": 315,
+   "medidas": {
+    "d_medio_atr": 0.024,
+    "d_prec_pp": 7.83,
+    "d_cob_pp": -16.473,
+    "prec_A0": 83.916,
+    "prec_A3": 91.746,
+    "cob_A0": 83.527,
+    "cob_A3": 67.053,
+    "r_A0": -0.035,
+    "r_A3": -0.011
+   },
+   "ic": {
+    "d_medio_atr": {
+     "IC95.0": [
+      -0.028,
+      0.081
+     ],
+     "IC98.75": [
+      -0.037,
+      0.092
+     ]
+    },
+    "d_prec_pp": {
+     "IC95.0": [
+      5.4,
+      10.4
+     ],
+     "IC98.75": [
+      4.9,
+      11.4
+     ]
+    },
+    "d_cob_pp": {
+     "IC95.0": [
+      -19.1,
+      -14.2
+     ],
+     "IC98.75": [
+      -19.6,
+      -13.6
+     ]
+    }
+   },
+   "classificacao_descritiva": {
+    "precisao": "ganho confirmado e relevante",
+    "cobertura": "não demonstrado (limite inferior ≤ −5 pp)",
+    "resultado_pareado": "sem diferença demonstrada",
+    "A3_aceito": false
+   }
+  }
+ }
+}

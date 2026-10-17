@@ -1,0 +1,58 @@
+{
+ "marcos": "fechamento da barra M15 → 1º snapshot do símbolo → 1º snapshot com atestado VÁLIDO da barra (o usado) → avaliação → comando criado → comando entregue ao EA → execução confirmada",
+ "fonte": "homolog: sessao_aberturas.gestao (snapshot_id e avaliado_utc gravados ao vivo em TODAS as versões desde a 8.08), conector_snapshots.criado_em, mt5_comandos (criado/entregue/confirmado). Avaliações com barra M15 (excluídos 4 stop_externo e 1 janela).",
+ "por_versao": [
+  {
+   "api": "8.21 (gestao-3)",
+   "conector": "v1.37-hml15",
+   "avaliacoes": 67,
+   "com_comando": 36,
+   "fech_1o_snapshot_s": "0,3–23,2",
+   "fech_snapshot_usado_s": "24,7–175,3",
+   "snapshots_descartados_antes_do_usado": "282 (271 com atestado recusado: espelho adiantado/atrasado 900 s)",
+   "snapshot_avaliacao_s": "0,8–10,2",
+   "avaliacao_comando_s": "0,1–1,1",
+   "comando_entregue_s": "0,2–21,2",
+   "entregue_confirmado_s": "6,3–31,7",
+   "fech_confirmado_s": "36,4–210,9",
+   "mediana_fech_confirmado_s": 137.1
+  },
+  {
+   "api": "8.24 (gestao-4)",
+   "conector": "v1.38-hml16",
+   "avaliacoes": 7,
+   "com_comando": 3,
+   "fech_1o_snapshot_s": "2,9–17,5",
+   "fech_snapshot_usado_s": "17,5–37,9",
+   "snapshots_descartados_antes_do_usado": "6 (6 com atestado recusado: leitura antiga, barra fechada há 900 s)",
+   "snapshot_avaliacao_s": "2,0–3,5",
+   "avaliacao_comando_s": "0,6–1,1",
+   "comando_entregue_s": "3,4–6,1",
+   "entregue_confirmado_s": "5,9–8,1",
+   "fech_confirmado_s": "37,1–52,7",
+   "mediana_fech_confirmado_s": 41.3
+  },
+  {
+   "api": "8.27 (gestao-5)",
+   "conector": "v1.39-hml17",
+   "avaliacoes": 3,
+   "com_comando": 3,
+   "fech_1o_snapshot_s": "8,4–12,4",
+   "fech_snapshot_usado_s": "30,4–49,5",
+   "snapshots_descartados_antes_do_usado": "4 (4 com atestado recusado)",
+   "snapshot_avaliacao_s": "1,4–2,6",
+   "avaliacao_comando_s": "0,5–0,7",
+   "comando_entregue_s": "1,1–3,3",
+   "entregue_confirmado_s": "5,5–5,9",
+   "fech_confirmado_s": "42,6–61,5",
+   "mediana_fech_confirmado_s": 42.8
+  }
+ ],
+ "correcao": "O relatório anterior dizia que na 8.21 não havia horário do snapshot. Havia: o id do snapshot foi gravado na avaliação; o criado_em dele dá o marco. Com os mesmos marcos, a maior parte do atraso da 8.21 está ENTRE o fechamento e o 1º snapshot com atestado válido (24,7–175,3 s), não na decisão.",
+ "impacto": {
+  "coleta_ate_atestado_valido": "CORTES (12, close): preço do fechamento da barra de decisão × preço de saída executado, em R da operação: op55 −0,01 · op56 +0,13 · op57 −0,08 · op58 +0,20 · op59 −0,08 · op60 0,00 · op61 −0,04 · op62 +0,25 · op64 +0,23 · op65 +0,05 · op68 +0,04 · op70 −0,01 (soma +0,68 R; sinal varia: deriva do mercado no intervalo, não custo sistemático; só 1 caso na 8.24+). PROTEÇÕES (mover_sl): impacto NÃO DETERMINADO (o nível pedido é fixo; só importaria se o preço passasse o nível no intervalo — sem preço intrabarra gravado por avaliação).",
+  "decisao_e_comando": "≤ 1,1 s em todas as versões",
+  "entrega_e_execucao": "medido em tempo; o MT5 não devolve preço nos mover_sl/close (resultado só tem retcode/ticket), então o deslizamento do comando isolado NÃO É DETERMINADO; o efeito total fechamento→saída está acima",
+  "efeito_no_resultado": "não determinado: nenhuma medida isola o efeito do atraso sobre o R das operações"
+ }
+}

@@ -43,3 +43,22 @@ def test_corte_op70_e_alerta_op71():
     antigo = {"acao": "manter", "leitura_assinada": {}, "corte_classificacao": {}}            # registro da gestao-1: campos ausentes ficam None
     d = api._rel_decisao_do_ciclo(antigo, 1)
     assert d["acao"]["classe"] == "manter" and d["horarios_utc"]["barra_fechou"] is None and "anterior" in d["versao_das_regras"]["contrato_gestao"]
+
+
+def test_evidencia_vinculo_e_origem_c27r56b():
+    """Ordem 17/10 18:57 item 6: cada decisão mostra o snapshot/atestado e separa o gravado ao vivo do reconstruído."""
+    ao_vivo = _g(acao="mover_sl", sl_pedido="81470.04", snapshot_id_gravado=78365, atestado_barra_gravado="2026-10-17T12:15:00Z",
+                 snapshot_recebido_utc="2026-10-17T12:30:52Z", leitura_assinada={"stop_vigente": "81603.41"})
+    vinc = {"situacao": "COMPROVADO: id do snapshot gravado na avaliação ao vivo (API 8.08+)", "snapshot_id_gravado_na_avaliacao": 78365,
+            "snapshot_id": 78365, "snapshot_utc": "2026-10-17T12:30:49Z", "atestado_barra_utc": "2026-10-17T12:15:00Z", "atestado_e_da_barra_avaliada": True}
+    E = api._rel_decisao_do_ciclo(ao_vivo, -1, vinc)["evidencia"]
+    assert E["snapshot_id_gravado"] == 78365 and E["vinculo_snapshot"].startswith("COMPROVADO") and E["reconstruido"] == []
+    assert E["origem_do_registro"].startswith("gravado ao vivo") and E["atestado_e_da_barra_avaliada"] is True
+    # versão antiga (8.21): sem snapshot_recebido gravado → horário vem do snapshot cujo id foi gravado, marcado como derivado
+    d = api._rel_decisao_do_ciclo(_g(acao="manter", snapshot_id_gravado=62109), 1, dict(vinc, snapshot_id=62109, snapshot_id_gravado_na_avaliacao=62109, snapshot_utc="2026-10-15T04:16:54Z"))
+    assert d["horarios_utc"]["snapshot_recebido"] == "2026-10-15T04:16:54Z" and d["horarios_utc"]["snapshot_recebido_fonte"].startswith("criado_em do snapshot cujo id")
+    assert any("snapshot_recebido" in x for x in d["evidencia"]["derivado_no_relatorio"])
+    # sem id gravado → snapshot reconstruído e declarado
+    d = api._rel_decisao_do_ciclo(_g(acao="manter"), 1, {"situacao": "RECONSTRUÍDO: último snapshot", "snapshot_id": 5, "snapshot_utc": "2026-10-01T00:00:00Z"})
+    assert d["evidencia"]["reconstruido"] and d["horarios_utc"]["snapshot_recebido_fonte"].endswith("(RECONSTRUÍDO)")
+    assert api._rel_decisao_do_ciclo(_g(acao="manter"), 1)["evidencia"]["vinculo_snapshot"] == "sem id gravado"

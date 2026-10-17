@@ -1,0 +1,102 @@
+{
+ "BTCUSD": {
+  "desenvolvimento": {
+   "n_exaustao": 143,
+   "n_pausa": 986,
+   "exaustao_nao_renovado": 49.7,
+   "pausa_nao_renovado": 34.0,
+   "diferenca_pp": 15.7,
+   "IC95": [
+    7.6,
+    23.1
+   ],
+   "IC98_75": [
+    4.6,
+    24.6
+   ],
+   "classificacao_descritiva": "efeito confirmado e relevante"
+  },
+  "validação": {
+   "n_exaustao": 57,
+   "n_pausa": 476,
+   "exaustao_nao_renovado": 54.4,
+   "pausa_nao_renovado": 37.2,
+   "diferenca_pp": 17.2,
+   "IC95": [
+    4.4,
+    31.8
+   ],
+   "IC98_75": [
+    0.9,
+    35.2
+   ],
+   "classificacao_descritiva": "efeito confirmado e relevante"
+  },
+  "reserva": {
+   "n_exaustao": 55,
+   "n_pausa": 490,
+   "exaustao_nao_renovado": 41.8,
+   "pausa_nao_renovado": 37.8,
+   "diferenca_pp": 4.1,
+   "IC95": [
+    -11.2,
+    16.5
+   ],
+   "IC98_75": [
+    -14.3,
+    19.8
+   ],
+   "classificacao_descritiva": "inconclusivo"
+  }
+ },
+ "XAUUSD": {
+  "desenvolvimento": {
+   "n_exaustao": 97,
+   "n_pausa": 649,
+   "exaustao_nao_renovado": 57.7,
+   "pausa_nao_renovado": 35.4,
+   "diferenca_pp": 22.3,
+   "IC95": [
+    12.2,
+    32.7
+   ],
+   "IC98_75": [
+    9.1,
+    36.5
+   ],
+   "classificacao_descritiva": "efeito confirmado e relevante"
+  },
+  "validação": {
+   "n_exaustao": 49,
+   "n_pausa": 336,
+   "exaustao_nao_renovado": 53.1,
+   "pausa_nao_renovado": 31.0,
+   "diferenca_pp": 22.1,
+   "IC95": [
+    12.0,
+    31.8
+   ],
+   "IC98_75": [
+    9.0,
+    35.6
+   ],
+   "classificacao_descritiva": "efeito confirmado e relevante"
+  },
+  "reserva": {
+   "n_exaustao": 53,
+   "n_pausa": 342,
+   "exaustao_nao_renovado": 45.3,
+   "pausa_nao_renovado": 26.9,
+   "diferenca_pp": 18.4,
+   "IC95": [
+    4.3,
+    29.9
+   ],
+   "IC98_75": [
+    0.3,
+    32.4
+   ],
+   "classificacao_descritiva": "efeito confirmado e relevante"
+  }
+ }
+}

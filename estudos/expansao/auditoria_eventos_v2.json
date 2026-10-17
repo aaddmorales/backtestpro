@@ -1,0 +1,518 @@
+{
+ "BTCUSD": {
+  "ativo": "BTCUSD",
+  "regra_de_agrupamento": "ordena por barra; mantém um evento e descarta os seguintes do MESMO conjunto a menos de 16 barras M15 do último mantido (M.desagrupar)",
+  "denominadores": {
+   "desenvolvimento": {
+    "populacao_bruta": 6277,
+    "exaustoes_brutas": 308,
+    "populacao_agrupada": 996,
+    "exaustoes_agrupadas": 143,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 20,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 65,
+        "precisao": 50.8
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 62,
+        "precisao": 51.6,
+        "base": 35.9,
+        "n_populacao": 523
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 82,
+        "precisao": 47.6
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 81,
+        "precisao": 48.1,
+        "base": 33.8,
+        "n_populacao": 473
+       }
+      },
+      "_soma": {
+       "reagrupado": 147,
+       "derivado": 143,
+       "total_agrupado": 143
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 134,
+        "precisao": 48.5
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 131,
+        "precisao": 48.1,
+        "base": 37.0,
+        "n_populacao": 608
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 4,
+        "precisao": 25.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 2,
+        "precisao": 50.0,
+        "base": 23.4,
+        "n_populacao": 94
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 16,
+        "precisao": 75.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 10,
+        "precisao": 70.0,
+        "base": 34.4,
+        "n_populacao": 294
+       }
+      },
+      "_soma": {
+       "reagrupado": 154,
+       "derivado": 143,
+       "total_agrupado": 143
+      }
+     }
+    }
+   },
+   "validação": {
+    "populacao_bruta": 3067,
+    "exaustoes_brutas": 126,
+    "populacao_agrupada": 478,
+    "exaustoes_agrupadas": 57,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 8,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 29,
+        "precisao": 51.7
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 29,
+        "precisao": 51.7,
+        "base": 38.6,
+        "n_populacao": 236
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 28,
+        "precisao": 57.1
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 28,
+        "precisao": 57.1,
+        "base": 33.9,
+        "n_populacao": 242
+       }
+      },
+      "_soma": {
+       "reagrupado": 57,
+       "derivado": 57,
+       "total_agrupado": 57
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 55,
+        "precisao": 54.5
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 51,
+        "precisao": 52.9,
+        "base": 34.8,
+        "n_populacao": 296
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 1,
+        "precisao": 0.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 1,
+        "precisao": 0.0,
+        "base": 42.5,
+        "n_populacao": 40
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 6,
+        "precisao": 83.3
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 5,
+        "precisao": 80.0,
+        "base": 37.3,
+        "n_populacao": 142
+       }
+      },
+      "_soma": {
+       "reagrupado": 62,
+       "derivado": 57,
+       "total_agrupado": 57
+      }
+     }
+    }
+   },
+   "reserva": {
+    "populacao_bruta": 3136,
+    "exaustoes_brutas": 104,
+    "populacao_agrupada": 492,
+    "exaustoes_agrupadas": 55,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 7,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 28,
+        "precisao": 42.9
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 27,
+        "precisao": 40.7,
+        "base": 41.0,
+        "n_populacao": 251
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 28,
+        "precisao": 42.9
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 28,
+        "precisao": 42.9,
+        "base": 36.5,
+        "n_populacao": 241
+       }
+      },
+      "_soma": {
+       "reagrupado": 56,
+       "derivado": 55,
+       "total_agrupado": 55
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 52,
+        "precisao": 42.3
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 50,
+        "precisao": 42.0,
+        "base": 38.4,
+        "n_populacao": 315
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 0,
+        "precisao": null
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 0,
+        "precisao": null,
+        "base": 44.4,
+        "n_populacao": 36
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 7,
+        "precisao": 42.9
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 5,
+        "precisao": 40.0,
+        "base": 38.3,
+        "n_populacao": 141
+       }
+      },
+      "_soma": {
+       "reagrupado": 59,
+       "derivado": 55,
+       "total_agrupado": 55
+      }
+     }
+    }
+   }
+  }
+ },
+ "XAUUSD": {
+  "ativo": "XAUUSD",
+  "regra_de_agrupamento": "ordena por barra; mantém um evento e descarta os seguintes do MESMO conjunto a menos de 16 barras M15 do último mantido (M.desagrupar)",
+  "denominadores": {
+   "desenvolvimento": {
+    "populacao_bruta": 4160,
+    "exaustoes_brutas": 196,
+    "populacao_agrupada": 653,
+    "exaustoes_agrupadas": 97,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 20,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 41,
+        "precisao": 41.5
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 41,
+        "precisao": 41.5,
+        "base": 30.1,
+        "n_populacao": 399
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 56,
+        "precisao": 69.6
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 56,
+        "precisao": 69.6,
+        "base": 44.9,
+        "n_populacao": 254
+       }
+      },
+      "_soma": {
+       "reagrupado": 97,
+       "derivado": 97,
+       "total_agrupado": 97
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 87,
+        "precisao": 58.6
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 82,
+        "precisao": 58.5,
+        "base": 36.7,
+        "n_populacao": 430
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 2,
+        "precisao": 0.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 2,
+        "precisao": 0.0,
+        "base": 38.3,
+        "n_populacao": 47
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 16,
+        "precisao": 56.2
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 13,
+        "precisao": 61.5,
+        "base": 33.0,
+        "n_populacao": 176
+       }
+      },
+      "_soma": {
+       "reagrupado": 105,
+       "derivado": 97,
+       "total_agrupado": 97
+      }
+     }
+    }
+   },
+   "validação": {
+    "populacao_bruta": 2193,
+    "exaustoes_brutas": 103,
+    "populacao_agrupada": 337,
+    "exaustoes_agrupadas": 49,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 7,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 21,
+        "precisao": 38.1
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 21,
+        "precisao": 38.1,
+        "base": 36.8,
+        "n_populacao": 155
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 28,
+        "precisao": 64.3
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 28,
+        "precisao": 64.3,
+        "base": 26.9,
+        "n_populacao": 182
+       }
+      },
+      "_soma": {
+       "reagrupado": 49,
+       "derivado": 49,
+       "total_agrupado": 49
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 48,
+        "precisao": 60.4
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 45,
+        "precisao": 57.8,
+        "base": 36.0,
+        "n_populacao": 200
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 1,
+        "precisao": 0.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 1,
+        "precisao": 0.0,
+        "base": 33.3,
+        "n_populacao": 36
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 3,
+        "precisao": 0.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 3,
+        "precisao": 0.0,
+        "base": 21.8,
+        "n_populacao": 101
+       }
+      },
+      "_soma": {
+       "reagrupado": 52,
+       "derivado": 49,
+       "total_agrupado": 49
+      }
+     }
+    }
+   },
+   "reserva": {
+    "populacao_bruta": 2263,
+    "exaustoes_brutas": 108,
+    "populacao_agrupada": 346,
+    "exaustoes_agrupadas": 53,
+    "exaustoes_agrupadas_que_tambem_estao_na_populacao_agrupada": 8,
+    "nota": "exaustões e população são agrupadas SEPARADAMENTE: a exaustão agrupada não é subconjunto da população agrupada",
+    "recortes": {
+     "direção": {
+      "alta": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 27,
+        "precisao": 40.7
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 26,
+        "precisao": 38.5,
+        "base": 28.3,
+        "n_populacao": 166
+       }
+      },
+      "baixa": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 27,
+        "precisao": 51.9
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 27,
+        "precisao": 51.9,
+        "base": 30.6,
+        "n_populacao": 180
+       }
+      },
+      "_soma": {
+       "reagrupado": 54,
+       "derivado": 53,
+       "total_agrupado": 53
+      }
+     },
+     "regime H1": {
+      "H1 a favor": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 51,
+        "precisao": 45.1
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 51,
+        "precisao": 45.1,
+        "base": 28.3,
+        "n_populacao": 212
+       }
+      },
+      "H1 contra": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 0,
+        "precisao": null
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 0,
+        "precisao": null,
+        "base": 32.5,
+        "n_populacao": 40
+       }
+      },
+      "H1 lateral": {
+       "reagrupado_no_subgrupo": {
+        "n_exaustao": 5,
+        "precisao": 80.0
+       },
+       "derivado_da_populacao_unica": {
+        "n_exaustao": 2,
+        "precisao": 50.0,
+        "base": 30.9,
+        "n_populacao": 94
+       }
+      },
+      "_soma": {
+       "reagrupado": 56,
+       "derivado": 53,
+       "total_agrupado": 53
+      }
+     }
+    }
+   }
+  }
+ }
+}
