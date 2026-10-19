@@ -1306,7 +1306,9 @@ def test_35_sel5_alertas_de_estrutura_e_portao_10_op12_real_c27r48(amb):
                    "M30": {"dir": 1, "estrutura": "mista", "regime": "compressao", "localizacao": "na_resistencia", "momentum": "enfraquecendo"}}
     mov = api._sel_movimento_em_formacao(por_tf_op12)
     al = api._sel_alertas_de_estrutura(1, mov)
-    assert [a["tf"] for a in al] == ["M1", "M15", "M30", "M5"] and any("aponta contra" in a["leitura"] for a in al)
+    # 8.29 (p10-ampliado, ordem do dono 19/10): no rompimento confirmado do M15 a favor, o extremo da faixa do M15 não conta; a resistência do M30
+    # (obstáculo à frente) continua e, com a isenção aplicada, veta sozinha (registro 'regra'). A op 12 segue VETADA com 4 registros.
+    assert [a["tf"] for a in al] == ["M1", "M30", "M5", "regra"] and any("aponta contra" in a["leitura"] for a in al)
     comp = api._sel_compatibilidade({"estrategia": {"card": "card4_canal_ema20"}, "lado_num": 1}, mov)
     assert comp["familia"] == "continuação" and comp["grau"] == 0 and "≥ 2 tempos" in comp["rotulo"] and len(comp["alertas_de_estrutura"]) == 4
     comp_r = api._sel_compatibilidade({"estrategia": {"card": "card7_rsi"}, "lado_num": 1}, mov)
@@ -1408,8 +1410,9 @@ def test_38_pontos_marcados_gold_1214_classificacao_e_portao_10_c27r49():
     c = rep["conferencia_portao_10"]
     veta = {k.split()[0] for k, v in c.items() if v["portao_10"] == "VETA"}
     assert veta == {"op12", "op51", "op52", "op53", "ponto12"}
-    assert c["op48 04:30:45 13/10 compra"]["grau"] == 1 and c["op50 22:15:21 13/10 venda BTC"]["familia"] == "reversão"
-    assert c["op12 22:30:27 12/10 compra"]["alertas"] == ["M1:na_resistencia", "M15:topo_da_faixa", "M30:na_resistencia", "M5:E1/E2_baixa(persistente)"]
+    # 8.29 (p10-ampliado): o único alerta da op 48 (M15 topo_da_faixa no rompimento confirmado) deixa de contar → compatível (grau 2); continua não vetada
+    assert c["op48 04:30:45 13/10 compra"]["grau"] == 2 and c["op50 22:15:21 13/10 venda BTC"]["familia"] == "reversão"
+    assert c["op12 22:30:27 12/10 compra"]["alertas"] == ["M1:na_resistencia", "M30:na_resistencia", "M5:E1/E2_baixa(persistente)", "regra:p10-ampliado"]   # 8.29
     mov = api._sel_movimento_em_formacao(R.LEITURAS_ENTRADA["op52 01:00:24 14/10 venda"])
     rf = mov["regras_da_fase"]
     assert mov["fase"].startswith("topo/fundo PROVISÓRIO") and "sacudida" in rf["admite_intrabar"] and "N=2" in rf["pivo_confirmado"] and any("quebra" in x for x in rf["exige_fechamento"])
@@ -1442,7 +1445,7 @@ def test_39_sequencias_topo_quebra_queda_pullback_retomada_protecao_invalidacao_
     assert comp(0, "card4_canal_ema20", -1) <= 1 and comp(0, "card7_rsi", -1) == 2                        # topo provisório: só reversão
     assert comp(1, "card10_donchian20", -1) == 2 and comp(1, "card10_donchian20", 1) == 0                    # quebra: rompimento a favor, contra = 0
     assert comp(2, "card3_segunda_entrada", -1) == 2                                                        # pullback: 2ª entrada/retomada
-    assert comp(3, "card4_canal_ema20", -1) == 1                                                             # retomada NO fundo da faixa: 1 alerta (M15) rebaixa a 'neutra'
+    assert comp(3, "card4_canal_ema20", -1) == 2                                                             # 8.29 p10-ampliado: retomada no fundo da faixa COM rompimento confirmado do M15 a favor: o extremo não conta
     m_ret = api._sel_movimento_em_formacao(ptf(-1, "descendente", "tendencia", "meio_da_faixa", ["rompimento_confirmado(por_barra)"]))
     assert api._sel_compatibilidade({"estrategia": {"card": "card4_canal_ema20"}, "lado_num": -1}, m_ret)["grau"] == 2       # retomada no meio: compatível
     assert comp(4, "card7_rsi", 1) == 2 and comp(4, "card4_canal_ema20", -1) == 0                           # invalidação: reversão; continuação do lado antigo = 0
