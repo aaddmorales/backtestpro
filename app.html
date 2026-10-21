@@ -3951,7 +3951,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.88-c27r51-reconciliacao';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.89-r008-relatorio-assincrono';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9456,19 +9456,33 @@ async function relGerar(){
     et.textContent = (s >= 60 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : s + ' s'); bt.textContent = 'Gerando… ' + et.textContent;
     if (ee){ ee.textContent = s < 15 ? 'Pedido enviado à API; lendo os registros gravados (decisões, candidatos, gestão, comandos)…'
                                      : s < 60 ? 'Montando os blocos (oportunidades, seletor, cronologia, operações)… períodos maiores demoram mais.'
-                                     : 'Ainda gerando — a API em uso monta o relatório lendo registro a registro (pode passar de 3 min em 24 h / 7 d). Não clique de novo: o pedido continua no servidor e o resultado aparece aqui.'; }
+                                     : 'Montando no servidor em segundo plano (campanhas longas levam alguns minutos). Esta tela acompanha sozinha e mostra o resultado quando ficar pronto — não precisa clicar de novo.'; }
   }, 1000);
   try{
-    const r = await fetch(API + '/learning/relatorio/gerar', {method:'POST', headers: await _authHeaders(), body: JSON.stringify(corpo)});
-    const d = await r.json();
-    if (!r.ok){ out.innerHTML = `<div class="rel-q falha"><b>BT-R01 · Não consegui gerar o relatório (HTTP ${r.status})</b>${_clmE(d.detail || '')}</div>`; return; }
+    // v10.89 (R008): o servidor monta em segundo plano (202 + job_id) e a tela consulta a situação a cada 5 s — sem o corte de 300 s do proxy
+    const r = await fetch(API + '/learning/relatorio/gerar?assincrono=1', {method:'POST', headers: await _authHeaders(), body: JSON.stringify(corpo)});
+    let d = await r.json().catch(() => ({}));
+    if (r.status === 202 && d.job_id){
+      const jid = d.job_id; let falhasRede = 0;
+      while (true){
+        await new Promise(res => setTimeout(res, 5000));
+        if (!document.getElementById('rel-prog')) return;                    // a tela saiu do relatório
+        let rj, dj;
+        try{ rj = await fetch(API + '/learning/relatorio/job/' + encodeURIComponent(jid), {headers: await _authHeaders()}); dj = await rj.json(); falhasRede = 0; }
+        catch(_){ if (++falhasRede >= 12){ out.innerHTML = `<div class="rel-q falha"><b>BT-R02 · Sem resposta da API há 1 min ao acompanhar o relatório.</b>O pedido pode continuar no servidor: aguarde e clique em Gerar de novo — se ainda estiver em curso, a tela volta a acompanhá-lo.</div>`; return; } continue; }
+        if (!rj.ok){ out.innerHTML = `<div class="rel-q falha"><b>BT-R03 · Não consegui acompanhar o relatório (HTTP ${rj.status})</b>${_clmE(dj.detail || '')}</div>`; return; }
+        if (dj.situacao === 'pronto'){ d = dj.resultado || {}; break; }
+        if (dj.situacao === 'falhou'){ out.innerHTML = `<div class="rel-q falha"><b>BT-R01 · Não consegui gerar o relatório (HTTP ${dj.http || 500})</b>${_clmE(dj.erro || '')}</div>`; return; }
+        if (Date.now() - t0 > 3600 * 1000){ out.innerHTML = `<div class="rel-q falha"><b>BT-R04 · O relatório passou de 60 min no servidor.</b>Avise o suporte com o pedido ${_clmE(jid)}.</div>`; return; }
+      }
+    } else if (!r.ok){ out.innerHTML = `<div class="rel-q falha"><b>BT-R01 · Não consegui gerar o relatório (HTTP ${r.status})</b>${_clmE(d.detail || '')}</div>`; return; }
     _relAtual = d; out.innerHTML = relRender(d);
     ['rel-pdf', 'rel-json', 'rel-zip'].forEach(i => { const e = document.getElementById(i); if (e) e.disabled = !d.persistido; });
     // C27R30: gerar o arquivo junto — baixa o(s) formato(s) escolhido(s) assim que o relatório estiver gravado
     const auto = (document.getElementById('rel-auto') || {}).value || '';
     if (auto && d.persistido){ for (const f of (auto === 'ambos' ? ['pdf', 'json'] : (auto === 'tudo' ? ['pdf', 'json', 'zip'] : [auto]))) await relBaixar(f); }
     else if (auto && !d.persistido){ out.insertAdjacentHTML('afterbegin', '<div class="rel-q atencao"><b>Arquivo não gerado:</b> o relatório não foi gravado no servidor.</div>'); }
-  }catch(e){ out.innerHTML = `<div class="rel-q falha"><b>BT-R02 · Falha de rede ao gerar o relatório (após ${Math.round((Date.now() - t0) / 1000)} s).</b>Se demorou mais de ~5 min, o proxy pode ter cortado a resposta antes do fim; tente um período menor (6 h / 12 h).</div>`; }
+  }catch(e){ out.innerHTML = `<div class="rel-q falha"><b>BT-R02 · Falha de rede ao gerar o relatório (após ${Math.round((Date.now() - t0) / 1000)} s).</b>Confira a conexão e clique em Gerar de novo — se o pedido ainda estiver em curso no servidor, a tela volta a acompanhá-lo.</div>`; }
   finally{ clearInterval(tick); _relEmCurso = false; bt.textContent = txtBt; bts.forEach(e => { if (e.id === 'rel-gerar' || e.id === 'rel-gerar-pdf') e.disabled = false; }); }
 }
 let _relEmCurso = false;
