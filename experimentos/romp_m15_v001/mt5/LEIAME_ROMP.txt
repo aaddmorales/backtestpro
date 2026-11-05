@@ -1,0 +1,16 @@
+BotTested · EXPERIÊNCIA SEPARADA ROMP-M15-0.1 · XAUUSD · conta MT5 DEMO
+
+O QUE É
+- Estratégia FIXA (sem seleção entre estratégias, sem LM decidindo): compra se o fechamento M15 > máxima das 20 barras anteriores;
+  venda se < mínima das 20 anteriores; stop 2×ATR14 (Wilder) no servidor; saída quando o fechamento M15 rompe o canal das 10 anteriores contra.
+- Magic próprio 380380001. Não toca LM-0.2, sombra 0.4 nem outros bots. Uma posição por vez.
+- Registro local encadeado (romp_XAUUSD\eventos_LM.jsonl) e envio ao relatório da homologação (versão "ROMP-M15-0.1").
+
+INSTALAR (pasta própria, ex.: C:\BotTested\ROMP_v001)
+1. Python 3.12/3.13 64 bits; no Prompt: pip install -r requirements_executor.txt
+2. Edite config_romp.json: terminal_caminho, simbolo (nome real), bot_token da homologação (opcional).
+3. verificar_romp.bat → deve terminar em "VERIFICADO (somente leitura)". Ele mostra ponto, tick size/value, contrato, volumes, stops level e swaps REAIS.
+4. Indicador: copie BT_Romp_Canais_v001.mq5 para MQL5\Indicators, compile no MetaEditor e arraste no gráfico XAUUSD M15 (canais + marcas).
+5. iniciar_romp.bat. Conferir: "ordens BLOQUEADAS (lote/risco não autorizado)" enquanto o dimensionamento não for definido por você.
+6. Para operar: defina "dimensionamento" em config_romp.json, rode parar_romp.bat e iniciar_romp.bat de novo.
+7. Evidências: envie a pasta romp_XAUUSD zipada (sem token).

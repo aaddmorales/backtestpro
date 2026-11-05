@@ -1,0 +1,15 @@
+{
+ "_leia": "BotTested · experiência ROMP-M15-0.1 (XAUUSD) · conta MT5 DEMO. Nenhum segredo aqui: bot_token só no computador do MT5.",
+ "simbolo": "XAUUSD",
+ "_simbolo": "Nome REAL do ouro na sua corretora (ex.: XAUUSD ou XAUUSD.a). Confira em verificar_romp.bat.",
+ "magic": 380380001,
+ "dimensionamento": {"modo": null, "valor": null},
+ "_dimensionamento": "NÃO DEFINIDO = ordens BLOQUEADAS (cada sinal vira impedimento registrado). Você define: {\"modo\": \"lote_fixo\", \"valor\": L} OU {\"modo\": \"percentual\", \"valor\": % do patrimônio arriscado até o stop} OU {\"modo\": \"monetario\", \"valor\": moeda por operação}. Nada é assumido.",
+ "deviation_pts": 30,
+ "terminal_caminho": "",
+ "_terminal_caminho": "Caminho do terminal64.exe da conta DEMO.",
+ "ambiente": "homolog",
+ "plataforma_url": "https://lm-relatorio-homolog.up.railway.app",
+ "bot_token": "",
+ "laco_s": 2
+}

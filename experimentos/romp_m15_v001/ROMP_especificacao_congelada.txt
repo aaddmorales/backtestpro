@@ -1,0 +1,49 @@
+ESTRATÉGIA FIXA DE ROMPIMENTO M15 · XAUUSD · versão ROMP-M15-0.1 · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Experiência separada: não altera a LM-0.2 (campanha), a LM-0.4-exp (sombra) nem outros bots. Sem seleção entre estratégias. Sem ajuste de parâmetro por resultado.
+
+═══ 1. DADOS E TEMPO ═══
+- Barras M15 do MT5 (servidor da corretora), só CONCLUÍDAS. A barra t está concluída quando o tempo do servidor ≥ abertura(t) + 15 min.
+- Execução e stop na bancada: barras M1 do MT5 (bid OHLC + spread em pontos; ponto XAU = 0,01). Ask = bid + spread × ponto.
+- Resolução da bancada: 1 minuto. Dentro do minuto a ordem dos preços é desconhecida (ver §6).
+
+═══ 2. ENTRADA (avaliada UMA vez por barra M15 concluída t, sem posição desta experiência aberta) ═══
+- LS(t) = máx(máxima[t−20 … t−1]); LI(t) = mín(mínima[t−20 … t−1]). A barra t NÃO entra. Com menos de 20 barras anteriores: sem avaliação.
+- COMPRA se fechamento(t) > LS(t) (estrito). VENDA se fechamento(t) < LI(t) (estrito). Igualdade não é rompimento.
+- Execução: primeira cotação negociável depois do fechamento de t (bancada: abertura da primeira M1 com abertura ≥ fim de t; compra no ask, venda no bid).
+  Registra preço solicitado (referência = fechamento de t), preço executado, spread, deslizamento (executado − solicitado, no sentido desfavorável) e atraso.
+- Na barra t em que uma SAÍDA POR SINAL é decidida, não se avalia entrada (sem inversão na mesma decisão). Sinais com posição aberta são registrados como "ignorado: posição aberta".
+
+═══ 3. STOP DE PROTEÇÃO (hipótese experimental) ═══
+- ATR(14) de Wilder no M15 até a barra de sinal t: TR = máx(H−L, |H−C₋₁|, |L−C₋₁|); semente = média simples dos 14 primeiros TR; depois ATR = (ATR₋₁·13 + TR)/14.
+- Distância = 2 × ATR(14) (multiplicador EXPERIMENTAL, não ótimo). Compra: stop = entrada efetiva − distância. Venda: stop = entrada efetiva + distância.
+- No MT5: stop enviado ao servidor e conferido na posição; se não for aceito/confirmado → a posição é encerrada imediatamente (não fica desprotegida).
+- O stop executa a qualquer momento (não espera o M15).
+- Bancada: compra sai quando mínima(bid) ≤ stop; venda quando máxima(bid)+spread (ask) ≥ stop. Preço: o stop, ou a abertura da M1 se ela já abrir além (lacuna).
+
+═══ 4. SAÍDA POR SINAL (cada nova barra M15 concluída t' depois da entrada) ═══
+- Compra aberta: fecha se fechamento(t') < mín(mínima[t'−10 … t'−1]).
+- Venda aberta: fecha se fechamento(t') > máx(máxima[t'−10 … t'−1]).
+- Barra t' excluída. Execução na primeira cotação negociável depois do fechamento de t' (compra fecha no bid, venda no ask).
+- Se o stop executar dentro da barra t', a saída é "stop" (a saída por sinal só existe no fechamento).
+- NÃO há trailing, breakeven, alvo, saída por tempo ou por exaustão nesta versão.
+
+═══ 5. CUSTOS ═══
+- Spread: o da M1 de cada execução (entrada e saída), já no preço bid/ask.
+- Comissão: US$ 3,50 por lote por lado (US$ 7,00 ida e volta) — referência MEDIDA em 13/set na conta demo ICMarketsSC-Raw do usuário; no MT5 vale a comissão real dos deals.
+- Deslizamento adicional: base 0; sensibilidade com +1 × spread por execução (declarada à parte).
+- Swap: NÃO modelado na bancada (taxa vigente da corretora não disponível aqui). Cada operação registra quantas viradas de dia (rollover) atravessou; no MT5 vale o swap real.
+- Resultado em US$ por 1,00 lote (contrato 100 oz) e em R (R = |entrada − stop inicial|).
+
+═══ 6. LIMITAÇÕES DECLARADAS DA BANCADA ═══
+- Ordem intraminuto desconhecida: só importa no minuto da execução (o stop pode ser tocado no mesmo minuto da entrada; considerado após a abertura, conservador).
+- Rejeição de ordem, requote e limites de distância mínima (stops level) não são simulados; no MT5 ficam registrados.
+
+═══ 7. DIVISÃO ═══
+- Desenvolvimento: até 30/04/2026. Avaliação fora da amostra: a partir de 01/05/2026. Nenhum parâmetro é escolhido em nenhuma das duas (regras fixas).
+
+═══ 8. MÉTRICAS ═══
+Lucro líquido, nº de operações, fator de lucro, expectativa por operação, drawdown da curva marcada a mercado a cada M1 (inclui posição aberta),
+separados por compras/vendas e por mês; dev × fora da amostra; IC95 bootstrap por dia da expectativa.
+
+═══ 9. LM ═══
+Nesta versão a LM não altera nem bloqueia nada. M1/M5 (leitura evolucao_o38) são só registrados no instante de cada decisão. M30+ = contexto registrado, sem veto.

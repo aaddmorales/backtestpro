@@ -1,0 +1,103 @@
+EXPERIÊNCIA ROMP-M15-0.1 · ROMPIMENTO M15 · XAUUSD · RELATÓRIO DE VALIDAÇÃO · 05/11/2026
+Experiência separada: LM-0.2 (campanha), LM-0.4-exp (sombra) e outros bots NÃO foram alterados.
+A LM não decide nem bloqueia; M1/M5 são só registrados.
+
+═══ REGRAS CONGELADAS (antes de qualquer resultado) ═══
+ROMP_especificacao_congelada.txt: sha 08121e66…
+romp_m15.py: sha 116658f9…
+Data do congelamento: ROMP_congelamento_sha256.txt.
+- Entrada (só barras M15 concluídas):
+  · COMPRA se o fechamento(t) > máx(máximas t−20…t−1);
+  · VENDA se o fechamento(t) < mín(mínimas t−20…t−1);
+  · estrito; a barra t fica fora do cálculo.
+- Execução na 1ª cotação depois do fechamento: compra no ask, venda no bid.
+- Stop: 2 × ATR14 de Wilder (multiplicador EXPERIMENTAL) a partir da entrada efetiva. Fica no servidor e é conferido; se não for confirmado, a posição é encerrada.
+- Saída por sinal:
+  · compra fecha se o fechamento < mín(mínimas t−10…t−1);
+  · venda fecha se o fechamento > máx(máximas t−10…t−1);
+  · execução na 1ª cotação seguinte;
+  · sem inversão na mesma decisão.
+- Sem trailing, breakeven, alvo nem outras regras. Uma posição por vez. Magic 380380001.
+
+═══ A. IMPLEMENTADA CORRETAMENTE? → SIM (evidência abaixo) ═══
+- Regras e bancada: 16/16 testes (testes/ROMP_testes_regras.json).
+  · O canal exclui a barra t; igualdade não rompe.
+  · ATR de Wilder confere com o cálculo à mão.
+  · A entrada ocorre na 1ª cotação depois do fechamento.
+  · O stop executa dentro da barra; com lacuna, executa na abertura.
+  · Saída sem nova entrada na mesma barra; uma posição por vez.
+  · Truncamento: diferença 0.
+  · 1.485 operações sem sobreposição, no máximo uma avaliação por barra.
+  · 300 sinais recalculados de forma independente.
+- Executor no terminal MT5 SIMULADO: 20/20 testes (testes/ROMP_testes_executor.json).
+  · Sem lote/risco autorizado: impedimento e nenhuma ordem.
+  · Entrada, stop e saída iguais aos da bancada em duas operações reais do histórico (uma por stop, outra por sinal).
+  · Uma avaliação por barra.
+  · Reinício na mesma barra não duplica ordens.
+  · Posição e stop recuperados pelo magic depois de perder o estado.
+  · Desconexão gera impedimento.
+  · Um sinal resulta em uma ordem.
+  · Stop recusado pela corretora leva ao encerramento imediato.
+- Relatório (homologação isolada, login real): 4/4.
+  · A versão "ROMP-M15-0.1" aparece separada.
+  · Operações listadas com entrada, stop, saída, líquido, R e motivo.
+  · Nenhum erro de página.
+- Achado no simulador de testes: mt5_falso_exec pulava a M1 do stop quando o relógio simulado não estava no minuto cheio.
+  · Foi corrigido na cópia desta experiência.
+  · Os testes da O36/O37 usavam relógio no minuto cheio; o pacote da O37 não foi alterado.
+  · É uma ferramenta de teste, não a estratégia.
+
+═══ B. RESULTADO HISTÓRICO (bancada; XAUUSD 10/09/2024 – 04/09/2026; resolução M1) ═══
+Valores por 1,00 lote (100 oz), depois de spread e de comissão de US$ 3,50 por lado (medida na sua conta Raw em 13/set).
+Swap NÃO modelado: 425 viradas de dia registradas para aplicar a taxa real quando ela for conhecida.
+
+| Recorte | n | Líquido US$/lote | R total | Expectativa | Fator de lucro | Acerto | DD marcado a mercado (US$/lote) | IC95 expectativa R (bootstrap/dia) |
+| Total | 1.485 | +146.264 | +93,1 R | +98,5 US$ · +0,063 R | 1,13 | 31,3% | −63.095 | −0,021 a +0,151 |
+| Desenvolvimento (até 30/04/2026) | 1.208 | +100.685 | +62,3 R | +0,052 R | 1,11 | 30,5% | −63.095 | −0,039 a +0,147 |
+| Fora da amostra (≥ 01/05/2026) | 277 | +45.579 | +30,8 R | +0,111 R | 1,19 | 34,7% | −31.923 | −0,088 a +0,329 |
+| Compras | 804 | +97.838 | +115,1 R | +0,143 R | 1,17 | 33,0% | — | +0,019 a +0,269 |
+| Vendas | 681 | +48.426 | −22,0 R | −0,032 R | 1,09 | 29,2% | — | −0,155 a +0,085 |
+
+- Por período e lado:
+  · desenvolvimento: compras +106,2 R · vendas −43,9 R;
+  · fora da amostra: compras +8,9 R · vendas +21,9 R.
+- Meses: 17 de 25 positivos em R (ver ROMP_resultado.json, por_mes).
+- Saídas: 853 por sinal (canal 10) e 632 por stop. Duração mediana 4 h.
+- Atraso mediano da entrada: 0 s, porque a cotação seguinte existe. Lacunas de fim de semana ficam registradas por operação.
+- Sensibilidade com deslizamento adicional de 1 spread por execução: total +118.636 US$ / +66,5 R (FL 1,10); fora da amostra +27,4 R.
+- Leitura honesta:
+  · O resultado histórico foi POSITIVO no total e fora da amostra.
+  · Mas o IC95 da expectativa inclui zero em todos os recortes, exceto nas compras.
+  · As vendas foram negativas em R.
+  · Em US$ por lote fixo, as vendas parecem positivas porque o risco em US$ variou com o ATR e o preço. Com dimensionamento por risco, vale o R.
+  · O drawdown é grande: −63 mil US$/lote, cerca de 2,3 vezes menor que o líquido total.
+  · Isto NÃO comprova rentabilidade; nenhum parâmetro foi ajustado.
+- Limitações:
+  · ordem dos preços dentro do minuto desconhecida (só relevante no minuto da entrada; tratada como conservadora);
+  · requote, rejeição e stops level não simulados;
+  · swap fora da bancada.
+
+═══ EXEMPLO VISUAL (barras 52 / 53 / 81) → NÃO VERIFICADO ═══
+- Nenhuma imagem veio com a ordem. As imagens que existem na conversa são de 27/10 ("Demo_Test_07") e não mostram as barras 52, 53, 81 nem "Demo_BTC_01".
+- Busca no histórico disponível (XAU até 04/09/2026; BTC até 08/08/2026), em duas hipóteses de numeração da barra no dia (0 = 00:00 e 1 = 00:00):
+  · vendas com sinal na barra 52: XAU 6 e 2; BTC 7 e 3;
+  · nenhuma com saída por volta da 81 no mesmo dia.
+- O exemplo provavelmente é posterior aos dados que tenho. Não ajustei nenhum parâmetro.
+- Para conferir: mande as imagens e o CSV M15 do período (ou a data). Eu reproduzo desde antes do sinal.
+
+═══ C. INSTALADA E OBSERVADA EM DEMO? → NÃO ═══
+- Pacote: ROMP_pacote_mt5_v001.zip, com manifesto conferido depois de descompactado. Contém:
+  · executor bt_romp_m15_v001;
+  · verificar_romp;
+  · indicador BT_Romp_Canais_v001.mq5 (canais + marcas; NÃO compilado nesta sessão, porque não há MetaEditor aqui);
+  · LEIAME.
+- A sessão não está ligada ao seu computador. Nada foi instalado ou observado no terminal real.
+- Ordens: BLOQUEADAS até você definir o dimensionamento em config_romp.json: lote fixo, % do patrimônio ou valor por operação. Ele determina o lote. Nenhum valor foi assumido nem importado de configurações antigas.
+
+═══ MARCAÇÕES ═══
+- saida/graficos: 4 operações fora da amostra (maior ganho, maior perda, 1ª compra, 1ª venda), com canais 20/10, sinal, execução, stop e saída com o motivo.
+- No MT5, o indicador lê as marcas gravadas pelo executor.
+- Todas as operações e decisões: bancada/ROMP_operacoes.csv e ROMP_decisoes.csv.gz.
+  · Cada linha traz OHLC, LS20, LI20, LS10, LI10, ATR, condição, resultado e motivo.
+
+Backup externo NÃO confirmado.
