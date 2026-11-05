@@ -833,6 +833,7 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 API_VERSAO = "8.29.1-o33b-lm-leitura-operacoes (ORDEM 033-B: só o relatório da LM sobre a 8.29 publicada — rotas novas POST /lm/eventos (executor da LM, autenticado como o conector), POST /lm/painel e POST /lm/correcao (sessão obrigatória B09.2); tabelas novas lm_eventos/lm_correcoes (sql/0024); com BT_SERVICO_LM=1 o serviço não grava na trilha da campanha ao subir, não roda o cron da biblioteca e recusa rotas de conector/mt5/admin; NÃO inclui a 8.30) | " + API_VERSAO   # O33-B: prefixo da versão nova
 API_VERSAO = "8.29.2-o34-lm-diagnostico (ORDEM 034: só o painel da LM muda — quadro do que a versão usa, dados por decisão; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O34
 API_VERSAO = "8.29.3-o36-lm-selecao-execucao (ORDEM 036: só o relatório da LM muda — aceita os eventos avaliacao_virtual, analise_execucao e revisao_dados; painel 'LM — Leitura, decisões e operações' com qualidade da seleção, execução e dados; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O36
+API_VERSAO = "8.29.4-o38-lm-leitura-tf (ORDEM 038: só o relatório da LM muda — aceita os eventos leitura_tf, sombra_entrada e sombra_gestao da LM-0.4-exp em modo sombra; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O38
 
 BUILD_TAG = "2026-10-13-relatorio-rapido-c27r46"
 
@@ -1619,7 +1620,8 @@ def tutor_momentos(params: TutorMomentosParams, authorization: str = Header(defa
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 _LM_TIPOS = {"ambiente", "status", "barra", "informacao", "previsao", "regra", "decisao", "validacao", "ordem", "resposta_mt5",
              "execucao", "gestao", "resultado", "impedimento", "erro", "simulacao_historica",
-             "avaliacao_virtual", "analise_execucao", "revisao_dados"}   # O36: avaliação virtual padronizada, análise de execução, revisão de dados (registros separados)
+             "avaliacao_virtual", "analise_execucao", "revisao_dados",   # O36: avaliação virtual padronizada, análise de execução, revisão de dados (registros separados)
+             "leitura_tf", "sombra_entrada", "sombra_gestao"}   # O38: leitura M1/M5/M15 e respostas da LM-0.4-exp em MODO SOMBRA (classe "sombra"; nunca somadas à DEMO)
 # classe dos dados: conta DEMO efetiva × modo sombra × terminal simulado × simulação histórica — nunca somadas entre si
 _LM_CLASSES = {"demo_efetiva", "sombra", "simulado", "simulacao_historica"}
 
