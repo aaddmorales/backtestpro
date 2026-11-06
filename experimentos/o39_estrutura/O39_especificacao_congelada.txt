@@ -1,0 +1,57 @@
+ORDEM 039 (memória estrutural, prioridade de suporte/resistência, confirmação por superação) · ESPECIFICAÇÃO CONGELADA antes de qualquer resultado
+Versões: estrutura-0.1 (memória) · ESTR-EMA-M15-0.1 (V0/V1). EXPERIMENTAL, replay e sombra apenas. Não altera: LM-0.2 (campanha), LM-0.4-exp (sombra),
+ROMP-M15-0.1, Seletor/portão 10 da plataforma, motor bt_ciclo_v1. Nenhuma operação real.
+
+═══ 1. O QUE EXISTIA (auditoria) E O QUE MUDA ═══
+- bt_ciclo_v1.pivos (motor congelado da campanha da plataforma): fractal N=2 NÃO estrito (empate conta), janela de 120 barras (esquece o que sai),
+  guarda só os 2 últimos topos/fundos. → A memória nova NÃO o substitui; é módulo à parte, estrito, sem esquecer por janela.
+- bloco1_motor_v3.pivos: fractal 5 barras ESTRITO dos dois lados = o detector desta ordem (mesma definição).
+- evolucao-0.1 (LM-0.4-exp): estrito à esquerda e ≥ à direita (regra de empate da O38), só os 2 últimos. → Diferença DECLARADA: aqui é estrito dos dois lados.
+- Seletor sel-7, portão 10: "no_suporte/na_resistencia" por banda 0,3×ATR em torno do último pivô, veto com ≥ 2 timeframes. → Comparado em O39_auditoria; a
+  proposta desta ordem (distância ≤ máx(1×ATR, risco), um só TF, memória completa, gatilho de superação) fica como EXPERIMENTAL e NÃO substitui o portão 10.
+- Stop autorizado para experiências LM/DEMO: 2×ATR14 de Wilder a partir da entrada efetiva (ROMP-M15-0.1). Mantido. Nenhuma troca de gestão.
+
+═══ 2. MEMÓRIA DOS FUNDOS E TOPOS (estrutura-0.1) ═══
+A. Localização: barras CONCLUÍDAS do timeframe. Inicialização com as 200 últimas barras concluídas (experimental); depois incremental, barra a barra.
+B. Conhecimento: fundo na barra i se mínima(i) < mínima(i−1), (i−2), (i+1), (i+2), todas ESTRITAS. CANDIDATO no fechamento de i (estrito contra i−1, i−2);
+   CONFIRMADO no fechamento de i+2. Se i+1 ou i+2 igualar/ultrapassar: candidato DESCARTADO (registrado). Topo: espelho com máximas.
+   Registra horário do extremo (abertura de i) e horário de confirmação (fechamento de i+2). Nada é usado antes do segundo.
+C. Persistência: um nível nunca some por sair da janela; só muda de estado. Memória gravada em JSON a cada barra e restaurada no reinício.
+Zona (critério zona-0.1): fundo = [extremo, extremo + 0,25×ATR14(i)]; topo = [extremo − 0,25×ATR14(i), extremo]. ATR14 de Wilder do mesmo TF.
+Agrupamento (explícito): novo fundo cujo extremo cai em [base − 0,25×ATR14, topo] da zona de um suporte ATIVO do mesmo TF → MESMO nível (fundo duplo);
+  o nível guarda os dois extremos (membros) e a zona passa a cobrir a união. Fora disso → nível NOVO, coexistindo. Topos: espelho.
+
+═══ 3. ESTADOS E EVOLUÇÃO (suporte; resistência = espelho) ═══
+CANDIDATO → CONFIRMADO → EM TESTE → ROMPIMENTO PENDENTE → ROMPIMENTO CONFIRMADO ou RECUPERADO.
+- EM TESTE: barra concluída com mínima ≤ topo da zona e fechamento ≥ base da zona. Se a mínima < base e fecha ≥ base: TENTATIVA/REJEIÇÃO (contador).
+- ROMPIMENTO PENDENTE: barra concluída fecha ESTRITAMENTE abaixo da base da zona (= barra de rompimento estrutural; máxima e mínima congeladas).
+- ROMPIMENTO CONFIRMADO: a barra IMEDIATAMENTE seguinte negocia (bid) ≤ mínima da barra de rompimento − 1 tick. Igualar não confirma.
+  Sem isso até o fim da barra seguinte: "rompimento não confirmado" (registrado) e o nível volta a CONFIRMADO/EM TESTE. Nova barra de rompimento = nova formação.
+- RECUPERADO: depois de ROMPIMENTO CONFIRMADO (ou PENDENTE), um fechamento ≥ topo da zona.
+- TROCA DE FUNÇÃO (suporte→resistência) só com evidência: depois de ROMPIMENTO CONFIRMADO, barra com máxima ≥ base da zona e fechamento < base (rejeição por baixo).
+- Contadores: idade (barras), testes, rejeições, tentativas de rompimento, rompimentos não confirmados; histórico de estados com horário.
+- Arquivamento: nenhum nesta versão (todos os níveis ficam). Relevância como obstáculo: suporte com função "suporte" e estado ≠ ROMPIMENTO CONFIRMADO.
+
+═══ 4. "PRÓXIMO" (obstáculo) ═══
+Venda com entrada proposta E: suporte relevante cuja base < E, o mais próximo abaixo. d = máx(0, E − topo da zona) (0 dentro da zona).
+Registra d, d/ATR14 e d/risco (risco = 2×ATR14). Obstáculo próximo ⇔ d ≤ máx(1×ATR14, risco) = 2×ATR14 (com o stop autorizado, o termo do risco domina; declarado).
+Compra: espelho com resistência acima.
+
+═══ 5. ESTRATÉGIA (M15, decisão; XAUUSD e BTCUSD, cada um com identificação própria) ═══
+Sinal de média (catálogo Estratégia 1, canal EMA20 das máximas/mínimas): VENDA se fech(s) < EMA20(mínimas)(s) e fech(s−1) ≥ EMA20(mínimas)(s−1); COMPRA espelho.
+V0: gatilho na barra s+1: VENDA quando o bid ≤ mín(s) − 1 tick (compra: bid ≥ máx(s) + 1 tick); só na barra seguinte; expira no fim dela.
+V1: antes de armar, mede o obstáculo na direção (E = mín(s) − tick). Sem obstáculo próximo → igual a V0. Com obstáculo → registra
+  "Sinal local identificado; entrada aguardando rompimento e confirmação do suporte." e espera a BARRA DE ROMPIMENTO ESTRUTURAL do nível (fecha abaixo da base);
+  então arma o gatilho só para a barra seguinte: bid ≤ mín(barra de rompimento) − tick. Ao armar, mede de novo o obstáculo abaixo da nova entrada (se houver
+  outro suporte próximo, passa a esperar esse). Espera cancelada se o fechamento voltar para dentro do canal (fech ≥ EMA20 mínimas, venda). Uma entrada por gatilho.
+Base de preço: barras e gatilho em BID (padrão MT5). Execução: venda no bid; compra no ask = bid + spread da M1. Preço = nível do gatilho, ou a abertura da M1 se
+  ela já abrir além (lacuna). Spread e deslizamento registrados à parte.
+Gestão (mesma em V0 e V1, sem troca): stop 2×ATR14 da entrada efetiva, no servidor, executa a qualquer momento (M1: venda sai se máx+spread ≥ stop);
+  saída por sinal = fechamento M15 de volta para dentro do canal (venda: fech ≥ EMA20 mínimas), execução na 1ª cotação seguinte. Uma posição por vez por ativo.
+Intrabar: resolução M1 da bancada. No minuto da entrada, se o stop também for alcançado, conta como stop (conservador). OHLC não prova a ordem dentro do minuto.
+Custos: spread da M1; comissão XAU US$ 3,50/lote/lado (medida); BTC sem comissão (spread-only, medida); swap não modelado.
+
+═══ 6. COMPARAÇÃO ═══
+Mesmos dados e custos; dev até 30/04/2026, fora da amostra depois. V0 × V1: entradas evitadas, vencedoras descartadas, líquido, expectativa, DD marcado a
+mercado, n, custos, atraso adicional (entrada V1 − entrada V0 no mesmo sinal). V2 (contexto LM) só se houver exemplos suficientes; senão, declarado.
+Exemplos para a LM: rótulos com resultado POSTERIOR guardados separados das variáveis do instante.

@@ -1,0 +1,133 @@
+ORDEM 039 · MEMÓRIA ESTRUTURAL, PRIORIDADE DE SUPORTE/RESISTÊNCIA E CONFIRMAÇÃO POR SUPERAÇÃO · FECHAMENTO · 06/11/2026
+Experimental, em replay e sombra. Nada foi alterado na campanha:
+- LM-0.2 (executor v036, sha 2f314752…)
+- sombra LM-0.4-exp
+- ROMP-M15-0.1
+- Seletor / portão 10 e motor bt_ciclo_v1 da plataforma
+Nenhuma operação real ou DEMO. O texto da ordem chegou cortado em "Atraso adicional" (item 13).
+
+═══ PAINEL (Σ peso × progresso; pesos propostos pelo Claude) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Auditar e preservar a base | 10% | 100% | 10,0% |
+| Especificação congelada (sha 71363ff1…, 18:51 UTC) | 10% | 100% | 10,0% |
+| Memória estrutural (níveis, estados, persistência) | 25% | 100% | 25,0% |
+| V0 × V1: prioridade da estrutura e gatilho de superação | 20% | 100% | 20,0% |
+| Testes obrigatórios (§12) | 15% | 100% | 15,0% |
+| Comparação V0/V1/V2 e exemplos para a LM | 10% | 80% | 8,0% — V2 NÃO executada (exemplos insuficientes) |
+| Sombra, entrega e preservação | 10% | 70% | 7,0% — pacote pronto; instalação no MT5 PENDENTE (sem acesso) |
+TOTAL: 95,0%.
+
+═══ 1. AUDITORIA (o que existia e o que muda) ═══
+- bt_ciclo_v1.pivos (motor da campanha da plataforma):
+  · fractal N=2 NÃO estrito;
+  · janela de 120 barras, ou seja, ESQUECE o que sai;
+  · guarda só os 2 últimos topos e fundos.
+- bloco1_motor_v3: fractal estrito 2+2. É a mesma definição desta ordem.
+- evolucao-0.1 (O38): estrito à esquerda e ≥ à direita, só os 2 últimos. Diferença declarada: aqui é estrito dos dois lados.
+- Seletor sel-7, portão 10 (C27R48/49):
+  · "no_suporte" / "na_resistencia" por banda de 0,3×ATR em torno do último pivô;
+  · veto com ≥ 2 timeframes;
+  · isenção com rompimento confirmado da caixa.
+  · Equivalente parcial. Escolha documentada: NÃO foi substituído; a proposta desta ordem roda à parte como experimental.
+- Stop autorizado nas experiências: 2×ATR14 de Wilder a partir da entrada efetiva. Mantido, sem troca de gestão.
+
+═══ 2. O QUE FOI IMPLEMENTADO (estrutura-0.1 + ESTR-EMA-M15-0.1) ═══
+- Memória por timeframe:
+  · detector estrito 2+2;
+  · CANDIDATO no fechamento do extremo; CONFIRMADO no fechamento de i+2. Horários separados; nada é usado antes da confirmação.
+  · zona explícita de 0,25×ATR14;
+  · agrupamento explícito (fundo/topo duplo) com os membros registrados.
+- Estados: CONFIRMADO → EM TESTE → ROMPIMENTO PENDENTE → ROMPIMENTO CONFIRMADO / RECUPERADO.
+  · Contadores: testes, rejeições, tentativas e rompimentos não confirmados.
+  · Troca de função só com evidência registrada.
+  · Histórico completo; nenhum nível some.
+  · JSON persistido e restaurado.
+- Obstáculo: d = distância até a borda (0 dentro da zona), d/ATR e d/risco; "próximo" se d ≤ máx(1×ATR, risco).
+  · Com o stop autorizado (risco = 2×ATR), o limiar efetivo é 2×ATR. Declarado.
+- V0, sinal de média: fechamento cruza para fora do canal EMA20 das máximas/mínimas.
+  · Gatilho na barra seguinte: bid ≤ mínima − 1 tick na venda (espelho na compra).
+  · Expira no fim dessa barra; uma entrada por gatilho; entrada intrabar.
+- V1: igual à V0; mas, com obstáculo próximo na direção da operação:
+  · registra "Sinal local identificado; entrada aguardando rompimento e confirmação do suporte.";
+  · espera a barra que FECHA além da zona; o gatilho vale só na barra seguinte (superar o extremo da barra de rompimento em ≥ 1 tick);
+  · volta a medir obstáculo a partir da nova entrada;
+  · a espera é cancelada se o fechamento voltar para dentro do canal.
+- Base de preço: barras e gatilho em BID (padrão do MT5). Compra executada no ask = bid + spread. Spread registrado à parte.
+- Gestão idêntica em V0 e V1:
+  · stop 2×ATR (executa a qualquer momento);
+  · saída no fechamento M15 de volta ao canal;
+  · o corte por M1/M5 NÃO entra.
+
+═══ 3. TESTES ═══
+- §12 (O39_testes.json): 13/13. Cobrem:
+  · igualdade não abre; um tick além abre;
+  · o gatilho só vale na barra seguinte;
+  · entrada intrabar (10:17 dentro da barra de 10:15);
+  · sinal de média suspenso diante do suporte próximo (d = 0,31 ATR ≤ limiar);
+  · a barra de rompimento vira a referência, e igualar a mínima dela não confirma;
+  · tentativa frustrada não apaga o nível (contador = 1);
+  · o nível antigo continua depois de sair da janela de 200 barras;
+  · agrupamento explícito: fundo duplo agrupado, fundos distantes coexistem;
+  · reinício = execução contínua;
+  · sem dados futuros (memória truncada = contínua em 3 cortes);
+  · 143 entradas com id único.
+- Leitor em sombra no terminal SIMULADO (O39_testes_sombra.json): 5/5.
+  · Inicializa com 200 barras.
+  · Sombra = replay com as mesmas barras: 23 níveis e 11 decisões iguais.
+  · Todo gatilho termina em superação observada ou expiração.
+  · Reinício no meio de uma barra restaura memória e gatilho, sem eventos duplicados.
+  · Nenhuma ordem.
+- Limite: a ordem intrabar vem de M1 (OHLC). OHLC prova que o extremo foi ultrapassado, mas não a sequência fina nem o preço executado.
+  · No minuto da entrada, se o stop também for tocado, conta como stop (conservador).
+  · A prova fina exige ticks reais (sombra no MT5).
+
+═══ 4. RESULTADO V0 × V1 (replay M15, mesmos dados e custos; por 1 lote; swap não modelado) ═══
+| Ativo · versão | n | Líquido US$/lote | R | Expectativa R (IC95) | FL | DD marcado a mercado | Fora da amostra (n · R) |
+| XAU V0 | 4.060 | +87.371 | +50,0 | +0,012 (−0,018 a +0,041) | 1,06 | −88.095 | 740 · +0,1 |
+| XAU V1 | 143 | +64.921 | +28,2 | +0,197 (−0,030 a +0,436) | 2,14 | −27.410 | 2 · −0,9 |
+| BTC V0 | 3.013 | −39.780 | −74,8 | −0,025 (−0,055 a +0,006) | 0,90 | −48.850 | 806 · −30,0 |
+| BTC V1 | 57 | −6.248 | −9,7 | −0,170 (−0,377 a +0,078) | 0,72 | −8.418 | 6 · −3,8 |
+- Entradas evitadas pela V1:
+  · XAU: 3.928 (97%), sendo 972 vencedoras descartadas. Somavam −127,8 R.
+  · BTC: 2.963, sendo 678 vencedoras. Somavam −129,9 R.
+- Atraso adicional quando a V1 entrou depois no mesmo sinal: mediana de 45 min no XAU (106 sinais) e 62 min no BTC (38).
+- Comissão: XAU V0 US$ 28.420 contra V1 US$ 1.001.
+- Leitura honesta:
+  · A prioridade da estrutura cortou quase todas as entradas. O conjunto cortado era perdedor nos dois ativos.
+  · No XAU, a V1 teve expectativa maior e drawdown muito menor, mas com só 143 operações, IC que inclui zero e apenas 2 fora da amostra.
+  · No BTC, as duas versões são negativas.
+  · NÃO há prova de melhora.
+- Causa medida do bloqueio: a memória guarda cerca de 1.100 níveis (XAU) e o raio "próximo" efetivo é de 2×ATR, então quase sempre há suporte à frente.
+- Agrupamento: os níveis encadeiam membros (mediana de 8 por nível); a troca de função ocorreu em 995 níveis.
+- NÃO ajustei nada. Fica como observação para uma versão futura (zona e limiar), a ser congelada antes de nova medição.
+
+═══ 5. LM (§11) ═══
+- V2 NÃO executada. Com 143 operações V1 (XAU) e 57 (BTC), e 2 e 6 fora da amostra, não há base honesta para treinar e avaliar o contexto.
+- Exemplos prontos para o estudo de contexto (exemplos_LM; variáveis só do instante; rótulos posteriores em colunas rotulo_*):
+  · XAU: 57.374 eventos;
+  · BTC: 37.047 eventos.
+  Categorias:
+  · toque/igualdade sem superação: 54 (XAU);
+  · rompimento sem confirmação: 8.780;
+  · superação seguida de continuação: 7.777;
+  · superação seguida de perda (voltou à zona): 9.061;
+  · falso rompimento com recuperação: 6.032;
+  · suporte antigo ainda relevante: 23.451;
+  · novo fundo coexistindo: 889.
+- A superação estrita e a validade do gatilho são determinísticas; a LM não pode ignorá-las. Confirmação ≠ operação garantida: há 9.061 superações seguidas de perda no XAU.
+
+═══ 6. EXEMPLO HUMANO (§8) → NÃO VERIFICADO ═══
+- Os gráficos desta sequência (fundo nas barras 72–73; ponto 1; barras 5 e 6) não vieram com a ordem.
+- As imagens de 06/11 vão até a barra 81 e não mostram o dia seguinte, a data, o preço nem o ativo.
+- Nas leituras aproximadas daquelas imagens, as barras 72–73 formam o fundo do dia, compatível com a "referência de suporte". O resto não pode ser conferido.
+- Para verificar: ativo e data, ou o CSV M15 dos dois dias. Não fabriquei nenhuma medida.
+
+═══ 7. ESTADOS SEPARADOS ═══
+- Implementado: SIM.
+- Testado em replay e no terminal simulado: SIM.
+- Instalado no MT5: NÃO (sem acesso).
+- Observado com ticks reais: NÃO.
+- Habilitado na DEMO: NÃO. A ordem pede sombra antes, e não há lote/risco definido.
+Pacote: O39_pacote_sombra.zip (instalar sobre C:\BotTested\LM_v036; LEIAME_O39.txt).
+
+Backup externo NÃO confirmado.

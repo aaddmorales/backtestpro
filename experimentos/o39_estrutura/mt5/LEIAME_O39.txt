@@ -1,0 +1,7 @@
+BotTested · ORDEM 039 · LEITOR EM MODO SOMBRA da memória estrutural (estrutura-0.1) e da prioridade de suporte/resistência (V0 × V1)
+NÃO envia ordens. Não altera a campanha LM-0.2, a sombra 0.4, o ROMP nem outros bots.
+1. Descompacte DENTRO de C:\BotTested\LM_v036 (pacote O37). Nenhum arquivo existente é substituído (confira MANIFESTO_O39.json).
+2. Rode iniciar_sombra_o39.bat → janelas "BotTested O39 XAUUSD" e "BotTested O39 BTCUSD".
+   Na 1ª vez: "memória reconstruída com as 200 últimas M15 concluídas". Depois do reinício: "memória e gatilhos restaurados".
+3. Registro em campanha\<ATIVO>\sombra_o39 (eventos_LM.jsonl, memoria_M15.json). Envie a pasta zipada (sem token) para conferência com ticks reais.
+4. Parar: parar.bat.
