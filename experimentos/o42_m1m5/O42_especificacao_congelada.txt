@@ -1,0 +1,53 @@
+ORDEM 042 · M1/M5 CONFIRMAM ENTRADA E ANTECIPAM REVERSÃO, M15 COMO REFERÊNCIA · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Referência: V1-200 da O40 (inalterada; hashes em O40_preservada_sha256.txt). Iguais em todas as variantes: memória e níveis, janela de 200 barras,
+raio de 2×ATR, espera pelo 2º nível, travessia da O40, stop de 2×ATR14 (independente), saída de referência (fechamento M15 de volta ao canal), custos, BID.
+XAUUSD e BTCUSD separados. Todas as confirmações são REGRAS programadas (leitura-m1m5-0.1), não saída de modelo. Sem ordens; sombra.
+
+═══ 1. LEITURA M1/M5 (barra a barra) ═══
+- A cada fechamento M1: últimas 15 M1 FECHADAS e últimas 3 M5 FECHADAS (M5 agregadas das M1, só completas). A barra em formação é registrada à parte
+  (abertura e preço no instante), nunca entra nas regras. Não é preciso esperar 15 minutos: usa o que já existe no instante.
+- Marcas por M1 fechada k, em relação ao lado s (venda: favorável = para baixo; compra: espelho):
+  · AVANÇO: c(k) além de c(k−3) no sentido favorável;
+  · PERDA DE FORÇA: deslocamento favorável |c(k)−c(k−3)| < 0,5 × |c(k−3)−c(k−6)| com os dois no sentido favorável;
+  · REJEIÇÃO: entre as 3 últimas M1 fechadas, alguma com pavio contra o movimento ≥ 60% da amplitude e fechamento na metade contrária
+    (venda: pavio inferior ≥ 60% e fechamento na metade superior);
+  · RETOMADA: M1 favorável fechando além do extremo da M1 anterior, depois de uma M1 contrária;
+  · PRESSÃO CONTRÁRIA: as 2 últimas M1 fechadas contrárias (venda: c > o nas duas).
+- M5: a última M5 fechada é CONTRÁRIA se fecha contra o lado (venda: c > o).
+- M5 resume o mesmo movimento do M1: as leituras NÃO são somadas como votos. A regra usa M5 como contexto ("não contrário") e M1 como estado atual.
+
+═══ 2. VARIANTE ENTRADA (E) ═══
+O gatilho da O40 continua: só na barra seguinte à barra de referência, superar o extremo por ≥ 1 tick (tocar/igualar não confirma).
+No instante τ da superação (M1 j em formação; leitura com M1 fechadas até j−1):
+  CONFIRMA = AVANÇO e não REJEIÇÃO e não PRESSÃO CONTRÁRIA e M5 NÃO contrária.
+- Confirmado em τ: entra em τ, no mesmo preço da referência (nível do gatilho, ou abertura com lacuna).
+- Não confirmado em τ: a cada M1 que fecha DENTRO da barra válida, se o fechamento M1 ainda está além do nível do gatilho e a leitura confirma,
+  entra na abertura da M1 seguinte (1º preço disponível depois da confirmação; venda no bid, compra no ask).
+  Se a barra válida termina sem confirmação: gatilho expirado, sem entrada, sem confirmação tardia.
+- Registra a distância até o próximo nível (como na O40/O41) e a leitura M1/M5/M15 do instante.
+
+═══ 3. VARIANTE SAÍDA (S) ═══
+Posição aberta (lado s), a cada fechamento M1:
+  ALERTA de reversão = M1 com deslocamento contrário c(k)−c(k−3) ≥ 0,5 × ATR14 do último M15 fechado (sentido contra s) E última M5 fechada contrária
+  com fechamento além do fechamento da M5 anterior (contra s).
+  O alerta sozinho NÃO encerra (registro "alerta M1/M5; aguardando M15").
+- CORTE por reversão confirmada no M15: no fechamento M15 em que houve alerta, o fechamento M15 vai além do extremo oposto da barra de referência
+  da entrada (venda: fech M15 > máxima da barra de referência; compra: < mínima). Execução na 1ª cotação seguinte.
+- Alerta com M15 que não confirma = "pullback que ainda respeita o M15": registrado, posição mantida.
+- Só M15 FECHADO confirma (a variante com M15 em formação NÃO é usada nesta ordem; nada de fechamento futuro).
+- A saída de referência (canal) e o stop de proteção continuam valendo em paralelo.
+
+═══ 4. COMPARAÇÃO ═══
+- Entrada: replay contínuo E × Referência.
+  · Falsos rompimentos evitados = operações da Referência (mesmo sinal) que E não fez e que perderam.
+  · Entradas boas perdidas = as mesmas que ganharam.
+  · Atraso = entrada E − entrada Ref no mesmo sinal.
+  · Resultado líquido.
+- Saída: NAS MESMAS ENTRADAS da Referência, simula a saída S a partir de cada entrada (mesma entrada, mesmo stop).
+  · Cortes prematuros = cortes S com resultado pior que o da saída de referência.
+  · Reversões reconhecidas = cortes S com resultado melhor.
+  · Devolução = MFE − resultado na saída (R).
+- Combinada: replay contínuo E+S. Resultado líquido, drawdown marcado a mercado, n e custos.
+- Todas com IC95 bootstrap por dia; bloco ≥ 01/05/2026 separado e marcado como RETROSPECTIVO.
+- Registro por decisão: leitura M1 (marcas das 15 M1), M5 (3), M15 (fechamento e referência) e se discordavam.
+Nenhum limiar (0,6 / 0,5×ATR / 3 barras / 2 barras) é ajustado depois do resultado.

@@ -1,0 +1,107 @@
+ORDEM 042 · M1/M5 CONFIRMAM ENTRADA E ANTECIPAM REVERSÃO, M15 COMO REFERÊNCIA · FECHAMENTO · 07/11/2026
+Referência = V1-200 da O40, sem alteração. Mantidos: níveis, janela, raio, 2º nível, stop, custos.
+Confirmações = REGRAS programadas (leitura-m1m5-0.1), não saída de modelo.
+Critérios congelados ANTES do replay (sha 7325c605…, 15:47 UTC) e não ajustados. Campanha e DEMO intocados; nenhuma ordem.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Congelar a especificação e preservar a referência | 15% | 100% | 15,0% |
+| Construir a leitura M1/M5 e testar a disponibilidade dos dados | 30% | 100% | 30,0% |
+| Comparar entrada, saída e versão combinada | 40% | 100% | 40,0% |
+| Entregar evidências e preparar modo sombra | 15% | 80% | 12,0% — pacote de sombra pronto; instalação no MT5 PENDENTE (sem acesso) |
+TOTAL: 97,0%.
+
+═══ TESTES ═══
+- Leitura e regras: 9/9 (O42_testes.json).
+  · M5 só completas: às 10:22 a última fechada termina às 10:20.
+  · A leitura do instante não muda se a M1 em formação ou o futuro mudarem.
+  · Superação com continuidade: entra no instante, ao mesmo preço da Referência.
+  · Rejeição em M1 antes da superação: não entra; o gatilho expira no fim da barra válida.
+  · Confirmação depois da superação: entra na abertura da M1 seguinte, dentro da barra (10:19 a 99,50).
+  · Alerta M1/M5 com M15 sem confirmar: mantém e registra "pullback que respeita o M15".
+  · Alerta + M15 além da barra de referência: corta.
+  · Sem a variante S, M1/M5 nunca cortam.
+  · Reinício reproduz 802 decisões.
+- Sombra no terminal SIMULADO: 3/3 (O42_testes_sombra.json).
+  · As 4 variantes deram as mesmas decisões do replay contínuo com a mesma memória inicial.
+  · Reinício no meio da barra: mesmos 88 eventos, sem duplicar.
+  · Nenhuma ordem.
+- Preservação: o replay com tudo desligado = O40 V1-200, operações idênticas nos dois ativos.
+- Correção registrada: erro de sinal na marca "avanço", pego pelos testes ANTES do replay. Corrigido sem mudar os critérios.
+
+═══ 1. ENTRADA (E × Referência) ═══
+| | XAU | BTC |
+| Superações sem continuidade no instante | 211 | 139 |
+| … confirmadas depois, dentro da barra (atraso mediano) | 152 (2 min) | 89 (3 min) |
+| … expiradas sem continuidade | 59 | 50 |
+| Falsos rompimentos evitados (operações da Ref que perderam) | 49 · −33,6 R | 43 · −28,5 R |
+| Entradas boas perdidas (operações da Ref que ganharam) | 10 · +16,0 R | 7 · +4,3 R |
+| Saldo das evitadas | −17,6 R evitados | −24,2 R evitados |
+| Custo das confirmações tardias (mesmo sinal, entrada depois) | −18,1 R | −14,3 R |
+| Resultado E (n · R) | 462 · +37,4 | 262 · +2,5 |
+| Referência (n · R) | 521 · +37,8 | 312 · −7,5 |
+- Leituras quando NÃO confirmou (mais comuns):
+  · M1 avançando com rejeição (XAU 68, BTC 41);
+  · M1 avançando com M5 contrária (52, 37);
+  · M1 sem avanço (38, 19).
+- Discordância M1 × M5 nas decisões de entrada: 124 de 673 leituras (XAU) e 76 de 401 (BTC).
+- Leitura:
+  · o filtro reconhece falsos rompimentos: 83–86% das entradas que ele evitou eram perdedoras;
+  · mas esperar a confirmação tardia custa: entrar 2–3 min depois piora o preço;
+  · no XAU os dois efeitos se anulam;
+  · no BTC o saldo é +10 R e o drawdown cai de −18,2 mil para −12,2 mil.
+  · IC inclui zero.
+
+═══ 2. SAÍDA NAS MESMAS ENTRADAS (S × Referência; mesma entrada e mesmo stop) ═══
+| | XAU | BTC |
+| Entradas avaliadas | 521 | 312 |
+| Posições com alerta M1/M5 (alertas) | 445 (1.393) | 260 (750) |
+| Alertas sem corte (pullback respeitou o M15) | 406 | 245 |
+| Cortes por reversão confirmada no M15 | 39 | 15 |
+| … reversões reconhecidas (corte melhor) | 11 · +3,0 R | 1 · +0,5 R |
+| … cortes prematuros (corte pior) | 2 · −0,3 R | 2 · −0,2 R |
+| … mesmo resultado (o canal fecharia no mesmo instante) | 26 | 12 |
+| R total (Ref → S) | +37,8 → +40,5 | −7,5 → −7,2 |
+| Devolução média do pico (Ref → S) | 1,12 → 1,11 R | 1,09 → 1,08 R |
+| Bloco posterior RETROSPECTIVO (n · R Ref → S) | 83 · +8,4 → +8,4 | 85 · −12,9 → −12,9 |
+- Leitura:
+  · os alertas M1/M5 são frequentes (85% das posições);
+  · exigir o M15 impediu cortar os pullbacks (406 e 245 alertas sem corte);
+  · os cortes foram poucos e, na maioria, coincidiram com a saída pelo canal;
+  · o ganho é marginal (+2,7 R e +0,4 R) e a devolução praticamente não mudou.
+
+═══ 3. COMBINADA (E+S, carteira contínua; custos modelados; por 1 lote) ═══
+| Ativo · versão | n | R | Expectativa (IC95) | FL | DD marcado a mercado | Comissão | Bloco posterior RETROSPECTIVO |
+| XAU Ref | 521 | +37,8 | +0,073 (−0,037 a +0,196) | 1,25 | −41.147 | 3.647 | 83 · +8,4 |
+| XAU E | 462 | +37,4 | +0,081 (−0,033 a +0,212) | 1,24 | −42.202 | 3.234 | 73 · +9,3 |
+| XAU S | 521 | +40,5 | +0,078 (−0,032 a +0,202) | 1,26 | −41.147 | 3.647 | 83 · +8,4 |
+| XAU E+S | 462 | +38,5 | +0,083 (−0,032 a +0,214) | 1,25 | −42.202 | 3.234 | 73 · +9,3 |
+| BTC Ref | 312 | −7,5 | −0,024 (−0,137 a +0,096) | 0,91 | −18.164 | 0 | 85 · −12,9 |
+| BTC E | 262 | +2,5 | +0,009 (−0,129 a +0,149) | 0,96 | −12.171 | 0 | 68 · −6,7 |
+| BTC S | 312 | −7,2 | −0,023 (−0,137 a +0,096) | 0,91 | −18.202 | 0 | 85 · −12,9 |
+| BTC E+S | 262 | +2,9 | +0,011 (−0,126 a +0,149) | 0,97 | −12.171 | 0 | 68 · −6,7 |
+
+═══ RESPOSTAS ═══
+1. M1/M5 ajudam a entrar quando o rompimento tem continuidade?
+   - Em parte. A leitura separa bem os falsos rompimentos (das entradas evitadas, 49 de 59 no XAU e 43 de 50 no BTC perderam).
+   - Mas a confirmação tardia (entrar 2–3 min depois) devolve esse ganho no XAU.
+   - No BTC o saldo líquido foi positivo (+10 R) e o drawdown caiu um terço.
+   - Sem significância estatística: os IC incluem zero.
+2. Ajudam a reconhecer uma reversão sem cortar um pullback que ainda respeita o M15?
+   - Sem cortar pullback: SIM. Em 406 e 245 alertas a posição foi mantida porque o M15 não confirmou; só 2 + 2 cortes foram prematuros.
+   - Reconhecer reversão com ganho: pouco. A confirmação M15 escolhida quase sempre coincide com a saída pelo canal.
+   - Ganho de +2,7 R (XAU) e +0,4 R (BTC), sem mudar a devolução.
+- Nenhuma variante tem melhora comprovada.
+- O ponto mais promissor é o filtro de entrada SEM a confirmação tardia (só entrar se confirmar no instante).
+  · É uma regra diferente e precisa ser congelada antes de um novo teste. Não foi testada aqui.
+
+═══ ENTREGA ═══
+- O42_pacote_sombra.zip: leitor bt_estrutura_sombra_o42.
+  · Ref, E, S e E+S em paralelo, com posições VIRTUAIS; o mesmo motor do replay, minuto a minuto, com M1 fechadas.
+  · Registro gravado no fechamento da M15. Nenhuma ordem.
+  · Instalado: NÃO. Observado com ticks reais: NÃO.
+- Registros por decisão (leitura M1 com 15 marcas, 3 M5, M15 e referência): O42_<ativo>_<variante>_decisoes.csv.gz.
+- Saída nas mesmas entradas: O42_<ativo>_saida_mesmas_entradas.csv.
+- Código: branch exp/o42-m1m5.
+
+Backup externo NÃO confirmado.
