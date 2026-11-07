@@ -1,0 +1,88 @@
+{
+ "executado_utc": "2026-11-07T17:06:00Z",
+ "versao": "lateral-tf-0.1 (ORDEM 044)",
+ "aprovados": 16,
+ "total": 16,
+ "testes": [
+  {
+   "teste": "M30: igualar o extremo da barra de rompimento é toque, não abre",
+   "ok": true,
+   "detalhe": "resultado=toque sem superação"
+  },
+  {
+   "teste": "M30: 1 tick além abre no minuto 20 da barra M30 seguinte",
+   "ok": true,
+   "detalhe": "τ=2026-01-06 01:50:00 entrada=98.49000000000001"
+  },
+  {
+   "teste": "M30: stop = 2 × ATR14 do próprio TF na barra de rompimento",
+   "ok": true,
+   "detalhe": "ATR M30=1.0359; risco=2.0719"
+  },
+  {
+   "teste": "M30: sem superação na barra seguinte expira; a queda na barra depois não abre",
+   "ok": true,
+   "detalhe": "0 entradas"
+  },
+  {
+   "teste": "M30: M1 antes da superação (subindo × caindo) não muda a decisão nem o preço (sem filtro M1/M5)",
+   "ok": true,
+   "detalhe": "τ=2026-01-06 01:50:00 preço=98.49000000000001"
+  },
+  {
+   "teste": "M30: retorno 22 min após τ conta 'até o fim da barra' mas não '15 min'",
+   "ok": true,
+   "detalhe": "15min=None fim_barra=22.0"
+  },
+  {
+   "teste": "M30: saída pelo canal EMA20 do próprio TF na abertura da barra seguinte",
+   "ok": true,
+   "detalhe": "saída 2026-01-06 02:30:00 a 99.02"
+  },
+  {
+   "teste": "M30: stop na mesma M1 da entrada é marcado ambíguo",
+   "ok": true,
+   "detalhe": "saída no stop 100.56"
+  },
+  {
+   "teste": "H1: igualar o extremo da barra de rompimento é toque, não abre",
+   "ok": true,
+   "detalhe": "resultado=toque sem superação"
+  },
+  {
+   "teste": "H1: 1 tick além abre no minuto 20 da barra H1 seguinte",
+   "ok": true,
+   "detalhe": "τ=2026-01-07 03:20:00 entrada=98.49000000000001"
+  },
+  {
+   "teste": "H1: stop = 2 × ATR14 do próprio TF na barra de rompimento",
+   "ok": true,
+   "detalhe": "ATR H1=1.0359; risco=2.0719"
+  },
+  {
+   "teste": "H1: sem superação na barra seguinte expira; a queda na barra depois não abre",
+   "ok": true,
+   "detalhe": "0 entradas"
+  },
+  {
+   "teste": "H1: M1 antes da superação (subindo × caindo) não muda a decisão nem o preço (sem filtro M1/M5)",
+   "ok": true,
+   "detalhe": "τ=2026-01-07 03:20:00 preço=98.49000000000001"
+  },
+  {
+   "teste": "H1: retorno 22 min após τ conta 'até o fim da barra' mas não '15 min'",
+   "ok": true,
+   "detalhe": "15min=None fim_barra=22.0"
+  },
+  {
+   "teste": "H1: saída pelo canal EMA20 do próprio TF na abertura da barra seguinte",
+   "ok": true,
+   "detalhe": "saída 2026-01-07 05:00:00 a 99.02"
+  },
+  {
+   "teste": "H1: stop na mesma M1 da entrada é marcado ambíguo",
+   "ok": true,
+   "detalhe": "saída no stop 100.56"
+  }
+ ]
+}

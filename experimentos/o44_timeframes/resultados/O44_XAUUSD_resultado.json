@@ -1,0 +1,581 @@
+{
+ "ativo": "XAUUSD",
+ "versao": "lateral-tf-0.1 (ORDEM 044)",
+ "reproducao_O43_R0": {
+  "operacoes_O43": 487,
+  "operacoes_O44_M15": 487,
+  "R_O43": 17.9528,
+  "R_O44": 17.9528,
+  "identicas": true,
+  "sinais_O43": 726,
+  "sinais_O44": 726,
+  "mesmos_sinais": true
+ },
+ "intervalo": {
+  "inicio": "2024-10-01 00:00:00",
+  "fim": "2026-09-04 23:56:00",
+  "meses": 23.13,
+  "aquecimento": "300 barras H1 + até o dia 1 do mês seguinte; indicadores com todo o histórico anterior"
+ },
+ "M15": {
+  "barras_avaliadas": 45608,
+  "caixa_horas": 3.0,
+  "ruido": {
+   "formacoes": 702,
+   "formacoes_por_mes": 30.4,
+   "superacoes": 476,
+   "superacoes_por_mes": 20.6,
+   "toque_sem_superacao": 5,
+   "nao_alcancou": 221,
+   "retorno_15min": {
+    "n": 422,
+    "pct": 88.7
+   },
+   "retorno_ate_fim_da_barra_do_TF": {
+    "n": 410,
+    "pct": 86.1
+   },
+   "operacao_isolada_perdedora": {
+    "n": 334,
+    "pct": 70.2
+   },
+   "cruzamento_retorno15_x_perdedora": {
+    "voltou_e_perdeu": 312,
+    "voltou_e_nao_perdeu": 110,
+    "nao_voltou_e_perdeu": 22,
+    "nao_voltou_e_nao_perdeu": 32
+   },
+   "minutos_ate_retorno_mediana_15min": 1.0,
+   "ambiguos": 7,
+   "lacuna": 7,
+   "stop_na_m1_entrada": 0
+  },
+  "desempenho": {
+   "n": 470,
+   "liquido_usd_1lote": 37488.16,
+   "R_total": 11.93,
+   "expectativa_R": 0.0254,
+   "acerto": 0.2957,
+   "fator_lucro_usd": 1.196,
+   "comissao_usd": 3290.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 435,
+    "stop de proteção": 35
+   },
+   "IC95_expectativa_R": [
+    -0.0724,
+    0.1325
+   ],
+   "drawdown_mtm_usd_1lote": -28011.51,
+   "R_por_operacao": 0.0254,
+   "R_por_mes": 0.516,
+   "spread_usd_estimado": 3576.0,
+   "tempo_em_posicao_pct": 9.17,
+   "duracao_mediana_h": 1.18,
+   "duracao_media_h": 3.29,
+   "vendas": {
+    "n": 230,
+    "R": -9.16
+   },
+   "compras": {
+    "n": 240,
+    "R": 21.09
+   }
+  },
+  "desenvolvimento": {
+   "n": 376,
+   "liquido_usd_1lote": 40099.64,
+   "R_total": 11.86,
+   "expectativa_R": 0.0316,
+   "acerto": 0.2979,
+   "fator_lucro_usd": 1.297,
+   "comissao_usd": 2632.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 351,
+    "stop de proteção": 25
+   },
+   "IC95_expectativa_R": [
+    -0.0707,
+    0.1505
+   ]
+  },
+  "posterior_RETROSPECTIVO": {
+   "n": 94,
+   "liquido_usd_1lote": -2611.48,
+   "R_total": 0.07,
+   "expectativa_R": 0.0007,
+   "acerto": 0.2872,
+   "fator_lucro_usd": 0.954,
+   "comissao_usd": 658.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 84,
+    "stop de proteção": 10
+   },
+   "IC95_expectativa_R": [
+    -0.2183,
+    0.2438
+   ]
+  },
+  "por_trimestre": {
+   "2024Q4": {
+    "n": 62,
+    "R": -3.06
+   },
+   "2025Q1": {
+    "n": 61,
+    "R": -0.7
+   },
+   "2025Q2": {
+    "n": 57,
+    "R": 5.08
+   },
+   "2025Q3": {
+    "n": 63,
+    "R": -9.08
+   },
+   "2025Q4": {
+    "n": 59,
+    "R": 8.81
+   },
+   "2026Q1": {
+    "n": 55,
+    "R": 13.16
+   },
+   "2026Q2": {
+    "n": 68,
+    "R": -4.7
+   },
+   "2026Q3": {
+    "n": 45,
+    "R": 2.42
+   }
+  },
+  "aberta_no_fim_excluida": false,
+  "bloqueados_por_posicao_aberta": 6
+ },
+ "M30": {
+  "barras_avaliadas": 22807,
+  "caixa_horas": 6.0,
+  "ruido": {
+   "formacoes": 372,
+   "formacoes_por_mes": 16.1,
+   "superacoes": 254,
+   "superacoes_por_mes": 11.0,
+   "toque_sem_superacao": 1,
+   "nao_alcancou": 117,
+   "retorno_15min": {
+    "n": 225,
+    "pct": 88.6
+   },
+   "retorno_ate_fim_da_barra_do_TF": {
+    "n": 226,
+    "pct": 89.0
+   },
+   "operacao_isolada_perdedora": {
+    "n": 172,
+    "pct": 67.7
+   },
+   "cruzamento_retorno15_x_perdedora": {
+    "voltou_e_perdeu": 162,
+    "voltou_e_nao_perdeu": 63,
+    "nao_voltou_e_perdeu": 10,
+    "nao_voltou_e_nao_perdeu": 19
+   },
+   "minutos_ate_retorno_mediana_15min": 1.0,
+   "ambiguos": 2,
+   "lacuna": 2,
+   "stop_na_m1_entrada": 0
+  },
+  "desempenho": {
+   "n": 247,
+   "liquido_usd_1lote": 32099.68,
+   "R_total": 26.16,
+   "expectativa_R": 0.1059,
+   "acerto": 0.3198,
+   "fator_lucro_usd": 1.198,
+   "comissao_usd": 1729.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 228,
+    "stop de proteção": 19
+   },
+   "IC95_expectativa_R": [
+    -0.0367,
+    0.2578
+   ],
+   "drawdown_mtm_usd_1lote": -76676.73,
+   "R_por_operacao": 0.1059,
+   "R_por_mes": 1.131,
+   "spread_usd_estimado": 1786.0,
+   "tempo_em_posicao_pct": 8.32,
+   "duracao_mediana_h": 2.0,
+   "duracao_media_h": 5.69,
+   "vendas": {
+    "n": 123,
+    "R": 3.55
+   },
+   "compras": {
+    "n": 124,
+    "R": 22.61
+   }
+  },
+  "desenvolvimento": {
+   "n": 201,
+   "liquido_usd_1lote": 26486.3,
+   "R_total": 24.14,
+   "expectativa_R": 0.1201,
+   "acerto": 0.3284,
+   "fator_lucro_usd": 1.222,
+   "comissao_usd": 1407.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 188,
+    "stop de proteção": 13
+   },
+   "IC95_expectativa_R": [
+    -0.0327,
+    0.2826
+   ]
+  },
+  "posterior_RETROSPECTIVO": {
+   "n": 46,
+   "liquido_usd_1lote": 5613.39,
+   "R_total": 2.02,
+   "expectativa_R": 0.0439,
+   "acerto": 0.2826,
+   "fator_lucro_usd": 1.132,
+   "comissao_usd": 322.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 40,
+    "stop de proteção": 6
+   },
+   "IC95_expectativa_R": [
+    -0.3124,
+    0.5351
+   ]
+  },
+  "por_trimestre": {
+   "2024Q4": {
+    "n": 34,
+    "R": 8.04
+   },
+   "2025Q1": {
+    "n": 24,
+    "R": -1.9
+   },
+   "2025Q2": {
+    "n": 29,
+    "R": 20.38
+   },
+   "2025Q3": {
+    "n": 32,
+    "R": 5.72
+   },
+   "2025Q4": {
+    "n": 37,
+    "R": -2.83
+   },
+   "2026Q1": {
+    "n": 38,
+    "R": -4.73
+   },
+   "2026Q2": {
+    "n": 29,
+    "R": -3.82
+   },
+   "2026Q3": {
+    "n": 24,
+    "R": 5.3
+   }
+  },
+  "aberta_no_fim_excluida": false,
+  "bloqueados_por_posicao_aberta": 7
+ },
+ "H1": {
+  "barras_avaliadas": 11410,
+  "caixa_horas": 12.0,
+  "ruido": {
+   "formacoes": 169,
+   "formacoes_por_mes": 7.3,
+   "superacoes": 115,
+   "superacoes_por_mes": 5.0,
+   "toque_sem_superacao": 0,
+   "nao_alcancou": 54,
+   "retorno_15min": {
+    "n": 106,
+    "pct": 92.2
+   },
+   "retorno_ate_fim_da_barra_do_TF": {
+    "n": 109,
+    "pct": 94.8
+   },
+   "operacao_isolada_perdedora": {
+    "n": 82,
+    "pct": 71.3
+   },
+   "cruzamento_retorno15_x_perdedora": {
+    "voltou_e_perdeu": 77,
+    "voltou_e_nao_perdeu": 29,
+    "nao_voltou_e_perdeu": 5,
+    "nao_voltou_e_nao_perdeu": 4
+   },
+   "minutos_ate_retorno_mediana_15min": 1.0,
+   "ambiguos": 1,
+   "lacuna": 1,
+   "stop_na_m1_entrada": 0
+  },
+  "desempenho": {
+   "n": 112,
+   "liquido_usd_1lote": 25549.42,
+   "R_total": 13.95,
+   "expectativa_R": 0.1246,
+   "acerto": 0.2768,
+   "fator_lucro_usd": 1.273,
+   "comissao_usd": 784.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 106,
+    "stop de proteção": 6
+   },
+   "IC95_expectativa_R": [
+    -0.0865,
+    0.3543
+   ],
+   "drawdown_mtm_usd_1lote": -50857.96,
+   "R_por_operacao": 0.1246,
+   "R_por_mes": 0.603,
+   "spread_usd_estimado": 779.0,
+   "tempo_em_posicao_pct": 8.72,
+   "duracao_mediana_h": 5.71,
+   "duracao_media_h": 13.16,
+   "vendas": {
+    "n": 41,
+    "R": -0.22
+   },
+   "compras": {
+    "n": 71,
+    "R": 14.18
+   }
+  },
+  "desenvolvimento": {
+   "n": 93,
+   "liquido_usd_1lote": 24153.06,
+   "R_total": 13.68,
+   "expectativa_R": 0.1471,
+   "acerto": 0.2796,
+   "fator_lucro_usd": 1.303,
+   "comissao_usd": 651.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 88,
+    "stop de proteção": 5
+   },
+   "IC95_expectativa_R": [
+    -0.1002,
+    0.4407
+   ]
+  },
+  "posterior_RETROSPECTIVO": {
+   "n": 19,
+   "liquido_usd_1lote": 1396.36,
+   "R_total": 0.27,
+   "expectativa_R": 0.0144,
+   "acerto": 0.2632,
+   "fator_lucro_usd": 1.1,
+   "comissao_usd": 133.0,
+   "saidas": {
+    "saída por sinal (fechamento de volta ao canal)": 18,
+    "stop de proteção": 1
+   },
+   "IC95_expectativa_R": [
+    -0.2786,
+    0.3586
+   ]
+  },
+  "por_trimestre": {
+   "2024Q4": {
+    "n": 19,
+    "R": 4.59
+   },
+   "2025Q1": {
+    "n": 18,
+    "R": 5.66
+   },
+   "2025Q2": {
+    "n": 9,
+    "R": 0.36
+   },
+   "2025Q3": {
+    "n": 15,
+    "R": -2.05
+   },
+   "2025Q4": {
+    "n": 14,
+    "R": -3.56
+   },
+   "2026Q1": {
+    "n": 14,
+    "R": 11.58
+   },
+   "2026Q2": {
+    "n": 8,
+    "R": -4.67
+   },
+   "2026Q3": {
+    "n": 15,
+    "R": 2.05
+   }
+  },
+  "aberta_no_fim_excluida": false,
+  "bloqueados_por_posicao_aberta": 3
+ },
+ "diferencas": {
+  "M30-M15": {
+   "R_total": {
+    "diferenca_R": 14.23,
+    "IC95": [
+     -43.77,
+     69.45
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_desenvolvimento": {
+    "diferenca_R": 12.28,
+    "IC95": [
+     -36.21,
+     61.39
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_posterior_RETROSPECTIVO": {
+    "diferenca_R": 1.95,
+    "IC95": [
+     -24.93,
+     32.22
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_15min": {
+    "diferenca_pp": -0.1,
+    "IC95_pp": [
+     -4.8,
+     4.5
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_fim_barra": {
+    "diferenca_pp": 2.8,
+    "IC95_pp": [
+     -2.3,
+     7.6
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "perdedora_isolada": {
+    "diferenca_pp": -2.5,
+    "IC95_pp": [
+     -9.4,
+     4.7
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   }
+  },
+  "H1-M15": {
+   "R_total": {
+    "diferenca_R": 2.02,
+    "IC95": [
+     -53.2,
+     53.23
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_desenvolvimento": {
+    "diferenca_R": 1.82,
+    "IC95": [
+     -48.71,
+     48.97
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_posterior_RETROSPECTIVO": {
+    "diferenca_R": 0.2,
+    "IC95": [
+     -22.36,
+     21.34
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_15min": {
+    "diferenca_pp": 3.5,
+    "IC95_pp": [
+     -2.4,
+     9.1
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_fim_barra": {
+    "diferenca_pp": 8.6,
+    "IC95_pp": [
+     3.3,
+     13.6
+    ],
+    "conclusao": "primeiro maior"
+   },
+   "perdedora_isolada": {
+    "diferenca_pp": 1.1,
+    "IC95_pp": [
+     -8.0,
+     10.6
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   }
+  },
+  "H1-M30": {
+   "R_total": {
+    "diferenca_R": -12.21,
+    "IC95": [
+     -57.26,
+     32.04
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_desenvolvimento": {
+    "diferenca_R": -10.46,
+    "IC95": [
+     -50.55,
+     28.36
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "R_posterior_RETROSPECTIVO": {
+    "diferenca_R": -1.74,
+    "IC95": [
+     -25.11,
+     16.28
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_15min": {
+    "diferenca_pp": 3.6,
+    "IC95_pp": [
+     -2.9,
+     9.7
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   },
+   "retorno_fim_barra": {
+    "diferenca_pp": 5.8,
+    "IC95_pp": [
+     0.1,
+     11.2
+    ],
+    "conclusao": "primeiro maior"
+   },
+   "perdedora_isolada": {
+    "diferenca_pp": 3.6,
+    "IC95_pp": [
+     -6.4,
+     13.4
+    ],
+    "conclusao": "inconclusiva (IC95 inclui zero)"
+   }
+  }
+ },
+ "segundos": 83.5
+}

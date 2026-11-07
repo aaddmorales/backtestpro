@@ -1,0 +1,50 @@
+ORDEM 044 · ROMPIMENTO DA LATERALIZAÇÃO EM M15, M30 E H1 · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Experimental. Só replay; nenhuma ordem; campanha e DEMO intocados. O43 preservada (hashes em O43_preservada_sha256.txt). XAUUSD e BTCUSD.
+Valores marcados [P] são propostas do Claude, congeladas aqui, sem ajuste posterior.
+
+═══ 1. REGRA (R0 da O43, idêntica; só o timeframe muda) ═══
+- Formação no próprio TF:
+  · caixa de 12 barras;
+  · amplitude ≤ 3 × ATR14 (Wilder, no próprio TF);
+  · pivô estrito 2+2 confirmado dentro de [b−12, b−3];
+  · fechamentos ≥ fundo, salvo tentativa tipo 2;
+  · ≥ 1 tentativa (tipo 1 pavio / tipo 2 fechamento não confirmado);
+  · fechamento estritamente além do nível;
+  · um sinal por nível. Compra = espelho.
+- Gatilho: extremo da barra de rompimento ± 1 tick (0,01), só na barra seguinte do MESMO TF.
+  · A primeira M1 que alcança o gatilho define o instante τ.
+  · Igualar = toque: não abre. Expira no fim da barra seguinte.
+- Execução: venda = mín(gatilho, abertura da M1) no bid; compra = máx(gatilho, abertura) + spread da M1.
+- Stop 2 × ATR14(barra de rompimento, no próprio TF), checado em M1.
+- Saída por sinal: fechamento do próprio TF de volta ao canal EMA20 do próprio TF (venda: c ≥ EMA20 das mínimas). Execução na 1ª M1 da barra seguinte.
+- Custos: spread da M1; XAU comissão US$ 3,50/lote/lado; BTC sem comissão; swap não modelado.
+- Posição: uma por ativo por vez (carteira de cada TF separada).
+- M1/M5 FORA da decisão: M1 só reconstrói gatilho, stop e preço de saída. Nenhuma confirmação, veto ou saída por M1/M5.
+- Ambíguo (sequência dentro do minuto desconhecida, sem ticks):
+  · a M1 do gatilho já abre além dele (lacuna);
+  · ou o stop é alcançado na mesma M1 da entrada.
+  Esses casos são marcados.
+- Memória estrutural (distância ao próximo nível): só registro, como na O43.
+
+═══ 2. DADOS E COMPARAÇÃO JUSTA ═══
+- Barras M15, M30 e H1 nativas do servidor (horário do servidor), conferidas contra a agregação das M1 antes do uso.
+- Passo 1: reproduzir a R0 da O43 no M15 com os dados originais (mesmos sinais e operações).
+- Passo 2: comparar os três TF no MESMO intervalo por ativo.
+  · Início: 01 do mês seguinte a 300 barras H1 do começo dos dados [P] (aquecimento de ATR/EMA em todos os TF; indicadores calculados com todo o histórico anterior).
+  · Fim: última barra cujo fechamento ≤ última M1 disponível.
+  · Formação só a partir do início; posição aberta no fim é marcada e fica fora das métricas.
+- Caixa de 12 barras em cada escala: 3 h no M15, 6 h no M30, 12 h no H1.
+  · O teste compara três VERSÕES da estratégia; não isola o efeito do TF com a mesma duração de caixa.
+
+═══ 3. MEDIDAS ═══
+Ruído (por superação, independente de carteira; desfecho, nunca usado para decidir):
+- sinais por mês; superações por mês; toques; não alcançou;
+- retorno ao extremo em 15 min de relógio = alguma M1 fecha de volta além do extremo (venda: c > mínima da barra de rompimento) nos 15 min após τ;
+- retorno até o fim da barra do próprio TF onde ocorreu a superação;
+- operação perdedora contada SEPARADAMENTE (resultado isolado R < 0) e cruzada com o retorno.
+Desempenho (carteira contínua de cada TF):
+- operações, R líquido, R/operação, R/mês, drawdown marcado a mercado, comissão e spread estimado, tempo em posição;
+- por ativo e por período (trimestres e bloco ≥ 01/05/2026 RETROSPECTIVO).
+- Incerteza da diferença entre TF: bootstrap por dia (2000 reamostragens) das diferenças diárias de R e IC95.
+  · Diferença "inconclusiva" quando o IC95 inclui zero. Nesse caso, não se escolhe vencedor.
+Gráficos: em cada TF e ativo, um rompimento que deu sequência e um que voltou (sorteio fixo dentro da categoria), marcando caixa, nível, barra de rompimento, gatilho e saída.

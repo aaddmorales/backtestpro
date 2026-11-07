@@ -1,0 +1,56 @@
+[
+ {
+  "ativo": "XAUUSD",
+  "tf": "M15",
+  "arquivo": "O44_XAUUSD_M15.png",
+  "sequencia": "XAUUSD-V-202603190815",
+  "candidatos_sequencia": 32,
+  "voltou": "XAUUSD-V-202412231700",
+  "candidatos_voltou": 422
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M30",
+  "arquivo": "O44_XAUUSD_M30.png",
+  "sequencia": "XAUUSD-C-202601221700",
+  "candidatos_sequencia": 18,
+  "voltou": "XAUUSD-V-202412181600",
+  "candidatos_voltou": 225
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "H1",
+  "arquivo": "O44_XAUUSD_H1.png",
+  "sequencia": "XAUUSD-C-202511060800",
+  "candidatos_sequencia": 3,
+  "voltou": "XAUUSD-C-202411220300",
+  "candidatos_voltou": 106
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "M15",
+  "arquivo": "O44_BTCUSD_M15.png",
+  "sequencia": "BTCUSD-C-202604220230",
+  "candidatos_sequencia": 23,
+  "voltou": "BTCUSD-V-202510170745",
+  "candidatos_voltou": 365
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "M30",
+  "arquivo": "O44_BTCUSD_M30.png",
+  "sequencia": "BTCUSD-C-202605111830",
+  "candidatos_sequencia": 6,
+  "voltou": "BTCUSD-V-202510091100",
+  "candidatos_voltou": 151
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "H1",
+  "arquivo": "O44_BTCUSD_H1.png",
+  "sequencia": "BTCUSD-C-202607041700",
+  "candidatos_sequencia": 3,
+  "voltou": "BTCUSD-C-202510250800",
+  "candidatos_voltou": 67
+ }
+]

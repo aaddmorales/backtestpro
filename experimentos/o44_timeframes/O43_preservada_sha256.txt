@@ -1,0 +1,12 @@
+bb7b52c47ac02647c126687f99cc5623c1fee76c7fdd3b90e05e758c9825f358  ../lm043/codigo/estrategia_o39.py
+cd149d2d85d533f4d780b6de76628267f472a4b928a3b0d5f9c3a0af0000aaee  ../lm043/codigo/estrutura_o39.py
+bf6685119551cc8e2aa9cc2f6a9fb46170b058fdf16ab07d3294270847d4df3e  ../lm043/codigo/formacao_o43.py
+e64605d49ec7bcf68f70b09b9c4751ee2a1181cdea34afe04fac9a11ba36c792  ../lm043/codigo/graficos_o43.py
+88c1ea3ccdd086020f02dbd7d6223d553ae74a4b8fce3bdda9a90d22aba1c205  ../lm043/codigo/janela_o40.py
+41e0ea1f0fadbeedee1777e8743150cdce170ebcff536c11575828b2f1a5097c  ../lm043/codigo/leitura_o42.py
+3e1987700df4bfb70accc30a3bdcbbbae81ca56b30279a9445316bed693b09db  ../lm043/codigo/rodar_o43.py
+ddf39698c876a43a8b347399b31afb9b12b8bea249fd5b4381680d286f1b17b6  ../lm043/codigo/testes_o43.py
+ac12faf6cbdc06035a26157b868b5519654ac0b91a4df81aeeb6cbb64e1ff52f  ../lm043/codigo/testes_sombra_o43.py
+2aeb198da3eac662fd7e0d9dfce0c71517819fa94ab22741f3f8791fb33b34b1  ../lm043/saida/O43_especificacao_congelada.txt
+50130dba98824febf0a7ff880146220e383064f865e45a91e6c12455b80c6146  ../lm043/saida/replay/O43_BTCUSD_R0_operacoes.csv
+472714a4449fd94a0aff9f8045d8c424b6bc4e924b59c0e6c139bb1e6ef85add  ../lm043/saida/replay/O43_XAUUSD_R0_operacoes.csv

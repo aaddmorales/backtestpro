@@ -1,0 +1,32 @@
+{
+ "XAUUSD_M15": {
+  "DD_R_fechadas": -16.89,
+  "risco_mediano_preco": 11.55,
+  "risco_mediano_usd_1lote": 1155.0
+ },
+ "XAUUSD_M30": {
+  "DD_R_fechadas": -16.92,
+  "risco_mediano_preco": 17.92,
+  "risco_mediano_usd_1lote": 1792.0
+ },
+ "XAUUSD_H1": {
+  "DD_R_fechadas": -7.99,
+  "risco_mediano_preco": 21.96,
+  "risco_mediano_usd_1lote": 2196.0
+ },
+ "BTCUSD_M15": {
+  "DD_R_fechadas": -42.24,
+  "risco_mediano_preco": 445.23,
+  "risco_mediano_usd_1lote": 445.0
+ },
+ "BTCUSD_M30": {
+  "DD_R_fechadas": -24.04,
+  "risco_mediano_preco": 630.82,
+  "risco_mediano_usd_1lote": 631.0
+ },
+ "BTCUSD_H1": {
+  "DD_R_fechadas": -9.03,
+  "risco_mediano_preco": 905.88,
+  "risco_mediano_usd_1lote": 906.0
+ }
+}

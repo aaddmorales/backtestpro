@@ -1,0 +1,108 @@
+ORDEM 044 · ROMPIMENTO DA LATERALIZAÇÃO EM M15, M30 E H1 · FECHAMENTO · 07/11/2026
+Regra = R0 da O43 em cada timeframe (caixa 12 barras, amplitude ≤ 3 ATR, tentativa prévia, fechamento além, superação ≥ 1 tick só na barra seguinte; ATR, stop 2×ATR
+e saída pelo canal EMA20 no próprio TF; mesmos custos; uma posição por ativo). M1 só executa gatilho/stop/preço; M1/M5 fora da decisão.
+Especificação congelada ANTES dos resultados (sha 4924533d…, 17:04 UTC). O43 preservada (hashes conferidos). Só replay; nenhuma ordem; campanha intocada.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Conferir os dados e reproduzir o M15 da O43 | 20% | 100% | 20,0% |
+| Preparar e validar M30 e H1 | 25% | 100% | 25,0% |
+| Rodar os três replays e comparar os resultados | 40% | 100% | 40,0% |
+| Entregar relatório, gráficos e evidências | 15% | 100% | 15,0% |
+TOTAL: 100,0%. (Só replay: nada a instalar nesta ordem.)
+
+═══ DADOS E REPRODUÇÃO ═══
+- M15, M30 e H1 nativos do servidor × agregação das M1: 0 divergências de OHLC nos dois ativos. Todas as barras alinhadas ao horário (O44_validacao_dados.json).
+- Reprodução da R0 da O43 no M15, com os dados originais, IDÊNTICA:
+  · XAU: 726 sinais, 487 operações, +17,95 R;
+  · BTC: 667 sinais, 427 operações, −8,39 R.
+  Mesmos ids, horários e R.
+- Testes M30/H1: 16/16 (O44_testes.json).
+  · Igualar não abre; 1 tick abre; expira; stop 2×ATR do próprio TF.
+  · A ordem das M1 não muda a decisão.
+  · Retorno contado em 15 min × até o fim da barra.
+  · Saída pelo canal na barra seguinte do TF; stop na M1 da entrada marcado ambíguo.
+- Intervalo comum (aquecimento de 300 barras H1):
+  · XAU 01/10/2024 a 04/09/2026 (23,1 meses);
+  · BTC 01/09/2025 a 08/08/2026 (11,2 meses).
+  · Nenhuma posição ficou aberta no fim.
+- A caixa de 12 barras cobre 3 h (M15), 6 h (M30) e 12 h (H1).
+  · Compara três VERSÕES da estratégia; não isola o efeito do timeframe.
+- Ambíguos (sem ticks; todos por lacuna na abertura da M1; stop na M1 da entrada = 0):
+  · XAU: 7 / 2 / 1 (M15 / M30 / H1);
+  · BTC: 1 / 4 / 2.
+
+═══ 1. RUÍDO (por superação; desfecho, nunca usado na decisão) ═══
+| | XAU M15 | XAU M30 | XAU H1 | BTC M15 | BTC M30 | BTC H1 |
+| Formações / mês | 30,4 | 16,1 | 7,3 | 55,2 | 25,6 | 11,9 |
+| Superações / mês | 20,6 | 11,0 | 5,0 | 36,0 | 15,2 | 6,9 |
+| Superações (total) | 476 | 254 | 115 | 404 | 171 | 77 |
+| Não alcançou / toque | 221 / 5 | 117 / 1 | 54 / 0 | 216 / 0 | 116 / 0 | 57 / 0 |
+| Retorno ao extremo em 15 min | 88,7% | 88,6% | 92,2% | 90,3% | 88,3% | 87,0% |
+| Retorno até o fim da barra do TF | 86,1% | 89,0% | 94,8% | 86,9% | 88,3% | 92,2% |
+| Operação isolada perdedora | 70,2% | 67,7% | 71,3% | 76,0% | 80,1% | 74,0% |
+| Voltou e NÃO perdeu | 110 | 63 | 29 | 74 | 27 | 17 |
+| Não voltou e perdeu | 22 | 10 | 5 | 16 | 13 | 7 |
+- Mediana até o retorno: 1 min em todos.
+  · O retorno é medido pelo fechamento das M1 a partir da própria M1 da superação.
+  · Na maioria dos casos, a M1 que superou já fecha de volta além do extremo.
+- Diferenças de proporção (IC95 bootstrap):
+  · XAU: H1 tem MAIS retorno até o fim da barra que M15 (+8,6 pp, IC +3,3 a +13,6) e que M30 (+5,8 pp, IC +0,1 a +11,2);
+  · todas as demais diferenças de ruído (XAU e BTC) são inconclusivas.
+- Retorno ≠ perda: nas três escalas, 20–30% das superações que voltaram ao extremo ainda terminaram sem perda.
+
+═══ 2. DESEMPENHO (carteira contínua de cada TF; custos modelados; por 1 lote) ═══
+| Ativo · TF | n | R líquido | R/oper. (IC95) | R/mês | DD em R (fechadas) | DD marcado a mercado US$ | Comissão US$ | Spread estimado US$ | Tempo em posição | Duração mediana |
+| XAU M15 | 470 | +11,9 | +0,025 (−0,072 a +0,133) | +0,52 | −16,9 | −28.012 | 3.290 | 3.576 | 9,2% | 1,2 h |
+| XAU M30 | 247 | +26,2 | +0,106 (−0,037 a +0,258) | +1,13 | −16,9 | −76.677 | 1.729 | 1.786 | 8,3% | 2,0 h |
+| XAU H1  | 112 | +14,0 | +0,125 (−0,087 a +0,354) | +0,60 | −8,0 | −50.858 | 784 | 779 | 8,7% | 5,7 h |
+| BTC M15 | 392 | −11,4 | −0,029 (−0,120 a +0,075) | −1,02 | −42,2 | −20.535 | 0 | 4.065 | 7,5% | 0,8 h |
+| BTC M30 | 169 | −18,2 | −0,107 (−0,228 a +0,025) | −1,62 | −24,0 | −18.949 | 0 | 1.775 | 5,9% | 1,5 h |
+| BTC H1  | 76 | −4,8 | −0,063 (−0,222 a +0,124) | −0,43 | −9,0 | −12.761 | 0 | 796 | 5,9% | 3,8 h |
+- Atenção ao US$ por 1 lote: o stop (2×ATR) cresce com o TF.
+  · Risco mediano XAU: US$ 1.155 / 1.792 / 2.196.
+  · O DD em US$ não é comparável entre TF sem ajustar o lote. Por isso o R é a unidade de comparação.
+- Por período (R): ver por_trimestre no JSON.
+  · XAU M30: +20,4 R num único trimestre (2025T2); quatro dos oito trimestres foram negativos.
+  · XAU M15: +13,2 R em 2026T1.
+- Bloco ≥ 01/05/2026 RETROSPECTIVO (n · R):
+  · XAU: M15 94 · +0,1; M30 46 · +2,0; H1 19 · +0,3;
+  · BTC: M15 119 · +9,9; M30 48 · −7,1; H1 21 · +0,3.
+- Diferença de R total (bootstrap por dia, IC95):
+  · XAU: M30−M15 +14,2 (−43,8 a +69,5); H1−M15 +2,0 (−53,2 a +53,2); H1−M30 −12,2 (−57,3 a +32,0);
+  · BTC: M30−M15 −6,7 (−48,7 a +31,7); H1−M15 +6,6 (−35,9 a +45,3); H1−M30 +13,4 (−11,3 a +37,7).
+  · TODAS inconclusivas, também separadas em desenvolvimento e bloco posterior.
+- Menos sinais e menor DD em R no H1 vêm de operar menos vezes. Isso não prova uma leitura melhor (R/oper. com IC incluindo zero em todos).
+
+═══ RESPOSTAS ═══
+XAUUSD
+- Menos retorno ao extremo:
+  · em 15 min, M30 (88,6%) ≈ M15 (88,7%), diferença inconclusiva;
+  · até o fim da barra, M15 (86,1%).
+  · O H1 teve comprovadamente MAIS retorno até o fim da barra (barra mais longa).
+- Melhor desempenho líquido: M30 (+26,2 R; +1,13 R/mês). INCONCLUSIVO: diferença contra M15 com IC −43,8 a +69,5 R, concentrada em um trimestre.
+- Mesmo TF nos dois critérios? Não claramente.
+  · M30 empata com M15 no retorno em 15 min e lidera o R.
+  · Nenhuma das diferenças é conclusiva. Não há vencedor.
+BTCUSD
+- Menos retorno ao extremo:
+  · em 15 min, H1 (87,0%);
+  · até o fim da barra, M15 (86,9%).
+  · Inconclusivo nos dois prazos.
+- Melhor desempenho líquido: H1 (−4,8 R; é o MENOS negativo). Os três TF perdem. INCONCLUSIVO (H1−M15 IC −35,9 a +45,3).
+- Mesmo TF nos dois critérios? Só no retorno em 15 min (H1). Tudo inconclusivo. Não há vencedor.
+Conclusão geral
+- Subir o timeframe com a mesma regra não reduziu o ruído do rompimento: ≈ 87–95% das superações voltam ao extremo em todas as escalas.
+- Também não mudou o resultado de forma demonstrável.
+- A formação continua fraca com a saída congelada.
+
+═══ ENTREGA ═══
+- Gráficos (saida/graficos): para cada ativo e TF, um rompimento que deu sequência e um que voltou.
+  · Escolha por sorteio fixo dentro da categoria.
+  · Marcados: caixa, nível, barra de rompimento, gatilho/entrada e saída.
+  · Exemplo visível de retorno sem perda: XAU M30 voltou em 2 min e saiu +3,57 R.
+- Registros: O44_<ativo>_<TF>_sinais.csv (formação, gatilho, retornos, desfecho isolado) e O44_<ativo>_<TF>_operacoes.csv.
+- Resultado completo: O44_<ativo>_resultado.json. Também: O44_drawdown_R.json e O44_validacao_dados.json.
+- Código: formacao_o44.py (motor da O43 parametrizado por TF), rodar_o44.py, testes_o44.py, graficos_o44.py. Branch exp/o44-timeframes.
+
+Backup externo NÃO confirmado.
