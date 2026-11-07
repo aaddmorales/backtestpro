@@ -1,0 +1,8 @@
+bb7b52c47ac02647c126687f99cc5623c1fee76c7fdd3b90e05e758c9825f358  ../lm042/codigo/estrategia_o39.py
+cd149d2d85d533f4d780b6de76628267f472a4b928a3b0d5f9c3a0af0000aaee  ../lm042/codigo/estrutura_o39.py
+88c1ea3ccdd086020f02dbd7d6223d553ae74a4b8fce3bdda9a90d22aba1c205  ../lm042/codigo/janela_o40.py
+41e0ea1f0fadbeedee1777e8743150cdce170ebcff536c11575828b2f1a5097c  ../lm042/codigo/leitura_o42.py
+1de4f6a00dad3b6040ac3b9b349b4c988de7c8e2331551b6c68583b36092be42  ../lm042/codigo/rodar_o42.py
+053f55a392574c58e666b6f9dd893aebdd3c8679951d39c91db521ed21274c11  ../lm042/codigo/testes_o42.py
+f838e845866cada6dbc29c2b604b31a357bbb3bec79956cd2822406f50e3be34  ../lm042/codigo/testes_sombra_o42.py
+7325c605d41a153bed6d79bc382d2ae22b50fac8b58118b7bd9e7cfd49daf69d  ../lm042/saida/O42_especificacao_congelada.txt

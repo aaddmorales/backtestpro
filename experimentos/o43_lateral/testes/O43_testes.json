@@ -1,0 +1,93 @@
+{
+ "executado_utc": "2026-11-07T16:23:05Z",
+ "versao": "lateral-m1m5-0.1 (ORDEM 043)",
+ "aprovados": 17,
+ "total": 17,
+ "testes": [
+  {
+   "teste": "igualar o extremo (mínima M1 = 98,50) é toque: não abre",
+   "ok": true,
+   "detalhe": "resultado=toque sem superação; operações=[0, 0, 0]"
+  },
+  {
+   "teste": "superar por 1 tick (98,49) abre em τ ao preço do gatilho",
+   "ok": true,
+   "detalhe": "τ=2026-01-05 12:50:00; entrada=98.49"
+  },
+  {
+   "teste": "barra seguinte sem superação: expira; a queda na barra 52 não abre",
+   "ok": true,
+   "detalhe": "resultado=não alcançou; posições=0; entradas=0"
+  },
+  {
+   "teste": "superação com M1 contrária: R1/R2 descartam; confirmação posterior não reativa",
+   "ok": true,
+   "detalhe": "M1=CONTRARIA M5=CONTRARIA; R1 entradas=0, R2 entradas=0; R0 entrou"
+  },
+  {
+   "teste": "M1 avançando e M5 fechada a favor: R0, R1 e R2 entram no mesmo instante e preço",
+   "ok": true,
+   "detalhe": "M1=CONFIRMA M5=CONFIRMA τ=2026-01-05 12:50:00"
+  },
+  {
+   "teste": "M5 neutra (corpo nulo) não é confirmação: R1 descarta, R2 entra",
+   "ok": true,
+   "detalhe": "M1=CONFIRMA M5=NEUTRO (o5=c5); R1=descarta R2=entra"
+  },
+  {
+   "teste": "leitura no instante usa só M1/M5 fechadas (M1 em formação e futuro alterados)",
+   "ok": true,
+   "detalhe": "leitura idêntica; decisões ['entra', 'entra', 'entra']"
+  },
+  {
+   "teste": "sem tentativa prévia não há formação",
+   "ok": true,
+   "detalhe": "0 sinais"
+  },
+  {
+   "teste": "fechar igual ao fundo (99,00) não é rompimento",
+   "ok": true,
+   "detalhe": "barra 50 sem sinal; sinais posteriores (a barra 50 vira tentativa tipo 1): 1"
+  },
+  {
+   "teste": "tentativa tipo 2 (fechamento abaixo não confirmado) forma o sinal",
+   "ok": true,
+   "detalhe": "tentativas=[('11:30:00', 2), ('11:45:00', 1)]"
+  },
+  {
+   "teste": "fechamento abaixo CONFIRMADO pela barra seguinte (−1 tick) invalida a lateralização",
+   "ok": true,
+   "detalhe": "0 sinais"
+  },
+  {
+   "teste": "compra (espelho): resistência 101,00, rompe acima, gatilho 101,51",
+   "ok": true,
+   "detalhe": "lado=1 ref=101.0 T=101.51"
+  },
+  {
+   "teste": "um sinal por fundo de referência",
+   "ok": true,
+   "detalhe": "1 sinal em 56 barras (fechamentos seguintes abaixo do fundo não rearmam)"
+  },
+  {
+   "teste": "M1 da superação abre além do gatilho (lacuna): entra na abertura e marca ambíguo",
+   "ok": true,
+   "detalhe": "entrada=98.4; lacuna=True"
+  },
+  {
+   "teste": "stop alcançado na mesma M1 da entrada: sai no stop e marca ambíguo",
+   "ok": true,
+   "detalhe": "saída=100.56 stop=100.56"
+  },
+  {
+   "teste": "simulação isolada do sinal = operação da carteira (mesma gestão)",
+   "ok": true,
+   "detalhe": "R=-0.29; saída saída por sinal (fechamento de volta ao canal)"
+  },
+  {
+   "teste": "reinício com estado salvo reproduz o replay contínuo",
+   "ok": true,
+   "detalhe": "212 decisões; operações [30, 12, 12]"
+  }
+ ]
+}

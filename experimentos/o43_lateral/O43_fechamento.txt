@@ -1,0 +1,114 @@
+ORDEM 043 · ROMPIMENTO DA LATERALIZAÇÃO COM CONFIRMAÇÃO IMEDIATA EM M1/M5 · FECHAMENTO · 07/11/2026
+Formação lateral no M15 → rompimento com fechamento → superação por ≥ 1 tick SÓ na barra seguinte → leitura M1/M5 SÓ no instante da superação.
+Critérios congelados ANTES do replay (sha 2aeb198d…, 16:16 UTC) e não ajustados. O42 preservada (hashes conferidos: OK).
+Campanha e DEMO intocados; nenhuma ordem. Valores [P] = propostas do Claude, congeladas.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Congelar a sequência e os critérios de confirmação | 20% | 100% | 20,0% |
+| Validar os gatilhos e a disponibilidade dos dados | 30% | 100% | 30,0% |
+| Rodar a comparação por sinal e em carteira contínua | 35% | 100% | 35,0% |
+| Entregar os gráficos anotados e o pacote em sombra | 15% | 80% | 12,0% — gráficos e pacote prontos; instalação no MT5 PENDENTE (sem acesso) |
+TOTAL: 97,0%.
+
+═══ TESTES ═══
+- Formação, gatilho e leitura: 17/17 (O43_testes.json).
+  · Igualar a extrema (98,50) = toque: não abre. Superar por 1 tick (98,49) abre em τ ao preço do gatilho.
+  · Sem superação na barra seguinte: expira; a queda forte na barra 52 não abre.
+  · Superação com M1 contrária: R1 e R2 descartam; a confirmação forte que vem depois NÃO reativa.
+  · M5 neutra (corpo nulo) não confirma: R1 descarta; R2 aceita (não é contrária).
+  · A leitura não muda quando a M1 da superação (em formação) e todo o futuro são alterados.
+  · Formação: sem tentativa não há sinal; fechar igual ao fundo não rompe; tentativa tipo 2 vale; tipo 2 "confirmado" (−1 tick) invalida.
+  · Compra espelhada; um sinal por fundo.
+  · Ambíguos marcados: lacuna na abertura (entra na abertura) e stop na M1 da entrada.
+  · Simulação isolada = operação da carteira; reinício com estado salvo = replay contínuo (212 decisões).
+- Sombra no terminal SIMULADO: 4/4 (O43_testes_sombra.json).
+  · Decisões e resultados virtuais = replay com a mesma memória inicial.
+  · Reinício no meio da barra: mesmos eventos, sem duplicar. Nenhuma ordem.
+- Correções registradas (só nos CENÁRIOS de teste, motor inalterado):
+  · o fechamento igual ao fundo vira tentativa tipo 1 da barra seguinte (o teste passou a olhar só a barra 50);
+  · faltavam barras para a posição isolada sair.
+
+═══ DADOS ═══
+| | XAU | BTC |
+| Período M1 | 10/09/2024 a 04/09/2026 | 08/08/2025 a 08/08/2026 |
+| Formações (vendas · compras) | 726 (348 · 378) | 667 (339 · 328) |
+| Barra seguinte: superou / não alcançou / toque sem superação | 495 / 225 / 6 | 441 / 226 / 0 |
+| Barra seguinte com 15 M1 | 721 de 726 | 658 de 667 |
+| Superações com leitura M1/M5 completa | 495 | 441 |
+| M5 lida com defasagem > 4 min (pausa diária / fim de semana) | 9 | 2 |
+| Ambíguos sem ticks (lacuna na abertura da M1) | 9 | 3 |
+- Stop na M1 da entrada: 0 nos dois.
+- Em 152 (XAU) e 160 (BTC) superações, o fechamento da própria barra seguinte já voltou para dentro do canal EMA20 (saída na barra seguinte, regra congelada).
+
+═══ 1. POR SINAL (mesmos sinais; cada um isolado; mesma saída, stop e custos) ═══
+| | XAU R1 | XAU R2 | BTC R1 | BTC R2 |
+| Sinais superados (R0 entra em todos) | 495 | 495 | 441 | 441 |
+| Entram / descartam | 252 / 243 | 256 / 239 | 203 / 238 | 206 / 235 |
+| Perdas evitadas (R0 perdeu, regra não entrou) | 167 · −74,1 R | 165 · −73,5 R | 179 · −74,8 R | 176 · −74,0 R |
+| Ganhos de fora (R0 ganhou, regra não entrou) | 76 · +83,4 R | 74 · +82,1 R | 59 · +72,9 R | 59 · +72,9 R |
+| Diferença líquida vs R0 | −9,3 R | −8,6 R | +2,0 R | +1,1 R |
+| IC95 da diferença (bootstrap por dia) | −23,6 a +56,1 | −22,6 a +57,2 | −30,8 a +24,0 | −31,7 a +23,4 |
+| Acerto entradas × descartadas | 29,8% × 31,3% | 30,1% × 31,0% | 23,6% × 24,8% | 23,3% × 25,1% |
+| Sem os ambíguos (diferença) | −9,7 R | −9,0 R | +3,8 R | +2,9 R |
+| Vendas (diferença) | +11,5 R | +11,5 R | +11,5 R | +10,9 R |
+| Compras (diferença) | −20,8 R | −20,1 R | −9,6 R | −9,8 R |
+| Desenvolvimento (diferença) | −4,8 R | −4,1 R | +18,3 R | +18,1 R |
+| Bloco ≥ 01/05/2026 RETROSPECTIVO (diferença) | −4,5 R | −4,5 R | −16,3 R | −17,0 R |
+- Leituras no instante (XAU / BTC, n · R médio isolado):
+  · M1 CONFIRMA + M5 CONFIRMA: 252 · +0,06 / 203 · −0,02 (= entradas R1);
+  · M1 CONFIRMA + M5 CONTRARIA: 56 · +0,21 / 59 · −0,06;
+  · M1 NEUTRO + M5 CONFIRMA: 103 · −0,02 / 97 · +0,06;
+  · M1 CONTRARIA (qualquer M5): 47 · −0,17 / 43 · +0,03.
+- Conhecido na entrada × desfecho (descritivo, sem limiar):
+  · devolução (M1 fecha de volta além do extremo em 15 min) quase igual nas entradas e nos descartes (XAU 89% × 88%; BTC 89% × 90%);
+  · amplitude do rompimento mediana: entradas 1,11 ATR × descartes 1,03 (XAU); 1,00 × 0,94 (BTC);
+  · distância mediana ao próximo nível: 0 ATR nos dois grupos (nível já no caminho).
+- Leitura:
+  · a confirmação imediata eliminou o custo da entrada tardia da O42 (todas as entradas no mesmo instante e preço da R0);
+  · mas, neste conjunto, M1/M5 no instante NÃO separaram falsos rompimentos: o acerto e o R médio dos descartados são iguais aos dos aceitos;
+  · resultado: perdas evitadas ≈ ganhos de fora; diferença líquida pequena, de sinal oposto nos dois ativos e nos dois blocos, IC muito largo incluindo zero;
+  · R1 e R2 quase coincidem (M5 neutra é rara no instante: 4 casos por ativo).
+
+═══ 2. CARTEIRA CONTÍNUA (uma posição por ativo e por regra; custos modelados; por 1 lote) ═══
+| Ativo · regra | n | R | Expectativa (IC95) | FL | DD marcado a mercado | Comissão | Bloco posterior RETROSPECTIVO | Ambíguas |
+| XAU R0 | 487 | +18,0 | +0,037 (−0,061 a +0,139) | 1,21 | −28.012 | 3.409 | 94 · +0,1 | 9 |
+| XAU R1 | 251 | +14,7 | +0,059 (−0,087 a +0,220) | 1,14 | −26.630 | 1.757 | 56 · −4,5 | 8 |
+| XAU R2 | 255 | +15,5 | +0,061 (−0,090 a +0,232) | 1,14 | −28.064 | 1.785 | 56 · −4,5 | 8 |
+| BTC R0 | 427 | −8,4 | −0,020 (−0,113 a +0,078) | 0,88 | −20.535 | 0 | 119 · +9,9 | 3 |
+| BTC R1 | 201 | −3,5 | −0,018 (−0,162 a +0,132) | 0,92 | −10.479 | 0 | 50 · −2,5 | 2 |
+| BTC R2 | 204 | −4,4 | −0,022 (−0,160 a +0,130) | 0,91 | −10.479 | 0 | 52 · −3,2 | 2 |
+- Sinais bloqueados por posição aberta: R0 8 (XAU) e 14 (BTC); R1/R2 1 e 2.
+- Leitura: R1/R2 operam metade das vezes, com expectativa igual dentro do erro. O DD do BTC cai à metade porque há menos operações, não porque a expectativa melhorou.
+
+═══ RESPOSTAS ═══
+1. A confirmação imediata M1/M5 melhora o rompimento da lateralização?
+   - Não de forma demonstrável.
+   - XAU: −9,3 R (R1) e −8,6 R (R2). BTC: +2,0 R e +1,1 R.
+   - IC inclui zero; o sinal da diferença muda entre compras e vendas e entre os blocos.
+2. Perdas evitadas × ganhos de fora:
+   - XAU: −74,1 R evitados × +83,4 R deixados (R1).
+   - BTC: −74,8 R evitados × +72,9 R deixados (R1).
+3. A M5 neutra precisa ser tratada como não confirmação?
+   - Foi tratada assim (R1). Na prática quase não muda nada: são 4 casos por ativo.
+   - A variante O42 (R2) dá praticamente o mesmo resultado.
+4. Ponto que os dados mostram (sem ajuste, só registro):
+   - A própria formação é fraca com a saída congelada: R0 = +18,0 R (XAU) e −8,4 R (BTC).
+   - ≈ 89% das superações devolvem o extremo em 15 min, e ≈ 1/3 sai já no fechamento da barra seguinte (canal EMA20).
+   - Mudar isso exige uma nova regra congelada; não foi testado aqui.
+
+═══ ENTREGA ═══
+- Gráficos anotados (saida/graficos, índice O43_graficos_indice.json). Escolha por sorteio fixo dentro de cada categoria, não por resultado.
+  · Categorias: venda confirmada, compra confirmada, toque sem superação, barra seguinte que não alcançou, superação sem confirmação, entrada confirmada que falhou. XAU e BTC.
+  · BTC não teve "toque sem superação".
+  · Cada gráfico marca: (1) suporte/resistência; (2) barra que rompeu e fechou; (3) barra seguinte e o minuto da superação; (4) M1 (15 fechadas, marcas) e M5 (3 fechadas) naquele instante, com a decisão R0/R1/R2.
+- Registros por sinal: O43_<ativo>_sinais.csv.
+  · Conhecido na entrada: formação, tentativas, amplitude, próximo nível, leitura M1/M5.
+  · Desfecho em colunas iso_* e desfecho_*.
+- Também: decisões (O43_<ativo>_decisoes.csv.gz) e operações da carteira por regra.
+- O43_pacote_sombra.zip: leitor bt_lateral_sombra_o43 com R0, R1 e R2 em paralelo e posições VIRTUAIS.
+  · Mesmo motor do replay. Nenhuma ordem.
+  · Instalado: NÃO. Observado com ticks reais: NÃO.
+- Código: branch exp/o43-lateral.
+
+Backup externo NÃO confirmado.

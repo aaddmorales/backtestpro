@@ -1,0 +1,675 @@
+{
+ "ativo": "BTCUSD",
+ "versao": "lateral-m1m5-0.1 (ORDEM 043)",
+ "segundos": 14.2,
+ "dados": {
+  "sinais": 667,
+  "por_resultado_gatilho": {
+   "superou": 441,
+   "não alcançou": 226
+  },
+  "vendas": 339,
+  "compras": 328,
+  "barra_seguinte_com_15_M1": 658,
+  "leitura_ausente_no_instante": 0,
+  "m1_defasada_no_instante(>0 min)": 0,
+  "m5_sem_dados": 0,
+  "m5_defasagem_min_distribuicao": {
+   "0.0": 206,
+   "1.0": 88,
+   "2.0": 58,
+   "3.0": 49,
+   "4.0": 38,
+   "7.0": 2
+  },
+  "superacao_com_lacuna_na_abertura": 3,
+  "primeiro_M1": "2025-08-08 00:00:00",
+  "ultimo_M1": "2026-08-08 18:52:00",
+  "barra_seguinte_sem_M1": 0
+ },
+ "por_sinal": {
+  "R1": {
+   "todos": {
+    "sinais_superados": 441,
+    "entra": 203,
+    "descarta": 238,
+    "perdas_evitadas": {
+     "n": 179,
+     "R": -74.82
+    },
+    "ganhos_de_fora": {
+     "n": 59,
+     "R": 72.86
+    },
+    "diferenca_liquida_R_vs_R0": 1.95,
+    "R_R0": -6.23,
+    "R_regra": -4.28,
+    "expectativa_entradas": -0.0211,
+    "expectativa_descartadas": -0.0082,
+    "acerto_entradas": 0.2365,
+    "acerto_descartadas": 0.2479,
+    "IC95_diferenca_R": [
+     -30.79,
+     23.96
+    ]
+   },
+   "sem_ambiguos": {
+    "sinais_superados": 438,
+    "entra": 201,
+    "descarta": 237,
+    "perdas_evitadas": {
+     "n": 179,
+     "R": -74.82
+    },
+    "ganhos_de_fora": {
+     "n": 58,
+     "R": 71.04
+    },
+    "diferenca_liquida_R_vs_R0": 3.78,
+    "R_R0": -6.65,
+    "R_regra": -2.87,
+    "expectativa_entradas": -0.0143,
+    "expectativa_descartadas": -0.0159,
+    "acerto_entradas": 0.2388,
+    "acerto_descartadas": 0.2447
+   },
+   "vendas": {
+    "sinais_superados": 215,
+    "entra": 103,
+    "descarta": 112,
+    "perdas_evitadas": {
+     "n": 92,
+     "R": -40.04
+    },
+    "ganhos_de_fora": {
+     "n": 20,
+     "R": 28.53
+    },
+    "diferenca_liquida_R_vs_R0": 11.52,
+    "R_R0": -11.67,
+    "R_regra": -0.15,
+    "expectativa_entradas": -0.0015,
+    "expectativa_descartadas": -0.1028,
+    "acerto_entradas": 0.2524,
+    "acerto_descartadas": 0.1786
+   },
+   "compras": {
+    "sinais_superados": 226,
+    "entra": 100,
+    "descarta": 126,
+    "perdas_evitadas": {
+     "n": 87,
+     "R": -34.77
+    },
+    "ganhos_de_fora": {
+     "n": 39,
+     "R": 44.34
+    },
+    "diferenca_liquida_R_vs_R0": -9.56,
+    "R_R0": 5.44,
+    "R_regra": -4.13,
+    "expectativa_entradas": -0.0413,
+    "expectativa_descartadas": 0.0759,
+    "acerto_entradas": 0.22,
+    "acerto_descartadas": 0.3095
+   },
+   "desenvolvimento": {
+    "sinais_superados": 316,
+    "entra": 153,
+    "descarta": 163,
+    "perdas_evitadas": {
+     "n": 126,
+     "R": -55.7
+    },
+    "ganhos_de_fora": {
+     "n": 37,
+     "R": 37.44
+    },
+    "diferenca_liquida_R_vs_R0": 18.26,
+    "R_R0": -20.04,
+    "R_regra": -1.78,
+    "expectativa_entradas": -0.0116,
+    "expectativa_descartadas": -0.112,
+    "acerto_entradas": 0.2484,
+    "acerto_descartadas": 0.227
+   },
+   "posterior_RETROSPECTIVO": {
+    "sinais_superados": 125,
+    "entra": 50,
+    "descarta": 75,
+    "perdas_evitadas": {
+     "n": 53,
+     "R": -19.12
+    },
+    "ganhos_de_fora": {
+     "n": 22,
+     "R": 35.43
+    },
+    "diferenca_liquida_R_vs_R0": -16.31,
+    "R_R0": 13.81,
+    "R_regra": -2.5,
+    "expectativa_entradas": -0.05,
+    "expectativa_descartadas": 0.2175,
+    "acerto_entradas": 0.2,
+    "acerto_descartadas": 0.2933
+   }
+  },
+  "R2": {
+   "todos": {
+    "sinais_superados": 441,
+    "entra": 206,
+    "descarta": 235,
+    "perdas_evitadas": {
+     "n": 176,
+     "R": -73.96
+    },
+    "ganhos_de_fora": {
+     "n": 59,
+     "R": 72.86
+    },
+    "diferenca_liquida_R_vs_R0": 1.09,
+    "R_R0": -6.23,
+    "R_regra": -5.14,
+    "expectativa_entradas": -0.0249,
+    "expectativa_descartadas": -0.0047,
+    "acerto_entradas": 0.233,
+    "acerto_descartadas": 0.2511,
+    "IC95_diferenca_R": [
+     -31.73,
+     23.42
+    ]
+   },
+   "sem_ambiguos": {
+    "sinais_superados": 438,
+    "entra": 204,
+    "descarta": 234,
+    "perdas_evitadas": {
+     "n": 176,
+     "R": -73.96
+    },
+    "ganhos_de_fora": {
+     "n": 58,
+     "R": 71.04
+    },
+    "diferenca_liquida_R_vs_R0": 2.92,
+    "R_R0": -6.65,
+    "R_regra": -3.73,
+    "expectativa_entradas": -0.0183,
+    "expectativa_descartadas": -0.0125,
+    "acerto_entradas": 0.2353,
+    "acerto_descartadas": 0.2479
+   },
+   "vendas": {
+    "sinais_superados": 215,
+    "entra": 104,
+    "descarta": 111,
+    "perdas_evitadas": {
+     "n": 91,
+     "R": -39.42
+    },
+    "ganhos_de_fora": {
+     "n": 20,
+     "R": 28.53
+    },
+    "diferenca_liquida_R_vs_R0": 10.89,
+    "R_R0": -11.67,
+    "R_regra": -0.78,
+    "expectativa_entradas": -0.0075,
+    "expectativa_descartadas": -0.0981,
+    "acerto_entradas": 0.25,
+    "acerto_descartadas": 0.1802
+   },
+   "compras": {
+    "sinais_superados": 226,
+    "entra": 102,
+    "descarta": 124,
+    "perdas_evitadas": {
+     "n": 85,
+     "R": -34.54
+    },
+    "ganhos_de_fora": {
+     "n": 39,
+     "R": 44.34
+    },
+    "diferenca_liquida_R_vs_R0": -9.8,
+    "R_R0": 5.44,
+    "R_regra": -4.36,
+    "expectativa_entradas": -0.0428,
+    "expectativa_descartadas": 0.079,
+    "acerto_entradas": 0.2157,
+    "acerto_descartadas": 0.3145
+   },
+   "desenvolvimento": {
+    "sinais_superados": 316,
+    "entra": 154,
+    "descarta": 162,
+    "perdas_evitadas": {
+     "n": 125,
+     "R": -55.49
+    },
+    "ganhos_de_fora": {
+     "n": 37,
+     "R": 37.44
+    },
+    "diferenca_liquida_R_vs_R0": 18.05,
+    "R_R0": -20.04,
+    "R_regra": -1.99,
+    "expectativa_entradas": -0.0129,
+    "expectativa_descartadas": -0.1114,
+    "acerto_entradas": 0.2468,
+    "acerto_descartadas": 0.2284
+   },
+   "posterior_RETROSPECTIVO": {
+    "sinais_superados": 125,
+    "entra": 52,
+    "descarta": 73,
+    "perdas_evitadas": {
+     "n": 51,
+     "R": -18.47
+    },
+    "ganhos_de_fora": {
+     "n": 22,
+     "R": 35.43
+    },
+    "diferenca_liquida_R_vs_R0": -16.96,
+    "R_R0": 13.81,
+    "R_regra": -3.15,
+    "expectativa_entradas": -0.0605,
+    "expectativa_descartadas": 0.2323,
+    "acerto_entradas": 0.1923,
+    "acerto_descartadas": 0.3014
+   }
+  }
+ },
+ "leituras_no_instante": {
+  "M1xM5": [
+   {
+    "m1_estado": "CONFIRMA",
+    "m5_estado": "CONFIRMA",
+    "n": 203,
+    "R_medio": -0.021
+   },
+   {
+    "m1_estado": "CONFIRMA",
+    "m5_estado": "CONTRARIA",
+    "n": 59,
+    "R_medio": -0.063
+   },
+   {
+    "m1_estado": "CONFIRMA",
+    "m5_estado": "NEUTRO",
+    "n": 4,
+    "R_medio": -0.307
+   },
+   {
+    "m1_estado": "CONTRARIA",
+    "m5_estado": "CONFIRMA",
+    "n": 26,
+    "R_medio": -0.089
+   },
+   {
+    "m1_estado": "CONTRARIA",
+    "m5_estado": "CONTRARIA",
+    "n": 14,
+    "R_medio": 0.176
+   },
+   {
+    "m1_estado": "CONTRARIA",
+    "m5_estado": "NEUTRO",
+    "n": 3,
+    "R_medio": -0.437
+   },
+   {
+    "m1_estado": "NEUTRO",
+    "m5_estado": "CONFIRMA",
+    "n": 97,
+    "R_medio": 0.061
+   },
+   {
+    "m1_estado": "NEUTRO",
+    "m5_estado": "CONTRARIA",
+    "n": 32,
+    "R_medio": -0.076
+   },
+   {
+    "m1_estado": "NEUTRO",
+    "m5_estado": "NEUTRO",
+    "n": 3,
+    "R_medio": 0.224
+   }
+  ]
+ },
+ "desfecho": {
+  "R1": {
+   "descarta": {
+    "n": 238,
+    "devolveu_em_15min": 0.899,
+    "R_medio": -0.008,
+    "MFE_mediano_R": 0.224,
+    "amp_rompimento_atr_mediana": 0.936,
+    "dist_prox_nivel_atr_mediana": 0.0,
+    "sem_nivel_a_frente": 12
+   },
+   "entra": {
+    "n": 203,
+    "devolveu_em_15min": 0.887,
+    "R_medio": -0.021,
+    "MFE_mediano_R": 0.281,
+    "amp_rompimento_atr_mediana": 1.002,
+    "dist_prox_nivel_atr_mediana": 0.0,
+    "sem_nivel_a_frente": 13
+   }
+  },
+  "R2": {
+   "descarta": {
+    "n": 235,
+    "devolveu_em_15min": 0.902,
+    "R_medio": -0.005,
+    "MFE_mediano_R": 0.223,
+    "amp_rompimento_atr_mediana": 0.931,
+    "dist_prox_nivel_atr_mediana": 0.0,
+    "sem_nivel_a_frente": 12
+   },
+   "entra": {
+    "n": 206,
+    "devolveu_em_15min": 0.883,
+    "R_medio": -0.025,
+    "MFE_mediano_R": 0.283,
+    "amp_rompimento_atr_mediana": 1.004,
+    "dist_prox_nivel_atr_mediana": 0.0,
+    "sem_nivel_a_frente": 13
+   }
+  }
+ },
+ "isoladas": {
+  "ambiguos": 3,
+  "lacuna": 3,
+  "stop_na_m1_entrada": 0,
+  "saida_ja_no_fechamento_da_barra_seguinte": 160,
+  "motivos": {
+   "saída por sinal (fechamento de volta ao canal)": 408,
+   "stop de proteção": 33
+  }
+ },
+ "carteira": {
+  "R0": {
+   "geral": {
+    "n": 427,
+    "liquido_usd_1lote": -7677.97,
+    "R_total": -8.39,
+    "expectativa_R": -0.0197,
+    "acerto": 0.2389,
+    "fator_lucro_usd": 0.88,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 395,
+     "stop de proteção": 32
+    },
+    "IC95_expectativa_R": [
+     -0.1125,
+     0.0783
+    ],
+    "drawdown_mtm_usd_1lote": -20534.6
+   },
+   "desenvolvimento": {
+    "n": 308,
+    "liquido_usd_1lote": -10944.88,
+    "R_total": -18.31,
+    "expectativa_R": -0.0594,
+    "acerto": 0.237,
+    "fator_lucro_usd": 0.788,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 284,
+     "stop de proteção": 24
+    },
+    "IC95_expectativa_R": [
+     -0.159,
+     0.0488
+    ],
+    "drawdown_mtm_usd_1lote": -18144.16
+   },
+   "posterior_RETROSPECTIVO": {
+    "n": 119,
+    "liquido_usd_1lote": 3266.9,
+    "R_total": 9.92,
+    "expectativa_R": 0.0833,
+    "acerto": 0.2437,
+    "fator_lucro_usd": 1.264,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 111,
+     "stop de proteção": 8
+    },
+    "IC95_expectativa_R": [
+     -0.0958,
+     0.299
+    ],
+    "drawdown_mtm_usd_1lote": -3636.45
+   },
+   "vendas": {
+    "n": 211,
+    "liquido_usd_1lote": -8581.94,
+    "R_total": -13.87,
+    "expectativa_R": -0.0657,
+    "acerto": 0.2133,
+    "fator_lucro_usd": 0.756,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 194,
+     "stop de proteção": 17
+    },
+    "IC95_expectativa_R": [
+     -0.1837,
+     0.0664
+    ]
+   },
+   "compras": {
+    "n": 216,
+    "liquido_usd_1lote": 903.97,
+    "R_total": 5.47,
+    "expectativa_R": 0.0253,
+    "acerto": 0.2639,
+    "fator_lucro_usd": 1.031,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 201,
+     "stop de proteção": 15
+    },
+    "IC95_expectativa_R": [
+     -0.1065,
+     0.1666
+    ]
+   },
+   "ambiguas": 3,
+   "bloqueados_por_posicao_aberta": 14,
+   "aberta_no_fim": false
+  },
+  "R1": {
+   "geral": {
+    "n": 201,
+    "liquido_usd_1lote": -2573.59,
+    "R_total": -3.53,
+    "expectativa_R": -0.0176,
+    "acerto": 0.2388,
+    "fator_lucro_usd": 0.921,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 186,
+     "stop de proteção": 15
+    },
+    "IC95_expectativa_R": [
+     -0.162,
+     0.1321
+    ],
+    "drawdown_mtm_usd_1lote": -10478.8
+   },
+   "desenvolvimento": {
+    "n": 151,
+    "liquido_usd_1lote": -2196.95,
+    "R_total": -1.03,
+    "expectativa_R": -0.0068,
+    "acerto": 0.2517,
+    "fator_lucro_usd": 0.916,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 142,
+     "stop de proteção": 9
+    },
+    "IC95_expectativa_R": [
+     -0.1677,
+     0.1763
+    ],
+    "drawdown_mtm_usd_1lote": -10478.8
+   },
+   "posterior_RETROSPECTIVO": {
+    "n": 50,
+    "liquido_usd_1lote": -376.64,
+    "R_total": -2.5,
+    "expectativa_R": -0.05,
+    "acerto": 0.2,
+    "fator_lucro_usd": 0.941,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 44,
+     "stop de proteção": 6
+    },
+    "IC95_expectativa_R": [
+     -0.2967,
+     0.2693
+    ],
+    "drawdown_mtm_usd_1lote": -4719.39
+   },
+   "vendas": {
+    "n": 102,
+    "liquido_usd_1lote": -803.78,
+    "R_total": 0.21,
+    "expectativa_R": 0.0021,
+    "acerto": 0.2549,
+    "fator_lucro_usd": 0.956,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 92,
+     "stop de proteção": 10
+    },
+    "IC95_expectativa_R": [
+     -0.2151,
+     0.2378
+    ]
+   },
+   "compras": {
+    "n": 99,
+    "liquido_usd_1lote": -1769.81,
+    "R_total": -3.74,
+    "expectativa_R": -0.0378,
+    "acerto": 0.2222,
+    "fator_lucro_usd": 0.876,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 94,
+     "stop de proteção": 5
+    },
+    "IC95_expectativa_R": [
+     -0.2034,
+     0.1503
+    ]
+   },
+   "ambiguas": 2,
+   "bloqueados_por_posicao_aberta": 2,
+   "aberta_no_fim": false
+  },
+  "R2": {
+   "geral": {
+    "n": 204,
+    "liquido_usd_1lote": -2823.73,
+    "R_total": -4.39,
+    "expectativa_R": -0.0215,
+    "acerto": 0.2353,
+    "fator_lucro_usd": 0.914,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 189,
+     "stop de proteção": 15
+    },
+    "IC95_expectativa_R": [
+     -0.1599,
+     0.1303
+    ],
+    "drawdown_mtm_usd_1lote": -10478.8
+   },
+   "desenvolvimento": {
+    "n": 152,
+    "liquido_usd_1lote": -2310.38,
+    "R_total": -1.24,
+    "expectativa_R": -0.0082,
+    "acerto": 0.25,
+    "fator_lucro_usd": 0.912,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 143,
+     "stop de proteção": 9
+    },
+    "IC95_expectativa_R": [
+     -0.164,
+     0.172
+    ],
+    "drawdown_mtm_usd_1lote": -10478.8
+   },
+   "posterior_RETROSPECTIVO": {
+    "n": 52,
+    "liquido_usd_1lote": -513.35,
+    "R_total": -3.15,
+    "expectativa_R": -0.0605,
+    "acerto": 0.1923,
+    "fator_lucro_usd": 0.922,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 46,
+     "stop de proteção": 6
+    },
+    "IC95_expectativa_R": [
+     -0.2966,
+     0.2313
+    ],
+    "drawdown_mtm_usd_1lote": -4719.39
+   },
+   "vendas": {
+    "n": 103,
+    "liquido_usd_1lote": -935.86,
+    "R_total": -0.41,
+    "expectativa_R": -0.004,
+    "acerto": 0.2524,
+    "fator_lucro_usd": 0.949,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 93,
+     "stop de proteção": 10
+    },
+    "IC95_expectativa_R": [
+     -0.2118,
+     0.2262
+    ]
+   },
+   "compras": {
+    "n": 101,
+    "liquido_usd_1lote": -1887.87,
+    "R_total": -3.97,
+    "expectativa_R": -0.0394,
+    "acerto": 0.2178,
+    "fator_lucro_usd": 0.869,
+    "comissao_usd": 0.0,
+    "saidas": {
+     "saída por sinal (fechamento de volta ao canal)": 96,
+     "stop de proteção": 5
+    },
+    "IC95_expectativa_R": [
+     -0.2119,
+     0.1507
+    ]
+   },
+   "ambiguas": 2,
+   "bloqueados_por_posicao_aberta": 2,
+   "aberta_no_fim": false
+  }
+ }
+}

@@ -1,0 +1,64 @@
+ORDEM 043 · ROMPIMENTO DA LATERALIZAÇÃO COM CONFIRMAÇÃO IMEDIATA EM M1/M5 · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Experimental. Replay e sombra; nenhuma ordem. O42 preservada (hashes em O42_preservada_sha256.txt). XAUUSD e BTCUSD, M15 como decisão.
+Valores numéricos marcados [P] são propostas do Claude, congeladas aqui, sem ajuste posterior.
+
+═══ 1. FORMAÇÃO NO M15 (venda; compra = espelho com máximas) ═══
+Avaliada no fechamento de cada barra M15 b, só com barras concluídas:
+- F (fundo de referência) = mínima do pivô p mais recente com fundo estrito 2+2 (mín(p) < mín das 2 anteriores e das 2 seguintes),
+  CONFIRMADO até b−1 (p+2 ≤ b−1) e dentro da caixa [b−12, b−3]. [P: caixa de 12 barras]
+- Lateralização: amplitude da caixa [b−12, b−1] (máx − mín) ≤ 3 × ATR14(b−1) [P: 3×ATR]. ATR14 de Wilder.
+- Barras acima do fundo: entre p+1 e b−1 os fechamentos ficam ≥ F (exceto a barra da tentativa tipo 2). Contagem registrada.
+- Tentativa sem confirmação (obrigatória, ≥ 1 entre p+1 e b−1), de um destes tipos, registrada:
+  · tipo 1, pavio: mínima < F e fechamento ≥ F;
+  · tipo 2, fechamento abaixo não confirmado: fechamento < F, a barra seguinte NÃO fica ≥ 1 tick abaixo da mínima dessa barra e fecha ≥ F.
+- Barra de rompimento b: fechamento(b) < F (estrito). Registra a mínima Lb, a amplitude de b em ATR e a distância de Lb ao próximo suporte
+  abaixo (memória estrutural da O39 com elegibilidade da janela de 200 barras da O40). Só registro, nenhum limiar.
+- Um sinal por fundo de referência (o mesmo F não gera outro sinal).
+
+═══ 2. GATILHO DE PREÇO (barra seguinte b+1, e só ela) ═══
+- T = Lb − 1 tick (venda); compra: Hb + 1 tick. Tick = 0,01 nos dois ativos (grade dos dados).
+- Primeira superação = primeira M1 da barra b+1 cuja mínima (bid) ≤ T (venda). Tocar ou igualar Lb = "toque sem superação": não abre.
+- Sem M1 com mínima ≤ Lb: "não alcançou". A barra b+1 termina = sinal expirado. Nada depois disso abre.
+
+═══ 3. CONFIRMAÇÃO M1/M5 NO INSTANTE τ DA PRIMEIRA SUPERAÇÃO ═══
+Leitura disponível em τ: M1 FECHADAS até a anterior à M1 da superação (a M1 da superação está em formação e não entra) e M5 FECHADAS até τ.
+Marcas (iguais às da O42, com o sentido corrigido): avanço = c(k) além de c(k−3) no sentido do rompimento; rejeição = alguma das 3 últimas M1
+com pavio contra ≥ 60% da amplitude e fechamento na metade contrária; pressão contrária = as 2 últimas M1 contrárias.
+- M1 CONFIRMA: avanço e não rejeição e não pressão contrária.
+- M1 CONTRARIA: pressão contrária, ou rejeição sem avanço. M1 NEUTRO: os demais casos.
+- M5 CONFIRMA: última M5 fechada com corpo no sentido do rompimento (venda: c < o) E fechamento além do da M5 anterior (venda: c5 < c5 anterior).
+- M5 CONTRARIA: corpo contrário (venda: c > o) E fechamento além do anterior no sentido contrário. M5 NEUTRO: os demais (NÃO conta como confirmação).
+Regras comparadas, todas avaliadas SÓ em τ:
+- R0 "sem M1/M5": entra em τ.
+- R1 "estrita (O43)": entra em τ só se M1 CONFIRMA e M5 CONFIRMA. Senão descarta o sinal.
+- R2 "variante O42": entra em τ só se M1 CONFIRMA e M5 não contrária pelo critério da O42 (venda: c ≤ o). Senão descarta.
+Confirmação que aparece depois de τ NÃO reativa o sinal, em nenhuma regra.
+
+═══ 4. EXECUÇÃO, GESTÃO, CUSTOS (iguais para R0, R1 e R2) ═══
+- Preço em τ: venda = mín(T, abertura da M1) no bid; compra = máx(T, abertura) + spread da M1 (ask).
+- Stop de 2 × ATR14(b) a partir da entrada efetiva, independente: na M1, venda sai se máxima + spread ≥ stop.
+- Saída: fechamento M15 de volta para dentro do canal EMA20 (venda: c ≥ EMA20 das mínimas), na 1ª cotação seguinte.
+- Custos: spread da M1; comissão XAU US$ 3,50/lote/lado; BTC sem comissão; swap não modelado.
+- Ambíguo (sem ticks):
+  · a M1 da superação já abre além de T (lacuna: preço executável incerto);
+  · OU o stop é alcançado na mesma M1 da entrada.
+  Esses casos são marcados.
+
+═══ 5. CONHECIDO × DESFECHO ═══
+Na decisão, registra só o que existia em τ:
+- leitura M1 (15 marcas, estado), M5 (3 barras, estado);
+- formação (F, pivô, tentativas, barras acima);
+- Lb, amplitude, distância ao próximo nível.
+Desfecho, em colunas separadas e nunca usado para decidir:
+- devolução = minutos até uma M1 fechar de volta acima de Lb (venda) nos 15 min seguintes;
+- MFE; resultado; motivo de saída.
+
+═══ 6. COMPARAÇÃO ═══
+- Por sinal (mesmos sinais nas três regras, cada um simulado isoladamente): o que cada regra faz.
+  · Perdas evitadas = sinais em que R0 entra e perde, e R1 (ou R2) não entra.
+  · Ganhos de fora = sinais em que R0 ganha e R1 (ou R2) não entra.
+  · Diferença líquida em R.
+- Carteira contínua: uma posição por ativo por vez, sinais em ordem cronológica.
+  · n, R, expectativa com IC95 bootstrap por dia, drawdown marcado a mercado, custos.
+  · Bloco ≥ 01/05/2026 separado e RETROSPECTIVO.
+- Gráficos anotados: suporte/resistência; barra que rompeu e fechou; barra seguinte e o minuto da superação; leitura M1/M5 naquele instante.

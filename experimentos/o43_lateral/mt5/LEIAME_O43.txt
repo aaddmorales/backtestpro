@@ -1,0 +1,8 @@
+BotTested · ORDEM 043 · LEITOR EM MODO SOMBRA — rompimento da lateralização M15 com confirmação IMEDIATA M1/M5.
+Regras R0 (sem M1/M5), R1 (M1 e M5 confirmam) e R2 (variante O42) em paralelo, com posições VIRTUAIS. NÃO envia ordens.
+Campanha, sombra 0.4, O42, ROMP e outros bots intocados.
+1. Descompacte DENTRO de C:\BotTested\LM_v036 (pacote O37: traz bt_lm_executor_v036.py e config_execucao.json). Rode verificar.py.
+2. iniciar_sombra_o43.bat. A cada M15 concluída, o leitor reconstitui a barra minuto a minuto (M1 fechadas) com o mesmo motor do replay.
+3. Registro: campanha\<ATIVO>\sombra_o43 (decisões por regra e resultados virtuais). Envie a pasta zipada (sem token).
+4. Parar: parar.bat (cria o arquivo PARAR).
+Recusa contas que não sejam DEMO. Mesmo em DEMO, nenhuma ordem é enviada.

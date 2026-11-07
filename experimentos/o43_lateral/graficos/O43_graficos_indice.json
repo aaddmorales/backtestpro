@@ -1,0 +1,85 @@
+[
+ {
+  "ativo": "XAUUSD",
+  "categoria": "venda · entrada confirmada (R1)",
+  "arquivo": "O43_XAUUSD_1_venda.png",
+  "sinal": "XAUUSD-V-202509262215",
+  "candidatos": 36
+ },
+ {
+  "ativo": "XAUUSD",
+  "categoria": "compra · entrada confirmada (R1)",
+  "arquivo": "O43_XAUUSD_2_compra.png",
+  "sinal": "XAUUSD-C-202511101345",
+  "candidatos": 39
+ },
+ {
+  "ativo": "XAUUSD",
+  "categoria": "toque sem superação",
+  "arquivo": "O43_XAUUSD_3_toque.png",
+  "sinal": "XAUUSD-C-202410210400",
+  "candidatos": 6
+ },
+ {
+  "ativo": "XAUUSD",
+  "categoria": "barra seguinte não alcançou",
+  "arquivo": "O43_XAUUSD_4_barra.png",
+  "sinal": "XAUUSD-V-202410171215",
+  "candidatos": 225
+ },
+ {
+  "ativo": "XAUUSD",
+  "categoria": "superação sem confirmação (R1 e R2 descartam)",
+  "arquivo": "O43_XAUUSD_5_superação.png",
+  "sinal": "XAUUSD-C-202510031330",
+  "candidatos": 239
+ },
+ {
+  "ativo": "XAUUSD",
+  "categoria": "entrada confirmada que depois falhou",
+  "arquivo": "O43_XAUUSD_6_entrada.png",
+  "sinal": "XAUUSD-C-202409260515",
+  "candidatos": 177
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "venda · entrada confirmada (R1)",
+  "arquivo": "O43_BTCUSD_1_venda.png",
+  "sinal": "BTCUSD-V-202601112145",
+  "candidatos": 26
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "compra · entrada confirmada (R1)",
+  "arquivo": "O43_BTCUSD_2_compra.png",
+  "sinal": "BTCUSD-C-202601132115",
+  "candidatos": 22
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "toque sem superação",
+  "arquivo": null,
+  "nota": "sem casos"
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "barra seguinte não alcançou",
+  "arquivo": "O43_BTCUSD_4_barra.png",
+  "sinal": "BTCUSD-V-202512271230",
+  "candidatos": 226
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "superação sem confirmação (R1 e R2 descartam)",
+  "arquivo": "O43_BTCUSD_5_superação.png",
+  "sinal": "BTCUSD-C-202508220900",
+  "candidatos": 235
+ },
+ {
+  "ativo": "BTCUSD",
+  "categoria": "entrada confirmada que depois falhou",
+  "arquivo": "O43_BTCUSD_6_entrada.png",
+  "sinal": "BTCUSD-C-202602130400",
+  "candidatos": 155
+ }
+]

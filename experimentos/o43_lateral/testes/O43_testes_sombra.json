@@ -1,0 +1,28 @@
+{
+ "executado_utc": "2026-11-07T16:29:35Z",
+ "aprovados": 4,
+ "total": 4,
+ "testes": [
+  {
+   "teste": "sombra = replay contínuo com a mesma memória inicial (R0, R1, R2)",
+   "ok": true,
+   "detalhe": "7 decisões (replay 7): {'descartado': 2, 'gatilho_armado': 2, 'entrada_virtual': 1, 'gatilho_expirado': 1, 'saida_virtual': 1}"
+  },
+  {
+   "teste": "resultados virtuais da sombra = replay",
+   "ok": true,
+   "detalhe": "1 resultados virtuais"
+  },
+  {
+   "teste": "reinício no meio de uma barra: mesmos eventos, sem duplicar",
+   "ok": true,
+   "detalhe": "eventos 8 (contínuo 8)"
+  },
+  {
+   "teste": "nenhuma ordem (sombra)",
+   "ok": true,
+   "detalhe": "order_send/order_check nunca chamados"
+  }
+ ],
+ "nota": "terminal SIMULADO; dados XAUUSD 03–04/10/2025"
+}
