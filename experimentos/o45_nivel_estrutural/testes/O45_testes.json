@@ -1,0 +1,57 @@
+{
+ "executado_utc": "2026-11-07T17:31:48Z",
+ "aprovados": 10,
+ "total": 10,
+ "testes": [
+  {
+   "teste": "venda: nenhum fechamento acima do extremo → A",
+   "ok": true,
+   "detalhe": "A"
+  },
+  {
+   "teste": "igualar o extremo não conta → A",
+   "ok": true,
+   "detalhe": "A"
+  },
+  {
+   "teste": "igualar o nível (acima do extremo) não é C → B",
+   "ok": true,
+   "detalhe": "B"
+  },
+  {
+   "teste": "fecha acima do extremo, não do nível → B (aviso no fechamento da M1 4)",
+   "ok": true,
+   "detalhe": "B 5.0 min"
+  },
+  {
+   "teste": "atravessa extremo e nível no mesmo minuto → C",
+   "ok": true,
+   "detalhe": "C 7.0 min"
+  },
+  {
+   "teste": "fechamento acima do nível no minuto 16 está fora da janela → A",
+   "ok": true,
+   "detalhe": "A"
+  },
+  {
+   "teste": "lacuna na janela → incompleto",
+   "ok": true,
+   "detalhe": "13 M1"
+  },
+  {
+   "teste": "compra (espelho): fecha abaixo da resistência rompida → C",
+   "ok": true,
+   "detalhe": "C"
+  },
+  {
+   "teste": "compra: fecha abaixo só do extremo → B",
+   "ok": true,
+   "detalhe": "B"
+  },
+  {
+   "teste": "aviso antes da saída só se o fechamento da M1 ≤ início da M1 de saída",
+   "ok": true,
+   "detalhe": "saída na M1 7 → antes; saída na M1 6 (mesmo minuto) → depois"
+  }
+ ]
+}

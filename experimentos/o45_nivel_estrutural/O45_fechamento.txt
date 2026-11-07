@@ -1,0 +1,90 @@
+ORDEM 045 · RETORNO AO EXTREMO × PERDA DO NÍVEL ESTRUTURAL · FECHAMENTO · 07/11/2026
+Diagnóstico em replay sobre os MESMOS sinais e a MESMA gestão da O44 (XAU M15, XAU M30, BTC M15). M1/M5 fora da decisão. Nenhuma ordem; campanha intocada.
+Classificação congelada ANTES dos resultados (sha d8a33e8e…, 17:31 UTC). O44 preservada (hashes conferidos).
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Conferir a reprodução da O44 e congelar a classificação | 20% | 100% | 20,0% |
+| Classificar os sinais com as barras M1 originais | 35% | 100% | 35,0% |
+| Comparar perdas e resultados por grupo | 30% | 100% | 30,0% |
+| Entregar tabela, exemplos anotados e conclusão | 15% | 100% | 15,0% |
+TOTAL: 100,0%.
+
+═══ REPRODUÇÃO E TESTES ═══
+- O44 reproduzida IDÊNTICA antes de classificar (sinais, gatilho, τ, R isolado e carteira):
+  · XAU M15: 702 sinais, 476 superações, 470 operações, +11,93 R;
+  · XAU M30: 372, 254, 247, +26,16 R;
+  · BTC M15: 620, 404, 392, −11,44 R.
+- Classificação: 10/10 testes (O45_testes.json).
+  · A/B/C na venda e na compra.
+  · Igualar E ou N não conta. Atravessar E e N no mesmo minuto = C.
+  · Fechamento fora da janela não conta. Lacuna = incompleto.
+  · Aviso "antes da saída" só se a M1 do aviso fechou antes do minuto de saída.
+- Correção registrada (só no cenário de teste): o teste de igualdade misturava "fechar acima de E e igual a N", que é B pela regra congelada; foi separado em dois testes.
+- Contadores: 1.134 superações classificadas. Completas: 1.126. Incompletas (lacuna na janela): 8 (A 1, B 4, C 3), reportadas à parte e fora do resultado principal.
+
+═══ RESULTADO POR GRUPO (gestão original; operação isolada por sinal) ═══
+| Escopo · grupo | n | Perdedoras | R médio | R líquido |
+| XAU M15 · A sem retorno | 54 | 40,7% | +0,667 | +36,0 |
+| XAU M15 · B só ao extremo | 267 | 64,0% | +0,118 | +31,4 |
+| XAU M15 · C através do nível | 151 | 91,4% | −0,358 | −54,0 |
+| XAU M30 · A | 29 | 34,5% | +0,558 | +16,2 |
+| XAU M30 · B | 165 | 65,5% | +0,197 | +32,4 |
+| XAU M30 · C | 59 | 89,8% | −0,321 | −19,0 |
+| BTC M15 · A | 38 | 39,5% | +0,801 | +30,5 |
+| BTC M15 · B | 219 | 72,1% | +0,064 | +14,1 |
+| BTC M15 · C | 144 | 91,0% | −0,362 | −52,1 |
+| CONJUNTO · A | 121 | 38,8% | +0,683 | +82,7 |
+| CONJUNTO · B | 651 | 67,1% | +0,120 | +77,9 |
+| CONJUNTO · C | 354 | 91,0% | −0,353 | −125,0 |
+- Na carteira contínua da O44 o quadro é o mesmo: A +79,0; B +73,0; C −122,5 R (conjunto). Sem os ambíguos, também.
+
+═══ RESULTADO PRINCIPAL: C × B (IC95 bootstrap) ═══
+| Escopo | Perdedoras C − B | R médio C − B |
+| XAU M15 | +27,4 pp (+19,9 a +34,2) | −0,475 R (−0,633 a −0,314) |
+| XAU M30 | +24,4 pp (+13,8 a +34,6) | −0,518 R (−0,766 a −0,286) |
+| BTC M15 | +18,8 pp (+11,5 a +26,4) | −0,426 R (−0,602 a −0,268) |
+| Conjunto | +23,8 pp (+19,2 a +28,3) | −0,473 R (−0,575 a −0,371) |
+- Os três escopos são conclusivos, no mesmo sentido.
+- Também se mantém:
+  · em vendas e compras;
+  · no desenvolvimento e no bloco ≥ 01/05/2026 RETROSPECTIVO (C perde 88% contra 70% do B).
+
+═══ O AVISO CHEGA COM A OPERAÇÃO AINDA ABERTA? ═══
+| Escopo | C com aviso antes da saída | depois da saída | Minutos τ → aviso (mediana) | Minutos aviso → saída (mediana) |
+| XAU M15 | 145 de 151 | 6 | 6 | 17 |
+| XAU M30 | 59 de 59 | 0 | 8 | 58 |
+| BTC M15 | 140 de 144 | 4 | 5 | 13,5 |
+- Os casos "depois da saída" (10 no conjunto) só descrevem o movimento; 100% deles perderam.
+- B: o retorno ao extremo chega em 1 min (mediana), quase sempre com a operação aberta. Mas o B, sozinho, ainda tem R líquido positivo (+77,9 R).
+- Descritivo, NÃO é uma saída testada: o R marcado a mercado no fechamento da M1 do aviso C, comparado ao R final:
+  · XAU M15: −42,6 × −51,3 R;
+  · XAU M30: −15,9 × −19,0 R;
+  · BTC M15: −38,8 × −50,7 R.
+  · Em cerca de 2/3 dos casos o resultado piorou depois do aviso. Não inclui deslizamento, nem as vencedoras do C que uma saída cortaria.
+- O grupo C tem vencedoras: 13 (XAU M15, +10,6 R), 6 (XAU M30, +4,8 R) e 13 (BTC M15, +7,3 R). Perder o nível não é garantia de perda.
+
+═══ RESPOSTA ═══
+1. Perder o nível estrutural identifica operações ruins melhor do que só voltar ao extremo?
+   - SIM, de forma conclusiva nos três escopos.
+   - C: ≈ 91% perdedoras e R médio ≈ −0,35. B: ≈ 67% perdedoras e R médio ≈ +0,12.
+   - Diferença: +24 pp em perdedoras e −0,47 R por operação (IC exclui zero).
+   - Voltar só ao extremo é comum (58% das superações) e NÃO separa perdas: o grupo B ainda soma +78 R.
+2. O aviso costuma chegar com a operação aberta?
+   - SIM: 344 de 354 (97%), em média 5–8 min após o gatilho e 13–58 min antes da saída original.
+3. Cuidados (o que isto NÃO prova):
+   a) É um diagnóstico com janela fixa de 15 min. Não é uma regra de saída testada.
+      · Usá-lo como alerta ou saída exige nova ordem, com a regra congelada antes e custo/deslizamento medidos.
+   b) Há sobreposição mecânica: voltar além do nível tende a levar o fechamento de volta ao canal EMA20, que é a saída da própria estratégia. Parte da associação vem daí.
+   c) C tem 32 vencedoras (+22,7 R): um corte automático também tiraria essas.
+
+═══ ENTREGA ═══
+- Tabela completa: O45_resultado.json (por escopo, conjunto, lado, bloco, carteira, sem ambíguos, incompletos).
+- Detalhe do aviso: O45_aviso_detalhe.json.
+- Classificação por sinal: O45_<ativo>_<TF>_classificacao.csv (grupo, E, N, horários dos avisos, antes/depois da saída, resultado).
+- Gráficos (saida/graficos): para cada escopo, B que avançou, C que perdeu e C vencedora.
+  · Em cima, o TF com caixa, nível, rompimento, gatilho e saída.
+  · Embaixo, as M1 com E, N, a janela de 15 min e o fechamento que define o grupo.
+- Código: classificar_o45.py, testes_o45.py, graficos_o45.py. Branch exp/o45-nivel-estrutural.
+
+Backup externo NÃO confirmado.

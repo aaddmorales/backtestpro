@@ -1,0 +1,47 @@
+{
+ "XAUUSD_M15": {
+  "C_aviso_antes_n": 145,
+  "R_final_soma": -51.25,
+  "R_no_aviso_soma": -42.61,
+  "R_final_mediana": -0.408,
+  "R_no_aviso_mediana": -0.256,
+  "pior_depois_do_aviso_n": 97,
+  "melhor_depois_do_aviso_n": 48,
+  "min_aviso_ate_saida_mediana": 17.0,
+  "C_vencedoras": {
+   "n": 13,
+   "R": 10.61
+  },
+  "nota": "R_no_aviso = resultado marcado a mercado no fechamento da M1 do aviso (descritivo; NÃO é uma saída testada)"
+ },
+ "XAUUSD_M30": {
+  "C_aviso_antes_n": 59,
+  "R_final_soma": -18.96,
+  "R_no_aviso_soma": -15.86,
+  "R_final_mediana": -0.35,
+  "R_no_aviso_mediana": -0.254,
+  "pior_depois_do_aviso_n": 40,
+  "melhor_depois_do_aviso_n": 19,
+  "min_aviso_ate_saida_mediana": 58.0,
+  "C_vencedoras": {
+   "n": 6,
+   "R": 4.76
+  },
+  "nota": "R_no_aviso = resultado marcado a mercado no fechamento da M1 do aviso (descritivo; NÃO é uma saída testada)"
+ },
+ "BTCUSD_M15": {
+  "C_aviso_antes_n": 140,
+  "R_final_soma": -50.67,
+  "R_no_aviso_soma": -38.75,
+  "R_final_mediana": -0.375,
+  "R_no_aviso_mediana": -0.242,
+  "pior_depois_do_aviso_n": 101,
+  "melhor_depois_do_aviso_n": 39,
+  "min_aviso_ate_saida_mediana": 13.5,
+  "C_vencedoras": {
+   "n": 13,
+   "R": 7.26
+  },
+  "nota": "R_no_aviso = resultado marcado a mercado no fechamento da M1 do aviso (descritivo; NÃO é uma saída testada)"
+ }
+}

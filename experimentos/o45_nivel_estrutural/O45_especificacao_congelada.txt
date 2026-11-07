@@ -1,0 +1,37 @@
+ORDEM 045 · RETORNO AO EXTREMO × PERDA DO NÍVEL ESTRUTURAL · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Diagnóstico em replay; NÃO altera entrada, stop, saída, custos nem intervalo da O44. M1/M5 fora da decisão. Nenhuma ordem; campanha intocada.
+Escopo: XAUUSD M15, XAUUSD M30, BTCUSD M15. Sinais = os da O44 (mesmo intervalo).
+
+═══ 1. REPRODUÇÃO ═══
+Antes de classificar, reexecutar o motor da O44 (formacao_o44, mesmo intervalo) e conferir que sinais e operações (ids, resultado do gatilho, τ, R isolado, carteira) são IGUAIS aos CSVs da O44.
+Qualquer diferença bloqueia a classificação.
+
+═══ 2. CLASSIFICAÇÃO (só superações; janela fixa de 15 min a partir do minuto do gatilho) ═══
+- Janela: as 15 M1 cujo início está em [τ, τ + 15 min), onde τ = início da M1 do gatilho. A M1 do gatilho conta (fecha em τ + 1 min).
+- Só FECHAMENTOS M1 (bid). Preços congelados no sinal:
+  · E = extremo da barra de rompimento (venda: mínima; compra: máxima);
+  · N = suporte/resistência original (o "referencia" do sinal). Nunca substituído pelo próximo nível nem recalculado.
+- Venda (compra = espelho, com < no lugar de >):
+  · A = nenhuma M1 da janela fecha > E;
+  · B = alguma fecha > E, nenhuma fecha > N;
+  · C = alguma fecha > N (mesmo que atravesse E e N no mesmo minuto).
+  · Igualar (= E ou = N) não conta como atravessar.
+- Incompleto: menos de 15 M1 na janela (lacuna de dados). Classificado assim mesmo, mas reportado À PARTE e excluído do resultado principal.
+- Momento do aviso = fechamento da 1ª M1 que define o grupo (B: 1º fechamento > E; C: 1º fechamento > N).
+  · ANTES da saída: aviso ≤ início da M1 em que a operação isolada saiu (operação ainda aberta no fechamento daquela M1).
+  · DEPOIS da saída: a operação saiu no mesmo minuto ou antes. Só descreve o movimento; não serve de aviso.
+
+═══ 3. COMPARAÇÃO ═══
+- Por grupo: n sinais; % operações perdedoras (R isolado < 0); R médio; R líquido. Gestão original da O44 (operação isolada por sinal; igual à carteira quando não há sobreposição).
+  · Também a carteira contínua da O44 por grupo.
+- Resultado principal: C × B.
+  · Diferença do % de perdedoras e do R médio, com IC95 por bootstrap (2000 reamostragens, estratificado por grupo).
+  · Por ativo/TF e no conjunto.
+- Aviso C antes da saída: quantos e com que resultado; quantos já tinham saído.
+- Desfechos futuros NUNCA alteram a entrada no replay. Nenhum filtro ou saída nova é testado aqui.
+- Gráficos:
+  · B que depois avançou;
+  · C que perdeu;
+  · C vencedora (se existir).
+  Marcando E, N, a janela de 15 min, o primeiro fechamento que define o grupo e a saída.
+  Escolha por sorteio fixo dentro da categoria.

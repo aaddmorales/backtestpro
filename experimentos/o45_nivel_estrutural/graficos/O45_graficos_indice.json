@@ -1,0 +1,65 @@
+[
+ {
+  "ativo": "XAUUSD",
+  "tf": "M15",
+  "categoria": "B · voltou só ao extremo e depois avançou",
+  "id": "XAUUSD-V-202607010315",
+  "candidatos": 96
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M15",
+  "categoria": "C · cruzou de volta o nível e perdeu",
+  "id": "XAUUSD-C-202511050315",
+  "candidatos": 138
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M15",
+  "categoria": "C · cruzou de volta o nível e ainda venceu",
+  "id": "XAUUSD-C-202605011445",
+  "candidatos": 13
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M30",
+  "categoria": "B · voltou só ao extremo e depois avançou",
+  "id": "XAUUSD-C-202607090900",
+  "candidatos": 57
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M30",
+  "categoria": "C · cruzou de volta o nível e perdeu",
+  "id": "XAUUSD-C-202602031500",
+  "candidatos": 53
+ },
+ {
+  "ativo": "XAUUSD",
+  "tf": "M30",
+  "categoria": "C · cruzou de volta o nível e ainda venceu",
+  "id": "XAUUSD-C-202512300130",
+  "candidatos": 6
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "M15",
+  "categoria": "B · voltou só ao extremo e depois avançou",
+  "id": "BTCUSD-C-202607141415",
+  "candidatos": 61
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "M15",
+  "categoria": "C · cruzou de volta o nível e perdeu",
+  "id": "BTCUSD-V-202603100145",
+  "candidatos": 131
+ },
+ {
+  "ativo": "BTCUSD",
+  "tf": "M15",
+  "categoria": "C · cruzou de volta o nível e ainda venceu",
+  "id": "BTCUSD-V-202606281900",
+  "candidatos": 13
+ }
+]
