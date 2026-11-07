@@ -1,0 +1,6 @@
+BotTested · ORDEM 041 · LEITOR EM MODO SOMBRA — Referência (V1-200 da O40), Teste A (só nível com ≥ 2 reações bloqueia) e Teste B (A sem renovar a espera
+depois do 1º rompimento), em paralelo sobre a mesma memória estrutural e as mesmas reações. NÃO envia ordens. Campanha, sombra 0.4, ROMP e outros bots intocados.
+1. Descompacte DENTRO de C:\BotTested\LM_v036 (pacote O37). Confira MANIFESTO_O41.json.
+2. iniciar_sombra_o41.bat → janelas "BotTested O41 XAUUSD/BTCUSD". 1ª vez: memória e reações reconstruídas com 200 M15; reinício: restauradas.
+3. Registro: campanha\<ATIVO>\sombra_o41 (eventos com versao_regra Ref/A/B). Envie a pasta zipada (sem token).
+4. Parar: parar.bat.

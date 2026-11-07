@@ -1,0 +1,123 @@
+ORDEM 041 · QUAIS SUPORTES E RESISTÊNCIAS BLOQUEIAM A ENTRADA · FECHAMENTO · 07/11/2026
+Replay M15 de XAUUSD e BTCUSD. Mantidos da O40, sem alteração:
+- janela móvel de 200 barras;
+- raio de 2×ATR;
+- custos, stop e gestão;
+- gatilho só na barra seguinte, superando por ≥ 1 tick;
+- nenhum filtro M1/M5.
+Parâmetros congelados ANTES do replay (sha e6ce38ca…, 15:09 UTC) e não ajustados: afastamento D = 0,5×ATR, mínimo de 2 reações.
+Campanha, sombra 0.4, ROMP e DEMO intocados. Nenhuma ordem.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Preservar a O40 e congelar a especificação | 15% | 100% | 15,0% |
+| Implementar e testar os casos de fronteira | 30% | 100% | 30,0% |
+| Rodar o replay comparativo | 35% | 100% | 35,0% |
+| Analisar e entregar as evidências | 20% | 90% | 18,0% — versões entregues para sombra; instalação no MT5 PENDENTE (sem acesso) |
+TOTAL: 98,0%.
+
+═══ PRESERVAÇÃO E TESTES ═══
+- Referência rodada de novo = O40 V1-200: operações IDÊNTICAS nos dois ativos. Hashes da O40 em O40_preservada_sha256.txt.
+- Fronteira: 11/11 (O41_testes.json).
+  · A reação da formação do pivô só fica conhecida na confirmação (i+2).
+  · Várias barras na zona = 1 episódio; um toque dentro de episódio aberto não abre outro.
+  · Nível com 2 reações = qualificado. Pivô isolado não bloqueia e fica registrado como referência.
+  · Fechamento igual à borda não é rompimento; travessia arma o gatilho.
+  · Borda que muda porque um pivô saiu da janela: o Teste A NÃO arma (a Referência armaria).
+  · 1ª reação fora da janela → nível desqualificado → espera encerrada sem liberar o sinal antigo.
+  · Teste B: depois de romper o 1º nível, registra o próximo (preço, ATR, R) e arma; o Teste A espera.
+  · Reinício reproduz 834 decisões e 83 operações.
+  · Sem dados futuros: 1.279 reações iguais às de uma execução truncada.
+- Sombra no terminal SIMULADO: 5/5 (O41_testes_sombra.json).
+  · Memória, reações e decisões de Ref, A e B iguais ao replay.
+  · Reinício sem duplicar eventos.
+  · Nenhuma ordem.
+- Diagnóstico da Referência (rompimento só por mudança de borda): 0 de 579 gatilhos estruturais no XAU e 0 de 384 no BTC.
+  · O defeito era possível no código, mas não ocorreu nos dados.
+  · Nos Testes A/B, a regra de travessia encerrou 1 espera no XAU e 5 no BTC por "borda mudou sem rompimento".
+
+═══ 1. TESTE A × REFERÊNCIA (prioridade) ═══
+| | XAU Ref | XAU A | BTC Ref | BTC A |
+| Sinais de média | 5.511 | 5.533 | 4.409 | 4.424 |
+| Bloqueio inicial | 5.298 (96,1%) | 4.844 (87,5%) | 4.271 (96,9%) | 3.972 (89,8%) |
+| Bloqueios iniciais da Ref que o A liberou | — | 474 | — | 311 |
+| … dos quais a 0 ATR (a Ref tinha 3.364 / 2.988 a 0 ATR) | — | 116 | — | 89 |
+| Operações | 521 | 941 | 312 | 563 |
+- Por que ainda bloqueia ~88–90%: a maioria dos níveis a 0 ATR JÁ tem 2 reações na janela. Exigir reações tirou só uma parte dos bloqueios.
+- Operações que voltaram (A sem par na Ref), por causa:
+  · XAU, bloqueio evitado (nível próximo sem 2 reações): 278 ops, −53,5 R, acerto 19%. Bloco posterior (retrospectivo): 31 ops, −0,6 R.
+  · XAU, esperou em nível qualificado e entrou por outro caminho: 160 ops, −56,0 R.
+  · BTC, bloqueio evitado: 178 ops, −26,8 R, acerto 16%. Bloco posterior: 47 ops, −10,0 R.
+  · BTC, esperou e entrou por outro caminho: 82 ops, −29,6 R.
+  · BTC, liberado direto: 1 op, +6,7 R.
+  · Total: XAU 438 ops, −109,5 R · BTC 261 ops, −49,7 R.
+- Mesmos sinais, entrada diferente:
+  · XAU: 130 sinais em que o A entrou antes (mediana de 35 min), +124,6 R contra +13,7 R da Ref.
+  · BTC: 58 sinais, +81,3 R contra +23,9 R.
+  · ATENÇÃO: esses pares existem porque a Ref acabou entrando depois do rompimento. É uma seleção condicionada ao que aconteceu depois e NÃO mede o efeito da regra.
+  · A comparação justa é o total de cada versão (abaixo). Ganho nos pares + perda nas operações novas ≈ zero no XAU.
+
+═══ 2. TESTE B × TESTE A ═══
+| | XAU A | XAU B | BTC A | BTC B |
+| Esperas pelo 2º nível | 1.883 | 0 | 1.312 | 0 |
+| Liberações do B com outro nível qualificado a ≤ 2×ATR | — | 1.293 | — | 928 |
+| Operações | 941 | 1.652 | 563 | 1.085 |
+- Atraso reduzido: o B entrou antes em 165 sinais no XAU e 99 no BTC (mediana de 45 min).
+- Entradas do B liberadas com outro nível próximo:
+  · XAU: 901 ops, +19,1 R, acerto 31%;
+  · BTC: 636 ops, −22,5 R, acerto 30%.
+- Operações do B sem par no A (posição liberada antes abre espaço para outros sinais):
+  · XAU: 736, −179,9 R;
+  · BTC: 540, −146,7 R.
+- Leitura: depois que o 1º nível rompe, esperar o 2º nível NÃO se mostrou inútil nem claramente protetor.
+  · No XAU o B rendeu um pouco mais; no BTC rendeu menos.
+  · Em ambos o B aumentou o número de operações, os custos e o drawdown.
+
+═══ 3. AS TRÊS VERSÕES (custos modelados; por 1 lote; swap fora) ═══
+| Ativo · versão | n | R líquido | Expectativa R (IC95 bootstrap/dia) | DD marcado a mercado (US$/lote) | Comissão (US$) | Bloco posterior RETROSPECTIVO (n · R) |
+| XAU Ref | 521 | +37,8 | +0,073 (−0,037 a +0,196) | −41.147 | 3.647 | 83 · +8,4 |
+| XAU A | 941 | +38,3 | +0,041 (−0,031 a +0,122) | −55.718 | 6.587 | 146 · +10,9 |
+| XAU B | 1.652 | +45,6 | +0,028 (−0,030 a +0,083) | −58.948 | 11.564 | 284 · +9,5 |
+| BTC Ref | 312 | −7,5 | −0,024 (−0,137 a +0,096) | −18.164 | 0 (spread) | 85 · −12,9 |
+| BTC A | 563 | +3,7 | +0,007 (−0,088 a +0,113) | −14.698 | 0 | 151 · −2,6 |
+| BTC B | 1.085 | −11,0 | −0,010 (−0,078 a +0,064) | −42.585 | 0 | 288 · −26,6 |
+- Todos os IC incluem zero. Nenhuma versão demonstra melhora.
+- Teste A:
+  · XAU: mesmo R total da Ref, com expectativa menor e drawdown maior;
+  · BTC: +11 R sobre a Ref e drawdown menor, mas ainda perto de zero e com IC amplo.
+- Teste B: piora o drawdown nos dois ativos e o BTC no bloco posterior.
+
+═══ EXEMPLOS (O41_analise_causas.json) ═══
+- Bloqueio indevido evitado que ganhou:
+  · XAU, compra em 28/05/2026 15:45: +4,66 R. A Ref bloqueava no topo de 30/12/2025, a 0,0 ATR, com 1 reação. Nível seguinte a 48,44 (4,9 ATR; 2,45 R).
+  · BTC, venda em 14/08/2025 07:49: +7,76 R. A Ref bloqueava num nível de 1 reação a 0,0 ATR.
+- Entrada perdedora liberada:
+  · XAU, venda em 17/01/2025 03:27: −1,03 R, stop. Nível sem reação a 0,5 ATR.
+  · BTC, compra em 12/09/2025 23:45: −1,02 R, stop. Nível de 1 reação a 1,69 ATR.
+- Por sinal: O41_<ativo>_A_por_sinal.csv.gz e O41_<ativo>_B_por_sinal.csv.gz. Cada linha traz:
+  · sequência de decisões;
+  · nível bloqueador com as reações (início, conhecimento, afastamento);
+  · nível mais próximo e o seguinte, com distância em preço, ATR e R;
+  · motivo final;
+  · operação e R;
+  · par na Ref.
+
+═══ RESPOSTA ═══
+- "O bloqueio melhora quando o mercado já demonstrou respeitar o nível?" (Teste A)
+  · Exigir 2 reações liberou 474 (XAU) e 311 (BTC) dos bloqueios.
+  · As operações liberadas por esse motivo foram perdedoras em conjunto (−53,5 R e −26,8 R, acerto de 16–19%).
+  · Ou seja, os níveis "pouco relevantes" que a Ref respeitava não eram, em média, bloqueios indevidos.
+  · O resultado total ficou estável no XAU e melhorou um pouco no BTC, sem significância.
+  · Não há base para dizer que a qualificação por reações melhora a decisão.
+- "Vale continuar esperando pelo próximo nível depois que o primeiro rompeu?" (Teste B)
+  · Sem conclusão: +7,3 R no XAU e −14,7 R no BTC em relação ao A.
+  · Mais operações, mais custos e mais drawdown nos dois.
+  · Manter a espera (A) tem risco menor; nenhuma das duas está comprovada.
+- O bloqueio a 0 ATR continua dominante (cerca de 88–90% dos sinais), porque a maioria desses níveis tem 2 reações na janela.
+
+═══ ENTREGA ═══
+- O41_pacote_sombra.zip: leitor bt_estrutura_sombra_o41 com Ref, A e B em paralelo; memória e reações persistidas; nenhuma ordem.
+  · Instalado: NÃO. Observado com ticks reais: NÃO.
+- Código: branch exp/o41-reacoes.
+
+Backup externo NÃO confirmado.

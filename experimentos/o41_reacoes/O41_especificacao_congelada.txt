@@ -1,0 +1,50 @@
+ORDEM 041 · QUAIS SUPORTES E RESISTÊNCIAS BLOQUEIAM A ENTRADA · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Base: O40 (V1-200, janela-0.1) preservada sem alteração (hashes em O40_preservada_sha256.txt). XAUUSD e BTCUSD, M15. Replay + sombra; sem ordens.
+Iguais nas três versões: janela móvel de 200 M15 fechadas, raio de 2×ATR14, stop de 2×ATR14 de Wilder, saída no fechamento de volta ao canal, custos,
+base BID, gatilho só na barra seguinte superando por ≥ 1 tick, sem filtro M1/M5.
+
+═══ 1. VERSÕES ═══
+Referência = V1-200 da O40, sem alteração. Só um DIAGNÓSTICO a mais: marca quando o "rompimento" que armou o gatilho ocorreu sem o preço atravessar
+  a borda, ou seja, o fechamento anterior já estava além da borda da zona elegível daquela barra (a borda mudou porque um pivô saiu da janela).
+Teste A = V1-200 + (a) só bloqueia nível QUALIFICADO (§2) + (b) rompimento exige travessia (§3) + espera pelo segundo nível qualificado mantida.
+Teste B = Teste A, mas depois de romper o primeiro nível o próximo nível é só REGISTRADO (preço, ATR, R, qualificado ou não), sem renovar a espera:
+  o gatilho é armado para a barra seguinte.
+
+═══ 2. REAÇÃO (reacoes-0.1; proposta do Claude, congelada) ═══
+- Vínculo: cada reação pertence a um nível da memória (id) e à função dele naquele momento (suporte/resistência). Zona usada: a zona acumulada do nível na barra.
+- Episódio (suporte; resistência = espelho):
+  · começa na 1ª barra fechada com mínima ≤ topo da zona, sem episódio aberto;
+  · enquanto aberto, as barras seguintes pertencem ao MESMO episódio (várias barras na zona = um episódio);
+  · termina como REAÇÃO na 1ª barra fechada com fechamento ≥ topo da zona + D, onde D = 0,5 × ATR14 dessa barra
+    (afastamento na direção esperada; conhecida no fechamento dessa barra);
+  · termina como FALHA se uma barra fechar abaixo da base da zona (fechamento além da zona).
+  · Uma nova reação só começa com um novo toque DEPOIS do fim do episódio anterior (saída e novo retorno).
+- Formação do pivô: o episódio começa na barra do extremo (i). Como o nível só é conhecido em i+2, as barras i+1 e i+2 são avaliadas na confirmação.
+  Se uma delas já cumpriu o afastamento, a reação é registrada como CONHECIDA em i+2 (nunca antes da confirmação).
+- Pivô agrupado (fundo duplo): o novo toque é detectado pelo acompanhamento barra a barra do nível existente. Não há dupla contagem: um toque dentro de
+  episódio aberto não abre outro.
+- Troca de função: as reações guardam a função; só contam as da função atual.
+- Janela: só contam reações CONHECIDAS nas últimas 200 barras (conhecida_n ≥ n − 199). Nenhuma barra futura valida uma reação.
+- Nível QUALIFICADO para bloquear = elegível na V1-200 (≥ 1 pivô na janela, relevante) E ≥ 2 reações na janela.
+- Pivô isolado: fica na memória e aparece como referência de distância (nível mais próximo à frente, qualificado ou não), mas não bloqueia.
+
+═══ 3. ROMPIMENTO E BORDA (A e B) ═══
+- Espera em nível qualificado: barra de rompimento = fechamento estritamente além da borda da zona ELEGÍVEL atual E fechamento anterior do lado de dentro
+  (venda: c(n) < base_n e c(n−1) ≥ base_n; compra: c(n) > topo_n e c(n−1) ≤ topo_n). Mesma borda nas duas comparações.
+- Se a borda se moveu (pivô saiu da janela) e o fechamento já está além dela sem ter atravessado: NÃO é rompimento, NÃO arma gatilho.
+  A espera é encerrada como "borda mudou sem rompimento do preço", porque o nível deixou de estar à frente. Nada retroativo.
+- Nível que deixa de ser qualificado (pivô ou reações saem da janela, muda de estado ou de função): espera encerrada, sem liberar o sinal antigo.
+- Volta ao canal: espera cancelada (igual O39/O40).
+
+═══ 4. REGISTRO POR SINAL ═══
+Nível que bloqueou (id, zona elegível, reações com horário de início, horário de conhecimento e afastamento), nível mais próximo à frente
+(qualificado ou não), nível seguinte com distância em preço, ATR e R, e motivo (espera, cancelamento, encerramento, gatilho, entrada, expiração).
+
+═══ 5. COMPARAÇÃO ═══
+- A × Referência: bloqueios iniciais evitados (total e com distância 0 ATR), operações que voltaram e o resultado delas após custos.
+- B × A: esperas pelo segundo nível evitadas, redução do atraso, resultado das entradas liberadas com outro nível próximo (≤ 2×ATR).
+- Para as três versões: n, R líquido, expectativa com IC95 bootstrap por dia, drawdown marcado a mercado, custos modelados.
+  Bloco posterior (≥ 01/05/2026) separado e marcado como RETROSPECTIVO.
+- Sinais correspondentes (mesmo sinal de origem) separados das operações sem par.
+- Exemplos: bloqueio indevido evitado (operação que voltou e ganhou) e entrada perdedora liberada.
+Nenhum parâmetro (D = 0,5×ATR, 2 reações, janela de 200, raio de 2×ATR) é ajustado depois do resultado.
