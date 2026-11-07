@@ -1,0 +1,63 @@
+ORDEM 047 · TESTE AO VIVO NO MT5 · M15 × M30 × H1 · STATUS · 07/11/2026
+COLETA AO VIVO: NÃO INICIADA.
+Este ambiente não está ligado ao computador com o MT5. Não houve acesso ao terminal nem a cotações reais.
+O que existe: especificação congelada, motor por tick, leitor das 6 instâncias, testes em terminal SIMULADO e pacote pronto para instalar. Isso NÃO conta como teste ao vivo.
+Nenhuma ordem; campanha, DEMO e demais bots intocados.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Congelar a R0 e verificar as seis configurações | 20% | 100% | 20,0% |
+| Integrar ao MT5 e verificar cotações, gatilhos e registros | 25% | 50% | 12,5% — leitor pronto e testado em terminal SIMULADO; verificação com cotações reais do MT5 PENDENTE |
+| Coletar a amostra ao vivo nos três timeframes | 40% | 0% | 0,0% — NÃO INICIADA |
+| Comparar e entregar os resultados por ativo | 15% | 0% | 0,0% — depende da coleta (script pronto) |
+TOTAL: 32,5%.
+
+═══ CONGELADO ANTES DE QUALQUER DADO AO VIVO (O47_especificacao_congelada.txt, sha no arquivo O47_especificacao_sha256.txt) ═══
+- Seis instâncias independentes: XAU e BTC × M15, M30, H1. Cada uma usa o próprio TF; nenhum TF confirma outro.
+  · R0 da O44 sem ajustes: caixa de 12 barras, amplitude ≤ 3 ATR, tentativa prévia, fechamento além, stop 2 ATR, canal EMA20.
+  · A caixa cobre 3 h (M15), 6 h (M30) e 12 h (H1).
+- Execução por tick:
+  · superação ≥ 1 tick só na barra seguinte; tocar não abre;
+  · entrada, stop e saída na cotação bid/ask OBSERVADA no tick, nunca no preço teórico quando a cotação já passou dele (diferença registrada).
+- Início: 00:00 (servidor) da 1ª segunda-feira após a instalação verificada (1 h com as 6 instâncias gravando sem erro).
+  · O .bat vem com 09/11/2026; ajuste se instalar depois.
+- Encerramento: 84 dias. Mesmo intervalo para os 3 TF.
+- Amostra mínima: 30 operações fechadas por instância; abaixo disso, inconclusivo.
+  · Aviso registrado ANTES do início: pelas taxas da O44, o H1 deve ter ≈ 15 (XAU) e ≈ 20 (BTC) operações em 84 dias, provavelmente INCONCLUSIVO.
+  · Se quiser H1 comparável (≈ 6 meses), a extensão tem de ser decidida antes do início.
+- Registro por operação: horário, TF, nível, gatilho, bid/ask observados, spread, custo estimado, stop, saída e R.
+- Também registrados: desconexões, períodos sem ticks (> 5 min) e casos "com lacuna", com resultados com e sem eles.
+- Retorno A/B/C (O45, 15 min, M1 do terminal) por entrada, só como diagnóstico.
+
+═══ TESTES (terminal SIMULADO; ticks SINTÉTICOS de 4 cotações por M1 — não são ticks reais) ═══
+- Motor e leitor: 12/12 (O47_testes.json).
+  · Tocar não abre; 1 tick abre no bid observado.
+  · 1ª cotação além do gatilho entra nela (98,30, não 98,49) e marca.
+  · Stop da venda pelo ask; saída pelo canal na 1ª cotação após o fechamento.
+  · Nenhum sinal antes do início congelado.
+- Leitor das 6 instâncias × replay O44, 12 dias (02–13/03/2026):
+  · mesmos gatilhos (56), mesmas entradas (34), mesmo minuto de entrada em 100%;
+  · 32 de 33 saídas no mesmo minuto e motivo.
+  · A única diferença (BTC M30): a cotação sintética seguinte já estava 208 pontos além do gatilho. O leitor entrou nela, como exige a regra, e o stop recalculado da entrada real foi atingido. É o efeito que o teste ao vivo vai medir.
+- Reinício no meio: os ticks perdidos são buscados no histórico do terminal; 101 eventos iguais, sem duplicar.
+- Desconexão e reconexão registradas. Nenhuma ordem (order_send/order_check nunca chamados).
+- Correções durante os testes:
+  · processamento lento (cálculo vetorizado);
+  · regra de espera dos ticks pelo fechamento das barras, que atrasava 1 h após cada abertura de mercado (corrigida e retestada);
+  · chave de registro da reconexão;
+  · faixa de ticks do terminal simulado;
+  · a comparação do teste não contava a posição ainda aberta no replay.
+
+═══ PARA INICIAR A COLETA (no computador com o MT5) ═══
+1. Descompacte O47_pacote_ao_vivo.zip dentro de C:\BotTested\LM_v036 e rode: python verificar.py → VERIFICADO 12.
+2. Confira a data em iniciar_ao_vivo_o47.bat (INICIO=2026-11-09, 1ª segunda após a verificação) e execute o .bat.
+3. Após 1 h, envie as pastas campanha\XAUUSD\ao_vivo_o47 e campanha\BTCUSD\ao_vivo_o47 (zip, sem token) para a verificação com cotações reais (etapa 2).
+4. Ao fim dos 84 dias: python comparar_o47.py --inicio 2026-11-09 --pasta-xau … --pasta-btc … --saida resultado_o47.
+
+═══ PERGUNTAS DA ORDEM ═══
+XAUUSD e BTCUSD:
+- Qual TF perdeu menos o nível estrutural? Qual teve melhor resultado líquido? Foi suficiente para escolher?
+- SEM RESPOSTA: a coleta ao vivo não foi iniciada.
+- O replay da O44/O45 não substitui o teste ao vivo e não foi reapresentado como tal.
+
+Backup externo NÃO confirmado.

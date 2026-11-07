@@ -1,0 +1,58 @@
+ORDEM 047 · TESTE AO VIVO NO MT5 · M15 × M30 × H1 · XAUUSD E BTCUSD · ESPECIFICAÇÃO CONGELADA (antes de qualquer dado ao vivo)
+Posições VIRTUAIS; nenhuma ordem; campanha e DEMO intocados. Referência = R0 da O44, sem o corte da O46 e sem M1/M5 na decisão.
+Valores [P] = propostas do Claude, congeladas aqui.
+
+═══ 1. SEIS INSTÂNCIAS INDEPENDENTES ═══
+XAUUSD × {M15, M30, H1} e BTCUSD × {M15, M30, H1}. Cada instância usa só o próprio TF:
+- caixa de 12 barras;
+- amplitude ≤ 3 × ATR14 Wilder;
+- pivô 2+2 em [b−12, b−3], tentativa prévia obrigatória, fechamento estritamente além do nível, um sinal por nível;
+- stop 2 × ATR14 da barra de rompimento;
+- saída pelo canal EMA20 do próprio TF.
+Nenhum TF confirma outro. Nenhum ajuste por ativo/TF durante o teste.
+A caixa de 12 barras cobre 3 h no M15, 6 h no M30 e 12 h no H1 (três versões da estratégia, não o mesmo horizonte).
+Um processo por ativo alimenta as três instâncias com o MESMO fluxo de ticks; cada instância tem sua própria posição virtual (uma por instância).
+
+═══ 2. EXECUÇÃO POR TICK (bid/ask do MT5) ═══
+- Fonte: copy_ticks_range do MT5 (todos os ticks), processados em ordem de tempo.
+  · O fechamento de uma barra do TF é processado antes do 1º tick com horário ≥ fim da barra.
+  · Velas menores não são usadas como filtro.
+- Gatilho: só durante a barra seguinte à de rompimento. O preço do gráfico (bid) define a superação, como na O44:
+  · venda: 1º tick com bid ≤ mínima − 1 tick (0,01);
+  · compra: 1º tick com bid ≥ máxima + 1 tick.
+  · Igualar = toque, não abre. Expira no fim da barra seguinte.
+- Preço de entrada = cotação observada NAQUELE tick: venda no bid, compra no ask. Nunca o preço teórico se a cotação já passou dele (a diferença é registrada).
+- Stop: venda sai no 1º tick com ask ≥ stop (preço = esse ask); compra no 1º tick com bid ≤ stop (preço = esse bid).
+- Saída pelo canal: fechamento do TF de volta ao canal → 1º tick com horário ≥ fim da barra (venda paga ask, compra recebe bid).
+- Custos:
+  · spread embutido nas cotações;
+  · comissão estimada XAU US$ 3,50/lote/lado; BTC 0;
+  · swap não modelado.
+  · R = (saída − entrada) × lado / |entrada − stop| − comissão em R. Risco equivalente = comparação em R.
+- Registro de cada operação: horário, TF, nível, gatilho, tick observado (bid/ask), spread, custo estimado, stop, saída, R.
+
+═══ 3. DESCONEXÃO E FALTA DE DADOS ═══
+- A cada ciclo: terminal_info().connected e o horário do último tick.
+  · Sem conexão: "desconexão" (início/fim).
+  · Intervalo entre ticks > 5 min: "período sem ticks" (inclui fechamentos de mercado; o relatório separa por horário).
+- No reinício, os ticks perdidos são buscados no histórico de ticks do terminal (copy_ticks_range desde o último processado).
+  · Se o terminal não os tiver, o período é marcado.
+  · Sinal ou posição que atravesse um período sem dados é marcado "com lacuna"; resultado mostrado com e sem esses casos.
+
+═══ 4. PERÍODO E ENCERRAMENTO (fixos antes de ver resultados) ═══
+- Aquecimento: histórico do terminal (1.200 barras por TF) só para ATR/EMA/caixa; nenhum sinal antes do início.
+- Início [P]: 00:00 (horário do servidor) da 1ª segunda-feira após a verificação da instalação. A verificação conta quando as 6 instâncias gravam ticks e fechamentos sem erro por 1 h.
+  · O mesmo início vale para os 3 TF de cada ativo.
+- Encerramento [P]: 12 semanas completas (84 dias) após o início, igual para os 3 TF.
+  · Posição virtual aberta no fim é marcada e fica fora das métricas.
+- Amostra mínima para comparar [P]: 30 operações fechadas na instância. Abaixo disso, o resultado daquela instância é INCONCLUSIVO.
+  · Aviso registrado antes do início: pelas taxas da O44, o H1 deve gerar ≈ 15 (XAU) e ≈ 20 (BTC) operações em 12 semanas, provavelmente abaixo do mínimo.
+  · Estender o período só se decidido ANTES do início.
+
+═══ 5. MEDIDAS (por ativo, mesmo intervalo) ═══
+- Por instância: operações, R líquido, R/operação (IC95 bootstrap por dia), DD em R (operações fechadas), custos (spread pago + comissão estimada), tempo em posição.
+- Diferença entre TF: bootstrap por dia; "inconclusiva" se o IC95 incluir zero ou se alguma das duas instâncias tiver < 30 operações.
+- Retorno após a superação, mesma janela de 15 min para os 3 TF, com fechamentos das M1 do terminal (só diagnóstico): A sem retorno; B só ao extremo; C através do nível estrutural (O45).
+- Preço observado × teórico: diferença entre a cotação do tick do gatilho e o gatilho teórico (lacunas).
+- Contadores por instância: formações, gatilhos armados, toques, não alcançou, superações, entradas, bloqueados por posição aberta, saídas por canal/stop, ticks processados, desconexões, períodos sem ticks.
+- Validação de leitura e execução simulada com preços observados. Preenchimento e deslizamento reais exigem ordens DEMO (fora desta ordem).

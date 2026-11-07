@@ -1,0 +1,2 @@
+0dce987052386c668619c89daee09d93b92893513da67ea145863da6a43cdb16  ../saida/O47_especificacao_congelada.txt
+2026-11-07T19:13:59Z

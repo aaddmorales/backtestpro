@@ -1,0 +1,3 @@
+45aef8dc71e6b9f399082464eac9e2539c9998ade612ba1d5462f03b3b239e7c  ../lm044/codigo/formacao_o44.py
+4924533dac9a89281062dabee6e0c15c3ee59f77d8574055fcc66974cd172ff4  ../lm044/saida/O44_especificacao_congelada.txt
+8fc3bf5fdc86de58d210764a4cf25c23befe89ccd25535868af7c0758dd7316a  ../lm046/saida/O46_fechamento.txt

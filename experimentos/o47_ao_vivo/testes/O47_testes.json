@@ -1,0 +1,167 @@
+{
+ "executado_utc": "2026-11-07T19:11:47Z",
+ "versao": "lateral-tf-ao-vivo-0.1 (ORDEM 047)",
+ "aprovados": 12,
+ "total": 12,
+ "testes": [
+  {
+   "teste": "tocar o extremo (bid = 98,50) não abre; expira no fechamento da barra seguinte",
+   "ok": true,
+   "detalhe": "toques=1"
+  },
+  {
+   "teste": "1 tick além (bid 98,49): venda entra no bid observado",
+   "ok": true,
+   "detalhe": "entrada 98.49"
+  },
+  {
+   "teste": "1ª cotação já além do gatilho (98,30): entra em 98,30, não no teórico 98,49, e marca",
+   "ok": true,
+   "detalhe": "entrada 98.3 (gatilho 98,49)"
+  },
+  {
+   "teste": "stop da venda pelo ASK observado (ask ≥ stop), saída ao preço desse ask",
+   "ok": true,
+   "detalhe": "stop 100.37; ask 100.32 não sai; ask 100.47 sai"
+  },
+  {
+   "teste": "saída pelo canal na 1ª cotação após o fechamento (venda paga o ask)",
+   "ok": true,
+   "detalhe": "saída 100.27 às +0,7 s do fechamento"
+  },
+  {
+   "teste": "início congelado: formação anterior ao início não arma gatilho",
+   "ok": true,
+   "detalhe": "0 gatilhos antes do início"
+  },
+  {
+   "teste": "leitor ao vivo (terminal simulado) = replay O44: mesmos gatilhos, mesmas entradas, mesmo minuto de entrada (6 instâncias, 12 dias)",
+   "ok": true,
+   "detalhe": "XAUUSD M15: 12 gatilhos, 10 entradas; XAUUSD M30: 7 gatilhos, 5 entradas; XAUUSD H1: 1 gatilhos, 1 entradas; BTCUSD M15: 25 gatilhos, 13 entradas; BTCUSD M30: 8 gatilhos, 3 entradas; BTCUSD H1: 3 gatilhos, 2 entradas"
+  },
+  {
+   "teste": "saídas no mesmo minuto e motivo do replay; diferenças só onde a cotação observada no gatilho ficou além do preço teórico (stop recalculado da entrada real)",
+   "ok": true,
+   "detalhe": "32 de 33 fechadas iguais; diferentes: [{'id': 'C-202603130300', 'entrada_vivo': 71991.48, 'entrada_teorica_replay': np.float64(71783.48), 'saida_vivo': 'stop de proteção', 'saida_replay': 'saída por sinal (fechamento de volta ao canal)'}]"
+  },
+  {
+   "teste": "reinício no meio (ticks buscados no histórico do terminal): mesmos eventos, sem duplicar",
+   "ok": true,
+   "detalhe": "101 eventos (contínuo 101)"
+  },
+  {
+   "teste": "desconexão e reconexão registradas",
+   "ok": true,
+   "detalhe": "['desconexão', 'reconexão']"
+  },
+  {
+   "teste": "retorno A/B/C (15 min, M1 do terminal) registrado para cada entrada",
+   "ok": true,
+   "detalhe": "16 diagnósticos no XAU"
+  },
+  {
+   "teste": "nenhuma ordem enviada",
+   "ok": true,
+   "detalhe": "order_send/order_check nunca chamados"
+  }
+ ],
+ "integracao": {
+  "XAUUSD": {
+   "M15": {
+    "gatilhos_replay": 12,
+    "gatilhos_vivo": 12,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 10,
+    "entradas_vivo": 10,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 10,
+    "saida_mesmo_minuto_e_motivo": 9,
+    "saidas_diferentes": [],
+    "fechadas_vivo": 9,
+    "dif_preco_entrada_mediana": 0.1,
+    "dif_preco_entrada_max_abs": 6.74
+   },
+   "M30": {
+    "gatilhos_replay": 7,
+    "gatilhos_vivo": 7,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 5,
+    "entradas_vivo": 5,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 5,
+    "saida_mesmo_minuto_e_motivo": 5,
+    "saidas_diferentes": [],
+    "fechadas_vivo": 5,
+    "dif_preco_entrada_mediana": 0.1,
+    "dif_preco_entrada_max_abs": 6.33
+   },
+   "H1": {
+    "gatilhos_replay": 1,
+    "gatilhos_vivo": 1,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 1,
+    "entradas_vivo": 1,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 1,
+    "saida_mesmo_minuto_e_motivo": 1,
+    "saidas_diferentes": [],
+    "fechadas_vivo": 1,
+    "dif_preco_entrada_mediana": 3.67,
+    "dif_preco_entrada_max_abs": 3.67
+   }
+  },
+  "BTCUSD": {
+   "M15": {
+    "gatilhos_replay": 25,
+    "gatilhos_vivo": 25,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 13,
+    "entradas_vivo": 13,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 13,
+    "saida_mesmo_minuto_e_motivo": 13,
+    "saidas_diferentes": [],
+    "fechadas_vivo": 13,
+    "dif_preco_entrada_mediana": -6.75,
+    "dif_preco_entrada_max_abs": 168.43
+   },
+   "M30": {
+    "gatilhos_replay": 8,
+    "gatilhos_vivo": 8,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 3,
+    "entradas_vivo": 3,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 3,
+    "saida_mesmo_minuto_e_motivo": 2,
+    "saidas_diferentes": [
+     {
+      "id": "C-202603130300",
+      "entrada_vivo": 71991.48,
+      "entrada_teorica_replay": 71783.48,
+      "saida_vivo": "stop de proteção",
+      "saida_replay": "saída por sinal (fechamento de volta ao canal)"
+     }
+    ],
+    "fechadas_vivo": 3,
+    "dif_preco_entrada_mediana": 0.0,
+    "dif_preco_entrada_max_abs": 208.0
+   },
+   "H1": {
+    "gatilhos_replay": 3,
+    "gatilhos_vivo": 3,
+    "mesmos_gatilhos": true,
+    "operacoes_replay": 2,
+    "entradas_vivo": 2,
+    "mesmas_entradas": true,
+    "minuto_de_entrada_igual": 2,
+    "saida_mesmo_minuto_e_motivo": 2,
+    "saidas_diferentes": [],
+    "fechadas_vivo": 2,
+    "dif_preco_entrada_mediana": -8.6,
+    "dif_preco_entrada_max_abs": 12.17
+   }
+  }
+ },
+ "nota": "terminal SIMULADO com ticks sintéticos derivados das M1 — NÃO é teste ao vivo"
+}

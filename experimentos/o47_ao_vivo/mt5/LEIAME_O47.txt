@@ -1,0 +1,10 @@
+BotTested · ORDEM 047 · TESTE AO VIVO (SOMBRA) — R0 da O44 em M15, M30 e H1, XAUUSD e BTCUSD, execução simulada POR TICK (bid/ask do MT5).
+Posições VIRTUAIS. NÃO envia ordens. Campanha, DEMO, sombra 0.4, O42/O43, ROMP e outros bots intocados.
+1. Descompacte DENTRO de C:\BotTested\LM_v036 (pacote O37: traz config_execucao.json). Rode:  python verificar.py   → deve imprimir VERIFICADO.
+2. Verificação da instalação (1 h): iniciar_ao_vivo_o47.bat com a data de início = PRÓXIMA segunda-feira (já preenchida no .bat; ajuste se instalar depois dela).
+   As duas janelas devem mostrar o leitor rodando. Depois de 1 h, envie as pastas campanha\XAUUSD\ao_vivo_o47 e campanha\BTCUSD\ao_vivo_o47 (zip, sem token).
+3. O início congelado vale para os 6 TF; o teste dura 84 dias a partir dele. Nenhum sinal é armado antes do início (o histórico serve só para ATR/EMA/caixa).
+4. Se o PC/terminal desligar, apenas reabra o .bat: o leitor busca os ticks perdidos no histórico do terminal e marca o que faltar.
+5. Parar: crie um arquivo chamado PARAR nesta pasta (ou parar.bat).
+6. Ao fim: python comparar_o47.py --inicio AAAA-MM-DD --pasta-xau campanha\XAUUSD\ao_vivo_o47 --pasta-btc campanha\BTCUSD\ao_vivo_o47 --saida resultado_o47
+Recusa contas que não sejam DEMO. Mesmo em DEMO, nenhuma ordem é enviada.
