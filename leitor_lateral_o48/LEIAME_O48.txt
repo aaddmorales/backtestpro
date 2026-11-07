@@ -1,0 +1,15 @@
+BotTested · ORDEM 048 · LEITOR DO CARTÃO "Rompimento de Lateralização" (Experimental · teste em sombra)
+Os bots do cartão NÃO enviam ordens. Este leitor roda no computador do MT5 (conta DEMO), lê as cotações (bid/ask) e as barras do terminal,
+aplica a R0 da O44 e mantém UMA posição virtual por bot. Campanha, conector, DEMO e outros bots não são tocados.
+
+INSTALAÇÃO (uma vez):
+1. Descompacte esta pasta em C:\BotTested\Lateral_O48 e rode:  py verificar.py   → deve imprimir VERIFICADO.
+2. Requisitos (já usados pela campanha): py -m pip install MetaTrader5 pandas numpy
+3. Na plataforma, abra o cartão "Rompimento de Lateralização" → "Gerar chave do leitor" (a chave aparece uma vez).
+4. Com o MT5 DEMO aberto, rode:  py bt_lateral_leitor_o48.py --configurar   e cole a chave quando pedir.
+   A chave fica só neste computador (~\BotTested_Lateral_O48_config.json). O leitor passa a iniciar com o Windows (sem janela).
+DEPOIS DISSO, TUDO PELA PLATAFORMA: Criar bot → Enviar ao MT5. O bot muda para "Conectado" quando o terminal confirma
+ID, símbolo efetivo da corretora, timeframe, versão da regra e modo sombra, com cotação lida. Após 1 h de verificação técnica
+começa a semana de coleta (mesmo início e fim para M15, M30 e H1 de cada ativo). "Parar" na plataforma encerra só os bots do cartão.
+Registro local: ~\BotTested_Lateral_O48\leitor_o48.log. Parar o leitor inteiro: crie o arquivo ~\BotTested_Lateral_O48\PARAR.
+Se o símbolo da corretora tiver outro nome (ex.: XAUUSD.a), ajuste "simbolos" no arquivo de configuração.

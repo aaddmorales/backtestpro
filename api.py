@@ -834,6 +834,7 @@ API_VERSAO = "8.29.1-o33b-lm-leitura-operacoes (ORDEM 033-B: só o relatório da
 API_VERSAO = "8.29.2-o34-lm-diagnostico (ORDEM 034: só o painel da LM muda — quadro do que a versão usa, dados por decisão; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O34
 API_VERSAO = "8.29.3-o36-lm-selecao-execucao (ORDEM 036: só o relatório da LM muda — aceita os eventos avaliacao_virtual, analise_execucao e revisao_dados; painel 'LM — Leitura, decisões e operações' com qualidade da seleção, execução e dados; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O36
 API_VERSAO = "8.29.4-o38-lm-leitura-tf (ORDEM 038: só o relatório da LM muda — aceita os eventos leitura_tf, sombra_entrada e sombra_gestao da LM-0.4-exp em modo sombra; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O38
+API_VERSAO = "8.29.5-o48-lateral-sombra (ORDEM 048: cartão 'Rompimento de Lateralização' — Experimental · teste em sombra — só para o usuário de teste; rotas novas /lateral/… e tabelas lateral_* (sql/0025); nenhuma rota/tabela existente muda) | " + API_VERSAO   # O48
 
 BUILD_TAG = "2026-10-13-relatorio-rapido-c27r46"
 
@@ -17385,6 +17386,11 @@ def _vitrine_com_card_teste(out, authorization):
         copia = dict(out or {})
         copia["estrategias"] = list((out or {}).get("estrategias") or []) + [item]
         copia["total"] = len(copia["estrategias"])
+        try:                                                                   # O48: cartão Rompimento de Lateralização (mesmo gate)
+            import lateral_o48 as _lat48
+            copia = _lat48.card_para_vitrine(copia, uid)
+        except Exception:
+            pass
         return copia
     except Exception:
         return out
@@ -31483,3 +31489,14 @@ def _ref_portoes(bot, snap, chk, cons):
             "todos_abertos": bool(P) and all(p["aberto"] is True for p in P),
             "nota": "este quadro não autoriza nada: 'todos abertos' só é verdadeiro quando os 8 portões foram avaliados; "
                     "os portões 4, 5 e 8 só existem dentro do detector/emissor e ficam como 'não avaliado aqui'"}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8.29.5 — ORDEM 048: cartão "Rompimento de Lateralização" (Experimental · teste em sombra). Rotas /lateral/… isoladas
+# (tabelas lateral_*, sql/0025). Bots sem ordens: o leitor no computador do MT5 mantém posições virtuais com bid/ask do terminal.
+# ════════════════════════════════════════════════════════════════════════════
+try:
+    import lateral_o48 as _lat48
+    app.include_router(_lat48.criar_router(_sb_admin, _sessao_user_id))
+except Exception as _e48:
+    print(f"[o48] rotas /lateral indisponíveis: {_e48}")

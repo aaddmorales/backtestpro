@@ -1,0 +1,166 @@
+{
+ "executado_utc": "2026-11-07T20:28:41Z",
+ "aprovados": 12,
+ "total": 12,
+ "testes": [
+  {
+   "teste": "cartão aparece só para o usuário de teste, com selo 'Experimental · teste em sombra' e sem medição herdada",
+   "ok": true,
+   "detalhe": "Rompimento de Lateralização · ativos ['XAUUSD', 'BTCUSD'] · TF ['M15', 'M30', 'H1'] · regra lateral-tf-0.1 (R0 da O44) · leitor-o48"
+  },
+  {
+   "teste": "outro usuário não vê as rotas do cartão (404 sem oráculo)",
+   "ok": true,
+   "detalhe": "404"
+  },
+  {
+   "teste": "Criar bot: 6 bots (XAU/BTC × M15/M30/H1), sem duplicar",
+   "ok": true,
+   "detalhe": "XAU M15 · Lateral R0, XAU M30 · Lateral R0, XAU H1 · Lateral R0, BTC M15 · Lateral R0, BTC M30 · Lateral R0, BTC H1 · Lateral R0"
+  },
+  {
+   "teste": "chave do leitor inválida é recusada",
+   "ok": true,
+   "detalhe": "401"
+  },
+  {
+   "teste": "Enviar ao MT5: bots ficam 'enviado' (aguardando o terminal) — 'Conectado' ainda não aparece",
+   "ok": true,
+   "detalhe": "enviado"
+  },
+  {
+   "teste": "terminal confirmou os 6 bots: ID, símbolo efetivo, timeframe, versão da regra e modo sombra, com cotação lida → Conectado",
+   "ok": true,
+   "detalhe": "1 XAUUSD M15 bid 5280.0; 2 XAUUSD M30 bid 5280.0; 3 XAUUSD H1 bid 5280.0; 4 BTCUSD M15 bid 65290.57; 5 BTCUSD M30 bid 65290.57; 6 BTCUSD H1 bid 65290.57"
+  },
+  {
+   "teste": "semana com o MESMO início e fim para os 3 TF de cada ativo, depois de 1 h de verificação técnica",
+   "ok": true,
+   "detalhe": "XAUUSD: 2026-03-02T01:00:00+00:00 → 2026-03-09T01:00:00+00:00; BTCUSD: 2026-03-02T01:00:00+00:00 → 2026-03-09T01:00:00+00:00"
+  },
+  {
+   "teste": "Parar afeta só o bot escolhido do teste; os demais seguem lendo",
+   "ok": true,
+   "detalhe": "eventos depois do parar: 2 (1 do BTC H1, só 'status')"
+  },
+  {
+   "teste": "nenhum gatilho armado antes do início da semana",
+   "ok": true,
+   "detalhe": "19 gatilhos; 1º em 2026-03-02 08:30:00 (início XAU 2026-03-02 01:00:00)"
+  },
+  {
+   "teste": "leitor do cartão = replay O44 no mesmo período (mesmos gatilhos, entradas e minuto de entrada)",
+   "ok": true,
+   "detalhe": "{\"XAUUSD M15\": {\"gatilhos\": [7, 7], \"entradas\": [6, 6], \"iguais\": true, \"so_no_leitor\": [], \"so_no_replay\": [], \"fim_replay\": \"2026-03-06 01:41:00\"}, \"XAUUSD M30\": {\"gatilhos\": [3, 3], \"entradas\": [3, 3], \"iguais\": true, \"so_no_leitor\": [], \"so_no_replay\": [], \"fim_replay\": \"2026-03-06 01:41:00\"}, \"BTCUSD M15\": {\"gatilhos\": [7, 7], \"entradas\": [5, 5], \"iguais\": true, \"so_no_leitor\": [], \"so_no_replay\": [], \"fim_replay\": \"2026-03-06 01:41:00\"}}"
+  },
+  {
+   "teste": "relatório por bot: contadores e status em todos; gatilhos, entradas/saídas, retorno A/B/C e gráficos (barras nos eventos) onde houve sinal",
+   "ok": true,
+   "detalhe": "XAU M15 · Lateral R0: 43 eventos; XAU M30 · Lateral R0: 26 eventos; XAU H1 · Lateral R0: 14 eventos; BTC M15 · Lateral R0: 37 eventos; BTC M30 · Lateral R0: 5 eventos; BTC H1 · Lateral R0: 4 eventos"
+  },
+  {
+   "teste": "nenhuma ordem enviada",
+   "ok": true,
+   "detalhe": "order_send/order_check nunca chamados"
+  }
+ ],
+ "contadores_simulados": {
+  "XAU M15 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-02-27 23:56:59"
+  },
+  "XAU M30 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-02-27 23:56:59"
+  },
+  "XAU H1 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-02-27 23:56:59"
+  },
+  "BTC M15 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-03-01 23:00:00"
+  },
+  "BTC M30 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-03-01 23:00:00"
+  },
+  "BTC H1 · Lateral R0": {
+   "barras": 1,
+   "formacoes": 0,
+   "gatilhos_armados": 0,
+   "toques": 0,
+   "nao_alcancou": 0,
+   "superacoes": 0,
+   "entradas": 0,
+   "bloqueados_posicao_aberta": 0,
+   "saidas_canal": 0,
+   "saidas_stop": 0,
+   "ticks": 241,
+   "lacunas_no_gatilho": 0,
+   "posicao_virtual_aberta": false,
+   "ult_tick": "2026-03-01 23:00:00"
+  }
+ },
+ "nota": "plataforma com Supabase FALSO e terminal SIMULADO (ticks sintéticos): NÃO é teste ao vivo"
+}
