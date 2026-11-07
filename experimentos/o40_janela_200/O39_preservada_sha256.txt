@@ -1,0 +1,6 @@
+bb7b52c47ac02647c126687f99cc5623c1fee76c7fdd3b90e05e758c9825f358  ../lm039/codigo/estrategia_o39.py
+80fd53c1c87cc8f6c608aac9886d86903fe0cfe20002fc607d15627983e33836  ../lm039/codigo/estrutura_o39.py
+b0ee914d11d19d57fad78597895d8d50b027fa302b4587dd93459a777d89e36f  ../lm039/codigo/exemplos_o39.py
+5c085dfd10db9b9f770d45a1a87b150d9aa84e827efae466a6b850d3114026ed  ../lm039/codigo/testes_o39.py
+458b12a976adc7b1c18b272da90b681f90ae610ea23b0b67ac026d8535f6697e  ../lm039/codigo/testes_sombra_o39.py
+71363ff1faa1ce6431432bcf62c5da92bd482205badaae3edf047a6d479e8d86  ../lm039/saida/O39_especificacao_congelada.txt

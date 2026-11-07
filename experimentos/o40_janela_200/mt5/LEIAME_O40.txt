@@ -1,0 +1,6 @@
+BotTested · ORDEM 040 · LEITOR EM MODO SOMBRA — V0, V1 (O39) e V1-200 (janela móvel de 200 barras) em paralelo sobre a mesma memória estrutural.
+NÃO envia ordens. Não altera a campanha LM-0.2, a sombra 0.4, o ROMP nem outros bots.
+1. Descompacte DENTRO de C:\BotTested\LM_v036 (pacote O37). Confira MANIFESTO_O40.json.
+2. iniciar_sombra_o40.bat → janelas "BotTested O40 XAUUSD/BTCUSD". 1ª vez: memória reconstruída com 200 M15; reinício: memória e gatilhos restaurados.
+3. Registro: campanha\<ATIVO>\sombra_o40 (eventos com versao_regra V0/V1/V1-200). Envie a pasta zipada (sem token).
+4. Parar: parar.bat.

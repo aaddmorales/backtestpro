@@ -1,0 +1,47 @@
+ORDEM 040 · JANELA MÓVEL DE 200 BARRAS PARA SUPORTE E RESISTÊNCIA · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Versão nova: V1-200 (janela-0.1), sobre estrutura-0.1 e ESTR-EMA-M15-0.1 da O39. A O39 fica preservada: hashes em O39_preservada_sha256.txt.
+Experimental; replay + sombra. Campanha LM-0.2, sombra 0.4, ROMP e DEMO intocados.
+
+═══ 1. O QUE NÃO MUDA (igual à O39) ═══
+- Memória estrutural: detector, confirmação em i+2, zonas de 0,25×ATR14, agrupamento, estados e histórico. A memória continua ACUMULADA (nada é apagado).
+- Sinal de média (canal EMA20 das máximas/mínimas), raio "próximo" de 2×ATR14 (= máx(1×ATR, risco), com risco = 2×ATR), stop de 2×ATR14 de Wilder,
+  saída no fechamento M15 de volta ao canal, custos e base BID.
+- Gatilho: superar o extremo da barra de referência por ≥ 1 tick, SÓ na barra seguinte. Tocar ou igualar não confirma. Nenhum filtro M1/M5.
+- Única alteração técnica na memória: cada membro de um nível passa a guardar a barra do extremo, a barra da confirmação e o ATR14 da formação.
+  São campos de registro; as decisões da V1 continuam idênticas (conferido por comparação byte a byte das operações).
+
+═══ 2. ELEGIBILIDADE OPERACIONAL (só V1-200) ═══
+- No fechamento da barra M15 n (contagem de barras processadas), um MEMBRO (pivô) é elegível se:
+  · já estava confirmado (barra da confirmação ≤ n); e
+  · o extremo está nas últimas 200 barras fechadas: barra do extremo ≥ n − 199.
+- Um NÍVEL é elegível se tem ≥ 1 membro elegível E é relevante como na O39 (função compatível e estado ≠ ROMPIMENTO CONFIRMADO).
+- Bordas da zona elegível = união das zonas dos membros ELEGÍVEIS. Suporte: [mín x, máx(x + 0,25·ATR_x)]; resistência: espelho.
+  A zona acumulada da memória continua registrada para o histórico.
+- O nível que sai da janela permanece na memória e no histórico, mas não condiciona entrada.
+
+═══ 3. DECISÃO V1-200 ═══
+- Sinal de média → entrada proposta E (mínima − tick na venda; máxima + tick na compra) → obstáculo = nível ELEGÍVEL relevante mais próximo à frente.
+  · Registra: nível à frente, distância (preço, ATR, risco) e o SEGUINTE nível elegível à frente com sua distância.
+- Obstáculo próximo (d ≤ 2×ATR): ESPERA (mensagem da O39). Senão: arma o gatilho para a barra seguinte (igual à V0).
+- Durante a espera, a cada barra fechada (zona elegível recalculada naquela barra):
+  · o fechamento volta para dentro do canal → espera cancelada;
+  · o nível esperado deixa de ser elegível (último membro saiu da janela, ou mudou de função/estado) → espera ENCERRADA, registrada como
+    "nível deixou de ser elegível". O sinal original NÃO é liberado retroativamente (o gatilho dele já expirou) e nada é armado nesta barra;
+  · fechamento estritamente além da borda da zona ELEGÍVEL (venda: abaixo da base; compra: acima do topo) = barra de rompimento estrutural →
+    mede de novo o obstáculo a partir da nova entrada. Se houver outro nível elegível próximo, passa a esperar esse ("segundo nível"); senão,
+    arma o gatilho só para a barra seguinte (superar o extremo da barra de rompimento por ≥ 1 tick).
+- Na V1 (O39 original) nada muda: espera pelo evento de rompimento da memória acumulada.
+
+═══ 4. MEDIDAS ═══
+Por ativo e versão (V0, V1, V1-200):
+- níveis elegíveis por barra (média, mediana, p90);
+- sinais de média bloqueados (espera) × liberados (gatilho armado direto);
+- entradas que voltaram (V1-200 × V1, pelo sinal de origem);
+- esperas por segundo nível;
+- esperas encerradas por perda de elegibilidade;
+- atraso da entrada em relação à V0 no mesmo sinal;
+- resultado líquido após custos, expectativa com IC95 bootstrap por dia;
+- vencedoras da V0 descartadas;
+- drawdown marcado a mercado;
+- n no bloco posterior (≥ 01/05/2026).
+Mais entradas não é critério de melhora. Nenhum parâmetro é ajustado depois de ver o resultado.

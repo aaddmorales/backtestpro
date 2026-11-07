@@ -1,0 +1,104 @@
+ORDEM 040 · JANELA MÓVEL DE 200 BARRAS PARA SUPORTE E RESISTÊNCIA · FECHAMENTO · 07/11/2026
+Replay M15 de XAUUSD e BTCUSD com os mesmos dados, custos, gatilho, stop e gestão da O39.
+Nenhum filtro M1/M5. Nada foi ajustado depois de ver os resultados.
+Campanha (LM-0.2), sombra 0.4, ROMP e DEMO intocados.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Congelar a especificação e preservar a O39 | 15% | 100% | 15,0% |
+| Implementar e testar a janela móvel | 30% | 100% | 30,0% |
+| Rodar o replay comparativo | 35% | 100% | 35,0% |
+| Analisar e entregar as evidências | 20% | 90% | 18,0% — V1-200 entregue para sombra; instalação no MT5 PENDENTE (sem acesso) |
+TOTAL: 98,0%.
+
+═══ PRESERVAÇÃO E ESPECIFICAÇÃO ═══
+- Especificação: O40_especificacao_congelada.txt, sha fb7f3e97…, congelada às 14:38 UTC, antes do replay.
+- O39 preservada: hashes em O39_preservada_sha256.txt.
+- V0 e V1 rodadas de novo e conferidas: operações IDÊNTICAS às da O39 nos dois ativos.
+  · A única mudança na memória foi registrar a barra e o ATR de cada pivô.
+- Regra V1-200:
+  · um pivô só conta se já estava confirmado e se o extremo está nas últimas 200 M15 fechadas;
+  · a zona é recalculada só com os pivôs elegíveis;
+  · o nível fora da janela fica no histórico, sem efeito operacional;
+  · registra o nível à frente e o seguinte, com as distâncias;
+  · se o nível da espera sai da janela, a espera é encerrada sem liberar o sinal antigo.
+
+═══ TESTES ═══
+- Fronteira (O40_testes.json): 7/7.
+  · O pivô só entra depois da confirmação (i+2).
+  · O pivô sai na 201ª barra; o nível continua no histórico.
+  · Zona com pivô antigo e recente: bordas só com o recente. Acumulada [99,00–99,37]; elegível [99,10–99,37].
+  · Espera cujo nível sai da janela: encerrada e registrada, sem gatilho retroativo.
+  · O nível seguinte é registrado com a distância.
+  · O reinício reproduz as 867 decisões e as 45 operações.
+  · Nenhum pivô usado antes da confirmação (0 violações no replay).
+- Sombra no terminal SIMULADO (O40_testes_sombra.json): 5/5.
+  · Sombra = replay nas três versões (17 decisões iguais).
+  · Reinício sem duplicar eventos.
+  · Nenhuma ordem.
+- Observação: o gatilho continua o da O39. Tocar não confirma; é preciso superar o extremo por ≥ 1 tick, só na barra seguinte. Os testes da O39 cobrem isso, e o código do gatilho é o mesmo (resultados idênticos).
+
+═══ CONTADORES (replay completo) ═══
+| | XAU V1 | XAU V1-200 | BTC V1 | BTC V1-200 |
+| Níveis relevantes por barra (mediana · p90) | 425 · 756 | 18 · 24 | 279 · 424 | 17 · 23 |
+| Sinais de média | 5.489 | 5.511 | 4.396 | 4.409 |
+| Bloqueados (espera) | 5.443 (99,2%) | 5.298 (96,1%) | 4.375 (99,5%) | 4.271 (96,9%) |
+| Liberados direto (sem obstáculo) | 46 | 213 | 21 | 138 |
+| Esperas por segundo nível | 3.249 | 2.529 | 1.949 | 1.682 |
+| Gatilhos por rompimento estrutural | 157 | 579 | 67 | 384 |
+| Esperas encerradas porque o nível saiu da janela | — | 25 | — | 18 |
+| Esperas canceladas (volta ao canal) | 5.286 | 4.694 | 4.308 | 3.869 |
+| Entradas | 143 | 521 | 57 | 312 |
+| Distância ao nível à frente nos sinais (mediana) | — | 0,0 ATR (dentro da zona) | — | 0,0 ATR |
+| Distância ao nível seguinte (mediana) | — | 0,57 ATR | — | 0,58 ATR |
+
+═══ RESULTADO LÍQUIDO (custos modelados; por 1 lote; swap fora) ═══
+| Ativo · versão | n | Líquido US$ | R | Expectativa R (IC95) | FL | DD marcado a mercado | Bloco posterior (n · R) |
+| XAU V0 | 4.060 | +87.371 | +50,0 | +0,012 (−0,018 a +0,041) | 1,06 | −88.095 | 740 · +0,1 |
+| XAU V1 | 143 | +64.921 | +28,2 | +0,197 (−0,030 a +0,436) | 2,14 | −27.410 | 2 · −0,9 |
+| XAU V1-200 | 521 | +72.437 | +37,8 | +0,073 (−0,037 a +0,196) | 1,25 | −41.147 | 83 · +8,4 (IC −0,129 a +0,370) |
+| BTC V0 | 3.013 | −39.780 | −74,8 | −0,025 (−0,055 a +0,006) | 0,90 | −48.850 | 806 · −30,0 |
+| BTC V1 | 57 | −6.248 | −9,7 | −0,170 (−0,377 a +0,078) | 0,72 | −8.418 | 6 · −3,8 |
+| BTC V1-200 | 312 | −7.183 | −7,5 | −0,024 (−0,137 a +0,096) | 0,91 | −18.164 | 85 · −12,9 (IC −0,291 a +0,003) |
+- Entradas que voltaram (V1-200 sem par na V1):
+  · XAU: 387, somando −16,7 R (acerto de 32%);
+  · BTC: 258, somando −8,7 R.
+- Atraso em relação à V0 no mesmo sinal, quando a V1-200 entrou depois: mediana de 48 min no XAU (357 sinais) e 60 min no BTC (209).
+- Vencedoras da V0 descartadas pela V1-200:
+  · XAU: 735 de 3.574 entradas evitadas. O conjunto evitado somava −474,9 R.
+  · BTC: 521 de 2.727. O conjunto evitado somava −393,7 R.
+- Comissão: XAU V1-200 US$ 3.647 contra V0 US$ 28.420. O BTC não tem comissão (só spread).
+
+═══ RESPOSTA À PERGUNTA DA ORDEM ═══
+"Com 200 barras, o sistema volta a operar quando há espaço à frente e continua esperando quando existe um suporte ou uma resistência relevante no caminho?"
+- Continua esperando quando há nível no caminho: SIM.
+  · As esperas, as esperas por segundo nível e as entradas por rompimento estrutural funcionam.
+  · Ninguém entra por "toque".
+  · As esperas encerradas pela janela não liberam sinais antigos.
+- Volta a operar quando há espaço: só um pouco.
+  · Os sinais liberados direto subiram de 46 para 213 no XAU e de 21 para 138 no BTC.
+  · Mas 96–97% dos sinais continuam bloqueados.
+- A janela NÃO resolveu o problema. Causa medida:
+  · ela reduziu a memória de cerca de 425 para 18 níveis por barra;
+  · mas o nível elegível à frente está, na mediana, a 0,0 ATR (a entrada proposta já está dentro da zona de um pivô recente);
+  · o seguinte está a 0,57 ATR.
+  · Com um raio de 2×ATR, quase sempre há um pivô recente no caminho.
+  · O bloqueio vem do RAIO e do critério de relevância, não do tamanho da memória.
+- Resultado:
+  · as entradas que voltaram foram, em conjunto, perdedoras nos dois ativos;
+  · no XAU, a V1-200 ficou entre a V0 e a V1 (+37,8 R, FL 1,25, DD −41 mil), com IC que inclui zero;
+  · no BTC, ficou negativa, inclusive no bloco posterior (−12,9 R em 85 operações);
+  · nenhuma melhora comprovada.
+- Não ajustei o raio nem a relevância.
+  · Se você quiser testar isso, a próxima experiência precisa congelar ANTES a nova definição de "relevante" ou de "próximo".
+  · Exemplos: pivô com ≥ 2 testes, ou raio igual ao risco em vez de 2×ATR.
+
+═══ ENTREGA ═══
+- Replay: O40_<ativo>_<versão>_operacoes.csv e _decisoes.csv.gz, O40_<ativo>_resultado.json, O40_contadores_sinais.json, O40_<ativo>_entradas_que_voltaram.csv.
+- Sombra: O40_pacote_sombra.zip.
+  · Leitor bt_estrutura_sombra_o40 com V0, V1 e V1-200 em paralelo sobre a mesma memória.
+  · Instala sobre C:\BotTested\LM_v036 e não envia ordens.
+  · Instalado: NÃO. Observado com ticks reais: NÃO. A sessão não está ligada ao seu computador.
+- Código versionado: branch exp/o40-janela-200.
+
+Backup externo NÃO confirmado.
