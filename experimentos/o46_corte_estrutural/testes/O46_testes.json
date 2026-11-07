@@ -1,0 +1,78 @@
+{
+ "executado_utc": "2026-11-07T18:03:35Z",
+ "versao": "corte-estrutural-0.1 (ORDEM 046)",
+ "aprovados": 14,
+ "total": 14,
+ "testes": [
+  {
+   "teste": "alerta sem recuperação + M15 além de N: corta na abertura da 1ª M1 após o fechamento M15",
+   "ok": true,
+   "detalhe": "alerta 10:05 → decisão 10:15 → execução 10:15 a 100.10 (abertura 99.70 + spread 0,20 + deslizamento 0,20)"
+  },
+  {
+   "teste": "não executa ao preço do fechamento que decidiu",
+   "ok": true,
+   "detalhe": "fechamento M15 100.20 ≠ execução 100.10"
+  },
+  {
+   "teste": "recupera o nível antes do fechamento M15: cancela; a M1 de 10:14 fecha além de novo = novo alerta, confirmado no mesmo M15",
+   "ok": true,
+   "detalhe": "alertas=2 recuperados=1 cortou=True"
+  },
+  {
+   "teste": "recuperado (M1 de 10:08 fecha < N) e sem novo cruzamento: G1 = G0",
+   "ok": true,
+   "detalhe": "R_G1=0.5"
+  },
+  {
+   "teste": "igualar o nível não alerta",
+   "ok": true,
+   "detalhe": "0 alertas"
+  },
+  {
+   "teste": "cruzamento depois da janela de 15 min não alerta",
+   "ok": true,
+   "detalhe": "M1 10:20 fora de [10:02, 10:17)"
+  },
+  {
+   "teste": "M15 fecha igual a N: expira (não confirma)",
+   "ok": true,
+   "detalhe": "expirados=1"
+  },
+  {
+   "teste": "saída G0 antes do fechamento M15: G0 prevalece",
+   "ok": true,
+   "detalhe": "encerrado pela saída G0"
+  },
+  {
+   "teste": "saída G0 na mesma M1 da execução: empate, prevalece G0",
+   "ok": true,
+   "detalhe": "empate"
+  },
+  {
+   "teste": "G0 sai na própria M1 do alerta: sem alerta (posição já fechada)",
+   "ok": true,
+   "detalhe": "0 alertas"
+  },
+  {
+   "teste": "alerta às 10:06 com saída G0 às 10:06: aviso SIMULTÂNEO (não é antecipação)",
+   "ok": true,
+   "detalhe": "simultaneo"
+  },
+  {
+   "teste": "stop alcançado na M1 da execução do corte: ordem incerta marcada",
+   "ok": true,
+   "detalhe": "h + spread ≥ stop na M1 de 10:15"
+  },
+  {
+   "teste": "deslizamento 0/1/2 × spread piora o preço de saída da venda",
+   "ok": true,
+   "detalhe": "99.90 < … < 100.30"
+  },
+  {
+   "teste": "compra (espelho): fecha abaixo da resistência rompida + M15 abaixo → corta no bid − deslizamento",
+   "ok": true,
+   "detalhe": "execução 99.70"
+  }
+ ]
+}

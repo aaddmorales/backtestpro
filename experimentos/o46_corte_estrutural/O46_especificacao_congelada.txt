@@ -1,0 +1,49 @@
+ORDEM 046 · CORTE POR PERDA DO NÍVEL ESTRUTURAL COM CONFIRMAÇÃO NO M15 · ESPECIFICAÇÃO CONGELADA (antes de qualquer resultado)
+Replay; nenhuma ordem; campanha intocada. Escopo: XAUUSD M15, XAUUSD M30, BTCUSD M15. Mesmas entradas da O44, reproduzidas antes.
+Formação, gatilho, entrada e stop inicial inalterados; sem filtro M1/M5. Valores [P] = propostas do Claude, congeladas aqui.
+
+═══ G0 (referência O44) ═══
+Stop 2×ATR do TF de entrada, checado em M1. Saída pelo canal EMA20 no fechamento do TF de entrada, na 1ª M1 da barra seguinte. Custos da O44.
+
+═══ G1 = G0 + corte estrutural ═══
+N = suporte/resistência ORIGINAL do sinal (congelado; nunca recalculado). Venda: "além" = fechamento M1 > N; compra: < N. Igualar não conta.
+1. Alerta
+   · Uma M1 com início em [τ, τ + 15 min) fecha além de N, com a posição ABERTA no fechamento dessa M1 (a saída G0 ainda não ocorreu nessa M1 nem antes).
+   · Voltar só ao extremo da barra de rompimento não gera alerta.
+2. Confirmação: o 1º fechamento M15 a partir do alerta, ou seja, o fechamento da barra M15 que contém a M1 do alerta. Se a M1 do alerta é a última da barra, é o próprio fechamento.
+   · Recuperação: se alguma M1 entre o alerta e esse fechamento M15 fecha de volta do lado da operação (venda: < N, estrito), o alerta é CANCELADO naquela M1.
+   · Sem recuperação: o fechamento M15 além de N (venda: > N) CONFIRMA. Fechamento igual a N não confirma: o alerta EXPIRA.
+   · Novo cruzamento [P]: depois de um cancelamento ou expiração, o próximo fechamento M1 além de N gera NOVO alerta, desde que ainda dentro da janela [τ, τ + 15 min) e com a posição aberta.
+     Nunca há mais de um alerta ativo. Fora da janela, nenhum alerta novo; o confirmado/cancelado/expirado fecha o ciclo.
+   · No XAU M30, a confirmação usa o M15 (barras M15 do servidor); a entrada e a saída G0 continuam no M30.
+3. Execução
+   · Na abertura da 1ª M1 após o fechamento M15 de confirmação, no lado correto da cotação: venda sai no ask = abertura (bid) + spread da M1; compra sai no bid.
+   · Mais deslizamento [P] de 1 × spread daquela M1 (sensibilidade: 0 e 2 × spread). Nunca ao preço do fechamento que decidiu.
+   · Precedência: se a saída G0 (stop ou canal) ocorre numa M1 ANTERIOR à M1 de execução do corte, G0 prevalece.
+     Se a saída G0 ocorre na MESMA M1 da execução do corte: EMPATE, prevalece G0 (mesmo instante; G0 sem deslizamento).
+   · Ordem incerta (sem ticks): a M1 de execução do corte também alcança o stop.
+     O corte (abertura) é considerado anterior, mas o caso é marcado e a conclusão é mostrada com e sem esses casos.
+
+═══ TEMPO DO AVISO (correção da O45) ═══
+Horário do alerta = fechamento da M1 do alerta. Saída G0 = início da M1 de saída.
+- Anterior: alerta < saída.
+- Simultâneo: alerta = saída (não é antecipação).
+- Posterior: alerta > saída.
+O grupo C da O45 não é usado como informação de entrada.
+
+═══ MEDIDAS ═══
+- Contadores por escopo:
+  · operações com alerta, alertas, recuperações (cancelados), expirados;
+  · alertas encerrados pela saída G0 antes da confirmação;
+  · confirmações, cortes executados, empates, ordem incerta.
+- Pareado (mesma entrada, simulação isolada por sinal): G1 − G0 por operação.
+  · Perdas reduzidas: corte melhor que G0, com G0 perdedora.
+  · Ganhos cortados: corte pior que G0.
+  · Saldo líquido em R; IC95 por bootstrap de dias.
+  · Tempo ganho até a saída; devolução do pico = MFE (fechamentos M1) − R final; sensibilidade a deslizamento 0/1/2 × spread.
+- Carteira contínua: G0 e G1 rodadas separadamente (uma posição por ativo; uma saída mais cedo pode liberar outra entrada).
+  · Métricas da O44 (R, R/oper., DD, custos, tempo em posição); diferença com IC95 por bootstrap de dias.
+- Bloco ≥ 01/05/2026 separado e RETROSPECTIVO.
+- Gráficos: um corte que reduziu a perda; um alerta cancelado por recuperação; um corte que tirou operação que teria melhorado.
+  · Marcar N, o fechamento M1 do alerta, o fechamento M15 da decisão e as duas saídas.
+  · Escolha por sorteio fixo dentro da categoria.

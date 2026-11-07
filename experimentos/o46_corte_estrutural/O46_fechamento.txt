@@ -1,0 +1,102 @@
+ORDEM 046 · CORTE POR PERDA DO NÍVEL ESTRUTURAL COM CONFIRMAÇÃO NO M15 · FECHAMENTO · 07/11/2026
+G0 = saída original da O44 (stop 2×ATR + canal EMA20 no TF de entrada). G1 = G0 + corte: alerta M1 (fechamento além do nível ORIGINAL, nos 15 min após o gatilho,
+posição aberta) → 1º fechamento M15 → execução na abertura da M1 seguinte, lado correto + spread + 1 spread de deslizamento.
+Mesmas entradas, preços, stops e período da O44. Sem filtro M1/M5. Regra congelada ANTES dos resultados (sha b28b5f3e…). Só replay; nenhuma ordem; campanha intocada.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Reproduzir a O44 e congelar a regra | 20% | 100% | 20,0% |
+| Implementar o corte e testar a ordem dos eventos | 30% | 100% | 30,0% |
+| Rodar a comparação pareada e a carteira contínua | 35% | 100% | 35,0% |
+| Entregar resultados e gráficos anotados | 15% | 100% | 15,0% |
+TOTAL: 100,0%.
+
+═══ REPRODUÇÃO E TESTES ═══
+- O44 reproduzida idêntica:
+  · XAU M15: 470 operações, +11,93 R;
+  · XAU M30: 247, +26,16 R;
+  · BTC M15: 392, −11,44 R.
+  A carteira G0 montada pelo filtro de posição única = carteira da O44 nos três escopos.
+- Sequência do corte: 14/14 testes (O46_testes.json).
+  · Corte só após o fechamento M15, na abertura seguinte, nunca no preço do fechamento.
+  · Recuperação cancela; novo cruzamento na janela gera novo alerta.
+  · Igualar o nível não alerta; fora da janela não alerta; M15 igual ao nível expira.
+  · Saída G0 antes da decisão prevalece; mesma M1 = empate (G0 prevalece).
+  · Aviso simultâneo separado. Ordem incerta marcada. Deslizamento 0/1/2. Compra espelhada.
+- Correções registradas:
+  · nos CENÁRIOS de teste, o fundo sintético recuperava o nível sem querer (motor inalterado);
+  · na conferência da carteira, o id da O44 leva o prefixo "R0-" (números já idênticos).
+
+═══ CONTADORES ═══
+| | XAU M15 | XAU M30 | BTC M15 |
+| Superações (entradas pareadas) | 476 | 254 | 404 |
+| Operações com alerta | 147 | 59 | 141 |
+| Alertas (inclui novos cruzamentos) | 206 | 81 | 201 |
+| Recuperações do nível (alerta cancelado) | 117 | 50 | 111 |
+| Expirados (M15 = nível) | 0 | 0 | 0 |
+| Encerrados pela saída G0 antes da decisão | 6 | 1 | 4 |
+| Confirmações M15 | 83 | 30 | 86 |
+| Empates (G0 sai na mesma M1 do corte) | 47 | 6 | 61 |
+| Cortes antecipados | 36 | 24 | 25 |
+| Ordem incerta stop × corte | 0 | 0 | 0 |
+| 1º alerta × saída G0: anterior / simultâneo | 145 / 2 | 59 / 0 | 137 / 4 |
+- Nos M15, a maioria das confirmações (57% no XAU, 71% no BTC) é um EMPATE: o mesmo fechamento M15 que confirma a perda do nível já devolve o preço ao canal EMA20. A saída original sai no mesmo minuto.
+- Correção do tempo da O45 (grupo C), anterior / simultâneo / posterior:
+  · XAU M15: 143 / 2 / 6 (a O45 contou 145 "antes");
+  · XAU M30: 59 / 0 / 0 (59);
+  · BTC M15: 136 / 4 / 4 (140).
+  A O45 superestimou a antecipação em 2 e 4 casos.
+
+═══ 1. PAREADO (mesmas entradas, simulação isolada; deslizamento 1 × spread) ═══
+| | XAU M15 | XAU M30 | BTC M15 |
+| Cortes | 36 | 24 | 25 |
+| … cortados que eram perdedoras no G0 | 31 | 23 | 23 |
+| Perdas reduzidas (n · R preservado) | 26 · +8,79 | 17 · +4,11 | 21 · +6,02 |
+| Ganhos cortados (n · R retirado) | 10 · −5,76 | 7 · −3,09 | 4 · −1,31 |
+| … dos quais G0 vencedora | 5 | 1 | 2 |
+| Saldo G1 − G0 (R) | +3,03 | +1,02 | +4,71 |
+| IC95 (bootstrap por dia) | −4,61 a +9,40 | −4,24 a +5,05 | +0,86 a +9,11 |
+| Conclusão | inconclusiva | inconclusiva | G1 maior |
+| Deslizamento 0 / 1 / 2 × spread | +3,22 / +3,03 / +2,83 | +1,18 / +1,02 / +0,86 | +5,38 / +4,71 / +4,04 (IC > 0 nos três) |
+| Sem ordem incerta | igual (0 casos) | igual | igual |
+| Sem ambíguos de entrada | +3,03 | +1,16 | +4,71 |
+| Desenvolvimento | +3,91 (+0,21 a +7,95) | +2,99 (+0,75 a +5,34) | +3,93 (+0,80 a +8,14) |
+| Bloco ≥ 01/05/2026 RETROSPECTIVO | −0,88 (−7,54 a +3,77) | −1,97 (−6,21 a +0,76) | +0,78 (−0,97 a +2,34) |
+| Tempo ganho até a saída (mediana; média) | 45 min; 329 min | 15 min; 90 min | 30 min; 42 min |
+| Devolução do pico nos cortados G0 → G1 (R) | 0,81 → 0,36 | 0,62 → 0,36 | 0,70 → 0,38 |
+- Em nenhum escopo o corte melhorou uma operação vencedora do G0. Ele age quase só em operações que já iam perder; o ganho é encurtar essas perdas.
+
+═══ 2. CARTEIRAS CONTÍNUAS SEPARADAS (custos modelados; por 1 lote) ═══
+| Escopo · gestão | n | R | R/oper. (IC95) | FL | DD em R | DD marcado a mercado US$ | Tempo em posição | Bloco posterior RETROSPECTIVO (n · R) |
+| XAU M15 G0 | 470 | +11,93 | +0,025 (−0,072 a +0,133) | 1,20 | −16,9 | −28.012 | 9,2% | 94 · +0,07 |
+| XAU M15 G1 | 471 | +14,79 | +0,031 (−0,068 a +0,135) | 1,23 | −16,8 | −30.785 | 8,3% | 94 · −0,81 |
+| XAU M30 G0 | 247 | +26,16 | +0,106 (−0,037 a +0,258) | 1,20 | −16,9 | −76.677 | 8,3% | 46 · +2,02 |
+| XAU M30 G1 | 247 | +27,18 | +0,110 (−0,032 a +0,259) | 1,21 | −15,4 | −72.132 | 8,1% | 46 · +0,05 |
+| BTC M15 G0 | 392 | −11,44 | −0,029 (−0,120 a +0,075) | 0,84 | −42,2 | −20.535 | 7,5% | 119 · +9,92 |
+| BTC M15 G1 | 392 | −6,93 | −0,018 (−0,105 a +0,085) | 0,88 | −37,6 | −18.207 | 7,3% | 119 · +10,49 |
+- Diferença da carteira G1 − G0 (IC95):
+  · XAU M15: +2,85 R (−4,90 a +9,25), inconclusiva; 1 entrada liberada pelo G1;
+  · XAU M30: +1,02 R (−4,24 a +5,05), inconclusiva;
+  · BTC M15: +4,50 R (+0,71 a +8,95), G1 maior.
+
+═══ RESPOSTA: o corte preservou mais R do que retirou, depois da confirmação M15 e dos custos? ═══
+- XAU M15: preservou +8,79 R e retirou −5,76 R; saldo +3,03 R. INCONCLUSIVO (IC −4,6 a +9,4). No bloco posterior retrospectivo, o saldo foi −0,9 R.
+- XAU M30: preservou +4,11 R e retirou −3,09 R; saldo +1,02 R. INCONCLUSIVO (IC −4,2 a +5,1). Bloco posterior: −2,0 R.
+- BTC M15: preservou +6,02 R e retirou −1,31 R; saldo +4,71 R. POSITIVO, com IC acima de zero (+0,9 a +9,1).
+  · Resiste a 2 × spread de deslizamento e à carteira contínua (+4,5 R).
+  · No bloco posterior retrospectivo, +0,8 R, inconclusivo.
+- Leitura geral:
+  · nos três escopos o corte preservou mais do que retirou, mas o efeito é pequeno (+1 a +5 R em 1–2 anos), porque só 5–10% das entradas chegam a ser cortadas;
+  · o aviso chega cedo (4–8 min após o gatilho), mas metade ou mais das confirmações M15 coincide com a saída original;
+  · só o BTC M15 mostrou ganho estatisticamente distinto de zero, e não se repetiu com força no bloco posterior;
+  · não há base para adotar o corte como regra; ele merece observação em sombra, se houver interesse.
+
+═══ ENTREGA ═══
+- Resultado completo: O46_resultado.json (contadores, pareado, deslizamento, blocos, tempo, devolução, carteiras, correção da O45).
+- Por operação: O46_<ativo>_<TF>_pareado.csv (alertas com horários e desfecho, decisão M15, saídas G0/G1, R, MFE).
+- Gráfico O46_exemplos.png:
+  · três exemplos: corte que reduziu a perda (XAU M30), alerta cancelado por recuperação (BTC M15), corte que tirou uma operação que teria melhorado (XAU M15);
+  · marcados: nível original, fechamento M1 do alerta, fechamento M15 da decisão e as duas saídas.
+- Código: corte_o46.py, rodar_o46.py, testes_o46.py, graficos_o46.py. Branch exp/o46-corte-estrutural.
+
+Backup externo NÃO confirmado.

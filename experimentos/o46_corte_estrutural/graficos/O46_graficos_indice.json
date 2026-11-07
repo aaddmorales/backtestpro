@@ -1,0 +1,29 @@
+[
+ {
+  "categoria": "corte que reduziu a perda",
+  "id": "XAUUSD-V-202506260430",
+  "ativo": "XAUUSD",
+  "tf": "M30",
+  "candidatos": 64,
+  "R_G0": -0.676,
+  "R_G1": -0.294
+ },
+ {
+  "categoria": "alerta cancelado: o preço recuperou o nível",
+  "id": "BTCUSD-C-202605301600",
+  "ativo": "BTCUSD",
+  "tf": "M15",
+  "candidatos": 139,
+  "R_G0": 0.773,
+  "R_G1": 0.773
+ },
+ {
+  "categoria": "corte que tirou uma operação que teria melhorado",
+  "id": "XAUUSD-V-202506271000",
+  "ativo": "XAUUSD",
+  "tf": "M15",
+  "candidatos": 21,
+  "R_G0": -0.158,
+  "R_G1": -0.222
+ }
+]
