@@ -836,6 +836,7 @@ API_VERSAO = "8.29.3-o36-lm-selecao-execucao (ORDEM 036: só o relatório da LM 
 API_VERSAO = "8.29.4-o38-lm-leitura-tf (ORDEM 038: só o relatório da LM muda — aceita os eventos leitura_tf, sombra_entrada e sombra_gestao da LM-0.4-exp em modo sombra; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O38
 API_VERSAO = "8.29.5-o48-lateral-sombra (ORDEM 048: cartão 'Rompimento de Lateralização' — Experimental · teste em sombra — só para o usuário de teste; rotas novas /lateral/… e tabelas lateral_* (sql/0025); nenhuma rota/tabela existente muda) | " + API_VERSAO   # O48
 API_VERSAO = "8.29.6-o48-admin-homolog (pedido do dono 08/11: na homologação, BT_ADMIN_USER_ID define a conta admin; produção inalterada) | " + API_VERSAO   # 8.29.6
+API_VERSAO = "8.29.7-o50-diagnostico-lm (ORDEM 050: diagnóstico geral da LM, só leitura — rotas /learning/diagnostico/*, sql/0026) | " + API_VERSAO   # 8.29.7
 
 BUILD_TAG = "2026-10-13-relatorio-rapido-c27r46"
 
@@ -31517,3 +31518,13 @@ try:
     app.include_router(_lat48.criar_router(_sb_admin, _sessao_user_id))
 except Exception as _e48:
     print(f"[o48] rotas /lateral indisponíveis: {_e48}")
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8.29.7 — ORDEM 050: diagnóstico geral da Learning Machine (BabyMachine). SÓ LEITURA: função lm_diag_o50 + tabela lm_diagnosticos
+# (sql/0026). Rotas /learning/diagnostico/{gerar,baixar,opcoes}. O admin vê todos os bots do ambiente; os demais, só os seus.
+# ════════════════════════════════════════════════════════════════════════════
+try:
+    import diagnostico_lm_o50 as _diag50
+    app.include_router(_diag50.criar_router(_sb_admin, _sessao_user_id, lambda uid: str(uid) == str(_BIB_ADMIN_USER_ID)))
+except Exception as _e50:
+    print(f"[o50] rotas /learning/diagnostico indisponíveis: {_e50}")
