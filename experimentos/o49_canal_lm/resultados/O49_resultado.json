@@ -1,0 +1,117 @@
+{
+ "versao": "leitura-canal-0.1 (ORDEM 049)",
+ "pilotos": {
+  "XAUUSD M30": {
+   "barras": 22807,
+   "disponiveis": 22807,
+   "indisponiveis": 0,
+   "inicio": "2024-10-01",
+   "posicao": {
+    "acima da EMA20 High": 9405,
+    "abaixo da EMA20 Low": 6980,
+    "dentro do canal": 6422
+   },
+   "evolucao": {
+    "estável": 22781,
+    "abrindo": 23,
+    "fechando": 3
+   },
+   "concordancia_todas_barras": {
+    "divergem": 13135,
+    "neutro": 6422,
+    "concordam": 3250
+   },
+   "eventos": {
+    "ev_toque_ema_high": 2916,
+    "ev_toque_ema_low": 3028,
+    "ev_fechou_acima_do_canal": 1402,
+    "ev_fechou_abaixo_do_canal": 1376,
+    "ev_voltou_para_dentro_por_cima": 1402,
+    "ev_voltou_para_dentro_por_baixo": 1375
+   },
+   "largura_atr_mediana": 0.991,
+   "sinais_R0": 372,
+   "superacoes": 254,
+   "superacoes_por_concordancia": {
+    "concordam": {
+     "n": 44,
+     "R_medio_isolado": -0.023,
+     "perdedoras_pct": 70.5
+    },
+    "divergem": {
+     "n": 179,
+     "R_medio_isolado": 0.161,
+     "perdedoras_pct": 68.2
+    },
+    "neutro": {
+     "n": 31,
+     "R_medio_isolado": 0.026,
+     "perdedoras_pct": 61.3
+    }
+   },
+   "sinais_por_posicao_no_canal": {
+    "acima da EMA20 High": 161,
+    "abaixo da EMA20 Low": 150,
+    "dentro do canal": 61
+   },
+   "instantes_registrados": 372,
+   "segundos": 34.2
+  },
+  "BTCUSD M15": {
+   "barras": 32538,
+   "disponiveis": 32538,
+   "indisponiveis": 0,
+   "inicio": "2025-09-01",
+   "posicao": {
+    "acima da EMA20 High": 10971,
+    "abaixo da EMA20 Low": 10822,
+    "dentro do canal": 10745
+   },
+   "evolucao": {
+    "estável": 32467,
+    "abrindo": 63,
+    "fechando": 8
+   },
+   "concordancia_todas_barras": {
+    "divergem": 18498,
+    "neutro": 10745,
+    "concordam": 3295
+   },
+   "eventos": {
+    "ev_toque_ema_high": 4806,
+    "ev_toque_ema_low": 4825,
+    "ev_fechou_acima_do_canal": 2199,
+    "ev_fechou_abaixo_do_canal": 2178,
+    "ev_voltou_para_dentro_por_cima": 2200,
+    "ev_voltou_para_dentro_por_baixo": 2178
+   },
+   "largura_atr_mediana": 0.988,
+   "sinais_R0": 620,
+   "superacoes": 404,
+   "superacoes_por_concordancia": {
+    "concordam": {
+     "n": 37,
+     "R_medio_isolado": 0.253,
+     "perdedoras_pct": 70.3
+    },
+    "divergem": {
+     "n": 301,
+     "R_medio_isolado": -0.061,
+     "perdedoras_pct": 76.4
+    },
+    "neutro": {
+     "n": 66,
+     "R_medio_isolado": 0.004,
+     "perdedoras_pct": 77.3
+    }
+   },
+   "sinais_por_posicao_no_canal": {
+    "abaixo da EMA20 Low": 266,
+    "acima da EMA20 High": 258,
+    "dentro do canal": 96
+   },
+   "instantes_registrados": 620,
+   "segundos": 56.5
+  }
+ }
+}

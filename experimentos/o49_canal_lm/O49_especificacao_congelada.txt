@@ -1,0 +1,17 @@
+ORDEM 049 · CANAL EMA20 HIGH/LOW NA LEITURA DA LM · ESPECIFICAÇÃO CONGELADA (antes dos resultados)
+Leitura PROGRAMADA (leitura-canal-0.1), em SOMBRA, separada do modelo LM-0.2 (preservado, intocado). Nenhum veto; gatilho, stop e saída dos pilotos inalterados;
+M1/M5 fora. Pilotos: XAUUSD M30 e BTCUSD M15 (R0 da O44). Valores [P] = propostas do Claude, congeladas.
+- EMA20 das máximas e EMA20 das mínimas (span 20, adjust=False), ATR14 Wilder, no TF do piloto; histórico mínimo 60 barras [P], senão "histórico insuficiente".
+- Por barra fechada (só dados até o fechamento):
+  · posição (acima da High / dentro / abaixo da Low);
+  · inclinação de cada média em ATR/barra (plana se |x| < 0,03 [P]);
+  · largura em ATR e evolução em 5 barras (abrindo/fechando se |Δ| > 0,15 ATR [P]; senão estável);
+  · compressão 0–100% (≤ 1 ATR = 100%, ≥ 2 ATR = 0% [P]; evidência, não confirma lateralização);
+  · distâncias ao preço de cada média (preço e ATR); eventos separados (toque High/Low, fechamento acima/abaixo, volta para dentro por cima/baixo);
+  · estrutura (memória estrutura-0.1 + janela 200, a mesma dos pilotos): resistência elegível acima e suporte elegível abaixo (zona, estado, distância em preço e ATR, posição vs canal, no caminho se ≤ 1 ATR [P], espaço até o seguinte);
+  · rompimentos de nível nas últimas 5 barras;
+  · concordância: acima do canal com resistência no caminho = DIVERGEM (estrutura prevalece); acima sem resistência ≤ 1 ATR = CONCORDAM; espelho para baixo; dentro = NEUTRO;
+  · evidência de avanço 0–100% = média de 4 critérios (além do canal; as 2 médias a favor; canal abrindo; sem nível no caminho) — grau de atendimento, não probabilidade.
+- Registro por instante: dados recebidos → campos do canal → nível estrutural → leitura produzida (texto), com origem "cálculo programado".
+  Ao lado, os campos de canal que o modelo LM-0.2 (treinado, M15) recebe hoje no mesmo instante, recalculados com as fórmulas da identificação-1.0.
+- Gráficos: EMA20 High/Low em amarelo, nível, rompimento, gatilho, entrada, saída, R; casos que concordam, que divergem e que deixaram passar; rótulo REPLAY.

@@ -1,0 +1,104 @@
+ORDEM 049 · CANAL EMA20 HIGH/LOW NA LEITURA DA LEARNING MACHINE · FECHAMENTO · 08/11/2026
+Leitura nova = leitura-canal-0.1. É CÁLCULO PROGRAMADO (não é modelo treinado), em SOMBRA, separado do modelo LM-0.2, que foi preservado e não mudou.
+Pilotos: XAUUSD M30 e BTCUSD M15 (R0 da O44).
+Especificação congelada antes dos resultados (sha 752b991b…). Nenhum veto; gatilho, stop e saída inalterados; M1/M5 fora.
+Nenhuma ordem; campanha intocada.
+
+═══ PAINEL (Σ peso × progresso) ═══
+| Etapa | Peso | Progresso | Contribuição |
+| Auditar os campos já usados pela LM | 20% | 100% | 20,0% |
+| Integrar a leitura do canal e dos níveis | 35% | 100% | 35,0% |
+| Validar cálculo, disponibilidade e registro por instante | 30% | 100% | 30,0% — em REPLAY e no fluxo simulado; ao vivo depende do leitor no MT5 |
+| Entregar gráficos e evidências dos dois pilotos | 15% | 100% | 15,0% |
+TOTAL: 100,0%. A leitura ao vivo começa quando o leitor O48 1.1 rodar no computador do MT5 (este ambiente não está ligado a ele).
+
+═══ 1. AUDITORIA — O QUE A LM JÁ RECEBIA ═══
+O modelo LM-0.2 (XGBoost congelado, decisão no M15, 269 variáveis) JÁ recebe, só do M15:
+- Canal EMA20 H/L (identificação-1.0):
+  · canal_pos (acima/dentro/abaixo);
+  · canal_incl_atr (inclinação da LINHA MÉDIA em 5 barras, em ATR);
+  · canal_afast_atr (distância só quando o preço está FORA; 0 dentro);
+  · canal_cruz_compra/venda (fechamento além);
+  · canal_reteste_* e canal_retomada_*;
+  · indiretamente em confirmacao_C2_canal, loc_L4_afastamento e ex_G1_esticamento.
+- Suporte/resistência: zona_res/sup (distância, largura, membros, idade, teste, rejeição, ultrapassagem, rompimento, retorno), dist_res_atr/dist_sup_atr, n_niveis_1atr.
+O que o modelo efetivamente USA (ganho nas árvores do modelo de entrada):
+- Canal: 2,3% (BTC) e 2,6% (XAU) — inclinação, afastamento e reteste.
+- S/R: 13,8% (BTC) e 10,8% (XAU).
+O que FALTAVA (agora na leitura nova):
+- leitura no TF de cada piloto (o M30 do XAU não tinha canal);
+- inclinação de CADA média separada;
+- largura do canal e evolução;
+- distância às médias também com o preço DENTRO do canal, em preço e ATR;
+- eventos de toque e de volta para dentro;
+- relação nível × canal (onde o nível está em relação ao canal, se está no caminho, espaço até o próximo nível);
+- concordância canal × estrutura.
+No gráfico (O48) as médias apareciam só para leitura humana. No robô de regras (R0), o canal é usado só na SAÍDA.
+Reaproveitado, sem duplicar: a estrutura vem da memória estrutura-0.1 + janela de 200 barras, a mesma dos pilotos.
+
+═══ 2. LEITURA INTEGRADA (por barra fechada, só dados até o fechamento) ═══
+- Campos: posição; inclinação High e Low (ATR/barra); largura (ATR) e evolução em 5 barras; compressão 0–100%; distâncias às médias (preço e ATR); eventos separados; resistência acima e suporte abaixo (zona, estado, distância em preço e ATR, posição vs canal, no caminho ≤ 1 ATR, espaço até o seguinte); rompimentos recentes.
+- Concordância: a estrutura prevalece.
+  · Fechamento além do canal com nível elegível a ≤ 1 ATR no caminho = DIVERGEM.
+  · Sem nível no caminho = CONCORDAM.
+  · Dentro do canal = NEUTRO.
+- Evidência de avanço 0–100% = média de 4 critérios documentados. É grau de atendimento, não probabilidade.
+- Leitura produzida = frase programada que junta os campos.
+- Registro por instante (os 372 sinais do XAU M30 e os 620 do BTC M15): dados recebidos → campos do canal → nível estrutural → leitura produzida (origem "cálculo programado"). Ao lado, os campos de canal que o LM-0.2 recebe no mesmo instante (origem "modelo treinado").
+
+═══ 3. VALIDAÇÃO ═══
+- Testes: 12/12 (O49_testes.json).
+  · EMA20 igual à fórmula recursiva.
+  · Causalidade: alterar o futuro em +5% não muda a leitura.
+  · Histórico < 60 barras = "histórico insuficiente".
+  · Eventos separados (fechou acima, voltou por cima, toque); igualar a média = dentro.
+  · Distâncias em preço e ATR.
+  · Regra de concordância conferida nas 9.405 barras acima do canal (XAU M30); dentro = sempre neutro; pontuações entre 0 e 100.
+  · Leitor ao vivo (janela de 1.200 barras) = replay no mesmo instante.
+- Disponibilidade no replay: XAU M30 22.807 de 22.807 barras; BTC M15 32.538 de 32.538. Nenhuma ausência depois do aquecimento.
+- Fluxo da plataforma (simulado: Supabase falso + terminal simulado): 12/12.
+  · O leitor 1.1 grava 'leitura_canal' por barra e anexa a leitura do instante a cada gatilho e entrada.
+  · Os gatilhos e as entradas continuam IDÊNTICOS ao replay da O44: a leitura não decide nada.
+
+═══ 4. O QUE O REPLAY MOSTROU (descritivo; nada decide) ═══
+| | XAU M30 | BTC M15 |
+| Barras acima / dentro / abaixo do canal | 41% / 28% / 31% | 34% / 33% / 33% |
+| Concordam / divergem / neutro (todas as barras) | 14% / 58% / 28% | 10% / 57% / 33% |
+| Superações R0 que concordam: n · R médio · perdedoras | 44 · −0,02 · 70% | 37 · +0,25 · 70% |
+| … que divergem (nível no caminho) | 179 · +0,16 · 68% | 301 · −0,06 · 76% |
+| … neutras (rompimento dentro do canal) | 31 · +0,03 · 61% | 66 · 0,00 · 77% |
+- Concordar ou divergir NÃO separou resultado de forma consistente: os sinais se invertem entre XAU e BTC, e as amostras são pequenas.
+- Pontos que a leitura revelou e que precisam de ajuste numa próxima ordem (valores [P] congelados aqui, não mudados depois de ver):
+  a) Largura do canal em ATR quase não varia (p10–p90: 0,93–1,06 ATR nos dois pilotos). A EMA20 das máximas menos a das mínimas ≈ amplitude média da barra ≈ ATR.
+     · Por isso "compressão" ficou ≥ 99% em ~68% das barras e "evolução" quase sempre "estável".
+     · Proposta: medir a largura contra o ATR de um TF maior (ex.: H4) ou contra o percentil da própria largura nas últimas 200 barras.
+  b) "Nível no caminho" (≤ 1 ATR) acontece em 73–78% das barras. Por isso "divergem" domina.
+     · Mesmo achado da O40: a memória tem quase sempre um nível colado no preço.
+     · Proposta: exigir nível com ≥ 2 reações (critério da O41) para contar como "no caminho".
+
+═══ 5. VISUAL E REVISÃO DIÁRIA ═══
+- Janelas dos dois pilotos (REPLAY):
+  · casos: concordam, divergem (nível no caminho), neutro (dentro do canal), deixou passar com o motivo;
+  · marcas: canal EMA20 High/Low em amarelo, nível da formação, zonas elegíveis, rompimento, gatilho, entrada, saída e R;
+  · a leitura do canal do instante e o que o LM-0.2 recebe hoje aparecem escritos sob cada janela.
+- Relatório do cartão na plataforma (app v10.88.8):
+  · tabela "Leitura do canal EMA20 High/Low + estrutura" por bot;
+  · contagem semanal de concorda/diverge/neutro;
+  · a leitura do instante escrita sob cada janela.
+- Registro de revisões: O49_revisoes.md (versão e horário de cada mudança, para separar antes e depois).
+
+═══ RESPOSTA ═══
+- Onde a LM recebeu e interpretou as médias com suporte e resistência, nos dois pilotos:
+  · nos 992 registros por instante (dados → canal → nível → leitura) do replay;
+  · ao vivo, no evento 'leitura_canal' de cada barra fechada e anexado a cada gatilho e entrada do leitor 1.1, em sombra.
+- O modelo treinado LM-0.2 NÃO aprendeu os campos novos: não aceita variáveis novas sem novo treino. Ele foi preservado.
+  · A leitura nova está pronta, separada, para comparação e para um treino futuro, se você liberar.
+- Execução: só sombra. Campanha intacta.
+
+═══ ENTREGA ═══
+- Código: leitura_canal_o49.py (leitura), rodar_o49.py (replay), testes_o49.py, graficos_o49.py.
+- Leitor do cartão O48 1.1 (O49_leitor_lateral.zip): substitui o pacote anterior.
+- Plataforma: app v10.88.8 no serviço do relatório (homologação).
+- Dados: O49_<ativo>_<TF>_leitura_por_barra.csv.gz; O49_<ativo>_<TF>_registro_por_instante.json; O49_<ativo>_<TF>_sinais_com_canal.csv; O49_resultado.json.
+
+Backup externo NÃO confirmado.

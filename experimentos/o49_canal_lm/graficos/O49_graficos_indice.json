@@ -1,0 +1,50 @@
+[
+ {
+  "piloto": "XAUUSD M30",
+  "categoria": "canal e estrutura CONCORDAM (entrou)",
+  "sinal": "XAUUSD-C-202410110430",
+  "candidatos": 44
+ },
+ {
+  "piloto": "XAUUSD M30",
+  "categoria": "canal e estrutura DIVERGEM — nível no caminho (entrou)",
+  "sinal": "XAUUSD-V-202507170900",
+  "candidatos": 179
+ },
+ {
+  "piloto": "XAUUSD M30",
+  "categoria": "dentro do canal — NEUTRO (entrou)",
+  "sinal": "XAUUSD-V-202604172300",
+  "candidatos": 31
+ },
+ {
+  "piloto": "XAUUSD M30",
+  "categoria": "deixou passar (barra seguinte não superou)",
+  "sinal": "XAUUSD-C-202512081430",
+  "candidatos": 118
+ },
+ {
+  "piloto": "BTCUSD M15",
+  "categoria": "canal e estrutura CONCORDAM (entrou)",
+  "sinal": "BTCUSD-C-202509070345",
+  "candidatos": 37
+ },
+ {
+  "piloto": "BTCUSD M15",
+  "categoria": "canal e estrutura DIVERGEM — nível no caminho (entrou)",
+  "sinal": "BTCUSD-V-202601060715",
+  "candidatos": 301
+ },
+ {
+  "piloto": "BTCUSD M15",
+  "categoria": "dentro do canal — NEUTRO (entrou)",
+  "sinal": "BTCUSD-C-202606110300",
+  "candidatos": 66
+ },
+ {
+  "piloto": "BTCUSD M15",
+  "categoria": "deixou passar (barra seguinte não superou)",
+  "sinal": "BTCUSD-V-202603060315",
+  "candidatos": 216
+ }
+]

@@ -1,0 +1,68 @@
+{
+ "executado_utc": "2026-11-08T06:04:58Z",
+ "versao": "leitura-canal-0.1 (ORDEM 049)",
+ "aprovados": 12,
+ "total": 12,
+ "testes": [
+  {
+   "teste": "EMA20 High = fórmula recursiva (α = 2/21, início no 1º valor)",
+   "ok": true,
+   "detalhe": "diferença máx 0.00e+00"
+  },
+  {
+   "teste": "leitura no fechamento usa só barras até o instante (futuro alterado em +5% não muda nada)",
+   "ok": true,
+   "detalhe": "dentro do canal; EMA20 High plana (-0.025 ATR/barra), EMA20 Low plana (+0.007); largura 0.96 ATR estável (compressão 100"
+  },
+  {
+   "teste": "histórico insuficiente é sinalizado (40 barras < 60)",
+   "ok": true,
+   "detalhe": "histórico insuficiente (40 barras < 60) ou ATR indisponível"
+  },
+  {
+   "teste": "fechamento acima da EMA20 High é evento separado e posição 'acima'",
+   "ok": true,
+   "detalhe": "acima da EMA20 High; EMA20 High subindo (+0.117 ATR/barra), EMA20 Low subindo (+0.045); la"
+  },
+  {
+   "teste": "fechamento de volta para dentro por cima registrado separadamente",
+   "ok": true,
+   "detalhe": "{'toque_ema_high': True, 'voltou_para_dentro_por_cima': True}"
+  },
+  {
+   "teste": "toque na EMA20 High sem fechar além = 'toque'",
+   "ok": true,
+   "detalhe": "toque registrado"
+  },
+  {
+   "teste": "fechar IGUAL à EMA20 High é 'dentro do canal' (igualar não atravessa)",
+   "ok": true,
+   "detalhe": "c = EMA20 High = 100.5000"
+  },
+  {
+   "teste": "distâncias em preço e em ATR; largura em ATR",
+   "ok": true,
+   "detalhe": "{\"preco\": 0.0, \"atr\": 0.0}"
+  },
+  {
+   "teste": "regra: acima do canal + resistência no caminho (≤ 1 ATR) → DIVERGEM; sem → CONCORDAM (estrutura prevalece)",
+   "ok": true,
+   "detalhe": "divergem 7241 · concordam 2164 (barras acima do canal, XAU M30)"
+  },
+  {
+   "teste": "dentro do canal é sempre NEUTRO (o canal sozinho não indica avanço)",
+   "ok": true,
+   "detalhe": "6422 barras"
+  },
+  {
+   "teste": "pontuações 0–100% dentro da faixa (evidência, não probabilidade)",
+   "ok": true,
+   "detalhe": "compressão e evidência de avanço"
+  },
+  {
+   "teste": "leitor ao vivo (janela de 1.200 barras, mesma memória inicial) = replay no mesmo instante",
+   "ok": true,
+   "detalhe": "abaixo da EMA20 Low; EMA20 High caindo (-0.069 ATR/barra), EMA20 Low plana (-0.008); largura 0.97 ATR estável "
+  }
+ ]
+}
