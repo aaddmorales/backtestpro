@@ -819,7 +819,7 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 
 API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano, um por vez; sem leituras de contingência da campanha inteira) | " + API_VERSAO   # R008: prefixo da versão nova (linha curta)
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
-API_VERSAO = "8.32-o52-leitura-continua (ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro) | " + API_VERSAO   # O52
+API_VERSAO = "8.32-o52-leitura-continua (ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
 BUILD_TAG = "2026-11-08-leitura-continua-o52"
 
 def _bt_base_ligar(codigo, mq5, ativo):
@@ -30965,6 +30965,8 @@ def _ses_resumo(sb, uid, bot, req):
     agora = _dt.now(_tz.utc)
     _ses_lista(sb, True)
     filtro, info = _ses_resolver(sb, bot, req.sessao)
+    if not filtro and (req.sessao or "") in ("", "padrao", "leitura"):
+        return _res_leitura_bot(sb, uid, bot, req)          # O52: bot sem campanha → a leitura do mercado no período
     if not filtro or filtro == "anterior":
         raise HTTPException(status_code=404, detail="este bot não tem campanha/sessão para resumir")
     ses = next(s for s in _ses_lista(sb) if s["id"] == filtro)
@@ -31259,6 +31261,297 @@ def _ses_resumo(sb, uid, bot, req):
     md = "\n".join(L)
     return {"versao": RESUMO_VERSAO, "sessao": ses["id"], "periodo": per, "desde_utc": _rel_iso(desde), "ate_utc": _rel_iso(agora),
             "ativos": alvo, "fuso": getattr(fz, "key", "UTC"), "gerado_utc": _rel_iso(agora), "markdown": md}
+
+
+# ── O52 (ordem do dono 08/11/2026 16:33 Kyiv) — RESUMO DO BOT SEM CAMPANHA = A LEITURA DO MERCADO NO PERÍODO ──────────
+# O mesmo botão "📋 Resumo" e a mesma rota (/learning/sessao/resumo). Bot sem campanha (ex.: cartão Lateral, bots 15/16):
+# o resumo é montado da leitura gravada a CADA snapshot (auditoria_leituras + auditoria_candles, gravadas para todo bot
+# desde a 8.32) e das operações da BabyMachine do bot. Por barra M15: canal EMA20 High/Low (acima/dentro/abaixo e o
+# rompimento da média), estrutura M15/H1 (direção, caixa, regime, localização, último topo/fundo = resistência/suporte,
+# eventos e gatilho de exaustão) e a lateralização da R0 (o MESMO código do cartão). Janelas de gráfico (regra do dono
+# 08/11): canal EMA20 H/L em amarelo #ffd60a, suporte/resistência, exaustão, rompimento da média, gatilho/entrada/saída,
+# casos em que a regra deixou passar com o motivo; exemplos por sorteio FIXO dentro de cada categoria. Só consulta.
+_RES_LEIT_VERSAO = "leitura-1 (O52)"
+_RES_LEIT_AMARELO = "#ffd60a"
+_RES_LEIT_SEMENTE = 52
+
+
+def _res_leit_regra_r0():
+    """funções da R0 a partir do PRÓPRIO código do cartão (mesma régua do EA e do passo Testar)."""
+    try:
+        from backtesting import Strategy as _St
+        ns = {"pd": pd, "np": np, "Strategy": _St, "__builtins__": SAFE_BUILTINS}
+        exec(ESTRATEGIA_LATERAL_R0["codigo"], ns)
+        return ns["DETECTAR"], ns["ATR_WILDER"], ns["TK"]
+    except Exception:
+        return None, None, None
+
+
+def _res_leit_ema(xs):
+    e, a = [], 2.0 / 21.0
+    for i, x in enumerate(xs):
+        e.append(x if i == 0 else e[-1] + a * (x - e[-1]))
+    return e
+
+
+def _res_leit_tf(est, tf):
+    d = (est or {}).get(tf) if isinstance(est, dict) else None
+    return d if isinstance(d, dict) else {}
+
+
+def _res_leit_exaustao(d):
+    evs = [str(x) for x in (d.get("eventos") or [])]
+    marcas = [x for x in evs if ("exaust" in x or "sacudida" in x)]
+    if d.get("gatilho_exaustao") not in (None, "", False):
+        marcas.append(f"gatilho_exaustao={d.get('gatilho_exaustao')}")
+    return marcas
+
+
+def _res_leit_dados(sb, bot, desde, ate):
+    cs, trunc_c = _aud_candles(sb, bot, "M15", desde, ate, antes=60)
+    cs = [c for c in cs if c.get("fechado") and c.get("o") is not None]
+    leit, trunc_l = _rel_pag(lambda: sb.table("auditoria_leituras").select("ts,barra_m15_utc,preco,zonas,regime,indicadores,estrutura_por_tf,posicoes")
+                             .eq("bot_id", int(bot["id"])).gte("ts", _rel_iso(desde)).lte("ts", _rel_iso(ate)).order("id"), 60000)
+    por_barra = {}
+    for r in leit:                                   # a última leitura de cada barra M15 (identificada pelo fechamento)
+        if r.get("barra_m15_utc"):
+            por_barra[str(_rel_iso(_rel_dt(r["barra_m15_utc"])))] = r
+    try:
+        ops = (sb.table("babymachine_operacoes").select("id,status,ativo,timeframe,fonte,decisao,resultado,ts_criada,ts_entrada,ts_saida")
+               .eq("bot_id", int(bot["id"])).gte("ts_criada", _rel_iso(desde)).order("id").limit(500).execute().data or [])
+    except Exception:
+        ops = []
+    return cs, leit, por_barra, ops, (trunc_c or trunc_l)
+
+
+def _res_leit_barras(cs, por_barra, desde):
+    """linha por barra M15 FECHADA do período: OHLC, canal, rompimento da média, estrutura M15/H1, exaustão, R0."""
+    DET, ATRW, TK = _res_leit_regra_r0()
+    H = [float(c["h"]) for c in cs]; L = [float(c["l"]) for c in cs]; C = [float(c["c"]) for c in cs]
+    EH, EL = _res_leit_ema(H), _res_leit_ema(L)
+    A = list(ATRW(H, L, C)) if ATRW else [None] * len(cs)
+    hT = [TK(x) for x in H] if TK else []; lT = [TK(x) for x in L] if TK else []; cT = [TK(x) for x in C] if TK else []
+    out, ant_pos = [], None
+    for i, c in enumerate(cs):
+        ab = _rel_dt(c["abertura_utc"]); fecha = ab + _td(minutes=15)
+        pos = "acima" if C[i] > EH[i] else ("abaixo" if C[i] < EL[i] else "dentro")
+        romp = None
+        if ant_pos and pos != ant_pos:
+            romp = {("acima", "dentro"): "fechou de volta DENTRO do canal (rompeu a EMA20 High para baixo)",
+                    ("abaixo", "dentro"): "fechou de volta DENTRO do canal (rompeu a EMA20 Low para cima)",
+                    ("dentro", "acima"): "fechou ACIMA do canal (rompeu a EMA20 High para cima)",
+                    ("dentro", "abaixo"): "fechou ABAIXO do canal (rompeu a EMA20 Low para baixo)",
+                    ("acima", "abaixo"): "atravessou o canal inteiro para baixo", ("abaixo", "acima"): "atravessou o canal inteiro para cima"}.get((ant_pos, pos))
+        ant_pos = pos
+        if ab < desde:
+            continue
+        r0 = {"lateral": None, "formacao": None}
+        a_ = A[i] if i < len(A) else None
+        if DET and i >= 14 and a_ == a_ and a_:
+            amp = max(H[i - 11:i + 1]) - min(L[i - 11:i + 1])
+            r0["lateral"] = bool(amp <= 3.0 * a_); r0["amp_atr"] = round(amp / a_, 2)
+            for s in (-1, 1):
+                p = DET(lT[:i + 1], hT[:i + 1], cT[:i + 1], float(A[i - 1]), i) if s < 0 else DET([-x for x in hT[:i + 1]], [-x for x in lT[:i + 1]], [-x for x in cT[:i + 1]], float(A[i - 1]), i)
+                if p >= 0:
+                    nivel = L[p] if s < 0 else H[p]; ext = L[i] if s < 0 else H[i]
+                    gat = round((TK(ext) + s) * 0.01, 2)
+                    prox = cs[i + 1] if i + 1 < len(cs) else None
+                    res = None
+                    if prox is not None:
+                        sup = (float(prox["l"]) <= gat) if s < 0 else (float(prox["h"]) >= gat)
+                        toc = (float(prox["l"]) <= ext) if s < 0 else (float(prox["h"]) >= ext)
+                        res = "superou o gatilho na barra seguinte (entrada da regra)" if sup else ("tocou o extremo sem superar: DEIXOU PASSAR" if toc else "não alcançou o gatilho: DEIXOU PASSAR")
+                    r0["formacao"] = {"lado": "venda" if s < 0 else "compra", "nivel": round(nivel, 2), "extremo": round(ext, 2), "gatilho": gat,
+                                      "stop_2atr": round(2 * a_, 2), "resultado_barra_seguinte": res or "barra seguinte ainda não fechou"}
+                    break
+        lb = por_barra.get(str(_rel_iso(fecha))) or {}
+        est = lb.get("estrutura_por_tf") or {}
+        m15, h1 = _res_leit_tf(est, "M15"), _res_leit_tf(est, "H1")
+        out.append({"i": i, "abertura_utc": ab, "fecha_utc": fecha, "o": float(c["o"]), "h": H[i], "l": L[i], "c": C[i],
+                    "ema20_high": round(EH[i], 2), "ema20_low": round(EL[i], 2), "atr14": (round(a_, 2) if a_ == a_ and a_ else None),
+                    "canal": pos, "rompimento_media": romp, "tem_leitura": bool(lb), "m15": m15, "h1": h1,
+                    "exaustao": _res_leit_exaustao(m15) + [f"H1:{x}" for x in _res_leit_exaustao(h1)], "r0": r0,
+                    "regime": (lb.get("regime") or {}).get("estado") if isinstance(lb.get("regime"), dict) else None})
+    return out, (cs, EH, EL)
+
+
+def _res_leit_png(serie, k0, k1, titulo, marcas, legenda_extra=""):
+    """janela M15 [k0,k1] com canal EMA20 H/L amarelo, níveis e marcas; eixo UTC + Kyiv."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+    except Exception:
+        return None
+    cs, EH, EL = serie
+    k0, k1 = max(0, k0), min(len(cs) - 1, k1)
+    xs = [_rel_dt(cs[k]["abertura_utc"]) + _td(minutes=7.5) for k in range(k0, k1 + 1)]
+    fig, ax = plt.subplots(figsize=(11, 4.4), dpi=110)
+    for x, k in zip(xs, range(k0, k1 + 1)):
+        o, h, l, c = (float(cs[k][z]) for z in ("o", "h", "l", "c")); cor = "#2a9d8f" if c >= o else "#e76f51"
+        ax.plot([x, x], [l, h], color=cor, linewidth=0.7)
+        ax.add_patch(plt.Rectangle((mdates.date2num(x - _td(minutes=5)), min(o, c)), 10 / 1440.0, max(abs(c - o), (h - l) * 0.02 or 0.01), color=cor, alpha=0.9))
+    ax.plot(xs, EH[k0:k1 + 1], color=_RES_LEIT_AMARELO, linewidth=2.2, label="EMA20 High")
+    ax.plot(xs, EL[k0:k1 + 1], color=_RES_LEIT_AMARELO, linewidth=2.2, linestyle="--", label="EMA20 Low")
+    for m in marcas:
+        if m.get("tipo") == "nivel":
+            ax.axhline(m["preco"], color=m.get("cor", "#e63946"), linestyle="--", linewidth=1.1, label=m.get("rotulo"))
+        elif m.get("tipo") == "ponto" and k0 <= m["k"] <= k1:
+            x = _rel_dt(cs[m["k"]]["abertura_utc"]) + _td(minutes=7.5)
+            ax.scatter([x], [m["preco"]], marker=m.get("marcador", "o"), s=m.get("s", 80), color=m.get("cor", "#1d3557"), zorder=6, label=m.get("rotulo"))
+            ax.annotate(m.get("texto", ""), (x, m["preco"]), textcoords="offset points", xytext=(5, 8), fontsize=7.5, color=m.get("cor", "#1d3557"))
+    h_, l_ = ax.get_legend_handles_labels(); vistos = {}
+    for hh, ll in zip(h_, l_):
+        if ll and ll not in vistos:
+            vistos[ll] = hh
+    ax.legend(list(vistos.values()), list(vistos.keys()), fontsize=7, loc="upper left", framealpha=0.85)
+    ax.set_title(titulo, fontsize=8.5); ax.grid(alpha=0.25); ax.tick_params(labelsize=7)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m %H:%M", tz=_tz.utc))
+    ax.set_xlabel("M15 · horário UTC (Kyiv = UTC+02:00 no inverno)" + (" · " + legenda_extra if legenda_extra else ""), fontsize=7)
+    fig.autofmt_xdate()
+    import io as _io, base64 as _b64
+    b = _io.BytesIO(); fig.tight_layout(); fig.savefig(b, format="png"); plt.close(fig)
+    return _b64.b64encode(b.getvalue()).decode()
+
+
+def _res_leit_janelas(barras, serie, ops, sim):
+    """exemplos por sorteio FIXO em cada categoria (não pelo resultado): exaustão, rompimento da média, R0 entrou,
+    R0 deixou passar, operação. Cada janela diz em uma linha o que aconteceu e por quê."""
+    import random as _rnd
+    rg = _rnd.Random(_RES_LEIT_SEMENTE)
+    cat = {"exaustao": [b for b in barras if b["exaustao"]], "rompimento": [b for b in barras if b["rompimento_media"]],
+           "r0_entrou": [b for b in barras if (b["r0"].get("formacao") or {}).get("resultado_barra_seguinte", "").startswith("superou")],
+           "r0_deixou": [b for b in barras if "DEIXOU PASSAR" in str((b["r0"].get("formacao") or {}).get("resultado_barra_seguinte"))]}
+    out = []
+    def niveis(b):
+        m = []
+        if b["m15"].get("ultimo_topo"): m.append({"tipo": "nivel", "preco": float(b["m15"]["ultimo_topo"]), "cor": "#e63946", "rotulo": "resistência (último topo M15)"})
+        if b["m15"].get("ultimo_fundo"): m.append({"tipo": "nivel", "preco": float(b["m15"]["ultimo_fundo"]), "cor": "#2a9d8f", "rotulo": "suporte (último fundo M15)"})
+        return m
+    for nome, lst in cat.items():
+        if not lst:
+            continue
+        b = rg.choice(lst); k = b["i"]; mk = niveis(b)
+        if nome == "exaustao":
+            p_ = b["h"] if (b["m15"].get("dir") or 0) >= 0 else b["l"]
+            mk.append({"tipo": "ponto", "k": k, "preco": p_, "marcador": "*", "s": 160, "cor": "#7b2cbf", "rotulo": "ponto de exaustão", "texto": "exaustão"})
+            tit = f"{sim} · EXAUSTÃO {_rel_iso(b['fecha_utc'])[:16]} UTC — " + ", ".join(b["exaustao"])[:110]
+        elif nome == "rompimento":
+            mk.append({"tipo": "ponto", "k": k, "preco": b["c"], "marcador": "D", "s": 70, "cor": "#f77f00", "rotulo": "rompimento da média", "texto": "rompeu a média"})
+            tit = f"{sim} · ROMPIMENTO DA MÉDIA {_rel_iso(b['fecha_utc'])[:16]} UTC — {b['rompimento_media']}"
+        else:
+            f = b["r0"]["formacao"]
+            mk += [{"tipo": "nivel", "preco": f["nivel"], "cor": "#457b9d", "rotulo": "nível da caixa (R0)"},
+                   {"tipo": "nivel", "preco": f["gatilho"], "cor": "#1d3557", "rotulo": "gatilho (extremo ± 1 tick)"},
+                   {"tipo": "ponto", "k": k, "preco": f["extremo"], "marcador": "v" if f["lado"] == "venda" else "^", "s": 90, "cor": "#1d3557",
+                    "rotulo": "barra de rompimento", "texto": f"rompimento ({f['lado']})"}]
+            tit = (f"{sim} · R0 {'ENTROU' if nome == 'r0_entrou' else 'DEIXOU PASSAR'} {_rel_iso(b['fecha_utc'])[:16]} UTC — "
+                   f"caixa lateral + fechamento além de {f['nivel']}; barra seguinte: {f['resultado_barra_seguinte']}")
+        png = _res_leit_png(serie, k - 30, k + 12, tit, mk, "★ exaustão  ◆ rompimento da média  ▲▼ barra de rompimento  - - níveis")
+        if png:
+            out.append({"categoria": nome, "titulo": tit, "png_b64": png, "barra_utc": _rel_iso(b["fecha_utc"])})
+    for o in ops[:1] if ops else []:
+        d = o.get("decisao") or {}; r = o.get("resultado") or {}
+        te = _rel_dt(o.get("ts_entrada")); k = next((b["i"] for b in barras if te and b["abertura_utc"] <= te < b["fecha_utc"]), None)
+        if k is None or not d.get("entrada"):
+            continue
+        mk = [{"tipo": "ponto", "k": k, "preco": float(d["entrada"]), "marcador": "^" if str(d.get("direcao")).lower() in ("long", "buy", "compra") else "v", "s": 90, "cor": "#1d3557", "rotulo": "entrada", "texto": f"entrada {d.get('entrada')}"}]
+        if d.get("stop") or d.get("sl"):
+            mk.append({"tipo": "nivel", "preco": float(d.get("stop") or d.get("sl")), "cor": "#9d0208", "rotulo": "stop"})
+        tit = f"{sim} · OPERAÇÃO #{o['id']} {o.get('status')} — entrada {d.get('entrada')} · resultado {r.get('lucro_usd', r.get('pnl', _RES_ND))}"
+        png = _res_leit_png(serie, k - 30, k + 20, tit, mk)
+        if png:
+            out.append({"categoria": "operacao", "titulo": tit, "png_b64": png})
+    return out
+
+
+def _res_leitura_bot(sb, uid, bot, req):
+    agora = _dt.now(_tz.utc)
+    try:
+        from zoneinfo import ZoneInfo
+        fz = ZoneInfo("Europe/Kyiv")
+    except Exception:
+        fz = _tz.utc
+    per = (req.periodo or "campanha").lower()
+    ini_bot = _rel_dt(bot.get("criado_em")) or (agora - _td(days=1))
+    desde = ini_bot if per not in _RES_PERIODOS else max(ini_bot, agora - _td(days=_RES_PERIODOS[per]))
+    sim = str(bot.get("simbolo") or "")
+    cfg = bot.get("config_operacional") or {}
+    cs, leit, por_barra, ops, trunc = _res_leit_dados(sb, bot, desde, agora)
+    barras, serie = _res_leit_barras(cs, por_barra, desde) if len(cs) >= 20 else ([], ([], [], []))
+    janelas = _res_leit_janelas(barras, serie, ops, sim) if barras else []
+    rot_per = {"campanha": "desde a criação do bot", "hoje": "últimas 24 h", "7d": "7 dias", "30d": "30 dias", "90d": "90 dias"}.get(per, per)
+    L = []; w = L.append
+    w(f"# Leitura do mercado — {bot.get('nome')} ({sim})\n")
+    w("> Bot sem campanha: este resumo mostra a LEITURA DO MERCADO gravada a cada snapshot (BabyMachine) no período e as operações do bot. "
+      f"Só consulta; não cria decisão nem comando. Campo sem dado aparece como \"{_RES_ND}\".\n")
+    w("## 1. Identificação\n")
+    w(_res_tab(["Campo", "Valor"], [["Bot", f"{bot.get('nome')} (id {bot.get('id')})"], ["Ativo", sim],
+        ["Estratégia", cfg.get("estrategia_nome") or _RES_ND], ["Timeframe do bot", cfg.get("timeframe_envio") or _RES_ND],
+        ["Período", f"{rot_per}: {_res_hora(desde, fz)} → {_res_hora(agora, fz)}"], ["Fuso", "Europe/Kyiv"],
+        ["Gerado em", _res_hora(agora, fz)], ["API", API_VERSAO.split(" ")[0]], ["Resumo", _RES_LEIT_VERSAO]]))
+    com = sum(1 for b in barras if b["tem_leitura"])
+    ini_l = leit[0]["ts"] if leit else None
+    w("\n## 2. Coleta da leitura\n")
+    w(_res_tab(["Item", "Valor"], [["Leituras gravadas no período", str(len(leit))], ["Barras M15 fechadas no período", str(len(barras))],
+        ["Barras M15 com leitura gravada", f"{com} de {len(barras)}"], ["Primeira leitura do período", _res_hora(ini_l, fz) if ini_l else _RES_ND],
+        ["Consulta truncada", "sim (período longo: limite de linhas atingido)" if trunc else "não"]]))
+    if barras and com < len(barras):
+        w(f"\nBarras sem leitura gravada aparecem só com preço e canal (a leitura contínua começou em {_res_hora(ini_l, fz) if ini_l else _RES_ND}).\n")
+    if not barras:
+        w(f"\nSem candles M15 suficientes no período para montar a leitura ({len(cs)} candles).\n")
+    if barras:
+        hi = max(barras, key=lambda b: b["h"]); lo = min(barras, key=lambda b: b["l"])
+        ex = [b for b in barras if b["exaustao"]]; rm = [b for b in barras if b["rompimento_media"]]
+        lat = [b for b in barras if b["r0"].get("lateral")]; fo = [b for b in barras if b["r0"].get("formacao")]
+        w("\n## 3. Resumo do período\n")
+        w(_res_tab(["Item", "Valor"], [["Máxima", f"{hi['h']} ({_res_hora(hi['fecha_utc'], fz)})"], ["Mínima", f"{lo['l']} ({_res_hora(lo['fecha_utc'], fz)})"],
+            ["Último fechamento", f"{barras[-1]['c']} · canal: {barras[-1]['canal']}"], ["Barras com exaustão marcada", str(len(ex))],
+            ["Rompimentos da média (EMA20 H/L)", str(len(rm))], ["Barras em lateralização (R0: 12 barras ≤ 3 ATR)", str(len(lat))],
+            ["Formações R0 (gatilho armado)", str(len(fo))], ["Operações do bot", str(len(ops))]]))
+        w("\n## 4. Linha do tempo — o que a leitura identificou\n")
+        evs = []
+        for b in barras:
+            t = _res_hora(b["fecha_utc"], fz)
+            if b["exaustao"]:
+                evs.append([t, "EXAUSTÃO", f"{', '.join(b['exaustao'])} · máx {b['h']} / mín {b['l']} · M15 {b['m15'].get('localizacao') or _RES_ND}"])
+            if b["rompimento_media"]:
+                evs.append([t, "ROMPIMENTO DA MÉDIA", f"{b['rompimento_media']} · fech {b['c']} · EMA20 H {b['ema20_high']} / L {b['ema20_low']}"])
+            for tf_, d in (("M15", b["m15"]), ("H1", b["h1"])):
+                for e in (d.get("eventos") or []):
+                    if any(x in str(e) for x in ("quebra_estrutura", "rompimento_confirmado", "voltou_compressao")):
+                        evs.append([t, f"ESTRUTURA {tf_}", f"{e} · topo {d.get('ultimo_topo')} / fundo {d.get('ultimo_fundo')}"])
+            f = b["r0"].get("formacao")
+            if f:
+                evs.append([t, "R0 GATILHO", f"{f['lado']} · nível {f['nivel']} · gatilho {f['gatilho']} · stop 2 ATR = {f['stop_2atr']} · {f['resultado_barra_seguinte']}"])
+        w(_res_tab(["Barra M15 (fechamento, Kyiv)", "Evento", "Detalhe"], evs) if evs else "Nenhum evento marcado no período.\n")
+        w("\n## 5. Leitura por barra M15\n")
+        lin = []
+        for b in barras:
+            m, h = b["m15"], b["h1"]
+            lin.append([_res_hora(b["fecha_utc"], fz), f"{b['o']}/{b['h']}/{b['l']}/{b['c']}", b["canal"],
+                        (f"{m.get('estrutura') or _RES_ND} · {m.get('regime') or _RES_ND} · {m.get('localizacao') or _RES_ND}" if b["tem_leitura"] else "sem leitura"),
+                        (f"{m.get('ultimo_fundo') or _RES_ND} / {m.get('ultimo_topo') or _RES_ND}" if b["tem_leitura"] else _RES_ND),
+                        (f"{h.get('estrutura') or _RES_ND} · {h.get('localizacao') or _RES_ND}" if b["tem_leitura"] else _RES_ND),
+                        ("lateral" if b["r0"].get("lateral") else ("—" if b["r0"].get("lateral") is None else f"larga ({b['r0'].get('amp_atr')} ATR)"))])
+        w(_res_tab(["Barra (Kyiv)", "O/H/L/C", "Canal EMA20", "M15: estrutura · regime · localização", "M15 suporte / resistência", "H1", "R0"], lin))
+    w("\n## 6. Operações do bot (BabyMachine)\n")
+    if ops:
+        w(_res_tab(["#", "Status", "Entrada", "Stop", "Saída", "Resultado"], [[str(o["id"]), str(o.get("status")), f"{(o.get('decisao') or {}).get('entrada', _RES_ND)} ({_res_hora(o.get('ts_entrada'), fz) if o.get('ts_entrada') else _RES_ND})",
+            str((o.get("decisao") or {}).get("stop") or (o.get("decisao") or {}).get("sl") or _RES_ND), _res_hora(o.get("ts_saida"), fz) if o.get("ts_saida") else _RES_ND,
+            str((o.get("resultado") or {}).get("lucro_usd", (o.get("resultado") or {}).get("pnl", _RES_ND)))] for o in ops]))
+    else:
+        w("Nenhuma operação no período.\n")
+    w("\n## 7. Janelas de gráfico\n")
+    if janelas:
+        w("Canal EMA20 High/Low em amarelo; suporte (último fundo M15) e resistência (último topo M15) tracejados; exemplos sorteados (semente fixa) por categoria.\n")
+        for j in janelas:
+            w(f"- {j['titulo']}")
+    else:
+        w("Sem janelas: não houve evento no período ou faltam candles.\n")
+    return {"markdown": "\n".join(L), "sessao": "sem campanha (leitura do bot)", "periodo": per, "ativos": [sim], "gerado_utc": agora.isoformat(),
+            "janelas": [{"titulo": j["titulo"], "png_b64": j["png_b64"]} for j in janelas], "versao": _RES_LEIT_VERSAO}
 
 
 @app.post("/learning/sessao/resumo")
