@@ -819,7 +819,8 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 
 API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano, um por vez; sem leituras de contingência da campanha inteira) | " + API_VERSAO   # R008: prefixo da versão nova (linha curta)
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
-BUILD_TAG = "2026-11-08-lateral-r0-o51"
+API_VERSAO = "8.32-o52-leitura-continua (ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro) | " + API_VERSAO   # O52
+BUILD_TAG = "2026-11-08-leitura-continua-o52"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -27103,10 +27104,11 @@ def _aud_leitura_do_snapshot(bot, det, ses, ts):
 
 
 def _aud_ingerir(sb, bot, det, snapshot_id):
-    """A cada snapshot de bot em CAMPANHA ativa: candles + leitura viva em UMA chamada (auditoria_registrar). Best-effort."""
+    """A cada snapshot: candles + leitura viva em UMA chamada (auditoria_registrar). Best-effort.
+    O52 (ordem do dono 08/11/2026 16:33 Kyiv): a leitura do mercado é CONSTANTE e fica registrada na BabyMachine para
+    TODO bot que envia snapshot — com ou sem campanha (antes: só bot em campanha ativa; os bots do cartão Lateral
+    ficavam sem leitura gravada). Só registra; não decide, não abre, não gere. Sem campanha, sessao_teste_id = null."""
     ses = _ses_do_bot(sb, bot.get("id"))
-    if ses is None:
-        return
     ts = _dt.now(_tz.utc)
     candles, off = _aud_candles_do_snapshot(det, ts)
     leit = _aud_leitura_do_snapshot(bot, det, ses, ts)

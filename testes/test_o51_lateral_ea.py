@@ -118,4 +118,4 @@ def test_5_envio_desliga_protetor_e_guardiao_so_no_lateral(A):
     src = open(os.path.join(RAIZ, "api.py"), encoding="utf-8").read()
     assert 'if "BT_LATERAL_R0" in _cod46:' in src and '_fl46["protecao"] = False; _fl46["guardiao"] = False' in src
     assert 'req.estrategia_nome = "Rompimento de Lateralizacao (R0)"' in src
-    assert A.API_VERSAO.startswith("8.31-o51-lateral-r0") and A.BUILD_TAG == "2026-11-08-lateral-r0-o51"
+    assert "8.31-o51-lateral-r0" in A.API_VERSAO
