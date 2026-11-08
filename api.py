@@ -821,7 +821,8 @@ API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
 API_VERSAO = "8.32.2-o52-leitura-continua (correção 8.32.2 / O51.1: EA do Lateral nasce com a disciplina neutra — sem alvo automático, sem trailing por barra, sem piso de stop) correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
 API_VERSAO = "8.33-o53-lateral-r1 (ORDEM 053: EA lateral-r1 — filtro de espaço de 1,0 R até a primeira zona (memória O39 do TF + H1, com spread), corte estrutural pela máxima/mínima da barra de entrada em cada barra fechada, reconciliação de fechamento (1 comando por barra; fechamento externo consultado no histórico; evento duplicado do mesmo ticket não vira órfã), reversão só em sombra; cada decisão vira evento tipo=lateral na BabyMachine; Diagnóstico geral da LM (O50) portado com a seção 5 replay × sombra × execução observada) | " + API_VERSAO
-BUILD_TAG = "2026-11-08-lateral-r1-o53"
+API_VERSAO = "8.33.1-o53a-atualizar-ea (ORDEM 053-A: atualização do EA lateral-r1 pelo fluxo mt5_jobs → Conector, disparada no servidor por BT_O53_ATUALIZAR_BOTS, um bot por vez, idempotente) | " + API_VERSAO
+BUILD_TAG = "2026-11-08-lateral-r1-o53a"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -32554,3 +32555,59 @@ try:
     app.include_router(_diag50.criar_router(_sb_admin, _sessao_user_id, lambda uid: str(uid) == str(_BIB_ADMIN_USER_ID)))
 except Exception as _e50:
     print(f"[o50/o53] rotas /learning/diagnostico indisponíveis: {_e50}")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8.33.1 — ORDEM 053-A: atualização do EA lateral-r1 pelo MESMO fluxo do "Enviar ao MT5" (mt5_jobs → Conector instala no MESMO
+# arquivo do bot e compila com o MetaEditor). Disparo do lado do servidor, sem sessão do navegador: a variável
+# BT_O53_ATUALIZAR_BOTS (ids separados por vírgula) é lida na subida do serviço; para cada bot Lateral ainda sem
+# "lateral-r1 (O53)" no código guardado, gera o EA com o MESMO gerador, magic, SL/TP de envio e ativo do envio original e
+# cria o job 'validando'. Idempotente (bot já atualizado é pulado). Não abre, não fecha, não altera posição.
+# ════════════════════════════════════════════════════════════════════════════
+def _o53_atualizar_eas():
+    ids = [int(x) for x in (os.getenv("BT_O53_ATUALIZAR_BOTS") or "").replace(" ", "").split(",") if x.isdigit()]
+    if not ids:
+        return
+    sb = _sb_admin()
+    if sb is None:
+        print("[o53-atualizar] sem Supabase"); return
+    for bid in ids:
+        try:
+            r = (sb.table("conector_bots").select("id,nome,bot_token,magic_number,mq5_codigo,mq5_filename,config_operacional,excluido")
+                 .eq("id", bid).limit(1).execute().data or [])
+            if not r:
+                print(f"[o53-atualizar] bot {bid}: não existe"); continue
+            b = r[0]; cfg = b.get("config_operacional") or {}
+            cod_ant = str(b.get("mq5_codigo") or "")
+            if b.get("excluido") or "BTLatDetectar" not in cod_ant:
+                print(f"[o53-atualizar] bot {bid}: não é um bot Lateral ativo — ignorado"); continue
+            if "lateral-r1 (O53)" in cod_ant:
+                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1 (O53) — nada a fazer"); continue
+            pend = (sb.table("mt5_jobs").select("job_id").eq("bot_token", b["bot_token"]).eq("status", "validando").limit(1).execute().data or [])
+            if pend:
+                print(f"[o53-atualizar] bot {bid}: já há job pendente {pend[0]['job_id']} — não duplica"); continue
+            ativo = cfg.get("ativo_envio") or ""
+            cod = ESTRATEGIA_LATERAL_R0["codigo"]
+            mq5 = _gerar_mq5_de_codigo(cod, {"magic": int(b["magic_number"]), "stop_loss": cfg.get("sl_envio_pts", 0), "take_profit": cfg.get("tp_envio_pts", 0),
+                                             "ativo": ativo})
+            mq5 = _bt_base_ligar(cod, mq5, ativo)
+            ok_s = _mq5_sanidade(mq5 or "")[0]
+            if not mq5 or not ok_s or "lateral-r1 (O53)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
+                print(f"[o53-atualizar] bot {bid}: geração reprovada na sanidade — job NÃO criado"); continue
+            import uuid as _u53
+            job_id = "o53" + _u53.uuid4().hex[:13]
+            if not _mt5_job_criar({"job_id": job_id, "bot_token": b["bot_token"], "filename": b.get("mq5_filename") or (_mt5_slug(b.get("nome")) + ".mq5"),
+                                   "magic": int(b["magic_number"]), "mq5": mq5, "status": "validando", "aprovado": None, "log": "", "pre_validado": False}):
+                print(f"[o53-atualizar] bot {bid}: falha ao criar o job"); continue
+            sb.table("conector_bots").update({"mq5_codigo": mq5}).eq("id", bid).execute()
+            print(f"[o53-atualizar] bot {bid} ({b.get('nome')}): job {job_id} criado para {b.get('mq5_filename')} "
+                  f"(sha256 {hashlib.sha256(mq5.encode('utf-8')).hexdigest()[:16]}, {len(mq5)} bytes)")
+        except Exception as e:
+            print(f"[o53-atualizar] bot {bid}: erro {str(e)[:200]}")
+
+
+@app.on_event("startup")
+def _o53_atualizar_eas_startup():
+    if os.getenv("RAILWAY_ENVIRONMENT_NAME") and os.getenv("BT_O53_ATUALIZAR_BOTS"):
+        import threading as _th53
+        _th53.Thread(target=_o53_atualizar_eas, daemon=True).start()
