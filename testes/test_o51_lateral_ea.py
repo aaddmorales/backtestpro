@@ -62,6 +62,8 @@ def _traduzir(mq5, dst):
 
 @pytest.mark.skipif(shutil.which("g++") is None, reason="sem g++ (a camada do MT5 é C++)")
 def test_2_ea_tick_a_tick_igual_ao_motor_o47(A):
+    pytest.skip("O53: o EA passou a ser o lateral-r1 (filtro de espaço + corte estrutural). A equivalência tick a tick agora é EA × ao_vivo_o53 "
+                "(testes/test_o53_lateral_r1.py::test_1) e a R0 sem os filtros = O47 (test_o53_lateral_r1.py::test_2).")
     tmp = tempfile.mkdtemp(); shutil.copy(os.path.join(REF, "shim", "mt5shim.h"), tmp); shutil.copy(os.path.join(REF, "shim", "main.cpp"), tmp)
     _traduzir(A._BT_LATERAL_R0_MQL5, os.path.join(tmp, "ea.cpp"))
     r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", os.path.join(tmp, "sim"), os.path.join(tmp, "main.cpp")], capture_output=True, text=True)

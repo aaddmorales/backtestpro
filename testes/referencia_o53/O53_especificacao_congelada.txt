@@ -1,0 +1,53 @@
+ORDEM 053 — lateral-r1 (O53) — ESPECIFICAÇÃO CONGELADA ANTES DO REPLAY
+Congelada em 08/11/2026 (Europe/Kyiv), com os critérios escolhidos pelo dono no chat (espaço 1,0 R; invalidação = máxima/mínima da barra de entrada).
+Base: R0 da O44/O47 (lateral-tf-ao-vivo-0.1) SEM mudança na formação, no gatilho, no stop (2 ATR) e na saída pelo canal EMA20 High/Low.
+Nada aqui foi ajustado depois de olhar o resultado do replay.
+
+1. ZONAS (memória estrutural já existente: estrutura-0.1, ORDEM 039, testes/referencia_o51/estrutura_o39.py, sem alteração)
+   - Fundos/topos por fractal estrito 2+2, confirmados no fechamento da barra i+2; zona de fundo [x, x+0,25·ATR14]; topo [x−0,25·ATR14, x];
+     agrupamento, testes, rejeições, rompimento pendente/confirmado, recuperação e troca de função exatamente como na O39.
+   - Duas memórias por instância: a do TF do gráfico e a do H1 (no gráfico H1 só existe uma). Cada memória é aquecida, na primeira barra
+     fechada após ativar, com as últimas 1200 barras FECHADAS daquele TF e depois recebe, a cada fechamento do TF do gráfico, todas as barras
+     fechadas daquele TF com abertura posterior à última já processada. Barra em formação nunca entra.
+   - Reações (testes/rejeições) qualificam e são registradas; não são garantia e não mudam o critério.
+
+2. FILTRO DE ESPAÇO NA ENTRADA (item 2 da ordem)
+   - Momento: o tick que supera o gatilho (regra R0 inalterada). Preço executável E = bid na venda, ask na compra; spread = ask − bid.
+   - R = 2·ATR14 do TF do gráfico (a distância do stop da regra).
+   - Primeira zona à frente: na venda, o SUPORTE ativo (estado ≠ ROMPIMENTO CONFIRMADO) com base < E mais próximo, nas duas memórias;
+     na compra, a RESISTÊNCIA ativa com topo > E mais próxima (mesma consulta Memoria.obstaculo da O39).
+     distância d = E − topo da zona (venda) / base da zona − E (compra); d = 0 se E estiver DENTRO da zona.
+   - Espaço líquido = d − spread (a saída de uma venda é paga no ask).
+   - BLOQUEIA e registra o motivo quando: (a) E dentro da zona → "entrada dentro da zona"; (b) espaço líquido < 1,0·R → "espaço insuficiente".
+     O registro traz a zona (TF, base, topo, estado, testes, rejeições, membros), d e o espaço líquido em preço, em ATR e em R.
+   - Sem zona à frente → entra (registra "sem zona à frente").
+   - Rompimento confirmado da zona (estado ROMPIMENTO CONFIRMADO da O39) tira a zona da consulta; o sinal novo só nasce de uma nova formação R0.
+   - Sinal bloqueado consome a chave lado|pivô (como o bloqueio por posição aberta da O47).
+
+3. CORTE ESTRUTURAL (item 3 da ordem)
+   - Referência de invalidação registrada na abertura: "máxima da barra de entrada" (venda) / "mínima da barra de entrada" (compra);
+     a barra de entrada é a barra do TF do gráfico que contém o tick de entrada. O valor congela no fechamento dessa barra.
+   - Reavaliação em CADA barra fechada do TF do gráfico a partir da barra seguinte à de entrada: venda corta se fechamento > referência;
+     compra corta se fechamento < referência (estrito). Corta no PRIMEIRO fechamento que confirma. Sem espera de 3 barras, sem barra em
+     formação, sem veto de M1/M5.
+   - Execução: no primeiro tick da barra seguinte (mesmo momento da saída pelo canal da O47). Se canal e corte confirmam na mesma barra, o
+     motivo registrado é "corte estrutural" e o canal fica anotado como também confirmado.
+   - O stop de proteção (2 ATR, no servidor) continua independente e intocado.
+
+4. RECONCILIAÇÃO (item 4 da ordem)
+   - O EA guarda o ticket da posição aberta por ele. Cada comando de fechamento é registrado com o retcode. Não se reenvia comando enquanto o
+     anterior não tiver falhado; nova tentativa só na barra seguinte e só se o MT5 ainda mostrar a posição.
+   - Se a posição some sem comando do EA, o EA consulta o histórico do MT5 e registra o motivo do negócio de saída (stop, manual/cliente,
+     EA) — "fechamento externo".
+   - Na plataforma: operação com decisão de fechar e sem negócio de saída confirmado, ou posição aberta sem snapshot que a mostre, aparece
+     como "estado não confirmado no MT5". Nunca se gera comando novo a partir desse estado.
+
+5. REVERSÃO EM SOMBRA (item 5 da ordem)
+   - Decisão independente, só em replay/sombra (o EA não abre a reversão; registra apenas a avaliação).
+   - Quando um corte estrutural acontece, avalia-se a posição contrária ao preço executável do corte: stop 2·ATR, mesmo filtro de espaço do
+     item 2 no sentido contrário; se passar, a posição virtual segue as mesmas saídas (canal, corte estrutural pela barra de entrada dela, stop).
+   - Resultado separado, rotulado "sombra", nunca somado à operação real.
+
+6. ESTADOS SEPARADOS NA VALIDAÇÃO
+   - replay (motor de referência sobre candles gravados), sombra (decisões avaliadas sem ordem), execução observada (negócios do MT5).
+   - Código publicado, teste local e comportamento confirmado no terminal são três estados diferentes.

@@ -820,7 +820,8 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano, um por vez; sem leituras de contingência da campanha inteira) | " + API_VERSAO   # R008: prefixo da versão nova (linha curta)
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
 API_VERSAO = "8.32.2-o52-leitura-continua (correção 8.32.2 / O51.1: EA do Lateral nasce com a disciplina neutra — sem alvo automático, sem trailing por barra, sem piso de stop) correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
-BUILD_TAG = "2026-11-08-leitura-continua-o52-2"
+API_VERSAO = "8.33-o53-lateral-r1 (ORDEM 053: EA lateral-r1 — filtro de espaço de 1,0 R até a primeira zona (memória O39 do TF + H1, com spread), corte estrutural pela máxima/mínima da barra de entrada em cada barra fechada, reconciliação de fechamento (1 comando por barra; fechamento externo consultado no histórico; evento duplicado do mesmo ticket não vira órfã), reversão só em sombra; cada decisão vira evento tipo=lateral na BabyMachine; Diagnóstico geral da LM (O50) portado com a seção 5 replay × sombra × execução observada) | " + API_VERSAO
+BUILD_TAG = "2026-11-08-lateral-r1-o53"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -8126,7 +8127,9 @@ ESTRATEGIA_LATERAL_R0 = {
             "resist\u00eancia. A entrada s\u00f3 vale na barra seguinte, quando o pre\u00e7o supera por pelo menos um tick o extremo "
             "da barra de rompimento; tocar n\u00e3o abre. Stop de 2 ATR e sa\u00edda pelo canal EMA20 High/Low no timeframe do "
             "gr\u00e1fico. M1/M5 fora da decis\u00e3o. Uma posi\u00e7\u00e3o por bot. Use gr\u00e1fico M15, M30 ou H1 de XAUUSD ou "
-            "BTCUSD, conta DEMO. EXPERIMENTAL \u2014 resultados ainda N\u00c3O medidos.",
+            "BTCUSD, conta DEMO. EA lateral-r1 (O53): s\u00f3 entra se houver pelo menos 1 R at\u00e9 a primeira zona de suporte/resist\u00eancia "
+            "\u00e0 frente (mem\u00f3ria estrutural do TF + H1, descontado o spread) e corta no primeiro fechamento al\u00e9m da m\u00e1xima/m\u00ednima "
+            "da barra de entrada. O Testar deste cart\u00e3o mede a R0 sem esses dois filtros. EXPERIMENTAL \u2014 resultados ainda N\u00c3O medidos.",
     "tags": ["EXPERIMENTAL", "ROMPIMENTO"], "nivel": "interno",
     "mercados": ["XAU/USD (Ouro)", "BTC/USD"],
     "ensaio": {"ativo": "XAU/USD (Ouro)", "periodo": "6 meses", "ativos": ["XAU/USD (Ouro)", "BTC/USD"]},
@@ -10241,6 +10244,21 @@ def _bm_processar_fechamento(sb, bot, det, evento_id):
                     print(f"[bm-recuperar] bot {bot.get('id')}: fechamento recuperou órfã {alvo_r['id']} pro histórico")
             except Exception:
                 pass
+        if not abertas and _ev_tick:
+            # 8.33 — O53 RECONCILIAÇÃO: o MESMO ticket já fechado (o EA manda o fechamento pelo log E pela telemetria OTT, que traz
+            # deal/razão/lucro) não vira órfã: o segundo evento só completa a operação já fechada com a confirmação do MT5.
+            try:
+                _fech = (sb.table("babymachine_operacoes").select("id,decisao,resultado").eq("bot_id", bot.get("id"))
+                         .eq("status", "fechada").order("id", desc=True).limit(20).execute().data or [])
+                _ja = next((o for o in _fech if str(((o.get("decisao") or {}).get("ticket")) or "").strip() == _ev_tick), None)
+                if _ja:
+                    _res = dict(_ja.get("resultado") or {})
+                    _res["confirmacao_mt5"] = {k: v for k, v in (det or {}).items() if k not in ("bot_token",)}
+                    _res["confirmacao_evento_id"] = evento_id
+                    sb.table("babymachine_operacoes").update({"resultado": _res}).eq("id", _ja["id"]).execute()
+                    return
+            except Exception as _e53:
+                print(f"[bm-o53] reconciliacao do ticket {_ev_tick}: {_e53}")
         if not abertas:
             # órfã — fechou sem entrada registrada (perdemos o hook)
             try:
@@ -18640,42 +18658,252 @@ def _mq5_cache_aprovar(gen_hash: str):
 # O51 — esqueleto do EA "Rompimento de Lateralização" (R0). Conferido tick a tick contra ao_vivo_o47
 # (testes/test_o51_lateral_ea.py). Só ASCII; instrumentado por _instrumentar_log_mql5 no gerador.
 _BT_LATERAL_R0_MQL5 = r'''//+------------------------------------------------------------------+
-//| BotTested - ROMPIMENTO DE LATERALIZACAO R0 (O51, lateral-tf-0.1)  |
-//| EXPERIMENTAL - SEM RESULTADO MEDIDO. Regra R0 da O44 por tick     |
-//| (mesma do motor O47): caixa de 12 barras fechadas com amplitude  |
-//| <= 3 ATR(14 Wilder); pivo com tentativa previa; fechamento alem  |
-//| do nivel. Entrada SO na barra seguinte, no tick em que o BID     |
-//| supera em >= 1 tick (0,01) o extremo da barra de rompimento;     |
-//| tocar nao abre. Stop 2 ATR. Saida no fechamento de volta ao canal|
-//| EMA20 High/Low do TF do grafico. Uma posicao por bot.            |
-//| Graficos M15, M30 ou H1; XAUUSD e BTCUSD (2 casas). InpStopLoss e |
-//| InpTakeProfit NAO sao usados: o stop e a saida sao da regra.      |
+//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1, ORDEM 053)   |
+//| EXPERIMENTAL - SEM RESULTADO MEDIDO. Base: regra R0 da O44/O47     |
+//| (caixa de 12 barras <= 3 ATR; pivo com tentativa; fechamento alem |
+//| do nivel; entrada na barra seguinte quando o BID supera o extremo |
+//| da barra de rompimento em >= 1 tick; stop 2 ATR; saida no fecha-  |
+//| mento de volta ao canal EMA20 High/Low). O53 acrescenta:          |
+//|  (1) FILTRO DE ESPACO: antes de vender, a primeira zona de suporte|
+//|      a frente (memoria estrutural O39 do TF do grafico + H1);     |
+//|      bloqueia se a entrada estiver dentro da zona ou se o espaco  |
+//|      liquido (descontado o spread) for < 1,0 R (R = 2 ATR).       |
+//|  (2) CORTE ESTRUTURAL: a cada barra fechada, venda corta se o     |
+//|      fechamento passar da MAXIMA da barra de entrada (compra: da  |
+//|      minima). Sem esperar 3 barras; barra em formacao nao conta.  |
+//|  (3) RECONCILIACAO: no maximo 1 comando de fechar por barra;      |
+//|      fechamento sem comando do EA e consultado no historico.      |
+//|  (4) REVERSAO: so avaliada e registrada (sombra); nunca abre.     |
+//| Cada decisao vai para a BabyMachine (evento tipo=lateral).        |
+//| Graficos M15, M30 ou H1; XAUUSD e BTCUSD (2 casas).               |
 //+------------------------------------------------------------------+
 #include <Trade\Trade.mqh>
 input long   InpMagic      = 0;
 input double InpLote       = 0.01;
 input int    InpStopLoss   = 0;     // nao usado: stop da regra = 2 ATR(14) do TF do grafico
-input int    InpTakeProfit = 0;     // nao usado: saida pelo canal EMA20 High/Low
+input int    InpTakeProfit = 0;     // nao usado: saida pelo canal EMA20 High/Low ou corte estrutural
 CTrade trade;
 
+#define BTLAT_VERSAO "lateral-r1 (O53)"
 #define BTLAT_CAIXA 12
 #define BTLAT_NJAN  1200
 #define BTLAT_NATR  14
 #define BTLAT_TICK  0.01
 #define BTLAT_KAMP  3.0
 #define BTLAT_KSTOP 2.0
+#define BTLAT_KZONA 0.25
+#define BTLAT_KESP  1.0
+
+// estados da memoria estrutural (O39)
+#define BTZ_CONF    0
+#define BTZ_TESTE   1
+#define BTZ_PEND    2
+#define BTZ_ROMP    3
+#define BTZ_RECUP   4
 
 bool     btLatOk        = false;
 datetime btLatUltBarra  = 0;
-int      btLatPendLado  = 0;        // 0 = sem gatilho armado; -1 venda; 1 compra
-long     btLatPendExtT  = 0;        // extremo da barra de rompimento (ticks)
-long     btLatPendTT    = 0;        // gatilho = extremo +/- 1 tick (ticks)
+int      btLatPendLado  = 0;
+long     btLatPendExtT  = 0;
+long     btLatPendTT    = 0;
 double   btLatPendAtr   = 0.0;
 datetime btLatPendIni   = 0;
 datetime btLatPendFim   = 0;
 bool     btLatPendTocou = false;
 string   btLatPendId    = "";
 string   btLatUsados[];
+long     btLatPosTk     = 0;        // ticket da posicao do EA visto no ultimo tick (reconciliacao)
+long     btLatCmdTk     = 0;        // ticket com comando de fechar enviado
+datetime btLatCmdBarra  = 0;        // barra em que o ultimo comando foi enviado
+bool     btLatZonasLog  = false;
+
+// ---------- memoria estrutural O39 (estrutura-0.1), incremental por barra fechada ----------
+class CBTMem
+  {
+public:
+   string   nome;
+   ENUM_TIMEFRAMES per;
+   datetime ult;
+   int      nb;
+   double   atr;
+   bool     atrOk;
+   double   trSoma;
+   int      trN;
+   double   cAnt;
+   bool     cAntOk;
+   int      bufN;
+   double   p1H, p1L, p2H, p2L;
+   int      cdTipo[];
+   int      cdBarra[];
+   double   cdExt[];
+   double   cdAtr[];
+   long     cdT[];
+   int      zFun[];
+   double   zExt[];
+   double   zB[];
+   double   zT[];
+   int      zEst[];
+   int      zTestes[];
+   int      zRej[];
+   int      zMemb[];
+   bool     zAg[];
+   double   zBrH[];
+   double   zBrL[];
+   long     zText[];
+
+   void Init(string n,ENUM_TIMEFRAMES p)
+     {
+      nome=n; per=p; ult=0; nb=0; atr=0.0; atrOk=false; trSoma=0.0; trN=0; cAnt=0.0; cAntOk=false; bufN=0;
+      p1H=0.0; p1L=0.0; p2H=0.0; p2L=0.0;
+      ArrayResize(cdTipo,0); ArrayResize(cdBarra,0); ArrayResize(cdExt,0); ArrayResize(cdAtr,0); ArrayResize(cdT,0);
+      ArrayResize(zFun,0); ArrayResize(zExt,0); ArrayResize(zB,0); ArrayResize(zT,0); ArrayResize(zEst,0); ArrayResize(zTestes,0);
+      ArrayResize(zRej,0); ArrayResize(zMemb,0); ArrayResize(zAg,0); ArrayResize(zBrH,0); ArrayResize(zBrL,0); ArrayResize(zText,0);
+     }
+
+   void Atualizar(int k,double h,double l,double c)
+     {
+      bool sup=(zFun[k]<0);
+      double b=zB[k], tz=zT[k];
+      if(zAg[k])
+        {
+         zAg[k]=false;
+         bool ok=sup?(l<=zBrL[k]-BTLAT_TICK+1e-9):(h>=zBrH[k]+BTLAT_TICK-1e-9);
+         if(ok) { zEst[k]=BTZ_ROMP; return; }
+         zEst[k]=BTZ_TESTE;
+        }
+      if(zEst[k]==BTZ_ROMP)
+        {
+         if((sup && c>=tz) || (!sup && c<=b)) { zEst[k]=BTZ_RECUP; return; }
+         if((sup && h>=b && c<b) || (!sup && l<=tz && c>tz)) { zFun[k]=-zFun[k]; zEst[k]=BTZ_CONF; return; }
+         return;
+        }
+      bool rompe=sup?(c<b):(c>tz);
+      if(rompe) { zBrH[k]=h; zBrL[k]=l; zAg[k]=true; zEst[k]=BTZ_PEND; return; }
+      bool toca=sup?(l<=tz):(h>=b);
+      if(toca)
+        {
+         zTestes[k]++;
+         if((sup && l<b) || (!sup && h>tz)) zRej[k]++;
+         zEst[k]=BTZ_TESTE;
+        }
+     }
+
+   void Confirmar(int i)
+     {
+      int tipo=cdTipo[i]; double x=cdExt[i], a=cdAtr[i];
+      int fun=(tipo<0)?-1:1;
+      bool sup=(fun<0);
+      int nz=ArraySize(zFun), mel=-1;
+      for(int k=0;k<nz;k++)
+        {
+         if(zFun[k]!=fun || zEst[k]==BTZ_ROMP) continue;
+         bool dentro=sup?(zB[k]-BTLAT_KZONA*a<=x && x<=zT[k]):(zB[k]<=x && x<=zT[k]+BTLAT_KZONA*a);
+         if(dentro && (mel<0 || MathAbs(x-zExt[k])<MathAbs(x-zExt[mel]))) mel=k;
+        }
+      double z0=sup?x:x-BTLAT_KZONA*a, z1=sup?x+BTLAT_KZONA*a:x;
+      if(mel>=0)
+        {
+         zMemb[mel]++;
+         if(z0<zB[mel]) zB[mel]=z0;
+         if(z1>zT[mel]) zT[mel]=z1;
+         return;
+        }
+      ArrayResize(zFun,nz+1); ArrayResize(zExt,nz+1); ArrayResize(zB,nz+1); ArrayResize(zT,nz+1); ArrayResize(zEst,nz+1); ArrayResize(zTestes,nz+1);
+      ArrayResize(zRej,nz+1); ArrayResize(zMemb,nz+1); ArrayResize(zAg,nz+1); ArrayResize(zBrH,nz+1); ArrayResize(zBrL,nz+1); ArrayResize(zText,nz+1);
+      zFun[nz]=fun; zExt[nz]=x; zB[nz]=z0; zT[nz]=z1; zEst[nz]=BTZ_CONF; zTestes[nz]=0; zRej[nz]=0; zMemb[nz]=1; zAg[nz]=false;
+      zBrH[nz]=0.0; zBrL[nz]=0.0; zText[nz]=cdT[i];
+     }
+
+   void Nova(datetime t,double h,double l,double c)
+     {
+      double cp=cAnt; bool cpOk=cAntOk;
+      double tr=cpOk?MathMax(h-l,MathMax(MathAbs(h-cp),MathAbs(l-cp))):(h-l);
+      cAnt=c; cAntOk=true;
+      if(!atrOk)
+        {
+         trSoma+=tr; trN++;
+         if(trN==BTLAT_NATR) { atr=trSoma/BTLAT_NATR; atrOk=true; }
+        }
+      else atr=(atr*(BTLAT_NATR-1)+tr)/BTLAT_NATR;
+      nb++;
+      double lo=cpOk?MathMin(l,cp):l, hi=cpOk?MathMax(h,cp):h;
+      // (1) niveis ja conhecidos
+      int nz=ArraySize(zFun);
+      if(nz>0)
+        {
+         bool sel[];
+         ArrayResize(sel,nz);
+         for(int k=0;k<nz;k++)
+           {
+            sel[k]=(zB[k]<=hi && zT[k]>=lo) || zEst[k]==BTZ_PEND || zAg[k];
+            if(!sel[k] && zEst[k]==BTZ_ROMP && ((zFun[k]<0 && h>=zB[k]) || (zFun[k]>0 && l<=zT[k]))) sel[k]=true;
+           }
+         for(int k=0;k<nz;k++) if(sel[k]) Atualizar(k,h,l,c);
+        }
+      // (2) candidatos pendentes
+      int nc=ArraySize(cdTipo), m=0;
+      for(int i=0;i<nc;i++)
+        {
+         if((cdTipo[i]<0 && l<=cdExt[i]) || (cdTipo[i]>0 && h>=cdExt[i])) continue;
+         if(nb-cdBarra[i]==2) { Confirmar(i); continue; }
+         cdTipo[m]=cdTipo[i]; cdBarra[m]=cdBarra[i]; cdExt[m]=cdExt[i]; cdAtr[m]=cdAtr[i]; cdT[m]=cdT[i]; m++;
+        }
+      ArrayResize(cdTipo,m); ArrayResize(cdBarra,m); ArrayResize(cdExt,m); ArrayResize(cdAtr,m); ArrayResize(cdT,m);
+      // (3) novo candidato (estrito contra as 2 barras anteriores)
+      if(bufN>=2 && atrOk)
+        {
+         if(l<p1L && l<p2L) { ArrayResize(cdTipo,m+1); ArrayResize(cdBarra,m+1); ArrayResize(cdExt,m+1); ArrayResize(cdAtr,m+1); ArrayResize(cdT,m+1);
+                               cdTipo[m]=-1; cdBarra[m]=nb; cdExt[m]=l; cdAtr[m]=atr; cdT[m]=(long)t; m++; }
+         if(h>p1H && h>p2H) { ArrayResize(cdTipo,m+1); ArrayResize(cdBarra,m+1); ArrayResize(cdExt,m+1); ArrayResize(cdAtr,m+1); ArrayResize(cdT,m+1);
+                               cdTipo[m]=1; cdBarra[m]=nb; cdExt[m]=h; cdAtr[m]=atr; cdT[m]=(long)t; m++; }
+        }
+      p2H=p1H; p2L=p1L; p1H=h; p1L=l; if(bufN<2) bufN++;
+      ult=t;
+     }
+
+   void Alimentar()
+     {
+      MqlRates r[];
+      ArraySetAsSeries(r,false);
+      int n=CopyRates(_Symbol,per,1,BTLAT_NJAN,r);
+      for(int i=0;i<n;i++)
+         if(r[i].time>ult) Nova(r[i].time,r[i].high,r[i].low,r[i].close);
+     }
+
+   // primeira zona a frente: indice ou -1; d = distancia (0 dentro)
+   int Obstaculo(int lado,double E,double &d)
+     {
+      int mel=-1; d=0.0;
+      int nz=ArraySize(zFun);
+      for(int k=0;k<nz;k++)
+        {
+         if(zEst[k]==BTZ_ROMP) continue;
+         double dd;
+         if(lado<0 && zFun[k]<0 && zB[k]<E) dd=MathMax(0.0,E-zT[k]);
+         else if(lado>0 && zFun[k]>0 && zT[k]>E) dd=MathMax(0.0,zB[k]-E);
+         else continue;
+         if(mel<0 || dd<d-1e-9) { mel=k; d=dd; }
+        }
+      return(mel);
+     }
+
+   string Desc(int k)
+     {
+      string e=(zEst[k]==BTZ_CONF)?"CONFIRMADO":(zEst[k]==BTZ_TESTE)?"EM TESTE":(zEst[k]==BTZ_PEND)?"ROMPIMENTO PENDENTE":(zEst[k]==BTZ_ROMP)?"ROMPIMENTO CONFIRMADO":"RECUPERADO";
+      return("zona_tf="+nome+"|zona_funcao="+((zFun[k]<0)?"suporte":"resistencia")+"|zona_base="+DoubleToString(zB[k],2)+"|zona_topo="+DoubleToString(zT[k],2)
+             +"|zona_estado="+e+"|zona_testes="+IntegerToString(zTestes[k])+"|zona_rejeicoes="+IntegerToString(zRej[k])+"|zona_membros="+IntegerToString(zMemb[k])
+             +"|zona_t_extremo="+IntegerToString(zText[k]));
+     }
+  };
+
+CBTMem btMemTF;
+CBTMem btMemH1;
+
+void BTLatEv(string ev,string extra)
+  {
+   Print("BT_LATERAL|",ev,"|",extra);
+   BTvGravarEvento("BOTTESTED_EVENTO|lateral|tipo=lateral|simbolo="+_Symbol+"|v="+BTLAT_VERSAO+"|ev="+ev+"|"+extra);
+  }
 
 long BTLatTk(double x)
   {
@@ -18703,31 +18931,102 @@ void BTLatUsar(string k)
    btLatUsados[n]=k;
   }
 
-bool BTLatTemPos(int &lado)
+// posicao do EA (simbolo + magic): lado, ticket e horario de abertura
+bool BTLatPos(int &lado,long &tk,datetime &tAb)
   {
-   lado=0;
+   lado=0; tk=0; tAb=0;
    for(int i=PositionsTotal()-1;i>=0;i--)
      {
-      ulong tk=PositionGetTicket(i);
-      if(tk>0 && PositionGetString(POSITION_SYMBOL)==_Symbol
+      ulong t=PositionGetTicket(i);
+      if(t>0 && PositionGetString(POSITION_SYMBOL)==_Symbol
          && PositionGetInteger(POSITION_MAGIC)==InpMagic)
         {
          lado=((int)PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)?1:-1;
+         tk=(long)t;
+         tAb=(datetime)PositionGetInteger(POSITION_TIME);
          return(true);
         }
      }
    return(false);
   }
 
-void BTLatFechar()
+// primeira zona a frente nas duas memorias (TF do grafico, depois H1)
+int BTLatZona(int lado,double E,double &d,int &qual)
   {
-   for(int i=PositionsTotal()-1;i>=0;i--)
+   double d1=0.0, d2=0.0;
+   int k1=btMemTF.Obstaculo(lado,E,d1);
+   int k2=(_Period==PERIOD_H1)?-1:btMemH1.Obstaculo(lado,E,d2);
+   qual=0; d=0.0;
+   if(k1>=0) { qual=1; d=d1; }
+   if(k2>=0 && (k1<0 || d2<d1-1e-9)) { qual=2; d=d2; return(k2); }
+   return(k1);
+  }
+
+// filtro de espaco (item 2): true = passa. txt = registro completo
+bool BTLatEspaco(int lado,double bid,double ask,double atr,string &motivo,string &txt)
+  {
+   double E=(lado<0)?bid:ask, sp=ask-bid, R=BTLAT_KSTOP*atr, d=0.0;
+   int qual=0;
+   int k=BTLatZona(lado,E,d,qual);
+   txt="E="+DoubleToString(E,2)+"|spread="+DoubleToString(sp,2)+"|R="+DoubleToString(R,2)+"|atr="+DoubleToString(atr,4);
+   if(k<0) { motivo="sem zona a frente"; txt=txt+"|motivo="+motivo; return(true); }
+   double liq=d-sp;
+   txt=txt+"|"+((qual==1)?btMemTF.Desc(k):btMemH1.Desc(k))+"|d="+DoubleToString(d,2)+"|espaco_liq="+DoubleToString(liq,2)
+       +"|espaco_atr="+DoubleToString(liq/atr,3)+"|espaco_R="+DoubleToString(liq/R,3);
+   bool ok=true;
+   if(d==0.0) { motivo="entrada dentro da zona"; ok=false; }
+   else if(liq<BTLAT_KESP*R-1e-9) { motivo="espaco insuficiente"; ok=false; }
+   else motivo="espaco suficiente";
+   txt=txt+"|motivo="+motivo;
+   return(ok);
+  }
+
+// comando de fechar com reconciliacao (item 4): no maximo 1 por barra e por ticket
+void BTLatFecharCmd(long tk,string motivo,datetime barra)
+  {
+   if(btLatCmdTk==tk && btLatCmdBarra==barra)
      {
-      ulong tk=PositionGetTicket(i);
-      if(tk>0 && PositionGetString(POSITION_SYMBOL)==_Symbol
-         && PositionGetInteger(POSITION_MAGIC)==InpMagic)
-         trade.PositionClose(tk);
+      BTLatEv("comando_fechar_suprimido","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|razao=comando ja enviado nesta barra");
+      return;
      }
+   bool ok=trade.PositionClose((ulong)tk);
+   btLatCmdTk=tk; btLatCmdBarra=barra;
+   BTLatEv("comando_fechar","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|enviado="+(ok?"sim":"nao")
+           +"|retcode="+IntegerToString((long)trade.ResultRetcode()));
+  }
+
+// posicao sumiu: confirma pelo historico do MT5 quem fechou
+void BTLatReconciliar()
+  {
+   int lado=0; long tk=0; datetime tAb=0;
+   bool tem=BTLatPos(lado,tk,tAb);
+   if(btLatPosTk!=0 && (!tem || tk!=btLatPosTk))
+     {
+      string razao="desconhecida";
+      double px=0.0;
+      if(HistorySelectByPosition(btLatPosTk))
+        {
+         int nd=HistoryDealsTotal();
+         for(int i=nd-1;i>=0;i--)
+           {
+            ulong dl=HistoryDealGetTicket(i);
+            if(dl==0) continue;
+            if((int)HistoryDealGetInteger(dl,DEAL_ENTRY)!=DEAL_ENTRY_OUT) continue;
+            int rz=(int)HistoryDealGetInteger(dl,DEAL_REASON);
+            razao=(rz==DEAL_REASON_SL)?"stop":(rz==DEAL_REASON_TP)?"alvo":(rz==DEAL_REASON_EXPERT)?"ea":(rz==DEAL_REASON_SO)?"stop out":"manual";
+            px=HistoryDealGetDouble(dl,DEAL_PRICE);
+            break;
+           }
+        }
+      bool doEA=(btLatCmdTk==btLatPosTk);
+      if(razao=="desconhecida")
+         BTLatEv("estado_nao_confirmado","ticket="+IntegerToString(btLatPosTk)+"|razao=posicao sumiu e o historico do MT5 nao mostrou o negocio de saida");
+      else
+         BTLatEv(doEA && razao=="ea"?"fechamento_confirmado":"fechamento_externo","ticket="+IntegerToString(btLatPosTk)+"|razao="+razao+"|preco="+DoubleToString(px,_Digits)
+                 +"|comando_do_ea="+(doEA?"sim":"nao"));
+      btLatPosTk=0;
+     }
+   if(tem && btLatPosTk==0) btLatPosTk=tk;
   }
 
 // ATR(14) de Wilder sobre a janela (mesma conta do motor O47: semente = media das 14 primeiras)
@@ -18801,7 +19100,53 @@ int BTLatDetectar(const long &lo[],const long &hi[],const long &cl[],const doubl
    return(p);
   }
 
-// fechamento de barra do TF do grafico: expira o gatilho, decide a saida pelo canal, procura a formacao
+string BTLatTfNome(ENUM_TIMEFRAMES p)
+  {
+   return((p==PERIOD_H1)?"H1":(p==PERIOD_M30)?"M30":"M15");
+  }
+
+// diferenca servidor - UTC (s), arredondada a 30 min: as barras do MT5 vem no horario do servidor
+long BTLatOffset()
+  {
+   long d=(long)(TimeTradeServer()-TimeGMT());
+   return((long)MathRound((double)d/1800.0)*1800);
+  }
+
+// historico do MT5 (barras FECHADAS que o EA usa) para o replay da BabyMachine, uma vez apos o aquecimento
+void BTLatHistorico(ENUM_TIMEFRAMES p)
+  {
+   MqlRates r[];
+   ArraySetAsSeries(r,false);
+   int n=CopyRates(_Symbol,p,1,BTLAT_NJAN,r);
+   int partes=(n+59)/60;
+   for(int k=0;k<partes;k++)
+     {
+      string s="";
+      int fim=((k+1)*60<n)?(k+1)*60:n;
+      for(int i=k*60;i<fim;i++)
+        {
+         if(i>k*60) s=s+";";
+         s=s+IntegerToString((long)r[i].time)+","+DoubleToString(r[i].open,_Digits)+","+DoubleToString(r[i].high,_Digits)+","
+             +DoubleToString(r[i].low,_Digits)+","+DoubleToString(r[i].close,_Digits);
+        }
+      BTvGravarEvento("BOTTESTED_EVENTO|lateral|tipo=lateral|simbolo="+_Symbol+"|v="+BTLAT_VERSAO+"|ev=historico|tf="+BTLatTfNome(p)
+                      +"|off="+IntegerToString(BTLatOffset())+"|parte="+IntegerToString(k+1)+"/"+IntegerToString(partes)+"|barras="+s);
+     }
+  }
+
+// zonas mais proximas do preco, uma vez apos o aquecimento (evidencia no terminal)
+void BTLatLogZonas(double px)
+  {
+   for(int s=-1;s<=1;s+=2)
+     {
+      double d=0.0; int qual=0;
+      int k=BTLatZona(s,px,d,qual);
+      if(k<0) { BTLatEv("zona_mais_proxima","lado="+IntegerToString(s)+"|preco="+DoubleToString(px,2)+"|zona=nenhuma"); continue; }
+      BTLatEv("zona_mais_proxima","lado="+IntegerToString(s)+"|preco="+DoubleToString(px,2)+"|d="+DoubleToString(d,2)+"|"+((qual==1)?btMemTF.Desc(k):btMemH1.Desc(k)));
+     }
+  }
+
+// fechamento de barra do TF do grafico
 bool BTLatBarra()
   {
    MqlRates r[];
@@ -18825,25 +19170,61 @@ bool BTLatBarra()
    BTLatAtr(H,L,C,n,A);
    BTLatEma(H,n,EH);
    BTLatEma(L,n,EL);
+   string dec="sem posicao";
    // (1) a barra do gatilho terminou sem superacao
    if(btLatPendLado!=0 && btLatPendFim<=fim)
      {
-      Print("BT_LATERAL|gatilho_expirado|",btLatPendId,"|",(btLatPendTocou?"toque sem superacao":"nao alcancou"));
+      BTLatEv("gatilho_expirado","sinal="+btLatPendId+"|resultado="+(btLatPendTocou?"toque sem superacao":"nao alcancou"));
       btLatPendLado=0;
      }
-   // (2) saida pelo canal EMA20 (fechamento de volta)
-   int lado=0;
-   if(BTLatTemPos(lado))
+   // (2) memorias estruturais (TF do grafico + H1), so barras fechadas
+   btMemTF.Alimentar();
+   if(_Period!=PERIOD_H1) btMemH1.Alimentar();
+   if(!btLatZonasLog)
      {
-      bool sai=(lado<0)?(C[b]>=EL[b]):(C[b]<=EH[b]);
-      if(sai)
+      btLatZonasLog=true;
+      BTLatLogZonas(C[b]);
+      BTLatHistorico(_Period);
+      if(_Period!=PERIOD_H1) BTLatHistorico(PERIOD_H1);
+     }
+   // (3) posicao aberta: corte estrutural e canal no fechamento
+   int lado=0; long tk=0; datetime tAb=0;
+   if(BTLatPos(lado,tk,tAb))
+     {
+      datetime bEnt=(datetime)(((long)tAb/dur)*dur);
+      bool canal=(lado<0)?(C[b]>=EL[b]):(C[b]<=EH[b]);
+      bool corte=false;
+      double ref=0.0;
+      bool temRef=false;
+      for(int i=b;i>=0 && r[i].time>=bEnt;i--)
+         if(r[i].time==bEnt) { ref=(lado<0)?H[i]:L[i]; temRef=true; break; }
+      if(r[b].time==bEnt)
+         BTLatEv("ref_invalidacao_congelada","ticket="+IntegerToString(tk)+"|ref="+DoubleToString(ref,_Digits)+"|def="+((lado<0)?"maxima da barra de entrada":"minima da barra de entrada"));
+      else if(temRef)
+         corte=(lado<0)?(C[b]>ref):(C[b]<ref);
+      dec=corte?"corte estrutural":canal?"saida pelo canal":"manter";
+      BTLatEv("barra","t="+IntegerToString((long)r[b].time)+"|c="+DoubleToString(C[b],2)+"|ema20h="+DoubleToString(EH[b],2)+"|ema20l="+DoubleToString(EL[b],2)
+              +"|atr="+DoubleToString(A[b],4)+"|ticket="+IntegerToString(tk)+"|lado="+IntegerToString(lado)+"|ref="+(temRef?DoubleToString(ref,2):"pendente")
+              +"|canal="+(canal?"sim":"nao")+"|corte="+(corte?"sim":"nao")+"|decisao="+dec);
+      if(corte || canal)
         {
-         Print("BT_LATERAL|saida_canal|lado=",lado,"|fech=",DoubleToString(C[b],_Digits),
-               "|canal=",DoubleToString((lado<0)?EL[b]:EH[b],_Digits));
-         BTLatFechar();
+         MqlTick q;
+         SymbolInfoTick(_Symbol,q);
+         BTLatEv("saida","ticket="+IntegerToString(tk)+"|lado="+IntegerToString(lado)+"|motivo="+(corte?"corte estrutural":"canal")+"|canal_tambem="+((corte && canal)?"sim":"nao")
+                 +"|c="+DoubleToString(C[b],2)+"|ref="+(temRef?DoubleToString(ref,2):"-"));
+         if(corte)     // reversao: so avaliada (sombra), nunca aberta
+           {
+            string mot="", txt="";
+            bool passa=BTLatEspaco(-lado,q.bid,q.ask,A[b],mot,txt);
+            BTLatEv("reversao_sombra","lado="+IntegerToString(-lado)+"|passa="+(passa?"sim":"nao")+"|"+txt+"|modo=SOMBRA - nenhuma ordem");
+           }
+         BTLatFecharCmd(tk,corte?"corte estrutural":"canal",r[b].time+dur);
         }
      }
-   // (3) formacao na barra que acabou de fechar -> gatilho armado para a barra seguinte
+   else
+      BTLatEv("barra","t="+IntegerToString((long)r[b].time)+"|c="+DoubleToString(C[b],2)+"|ema20h="+DoubleToString(EH[b],2)+"|ema20l="+DoubleToString(EL[b],2)
+              +"|atr="+DoubleToString(A[b],4)+"|decisao="+dec+"|gatilho="+(btLatPendLado!=0?btLatPendId:"nenhum"));
+   // (4) formacao na barra que acabou de fechar -> gatilho armado para a barra seguinte (R0 inalterada)
    if(A[b]<=0.0) return(true);
    for(int k=0;k<2;k++)
      {
@@ -18862,14 +19243,14 @@ bool BTLatBarra()
       btLatPendFim=fim+dur;
       btLatPendTocou=false;
       btLatPendId=((s<0)?"V-":"C-")+TimeToString(r[b].time,TIME_DATE|TIME_MINUTES);
-      Print("BT_LATERAL|gatilho_armado|",btLatPendId,"|nivel=",DoubleToString((s<0)?L[p]:H[p],_Digits),
-            "|gatilho=",DoubleToString(btLatPendTT*BTLAT_TICK,2),"|atr=",DoubleToString(A[b],4));
+      BTLatEv("gatilho_armado","sinal="+btLatPendId+"|lado="+IntegerToString(s)+"|nivel="+DoubleToString((s<0)?L[p]:H[p],_Digits)
+              +"|extremo="+DoubleToString(ext,_Digits)+"|gatilho="+DoubleToString(btLatPendTT*BTLAT_TICK,2)+"|atr="+DoubleToString(A[b],4));
       break;
      }
    return(true);
   }
 
-// tick: superacao do gatilho so dentro da barra seguinte; uma posicao por bot
+// tick: superacao do gatilho so dentro da barra seguinte; filtro de espaco; uma posicao por bot
 void BTLatTick()
   {
    if(btLatPendLado==0) return;
@@ -18882,17 +19263,24 @@ void BTLatTick()
    if((s<0)?(bt<=btLatPendExtT):(bt>=btLatPendExtT)) btLatPendTocou=true;
    if(!((s<0)?(bt<=btLatPendTT):(bt>=btLatPendTT))) return;
    btLatPendLado=0;
-   int lado=0;
-   if(BTLatTemPos(lado))
+   int lado=0; long tk=0; datetime tAb=0;
+   if(BTLatPos(lado,tk,tAb))
      {
-      Print("BT_LATERAL|bloqueado_posicao_aberta|",btLatPendId);
+      BTLatEv("bloqueado_posicao_aberta","sinal="+btLatPendId);
+      return;
+     }
+   string mot="", txt="";
+   if(!BTLatEspaco(s,q.bid,q.ask,btLatPendAtr,mot,txt))
+     {
+      BTLatEv("bloqueado_espaco","sinal="+btLatPendId+"|lado="+IntegerToString(s)+"|"+txt);
       return;
      }
    double px=(s<0)?q.bid:q.ask;
    double stop=NormalizeDouble(px-s*BTLAT_KSTOP*btLatPendAtr,_Digits);
-   Print("BT_LATERAL|entrada|",btLatPendId,"|lado=",s,"|preco=",DoubleToString(px,_Digits),"|stop=",DoubleToString(stop,_Digits));
-   if(s>0) trade.Buy(InpLote,_Symbol,0.0,stop,0.0,"BT lateral R0 compra");
-   else    trade.Sell(InpLote,_Symbol,0.0,stop,0.0,"BT lateral R0 venda");
+   BTLatEv("entrada","sinal="+btLatPendId+"|lado="+IntegerToString(s)+"|preco="+DoubleToString(px,_Digits)+"|stop="+DoubleToString(stop,_Digits)
+           +"|ref_def="+((s<0)?"maxima da barra de entrada":"minima da barra de entrada")+"|"+txt);
+   if(s>0) trade.Buy(InpLote,_Symbol,0.0,stop,0.0,"BT lateral r1 compra");
+   else    trade.Sell(InpLote,_Symbol,0.0,stop,0.0,"BT lateral r1 venda");
   }
 
 int OnInit()
@@ -18901,8 +19289,12 @@ int OnInit()
    btLatOk=(_Period==PERIOD_M15 || _Period==PERIOD_M30 || _Period==PERIOD_H1)
            && (StringFind(_Symbol,"XAU")>=0 || StringFind(_Symbol,"BTC")>=0)
            && _Digits==2;
+   btMemTF.Init("TF",_Period);
+   btMemH1.Init("H1",PERIOD_H1);
    if(!btLatOk)
       Print("BT_LATERAL|inativo|use grafico M15, M30 ou H1 de XAUUSD ou BTCUSD (2 casas); nenhuma ordem sera aberta");
+   else
+      BTLatEv("inicio","versao="+(string)BTLAT_VERSAO+"|off="+IntegerToString(BTLatOffset())+"|espaco_min_R="+DoubleToString(BTLAT_KESP,2)+"|invalidacao=maxima/minima da barra de entrada");
    return(INIT_SUCCEEDED);
   }
 
@@ -18913,6 +19305,7 @@ void OnDeinit(const int reason)
 void OnTick()
   {
    if(!btLatOk) return;
+   BTLatReconciliar();
    datetime t0=iTime(_Symbol,_Period,0);
    if(t0!=btLatUltBarra)
      {
@@ -19487,7 +19880,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
             hit = _mq5_cache_buscar(gen_hash)
             texto = (hit or {}).get("mq5") or ""
-            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto:
+            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1 (O53)" not in texto:   # O53: cache do R0 antigo nunca volta
                 texto = _instrumentar_log_mql5(_BT_LATERAL_R0_MQL5)
                 _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
                 print(f"[lateral-r0] EA deterministico gerado e cacheado ({gen_hash[:10]})")
@@ -32150,3 +32543,14 @@ def _ref_portoes(bot, snap, chk, cons):
             "todos_abertos": bool(P) and all(p["aberto"] is True for p in P),
             "nota": "este quadro não autoriza nada: 'todos abertos' só é verdadeiro quando os 8 portões foram avaliados; "
                     "os portões 4, 5 e 8 só existem dentro do detector/emissor e ficam como 'não avaliado aqui'"}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8.33 — ORDEM 053: Diagnóstico geral da LM (O50, módulo existente diagnostico_lm_o50.py, função lm_diag_o50 e tabela lm_diagnosticos já no banco)
+# com a seção 5 da O53 (validacao_o53.py). SÓ LEITURA. O administrador vê todos os bots do ambiente; os demais, só os seus.
+# ════════════════════════════════════════════════════════════════════════════
+try:
+    import diagnostico_lm_o50 as _diag50
+    app.include_router(_diag50.criar_router(_sb_admin, _sessao_user_id, lambda uid: str(uid) == str(_BIB_ADMIN_USER_ID)))
+except Exception as _e50:
+    print(f"[o50/o53] rotas /learning/diagnostico indisponíveis: {_e50}")
