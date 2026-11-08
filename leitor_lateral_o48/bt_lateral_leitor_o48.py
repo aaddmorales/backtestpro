@@ -45,7 +45,10 @@ class Grupo:
     def barras(self, tf, n=N_BARRAS_GRAF):
         r = self.ultimo_r.get(tf)
         if r is None: return []
-        x = r.tail(n); return [[str(t), round(float(o), 2), round(float(h), 2), round(float(l), 2), round(float(c), 2)] for t, o, h, l, c in zip(x.t, x.o, x.h, x.l, x.c)]
+        eh = r.h.ewm(span=20, adjust=False).mean(); el = r.l.ewm(span=20, adjust=False).mean()          # canal EMA20 High/Low (referência do dono), com todo o histórico da janela
+        x = r.tail(n); EH, EL = eh.tail(n), el.tail(n)
+        return [[str(t), round(float(o), 2), round(float(h), 2), round(float(l), 2), round(float(c), 2), round(float(a), 2), round(float(b_), 2)]
+                for t, o, h, l, c, a, b_ in zip(x.t, x.o, x.h, x.l, x.c, EH, EL)]
 
     def ciclo(self):
         m = self.L.mt5
