@@ -9,8 +9,8 @@ Teste local:        --falso CSV --agora "AAAA-MM-DD HH:MM" """
 import os, sys, json, time, argparse, traceback, hashlib, urllib.request
 import numpy as np, pandas as pd
 AQUI = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, AQUI)
-import ao_vivo_o47 as AV
-VERSAO_LEITOR = "leitor-lateral-o48-1.0"; REGRA = "lateral-tf-0.1 (R0 da O44) · leitor-o48"
+import ao_vivo_o47 as AV, leitura_canal_o49 as LC
+VERSAO_LEITOR = "leitor-lateral-o48-1.1 (O49: leitura do canal EMA20 em sombra)"; REGRA = "lateral-tf-0.1 (R0 da O44) · leitor-o48"
 N_JAN = 1200; GAP_MS = 5 * 60_000; JAN_RET_MS = 15 * 60_000; POLL_S = 30; CONT_S = 300; N_BARRAS_GRAF = 40
 CFG_ARQ = os.path.join(os.path.expanduser("~"), "BotTested_Lateral_O48_config.json"); PLATAFORMA = "https://lm-relatorio-homolog.up.railway.app"
 TFC = {"M15": "TIMEFRAME_M15", "M30": "TIMEFRAME_M30", "H1": "TIMEFRAME_H1"}
@@ -37,7 +37,7 @@ def _js(x):
 class Grupo:
     """um ativo: um fluxo de ticks para todas as instâncias (bots) desse ativo; cada bot tem a própria Instancia (posição virtual)."""
     def __init__(self, L, ativo):
-        self.L, self.at = L, ativo; self.nome = L.simbolos.get(ativo, ativo); self.inst = {}; self.meta = {}; self.ult_tick_ms = None; self.ret_pend = []; self.ultimo_r = {}
+        self.L, self.at = L, ativo; self.nome = L.simbolos.get(ativo, ativo); self.inst = {}; self.meta = {}; self.canal = {}; self.ult_tick_ms = None; self.ret_pend = []; self.ultimo_r = {}
 
     def ev(self, bot_id, tipo, t, payload, chave=None):
         self.L.fila.setdefault(bot_id, []).append({"chave": chave or f"{tipo}|{t}|{hashlib.sha1(json.dumps(payload, sort_keys=True, default=_js).encode()).hexdigest()[:12]}", "tipo": tipo, "t": t, "payload": payload})
@@ -88,7 +88,10 @@ class Grupo:
         for t, pri, bid_, k in evs:
             if pri == 0:
                 I = self.inst.get(bid_)
-                if I is not None: I.fecha_barra(R[I.tf].iloc[:k + 1].reset_index(drop=True))
+                if I is not None:
+                    df = R[I.tf].iloc[:k + 1].reset_index(drop=True); I.fecha_barra(df)
+                    try: self.canal_barra(bid_, I.tf, df)                                  # O49: leitura do canal (programada, sombra; não decide nada)
+                    except Exception as e: self.ev(bid_, "falha_leitura", agora_iso(), {"o_que": "leitura do canal", "erro": str(e)}, chave=f"falha|canal|{int(time.time() // 60)}")
                 continue
             lac = self.ult_tick_ms is not None and t - self.ult_tick_ms > GAP_MS
             if lac:
@@ -96,6 +99,17 @@ class Grupo:
             for I in self.inst.values(): I.tick(t, B[k], A[k], lac)
             self.ult_tick_ms = t
         self.drenar()
+
+    def canal_barra(self, b, tf, df):
+        lc = self.canal.setdefault(b, LC.LeitorCanal(self.at, tf)); r = lc.barra(df)
+        x = {"barra": r["barra"], "disponivel": r["disponivel"], "versao": r["versao"], "origem": r["origem"]}
+        if r["disponivel"]:
+            e = r["estrutura"]; f = lambda z: None if not z else {k: z[k] for k in ("zona", "estado", "dist_preco", "dist_atr", "posicao_vs_canal", "no_caminho", "espaco_ate_o_seguinte_atr")}
+            x.update({"canal": r["canal"], "eventos": {k: v for k, v in r["eventos"].items() if v}, "resistencia_acima": f(e["resistencia_acima"]), "suporte_abaixo": f(e["suporte_abaixo"]),
+                      "rompimentos_5b": len(e["rompimentos_ultimas_5_barras"]), "concordancia": r["concordancia"], "evidencia_pct": {k: v for k, v in r["evidencia_pct"].items() if k != "formula"},
+                      "leitura_produzida": r["leitura_produzida"]})
+        else: x["ausencia"] = r["ausencia"]
+        self.meta[b]["canal"] = x; self.ev(b, "leitura_canal", r["barra"], x, chave=f"canal|{r['barra']}")
 
     def drenar(self):
         for b, I in self.inst.items():
@@ -105,7 +119,8 @@ class Grupo:
                 if e["tipo"] == "gatilho_armado": meta["sinais"][e["sinal"]] = {"nivel": e["nivel"], "gatilho": e["gatilho"], "extremo": e["extremo"], "lado": e["lado"]}
                 s = meta["sinais"].get(p.get("sinal") or p.get("id")) or {}
                 p.update({k: v for k, v in s.items() if k not in p})
-                if e["tipo"] in ("gatilho_armado", "gatilho_expirado", "entrada_virtual", "bloqueado_posicao_aberta"): p["barras"] = self.barras(I.tf)
+                if e["tipo"] in ("gatilho_armado", "gatilho_expirado", "entrada_virtual", "bloqueado_posicao_aberta"):
+                    p["barras"] = self.barras(I.tf); p["canal_no_instante"] = meta.get("canal")          # O49: leitura do canal da última barra fechada
                 if e["tipo"] == "entrada_virtual": self.ret_pend.append({"bot": b, "id": e["id"], "lado": e["lado"], "extremo": p.get("extremo"), "nivel": p.get("nivel"), "tau_ms": int(pd.Timestamp(e["t"]).value // 10**6)})
                 self.ev(b, e["tipo"], e["t"], {**p, "tf": I.tf, "regra_versao": REGRA, "modo": "SOMBRA — nenhuma ordem"}, chave=f"{e['tipo']}|{p.get('sinal', p.get('id', ''))}|{e['t']}")
             for o in I.ops:
