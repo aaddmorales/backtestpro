@@ -835,6 +835,7 @@ API_VERSAO = "8.29.2-o34-lm-diagnostico (ORDEM 034: só o painel da LM muda — 
 API_VERSAO = "8.29.3-o36-lm-selecao-execucao (ORDEM 036: só o relatório da LM muda — aceita os eventos avaliacao_virtual, analise_execucao e revisao_dados; painel 'LM — Leitura, decisões e operações' com qualidade da seleção, execução e dados; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O36
 API_VERSAO = "8.29.4-o38-lm-leitura-tf (ORDEM 038: só o relatório da LM muda — aceita os eventos leitura_tf, sombra_entrada e sombra_gestao da LM-0.4-exp em modo sombra; rotas e tabelas iguais às da 8.29.1) | " + API_VERSAO   # O38
 API_VERSAO = "8.29.5-o48-lateral-sombra (ORDEM 048: cartão 'Rompimento de Lateralização' — Experimental · teste em sombra — só para o usuário de teste; rotas novas /lateral/… e tabelas lateral_* (sql/0025); nenhuma rota/tabela existente muda) | " + API_VERSAO   # O48
+API_VERSAO = "8.29.6-o48-admin-homolog (pedido do dono 08/11: na homologação, BT_ADMIN_USER_ID define a conta admin; produção inalterada) | " + API_VERSAO   # 8.29.6
 
 BUILD_TAG = "2026-10-13-relatorio-rapido-c27r46"
 
@@ -1127,6 +1128,10 @@ def serve_app():
                 return JSONResponse(status_code=500, content={
                     "erro": "app_ancora_ausente_ou_duplicada", "env": nome})
             html = html.replace(ancora, tpl.format(_app_literal_js(dados[nome])))
+        _adm = _admin_homolog()                                                       # 8.29.6: admin da homologação também no front
+        _anc_adm = "const BIB_ADMIN_USER_ID = 'cd99b5b0-d97e-484a-900e-30a267a01f12';"
+        if _adm and html.count(_anc_adm) == 1:
+            html = html.replace(_anc_adm, "const BIB_ADMIN_USER_ID = " + _app_literal_js(_adm) + ";")
         _APP_CACHE.clear()
         _APP_CACHE[chave] = html
     return HTMLResponse(html, headers=_app_cabecalhos())
@@ -16660,6 +16665,18 @@ if not _SERVICO_LM:            # 8.29.1: o serviço do relatório da LM não rod
 
 # user_id do dono (admin). Só este usuário acessa o painel.
 _BIB_ADMIN_USER_ID = "cd99b5b0-d97e-484a-900e-30a267a01f12"
+
+
+def _admin_homolog():
+    """8.29.6 (pedido do dono 08/11): na HOMOLOGAÇÃO o admin pode ser outra conta (BT_ADMIN_USER_ID).
+    Só vale com BT_HOMOLOG_ID presente e valor em formato UUID; na produção (sem BT_HOMOLOG_ID) nada muda."""
+    import re as _re_adm
+    v = (os.getenv("BT_ADMIN_USER_ID") or "").strip().lower()
+    if not (os.getenv("BT_HOMOLOG_ID") or "").strip(): return None
+    return v if _re_adm.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", v) else None
+
+
+_BIB_ADMIN_USER_ID = _admin_homolog() or _BIB_ADMIN_USER_ID
 
 # Ordem fixa dos timeframes para montar as colunas da matriz
 _BIB_TF_ORDEM = ["5m", "15m", "30m", "1h", "4h", "1d"]
