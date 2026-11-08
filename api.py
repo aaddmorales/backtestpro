@@ -819,8 +819,8 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 
 API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano, um por vez; sem leituras de contingência da campanha inteira) | " + API_VERSAO   # R008: prefixo da versão nova (linha curta)
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
-API_VERSAO = "8.32-o52-leitura-continua (ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
-BUILD_TAG = "2026-11-08-leitura-continua-o52"
+API_VERSAO = "8.32.1-o52-leitura-continua (correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
+BUILD_TAG = "2026-11-08-leitura-continua-o52-1"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -30964,8 +30964,10 @@ def _res_dd(fechadas):
 def _ses_resumo(sb, uid, bot, req):
     agora = _dt.now(_tz.utc)
     _ses_lista(sb, True)
+    if (req.sessao or "").strip() == "leitura":             # O52: a tela pediu a leitura do bot (bot sem campanha)
+        return _res_leitura_bot(sb, uid, bot, req)
     filtro, info = _ses_resolver(sb, bot, req.sessao)
-    if not filtro and (req.sessao or "") in ("", "padrao", "leitura"):
+    if not filtro and (req.sessao or "") in ("", "padrao"):
         return _res_leitura_bot(sb, uid, bot, req)          # O52: bot sem campanha → a leitura do mercado no período
     if not filtro or filtro == "anterior":
         raise HTTPException(status_code=404, detail="este bot não tem campanha/sessão para resumir")
@@ -31308,8 +31310,18 @@ def _res_leit_exaustao(d):
 
 
 def _res_leit_dados(sb, bot, desde, ate):
-    cs, trunc_c = _aud_candles(sb, bot, "M15", desde, ate, antes=60)
-    cs = [c for c in cs if c.get("fechado") and c.get("o") is not None]
+    vivo, trunc_c = _aud_candles(sb, bot, "M15", desde, ate, antes=60)
+    mapa = {}
+    if bot.get("bot_token"):                         # antes da coleta ao vivo: candles reconstruídos dos snapshots (função existente)
+        try:
+            rec, _i = _aud_reconstruir(sb, bot, desde - _td(hours=15), ate, tfs=("M15",))
+            for c in (rec.get("M15") or []):
+                mapa[str(_rel_iso(_rel_dt(c["abertura_utc"])))] = c
+        except Exception:
+            pass
+    for c in vivo:
+        mapa[str(_rel_iso(_rel_dt(c["abertura_utc"])))] = c
+    cs = sorted((c for c in mapa.values() if c.get("fechado") and c.get("o") is not None), key=lambda c: _rel_dt(c["abertura_utc"]))
     leit, trunc_l = _rel_pag(lambda: sb.table("auditoria_leituras").select("ts,barra_m15_utc,preco,zonas,regime,indicadores,estrutura_por_tf,posicoes")
                              .eq("bot_id", int(bot["id"])).gte("ts", _rel_iso(desde)).lte("ts", _rel_iso(ate)).order("id"), 60000)
     por_barra = {}
@@ -31334,6 +31346,11 @@ def _res_leit_barras(cs, por_barra, desde):
     out, ant_pos = [], None
     for i, c in enumerate(cs):
         ab = _rel_dt(c["abertura_utc"]); fecha = ab + _td(minutes=15)
+        lb = por_barra.get(str(_rel_iso(fecha))) or {}
+        ind = lb.get("indicadores") or {}
+        fonte_canal = "calculado (velas do período)"
+        if ind.get("ema20_maximas") and ind.get("ema20_minimas"):    # canal do PRÓPRIO EA no MT5 (o mesmo do gráfico do dono)
+            EH[i], EL[i] = float(ind["ema20_maximas"]), float(ind["ema20_minimas"]); fonte_canal = "EA (MT5)"
         pos = "acima" if C[i] > EH[i] else ("abaixo" if C[i] < EL[i] else "dentro")
         romp = None
         if ant_pos and pos != ant_pos:
@@ -31364,12 +31381,11 @@ def _res_leit_barras(cs, por_barra, desde):
                     r0["formacao"] = {"lado": "venda" if s < 0 else "compra", "nivel": round(nivel, 2), "extremo": round(ext, 2), "gatilho": gat,
                                       "stop_2atr": round(2 * a_, 2), "resultado_barra_seguinte": res or "barra seguinte ainda não fechou"}
                     break
-        lb = por_barra.get(str(_rel_iso(fecha))) or {}
         est = lb.get("estrutura_por_tf") or {}
         m15, h1 = _res_leit_tf(est, "M15"), _res_leit_tf(est, "H1")
         out.append({"i": i, "abertura_utc": ab, "fecha_utc": fecha, "o": float(c["o"]), "h": H[i], "l": L[i], "c": C[i],
                     "ema20_high": round(EH[i], 2), "ema20_low": round(EL[i], 2), "atr14": (round(a_, 2) if a_ == a_ and a_ else None),
-                    "canal": pos, "rompimento_media": romp, "tem_leitura": bool(lb), "m15": m15, "h1": h1,
+                    "canal": pos, "fonte_canal": fonte_canal, "rompimento_media": romp, "tem_leitura": bool(lb), "m15": m15, "h1": h1,
                     "exaustao": _res_leit_exaustao(m15) + [f"H1:{x}" for x in _res_leit_exaustao(h1)], "r0": r0,
                     "regime": (lb.get("regime") or {}).get("estado") if isinstance(lb.get("regime"), dict) else None})
     return out, (cs, EH, EL)
@@ -31474,6 +31490,11 @@ def _res_leitura_bot(sb, uid, bot, req):
     except Exception:
         fz = _tz.utc
     per = (req.periodo or "campanha").lower()
+    if not bot.get("criado_em"):
+        try:
+            bot = dict(bot, criado_em=((sb.table("conector_bots").select("criado_em").eq("id", int(bot["id"])).limit(1).execute().data or [{}])[0]).get("criado_em"))
+        except Exception:
+            pass
     ini_bot = _rel_dt(bot.get("criado_em")) or (agora - _td(days=1))
     desde = ini_bot if per not in _RES_PERIODOS else max(ini_bot, agora - _td(days=_RES_PERIODOS[per]))
     sim = str(bot.get("simbolo") or "")

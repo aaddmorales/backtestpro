@@ -49,3 +49,16 @@ def test_o52_resumo_sem_campanha():
     assert "| Formações R0 (gatilho armado) | 3 |" in md and "EXAUSTÃO" in md and "ROMPIMENTO DA MÉDIA" in md
     assert len(out["janelas"]) >= 3 and all(base64.b64decode(j["png_b64"])[:4] == b"\x89PNG" for j in out["janelas"])
     assert out["sessao"].startswith("sem campanha")
+
+
+def test_o52_rota_com_sessao_leitura():
+    """a tela manda sessao='leitura' (bot sem campanha): a ROTA tem que ir para a leitura, nunca procurar campanha."""
+    chamado = {}
+    orig, orig_r = A._res_leitura_bot, A._ses_resolver
+    A._res_leitura_bot = lambda sb, uid, bot, req: chamado.setdefault("ok", req.sessao) or {"markdown": "ok"}
+    A._ses_resolver = (lambda *a, **k: (_ for _ in ()).throw(AssertionError("não devia procurar campanha")))
+    try:
+        A._ses_resumo(SB(), "u", bot, A.SesResumoIn(bot_id=15, sessao="leitura", periodo="hoje"))
+    finally:
+        A._res_leitura_bot, A._ses_resolver = orig, orig_r
+    assert chamado.get("ok") == "leitura"
