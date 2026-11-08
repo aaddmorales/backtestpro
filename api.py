@@ -837,6 +837,7 @@ API_VERSAO = "8.29.4-o38-lm-leitura-tf (ORDEM 038: só o relatório da LM muda �
 API_VERSAO = "8.29.5-o48-lateral-sombra (ORDEM 048: cartão 'Rompimento de Lateralização' — Experimental · teste em sombra — só para o usuário de teste; rotas novas /lateral/… e tabelas lateral_* (sql/0025); nenhuma rota/tabela existente muda) | " + API_VERSAO   # O48
 API_VERSAO = "8.29.6-o48-admin-homolog (pedido do dono 08/11: na homologação, BT_ADMIN_USER_ID define a conta admin; produção inalterada) | " + API_VERSAO   # 8.29.6
 API_VERSAO = "8.29.7-o50-diagnostico-lm (ORDEM 050: diagnóstico geral da LM, só leitura — rotas /learning/diagnostico/*, sql/0026) | " + API_VERSAO   # 8.29.7
+API_VERSAO = "8.29.9-o51-lateral-paralelo-desativado (ORDEM 051: o cartão 'Rompimento de Lateralização' migrou para a plataforma de homologação no fluxo padrão; aqui o cartão some da vitrine; O50 e relatórios inalterados) | " + API_VERSAO   # 8.29.9
 
 BUILD_TAG = "2026-10-13-relatorio-rapido-c27r46"
 

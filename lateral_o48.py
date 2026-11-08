@@ -246,7 +246,11 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
 
 
 def card_para_vitrine(out, uid):
-    """apensa o cartão numa CÓPIA da resposta da vitrine só para o usuário de teste (nunca no cache compartilhado)."""
+    """O51 (08/11/2026, decisão do dono): o cartão migrou para a plataforma de homologação, no fluxo padrão (EA nativo
+    BT_LATERAL_R0, branch ensaio/vitrine-c27r7-isolado). Este caminho paralelo (leitor separado com chave própria) está
+    DESATIVADO: a vitrine daqui não mostra mais o cartão. Rotas e tabelas ficam só para consulta do histórico."""
+    return out
+    """(desativado) apensava o cartão numa CÓPIA da resposta da vitrine só para o usuário de teste."""
     alvo = (os.environ.get("BT_CARD_TESTE_USER") or "").strip()
     if not alvo or not uid or not hmac.compare_digest(str(uid), alvo): return out
     if any((e or {}).get("id") == CARD_ID for e in (out or {}).get("estrategias") or []): return out
