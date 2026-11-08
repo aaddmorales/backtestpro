@@ -119,3 +119,14 @@ def test_5_envio_desliga_protetor_e_guardiao_so_no_lateral(A):
     assert 'if "BT_LATERAL_R0" in _cod46:' in src and '_fl46["protecao"] = False; _fl46["guardiao"] = False' in src
     assert 'req.estrategia_nome = "Rompimento de Lateralizacao (R0)"' in src
     assert "8.31-o51-lateral-r0" in A.API_VERSAO
+
+
+def test_6_disciplina_neutra_no_ea_do_lateral(A):
+    """1ª entrada real (bot 15, 08/11 19:10 Kyiv) nasceu com TP 1,5R e trailing por barra da BT_DISCIPLINA_V3: a R0 não tem alvo
+    nem trailing. O EA do Lateral tem que sair com esses inputs neutros; o Donchian (outro cartão) continua igual."""
+    lat = A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 7, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
+    don = A._gerar_mq5_de_codigo(next(e for e in A.ESTRATEGIAS_PRONTAS if e["id"] == "rompimento_donchian")["codigo"], {"magic": 1, "stop_loss": 60, "take_profit": 0, "ativo": "BTC/USD"})
+    for k, v in (("InpBTTrailingBarra", "false"), ("InpBTAlvoRR", "0.0"), ("InpBTAlvoTendRR", "0.0"), ("InpBTStopMinATR", "0.0")):
+        assert re.search(rf"input\s+\w+\s+{k}\s*=\s*{v};", lat), k
+    assert "input bool   InpBTTrailingBarra = true;" in don and "input double InpBTAlvoRR        = 1.5;" in don
+    assert "input int    InpBTMaxPosicoes   = 2;" in lat and "input double InpBTLoteMax       = 1.0;" in lat

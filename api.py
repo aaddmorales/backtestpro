@@ -819,8 +819,8 @@ API_VERSAO = "8.29-c27r57-p10-ampliado (sel-7 + portão 10 ampliado: não veta e
 
 API_VERSAO = "8.30-r008-relatorio-assincrono (relatório gerado em segundo plano, um por vez; sem leituras de contingência da campanha inteira) | " + API_VERSAO   # R008: prefixo da versão nova (linha curta)
 API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateralização' no fluxo padrão — EA nativo BT_LATERAL_R0, só para a conta de teste; envio grava protecao/guardiao=false; campanha, sel-7, gestao-5, leitor e conector inalterados) | " + API_VERSAO   # O51
-API_VERSAO = "8.32.1-o52-leitura-continua (correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
-BUILD_TAG = "2026-11-08-leitura-continua-o52-1"
+API_VERSAO = "8.32.2-o52-leitura-continua (correção 8.32.2 / O51.1: EA do Lateral nasce com a disciplina neutra — sem alvo automático, sem trailing por barra, sem piso de stop) correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
+BUILD_TAG = "2026-11-08-leitura-continua-o52-2"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -18923,6 +18923,26 @@ void OnTick()
 '''
 
 
+# O51.1 (08/11/2026, 1ª entrada do bot 15): a camada BT_DISCIPLINA_V3 injetada em todo EA da frota mexia na gestão da R0
+# (R7: alvo automático 1,5×risco; R6: trailing por barra fechada; piso de stop 1,5×ATR). A R0 não tem alvo, o stop é
+# 2 ATR fixo e a saída é pelo canal EMA20. No EA do Lateral esses três nascem NEUTROS (inputs visíveis no MT5). Ficam:
+# teto de lote, teto de posições e cadência por barra (compatíveis com a R0). Texto exato dos inputs do _BT_WRAPPERS.
+_LATERAL_DISC_NEUTRA = (
+    ("input double InpBTStopMinATR    = 1.5;", "input double InpBTStopMinATR    = 0.0;   // O51.1 lateral: stop é o da regra (2 ATR)"),
+    ("input bool   InpBTTrailingBarra = true;", "input bool   InpBTTrailingBarra = false;  // O51.1 lateral: R0 sem trailing"),
+    ("input double InpBTAlvoRR        = 1.5;", "input double InpBTAlvoRR        = 0.0;   // O51.1 lateral: R0 sem alvo"),
+    ("input double InpBTAlvoTendRR    = 3.0;", "input double InpBTAlvoTendRR    = 0.0;   // O51.1 lateral: R0 sem alvo"),
+)
+
+
+def _lateral_disciplina_neutra(texto):
+    for a, b in _LATERAL_DISC_NEUTRA:
+        if a not in texto:
+            raise ValueError(f"lateral: input da disciplina não encontrado ({a[:40]}) — EA não gerado")
+        texto = texto.replace(a, b, 1)
+    return texto
+
+
 def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
     # ── v7.24 — EA EXECUTOR PURO (remessa 2 da doutrina) ─────────────────────
     # Marcador BT_EXECUTOR_PURO no codigo = EA sem estrategia nativa, gerado
@@ -19474,7 +19494,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             if magic:
                 texto = _forcar_magic_mql5(texto, magic)
             texto = _forcar_sl_tp_mql5(texto, sl, tp)
-            return texto
+            return _lateral_disciplina_neutra(texto)
         except Exception as _e:
             try:
                 import sys as _sys
