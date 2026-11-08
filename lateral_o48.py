@@ -7,23 +7,13 @@ Fluxo: cartão (vitrine) → Criar bot → Enviar ao MT5 (o bot fica "enviado" a
 ID do bot, símbolo efetivo da corretora, timeframe, versão da regra e modo sombra, com cotação lida → "Conectado" → 1 h de verificação
 técnica → uma semana de coleta com o MESMO início e fim para os 3 TF de cada ativo → relatório por bot.
 Isolado da campanha: tabelas próprias (sql/0025), rotas próprias (/lateral/…), nenhuma tabela/rota existente é alterada.
-Visível só para o usuário de teste (env BT_CARD_TESTE_USER), como o card MASTER.
-
-ORDEM 051 (08/11/2026, decisão do dono: "fluxo padrão + leitor no Conector") — o cartão volta à estrutura padrão:
-trilha 1-7 (Criar · Testar · Ajustar · Enviar · Conectar · Operar · Monitorar), 🔑 token gerado no passo Enviar (como no Editor; substitui a
-"chave do leitor"), os bots aparecem em "Meus bots" do Conector HOMOLOG (v1.40-hml18, que roda a leitura em sombra dentro dele — não há mais
-programa separado) e no Monitor de Bots. A regra (R0 da O44), o motor por tick (O47) e a leitura do canal (O49) NÃO mudam.
-Rotas novas: /lateral/token/gerar (a antiga /lateral/chave/gerar continua como sinônimo), /lateral/conector/listar, /lateral/monitor.
-As rotas do leitor aceitam o token como "bot_token" (padrão do Conector) ou "chave" (pacote O48/O49, compatibilidade)."""
+Visível só para o usuário de teste (env BT_CARD_TESTE_USER), como o card MASTER."""
 import os, hmac, hashlib, secrets, datetime as _dt
 from typing import Optional, List
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 VERSAO_REGRA = "lateral-tf-0.1 (R0 da O44) · leitor-o48"
-VERSAO_MODULO = "lateral-o51-fluxo-padrao"
-ONLINE_S = 180                                          # Conector visto há menos de 3 min = online (mesmo critério da trilha padrão)
-ETAPAS = ("Criar", "Testar", "Ajustar", "Enviar", "Conectar", "Operar", "Monitorar")
 ATIVOS = ("XAUUSD", "BTCUSD"); TFS = ("M15", "M30", "H1")
 VERIFICACAO_H = 1; SEMANA_D = 7; MAX_EVENTOS_LOTE = 500
 CARD_ID = "lateral_r0"
@@ -86,13 +76,11 @@ class _Rel(BaseModel):
 
 
 class _LeitorBots(BaseModel):
-    chave: Optional[str] = None
-    bot_token: Optional[str] = None
+    chave: str
 
 
 class _LeitorConfirma(BaseModel):
-    chave: Optional[str] = None
-    bot_token: Optional[str] = None
+    chave: str
     bot_id: int
     simbolo_efetivo: str
     timeframe: str
@@ -103,32 +91,9 @@ class _LeitorConfirma(BaseModel):
 
 
 class _LeitorEventos(BaseModel):
-    chave: Optional[str] = None
-    bot_token: Optional[str] = None
+    chave: str
     bot_id: int
     eventos: list = []
-
-
-def _tok(p):
-    """token do Conector (bot_token) ou chave do pacote O48/O49 — o mesmo segredo, dois nomes de campo."""
-    return (getattr(p, "bot_token", None) or getattr(p, "chave", None) or "").strip()
-
-
-def trilha(bots, token_gerado, agora=None):
-    """trilha 1-7 do fluxo padrão para os bots do cartão (conta inteira; bots parados não contam).
-    Testar e Ajustar não se aplicam a um teste em sombra de regra fixa: ficam marcados como 'não se aplica', nunca como medidos."""
-    agora = agora or _agora(); vivos = [b for b in bots if b.get("estado") != "parado"]; est = [estado_publico(b, agora) for b in vivos]
-    feito = {1: bool(vivos), 2: bool(vivos), 3: bool(vivos), 4: bool(vivos) and token_gerado and any(e != "criado" for e in est),
-             5: any(e in ("conectado", "coletando", "semana encerrada") for e in est), 6: any(e in ("coletando", "semana encerrada") for e in est)}
-    feito[7] = feito[5]
-    atual = next((i for i in range(1, 8) if not feito[i]), 7)
-    nota = {2: "não se aplica — teste em sombra, sem backtest; o resultado é medido na semana de coleta",
-            3: "não se aplica — regra fixa " + VERSAO_REGRA,
-            4: "bots enviados e 🔑 token gerado" if feito[4] else ("gere o 🔑 token e envie os bots" if vivos else ""),
-            5: "o Conector HOMOLOG confirmou cotações do terminal" if feito[5] else "cole o token no Conector HOMOLOG e clique em Conectar",
-            6: "semana de coleta em andamento" if feito[6] else "começa após 1 h de verificação técnica",
-            7: "bots no Monitor de Bots" if feito[7] else ""}
-    return {"atual": atual, "etapas": [{"n": i, "nome": ETAPAS[i - 1], "feito": bool(feito[i]), "nota": nota.get(i, "")} for i in range(1, 8)]}
 
 
 def criar_router(sb_admin, sessao_user_id, relogio=None):
@@ -181,10 +146,8 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
     def listar(p: _Rel, authorization: str = Header("")):
         uid = _uid(authorization, p.user_id); sb = _sb()
         ch = sb.table("lateral_chaves").select("criada_em").eq("user_id", uid).execute().data or []
-        bots = sorted(_meus(sb, uid), key=lambda b: int(b["id"]))
-        return {"bots": [_pub(b) for b in bots], "chave_do_leitor": bool(ch), "chave_criada_em": ch[0]["criada_em"] if ch else None,
-                "token_gerado": bool(ch), "token_criado_em": ch[0]["criada_em"] if ch else None, "trilha": trilha(bots, bool(ch), _now()),
-                "cartao": {"id": CARD_ID, "regra_versao": VERSAO_REGRA, "versao_modulo": VERSAO_MODULO}}
+        return {"bots": [_pub(b) for b in sorted(_meus(sb, uid), key=lambda b: int(b["id"]))], "chave_do_leitor": bool(ch), "chave_criada_em": ch[0]["criada_em"] if ch else None,
+                "cartao": {"id": CARD_ID, "regra_versao": VERSAO_REGRA}}
 
     @r.post("/lateral/bots/enviar")
     def enviar(p: _Ids, authorization: str = Header("")):
@@ -193,7 +156,7 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
             if b["estado"] == "criado":
                 sb.table("lateral_bots").update({"estado": "enviado", "enviado_em": _iso(_now())}).eq("id", b["id"]).eq("user_id", uid).execute()
             out.append(b["id"])
-        return {"ok": True, "enviados": out, "aviso": "o bot fica 'enviado' até o Conector HOMOLOG confirmar a leitura de cotações do terminal"}
+        return {"ok": True, "enviados": out, "aviso": "o bot fica 'enviado' até o leitor no computador do MT5 confirmar a leitura de cotações"}
 
     @r.post("/lateral/bots/parar")
     def parar(p: _Ids, authorization: str = Header("")):
@@ -203,37 +166,11 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
                 sb.table("lateral_bots").update({"estado": "parado", "parado_em": _iso(_now())}).eq("id", b["id"]).eq("user_id", uid).execute(); out.append(b["id"])
         return {"ok": True, "parados": out}
 
-    def _gerar_token(p, authorization):
+    @r.post("/lateral/chave/gerar")
+    def gerar_chave(p: _Rel, authorization: str = Header("")):
         uid = _uid(authorization, p.user_id); sb = _sb(); ch = "lat_" + secrets.token_urlsafe(24)
         sb.table("lateral_chaves").upsert({"user_id": uid, "chave_hash": _hash(ch), "criada_em": _iso(_now())}, on_conflict="user_id").execute()
-        aviso = ("copie agora: o token não é mostrado de novo (só o hash fica guardado). Cole no Conector HOMOLOG, campo do token — "
-                 "o mesmo token vale para todos os bots deste cartão. Um token anterior deixa de valer.")
-        return {"ok": True, "bot_token": ch, "chave": ch, "aviso": aviso}
-
-    @r.post("/lateral/token/gerar")
-    def gerar_token(p: _Rel, authorization: str = Header("")): return _gerar_token(p, authorization)
-
-    @r.post("/lateral/chave/gerar")                                                       # sinônimo (pacote O48/O49)
-    def gerar_chave(p: _Rel, authorization: str = Header("")): return _gerar_token(p, authorization)
-
-    @r.post("/lateral/monitor")
-    def monitor(p: _Rel, authorization: str = Header("")):
-        """seção do Monitor de Bots: estado, Conector online, contadores da semana (só leitura; posições VIRTUAIS, nenhuma ordem)."""
-        uid = _uid(authorization, p.user_id); sb = _sb(); agora = _now(); out = []
-        for b in sorted(_meus(sb, uid), key=lambda b: int(b["id"])):
-            uc = _parse(b.get("ultimo_contato")); evs = [e for e in (sb.table("lateral_eventos").select("tipo,t_evento,payload").eq("bot_id", b["id"]).order("id").range(0, 19999).execute().data or [])
-                   if e.get("tipo") in ("entrada_virtual", "saida_virtual", "contadores")]
-            ini, fim = _parse(b.get("coleta_inicio")), _parse(b.get("coleta_fim"))
-            sem = lambda t: (lambda x: x is not None and ini is not None and x >= ini and (fim is None or x < fim))(_parse(t))
-            ent = [e for e in evs if e["tipo"] == "entrada_virtual" and sem(e.get("t_evento"))]; ids = {(e.get("payload") or {}).get("id") for e in ent}
-            sai = [e for e in evs if e["tipo"] == "saida_virtual" and (e.get("payload") or {}).get("id") in ids and sem(e.get("t_evento"))]
-            cont = next(((e.get("payload") or {}) for e in reversed(evs) if e["tipo"] == "contadores"), {})
-            x = _pub(b); x.update({"conector_online": bool(uc and (agora - uc).total_seconds() < ONLINE_S), "visto_ha_s": None if not uc else int((agora - uc).total_seconds()),
-                                   "entradas_semana": len(ent), "fechadas_semana": len(sai), "R_semana": round(sum(float((e.get("payload") or {}).get("R") or 0) for e in sai), 2),
-                                   "posicao_virtual_aberta": bool(cont.get("posicao_virtual_aberta"))})
-            out.append(x)
-        return {"ok": True, "cartao": {"id": CARD_ID, "nome": CARD["nome"], "selo": CARD["selo"], "regra_versao": VERSAO_REGRA}, "bots": out,
-                "aviso": "teste em sombra: posições virtuais com bid/ask do terminal; nenhuma ordem; resultados ainda NÃO medidos (< 30 operações = preliminar)"}
+        return {"ok": True, "chave": ch, "aviso": "copie agora: a chave não é mostrada de novo. Ela fica só no computador do MT5 (configuração do leitor)."}
 
     @r.post("/lateral/relatorio")
     def relatorio(p: _Rel, authorization: str = Header("")):
@@ -250,22 +187,14 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
 
     # ── rotas do LEITOR (computador do MT5): autenticadas pela chave do leitor ──
     def _uid_chave(ch):
-        if not ch or len(ch) < 10: raise HTTPException(status_code=401, detail="token inválido")
+        if not ch or len(ch) < 10: raise HTTPException(status_code=401, detail="chave do leitor inválida")
         rows = _sb().table("lateral_chaves").select("user_id,chave_hash").eq("chave_hash", _hash(ch)).execute().data or []
-        if not rows or not hmac.compare_digest(rows[0]["chave_hash"], _hash(ch)): raise HTTPException(status_code=401, detail="token inválido")
+        if not rows or not hmac.compare_digest(rows[0]["chave_hash"], _hash(ch)): raise HTTPException(status_code=401, detail="chave do leitor inválida")
         return rows[0]["user_id"]
-
-    @r.post("/lateral/conector/listar")
-    def conector_listar(p: _LeitorBots):
-        """'Meus bots' do Conector: bots do cartão do dono do token (só leitura; não marca contato). Não há EA: tem_mq5 = False, modo sombra."""
-        uid = _uid_chave(_tok(p)); sb = _sb(); agora = _now()
-        return {"ok": True, "bots": [{"id": int(b["id"]), "nome": b["nome"], "simbolo": b["ativo"], "tf": b["tf"], "estado": estado_publico(b, agora), "modo": "sombra",
-                                      "tipo": "lateral_sombra", "tem_mq5": False, "magic_number": None, "filename": ""} for b in sorted(_meus(sb, uid), key=lambda b: int(b["id"]))],
-                "cartao": CARD["nome"], "regra_versao": VERSAO_REGRA}
 
     @r.post("/lateral/leitor/bots")
     def leitor_bots(p: _LeitorBots):
-        uid = _uid_chave(_tok(p)); sb = _sb(); agora = _now(); out = []
+        uid = _uid_chave(p.chave); sb = _sb(); agora = _now(); out = []
         for b in _meus(sb, uid):
             if b["estado"] == "criado": continue
             sb.table("lateral_bots").update({"ultimo_contato": _iso(agora)}).eq("id", b["id"]).execute()
@@ -275,7 +204,7 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
 
     @r.post("/lateral/leitor/confirmar")
     def leitor_confirmar(p: _LeitorConfirma):
-        uid = _uid_chave(_tok(p)); sb = _sb(); bs = _meus(sb, uid, [p.bot_id])
+        uid = _uid_chave(p.chave); sb = _sb(); bs = _meus(sb, uid, [p.bot_id])
         if not bs: raise HTTPException(status_code=404, detail="bot não encontrado")
         b = bs[0]
         if b["estado"] not in ("enviado", "conectado"): return {"ok": False, "motivo": f"bot está '{b['estado']}'"}
@@ -302,7 +231,7 @@ def criar_router(sb_admin, sessao_user_id, relogio=None):
 
     @r.post("/lateral/leitor/eventos")
     def leitor_eventos(p: _LeitorEventos):
-        uid = _uid_chave(_tok(p)); sb = _sb()
+        uid = _uid_chave(p.chave); sb = _sb()
         if not _meus(sb, uid, [p.bot_id]): raise HTTPException(status_code=404, detail="bot não encontrado")
         linhas = []
         for e in (p.eventos or [])[:MAX_EVENTOS_LOTE]:
