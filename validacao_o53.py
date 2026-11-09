@@ -14,6 +14,7 @@ for _p in (os.path.join(_AQUI, "testes", "referencia_o53"), os.path.join(_AQUI, 
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import ao_vivo_o53 as R1  # noqa: E402
+import pivos_o53b as PV  # noqa: E402
 
 VERSAO = "validacao-o53-1.0 (" + R1.VERSAO + ")"
 UTC = _dt.timezone.utc
@@ -269,11 +270,12 @@ def _janela(rep, cat, titulo, t_ini, t_fim, marcas, rotulo):
     i_a = max(0, int(np.searchsorted(ep, t_ini, side="right")) - 1 - 24); i_b = min(len(ep), int(np.searchsorted(ep, t_fim, side="right")) + 6)
     idx = lambda t: None if t is None else int(np.searchsorted(ep, t, side="right")) - 1 - i_a
     m = dict(marcas)
-    for k in ("entrada", "saida_r1", "saida_r0"):
+    for k in ("entrada", "saida_r1", "saida_r0", "pivo"):
         if m.get(k):
             m[k] = [idx(m[k][0]), m[k][1]]
-    if m.get("barra_sinal") is not None:
-        m["barra_sinal"] = idx(m["barra_sinal"])
+    for k in ("barra_sinal", "conf"):
+        if m.get(k) is not None:
+            m[k] = idx(m[k])
     return {"categoria": cat, "titulo": titulo, "rotulo": rotulo, "tf": rep["tf"], "velas": [[ep[i], V["o"][i], V["h"][i], V["l"][i], V["c"][i]] for i in range(i_a, i_b)],
             "ema20_high": [round(x, 4) for x in eH[i_a:i_b]], "ema20_low": [round(x, 4) for x in eL[i_a:i_b]], "ema_aquecimento_barras": i_a, "marcas": m, "seg": seg}
 
@@ -357,12 +359,23 @@ def grafico_png(j):
     xs = list(range(n))
     ax.plot(xs, j["ema20_high"], color=AMARELO, lw=2.4, zorder=4, label="EMA20 High")
     ax.plot(xs, j["ema20_low"], color=AMARELO, lw=2.4, zorder=4, label="EMA20 Low")
+    zp = M.get("zona_pivo")
+    if zp:
+        ax.axhspan(zp[0], zp[1], color="#8b3fd6", alpha=0.14, zorder=0, label=f"zona do pivô (O39) {zp[0]:.2f}–{zp[1]:.2f}")
+    if M.get("pivo") and M["pivo"][0] is not None:
+        ax.plot(M["pivo"][0], M["pivo"][1], marker="o", ms=11, mfc="none", mec="#8b3fd6", mew=2.2, zorder=7, label=f"extremo {M['pivo'][1]:.2f}")
+    if M.get("conf") is not None and 0 <= M["conf"] < n:
+        t_, o_, h_, l_, c_ = V[M["conf"]]
+        ax.add_patch(Rectangle((M["conf"] - 0.45, l_), 0.9, h_ - l_, fill=False, edgecolor="#eb6834", lw=2, zorder=5))
+        ax.text(M["conf"], h_, "pivô confirmável\n(fechamento i+2)", color="#eb6834", fontsize=7, ha="center", va="bottom")
+    if M.get("gatilho"):
+        ax.axhline(M["gatilho"], color="#6250d6", lw=1.1, ls="--", zorder=1, label=f"gatilho REV-0 {M['gatilho']:.2f}")
     if M.get("stop"):
-        ax.axhline(M["stop"], color="#d63a3a", lw=1.0, ls=":", zorder=1, label=f"stop 2 ATR {M['stop']:.2f}")
+        ax.axhline(M["stop"], color="#d63a3a", lw=1.0, ls=":", zorder=1, label=f"stop {M['stop']:.2f}")
     if M.get("ref"):
         ax.axhline(M["ref"], color="#6250d6", lw=1.2, ls="--", zorder=1, label=f"invalidação (barra de entrada) {M['ref']:.2f}")
     if M.get("entrada") and M["entrada"][1] is not None and M["entrada"][0] is not None:
-        ax.plot(M["entrada"][0], float(M["entrada"][1]), marker="v" if "venda" in j["titulo"] else "^", ms=10, color="#6250d6", zorder=6, label=f"entrada/gatilho {float(M['entrada'][1]):.2f}")
+        ax.plot(M["entrada"][0], float(M["entrada"][1]), marker="v" if ("venda" in j["titulo"] or "TOPO" in j["titulo"]) else "^", ms=10, color="#6250d6", zorder=6, label=f"entrada/gatilho {float(M['entrada'][1]):.2f}")
     if M.get("saida_r0") and M["saida_r0"][0] is not None and M["saida_r0"][1] is not None:
         r0 = M.get("R_r0", M.get("R"))
         ax.plot(M["saida_r0"][0], float(M["saida_r0"][1]), "X", ms=9, color="#8a8a8a", zorder=6, label="saída R0 / observada" + (f" {r0:+.2f} R" if r0 is not None else ""))
@@ -387,6 +400,97 @@ def grafico_png(j):
 
 
 # ════════════════════════════════════════════════════════════════════════
+# O53-B — auditoria de topos/fundos e REV-0 em sombra (replay × leitura original da LM × eventos do EA)
+# ════════════════════════════════════════════════════════════════════════
+def _lm_registro(sb, bot, de, ate):
+    """leitura contínua original da LM (auditoria_leituras): por barra M15 (fechamento), a última leitura com estrutura M15."""
+    rows = _pag(lambda: sb.table("auditoria_leituras").select("ts,barra_m15_utc,estrutura_por_tf").eq("bot_id", int(bot["id"]))
+                .gte("ts", _iso(de - _dt.timedelta(hours=2))).lte("ts", _iso(ate + _dt.timedelta(hours=1))).order("id"), 120000)
+    por = {}
+    for r in rows:
+        m = ((r.get("estrutura_por_tf") or {}) if isinstance(r.get("estrutura_por_tf"), dict) else {}).get("M15")
+        b = _dt_(r.get("barra_m15_utc"))
+        if isinstance(m, dict) and b:
+            por[int(b.timestamp())] = m
+    return por
+
+
+def pivos_auditoria(sb, bot, tf, de, ate, tz):
+    if tf != "M15":
+        return {"situacao": "a auditoria de pivôs (REV-0) é só em M15 (especificação O53-B)"}
+    sim = str(bot.get("simbolo") or "").upper()
+    m15 = candles(sb, sim, "M15", de - _dt.timedelta(seconds=900 * 1229), ate)
+    h1 = candles(sb, sim, "H1", de - _dt.timedelta(hours=1229), ate)
+    if m15 is None or len(m15) < 30:
+        return {"situacao": "sem candles M15 suficientes no período"}
+    res = PV.auditar(m15, h1, int(de.timestamp()), int(ate.timestamp()), sim)
+    lm = _lm_registro(sb, bot, de, ate)
+    ks = sorted(lm)
+    mg = str(bot.get("magic_number") or "")
+    try:
+        evs = _pag(lambda: sb.table("agente_eventos").select("detalhe_json,criado_em").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg)
+                   .in_("detalhe_json->>ev", ["pivo", "rev0"]).gte("criado_em", _iso(de)).lte("criado_em", _iso(ate + _dt.timedelta(hours=1))).order("id"), 5000) if mg else []
+    except Exception:
+        evs = []
+    ea_rev = {}
+    for e in evs:
+        d = e.get("detalhe_json") or {}
+        if d.get("ev") == "rev0" and d.get("id"):
+            ea_rev[d["id"]] = d.get("estado")
+    ep = [int(x) for x in m15.ep]; C = dict(zip(ep, [float(x) for x in m15.close]))
+    L = lambda e: _loc(_dt.datetime.fromtimestamp(int(e), UTC), tz)
+    linhas = []
+    for p in res["pivos"]:
+        if p["situacao"] != "confirmado":
+            continue
+        r = p.get("rev") or {}
+        x = p["extremo"]; chave = "ultimo_topo" if p["tipo"] == "topo" else "ultimo_fundo"
+        k_lm = next((k for k in ks if k >= p["barra"] and abs(float(lm[k].get(chave) or 0) - x) < 0.02), None)
+        ev_lm = sorted({e for k in ks if p["barra"] + 900 <= k <= p["barra"] + 3600 for e in (lm[k].get("eventos") or []) if str(e).startswith(("sacudida", "exaustao"))})
+        iid = ("F-" if p["tipo"] == "fundo" else "T-") + str(p["barra"])
+        est = r.get("estado")
+        onde = {"sem rejeição": "exaustão/rejeição não confirmada no pivô", "gatilho não alcançado": "gatilho ausente (não alcançado na barra seguinte)",
+                "bloqueada pelo espaço": "entrada bloqueada pelo espaço", "entrou (sombra)": "oportunidade registrada só em sombra",
+                "aguardando barra seguinte": "gatilho armado no fim do período"}.get(est, est)
+        linhas.append({"id": iid, "tipo": p["tipo"], "extremo": x, "hora_extremo": L(p["barra"]), "confirmavel_em": L(p["confirmado_em"]),
+                       "preco_na_confirmacao": C.get(p["confirmado_em"] - 900), "zona_pivo": p["zona"],
+                       "lm_registrou_em": L(k_lm) if k_lm else None, "lm_eventos": ev_lm,
+                       "sombra_pct": r.get("sombra_pct"), "rejeicao_zona": r.get("rejeicao_zona_o39"), "gatilho": r.get("gatilho"), "entrada": r.get("entrada"),
+                       "stop": r.get("stop"), "R": r.get("R"), "espaco_R": r.get("espaco_R"), "zona_a_frente": r.get("zona_a_frente"),
+                       "estado_rev0": est, "decisao": r.get("decisao"), "onde_parou": onde, "classe": r.get("classe"), "R_final": r.get("R_final"), "MFE_R": r.get("MFE_R"),
+                       "ea_rev0": ea_rev.get(iid) or "sem evidência no EA (EA sem O53-B no gráfico ou fora do período)",
+                       "_t": p["barra"], "_conf": p["confirmado_em"] - 900, "_atr": p.get("atr")})
+    toq = res["toques"]
+    cont = {k: sum(1 for t in toq if t["desfecho"] == k) for k in ("reação", "continuidade", "indefinido")}
+    # janelas: todos os pivôs até 12, sorteio fixo por categoria de estado
+    rng = random.Random(SEMENTE); cats = {}
+    for l_ in linhas:
+        cats.setdefault(l_["estado_rev0"], []).append(l_)
+    escolhidos = []
+    for c, it in cats.items():
+        escolhidos += [it[i] for i in sorted(rng.sample(range(len(it)), min(3, len(it))))]
+    escolhidos = sorted(escolhidos, key=lambda z: z["_t"])[:12]
+    rep = {"tf": "M15", "_velas": {"ep": ep, "o": [float(v) for v in m15.open], "h": [float(v) for v in m15.high], "l": [float(v) for v in m15.low], "c": [float(v) for v in m15.close]}}
+    jan = []
+    for l_ in escolhidos:
+        za = l_.get("zona_a_frente")
+        mk = {"pivo": [l_["_t"], l_["extremo"]], "conf": l_["_conf"], "zona_pivo": l_["zona_pivo"], "gatilho": l_["gatilho"], "stop": l_["stop"],
+              "zona": None if not za else {"tf": za.get("tf"), "funcao": za.get("funcao"), "base": za.get("base"), "topo": za.get("topo"), "estado": za.get("estado"), "testes": za.get("testes")}}
+        j = _janela(rep, "pivô", f"{l_['tipo'].upper()} {l_['extremo']:.2f} às {l_['hora_extremo'][11:16]} · confirmável {l_['confirmavel_em'][11:16]} · LM registrou "
+                    f"{(l_['lm_registrou_em'] or '—')[11:16]} · REV-0: {l_['onde_parou']}" + (f" ({l_['espaco_R']} R até a zona)" if l_.get("espaco_R") is not None else ""),
+                    l_["_t"] - 900 * 4, l_["_conf"] + 900 * 8, mk, "REPLAY M15 fechado (só dados disponíveis em cada barra) — REV-0 em SOMBRA, nenhuma ordem")
+        if j:
+            jan.append(j)
+    for l_ in linhas:
+        for k in ("_t", "_conf", "_atr"):
+            l_.pop(k, None)
+    return {"situacao": "ok", "versao": PV.VERSAO, "pivos": linhas, "descartados": sum(1 for p in res["pivos"] if p["situacao"] == "descartado"),
+            "toques_de_zona": cont, "janelas": jan,
+            "resumo_rev0": {k: sum(1 for l_ in linhas if l_["estado_rev0"] == k) for k in sorted({l_["estado_rev0"] for l_ in linhas})},
+            "nota": "Pivô = fractal 2+2 da O39, reconhecível só no fechamento da barra i+2. 'LM registrou' = 1ª leitura contínua com o valor como último topo/fundo."}
+
+
+# ════════════════════════════════════════════════════════════════════════
 # seção 5
 # ════════════════════════════════════════════════════════════════════════
 def _eh_lateral(b):
@@ -405,17 +509,21 @@ def secao_5(sb, ids, de, ate, tz):
         cfg = b.get("config_operacional") or {}
         tf = TF_CFG.get(str(cfg.get("timeframe_envio") or "15m").lower(), "M15")
         cod = str(b.get("mq5_codigo") or "")
-        ea_v = "lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)"
+        ea_v = "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
         obs = observado(sb, b, de, ate, tz)
         try:
             rep = replay(sb, str(b.get("simbolo") or "").upper(), tf, de, ate, spread=None)
         except Exception as e:
             rep = {"situacao": f"replay falhou: {str(e)[:200]}"}
         jan = janelas(rep, obs, tz)
+        try:
+            piv = pivos_auditoria(sb, b, tf, de, ate, tz)
+        except Exception as e:
+            piv = {"situacao": f"auditoria de pivôs falhou: {str(e)[:200]}"}
         if isinstance(rep, dict):
             rep.pop("_velas", None)
         bots.append({"bot_id": int(b["id"]), "bot": b.get("nome"), "simbolo": b.get("simbolo"), "tf": tf, "ea_registrado_na_plataforma": ea_v,
-                     "replay": rep, "observado": obs, "janelas": jan})
+                     "replay": rep, "observado": obs, "janelas": jan, "pivos": piv})
     return {"titulo": "5. Lateral (O53): replay × sombra × execução observada", "versao": VERSAO, "especificacao_congelada": ESPEC,
             "estados": {"replay": "motor de referência sobre candles gravados (equivalência tick a tick com o EA provada no teste local)",
                         "sombra": "decisões avaliadas sem ordem (reversão)", "execucao_observada": "negócios e eventos confirmados pelo MT5 via conector",

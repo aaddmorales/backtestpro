@@ -1,0 +1,21 @@
+ORDEM 053-B — REV-0: REVERSÃO EM SOMBRA NO PIVÔ (topo/fundo) — ESPECIFICAÇÃO CONGELADA ANTES DO REPLAY (09/11/2026, Europe/Kyiv)
+Só sombra: nenhuma ordem de reversão é habilitada. Confirmação só em M15 FECHADO; M1/M5 não entram.
+
+1. PIVÔ — memória estrutural O39 do M15 (estrutura-0.1, sem alteração): fundo = mínima da barra i estritamente menor que as 2 anteriores
+   e as 2 seguintes; topo simétrico. Só é reconhecível no FECHAMENTO da barra i+2 (evento "confirmado" ou "agrupado" da O39).
+   Antes disso o ponto é só candidato — um pivô visível depois não é sinal que existia na hora.
+2. REJEIÇÃO (obrigatória), na barra do pivô (i):
+   a) sombra do lado do extremo >= 50% da amplitude da barra (fundo: (min(o,c) - l)/(h - l); topo: (h - max(o,c))/(h - l)); ou
+   b) evento O39 de rejeição na barra i: sombra além de uma zona já existente da mesma função, fechamento dentro dela.
+   Sem rejeição: "pivô sem rejeição" (não há oportunidade de reversão).
+3. GATILHO: só na barra seguinte à de confirmação (i+3). Compra (fundo): preço supera a máxima da barra de confirmação (i+2) em >= 1 tick.
+   Venda (topo): preço rompe a mínima da barra i+2 em >= 1 tick. Não alcançou dentro da barra i+3 = "gatilho não alcançado".
+   No replay com M15: entrada no gatilho; se a barra i+3 abrir além dele, entrada na abertura.
+4. STOP: além do extremo do pivô pela largura da zona O39: compra = extremo - 0,25·ATR14(M15); venda = extremo + 0,25·ATR14. R = |entrada - stop|.
+5. ESPAÇO: mesma regra do lateral-r1: espaço até a primeira zona à frente (memória M15 + H1) >= 1,0 R; senão "bloqueada pelo espaço".
+   Spread não disponível no replay M15 (considerado 0 e registrado).
+6. SAÍDA (sombra): o que vier primeiro em barra fechada: (a) stop tocado (máxima/mínima da barra), (b) fechamento além do extremo do pivô,
+   (c) pivô contrário confirmado (O39). Resultado em R e MFE em R.
+7. CLASSIFICAÇÃO: "reversão" = MFE >= 1,0 R antes da saída por stop/invalidação; "continuidade" = stop ou fechamento além do extremo com MFE < 1,0 R.
+8. TOQUES DE ZONA (evento O39 "teste"): "continuidade" se a zona tiver rompimento (pendente ou confirmado) nas 4 barras seguintes; "reação" se o
+   preço se afastar >= 1 ATR14 da zona no sentido da função nas 4 barras seguintes; senão "indefinido".

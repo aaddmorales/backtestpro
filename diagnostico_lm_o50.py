@@ -843,6 +843,25 @@ def _pdf_secao_5(d, S5, h1, h2, p, kv, tab, W):
             S = Rp["sombra"]
             p("SOMBRA — reversão avaliada (nunca enviada): " + f"{len(S['avaliacoes'])} avaliação(ões), {S['resumo_sombra']['operacoes']} posição(ões) virtuais, "
               f"R total {S['resumo_sombra']['R_total']}. {S['nota']}", tam=7.4)
+        PV = b.get("pivos") or {}
+        p("AUDITORIA DE TOPOS E FUNDOS (O53-B) — replay em M15 fechado, só com o que existia em cada barra; REV-0 só em sombra", b=True)
+        if PV.get("situacao") != "ok":
+            p(str(PV.get("situacao")), tam=7.6)
+        else:
+            p(f"{PV.get('nota')} Pivôs descartados (barra seguinte igualou o extremo): {PV.get('descartados')}. REV-0: "
+              + "; ".join(f"{k} {v}" for k, v in (PV.get('resumo_rev0') or {}).items()) + ". Toques de zona: "
+              + "; ".join(f"{k} {v}" for k, v in (PV.get('toques_de_zona') or {}).items()) + ".", tam=7.2)
+            tab(["tipo", "extremo", "hora", "confirmável", "LM registrou", "sombra/zona", "gatilho", "espaço R", "onde parou", "EA"],
+                [[x["tipo"], x["extremo"], (x["hora_extremo"] or "")[11:16], (x["confirmavel_em"] or "")[11:16], (x["lm_registrou_em"] or "—")[11:16],
+                  f"{x['sombra_pct']}%/{'sim' if x['rejeicao_zona'] else 'não'}", x["gatilho"], x["espaco_R"], x["onde_parou"], (x["ea_rev0"] or "")[:22]] for x in PV["pivos"]],
+                [11, 17, 11, 15, 15, 17, 17, 13, 44, 26])
+            for j in PV.get("janelas") or []:
+                if d.get_y() > 185:
+                    d.add_page()
+                p(j["titulo"], b=True, tam=7.6)
+                if j.get("velas"):
+                    d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
+                d.ln(1.5)
         for j in b.get("janelas") or []:
             if d.get_y() > 185:
                 d.add_page()

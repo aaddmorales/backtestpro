@@ -30,7 +30,7 @@ def _ler(arq):
 def _traduzir(mq5, dst):
     s = mq5.replace("#include <Trade\\Trade.mqh>", '#include "mt5shim.h"')
     s = re.sub(r"^input\s+", "static ", s, flags=re.M)
-    s = re.sub(r"const (double|long|string) &(\w+)\[\]", r"const std::vector<\1>& \2", s)
+    s = re.sub(r"const (double|long|string|MqlRates) &(\w+)\[\]", r"const std::vector<\1>& \2", s)
     s = re.sub(r"(?<![\w<])(double|long|string) &(\w+)\[\]", r"std::vector<\1>& \2", s)
     s = re.sub(r"^(\s*)(double|long|string|MqlRates|int|bool)\s+((?:\w+\[\],?\s*)+);",
                lambda m: m.group(1) + f"std::vector<{m.group(2)}> " + ",".join(n.strip().rstrip("[]") for n in m.group(3).split(",")) + ";", s, flags=re.M)
@@ -70,7 +70,7 @@ def test_1_ea_tick_a_tick_igual_ao_motor_o53(A):
         assert sum(d.get("ev") == "gatilho_armado" for d in lat) == I.cont["gatilhos_armados"], tf
         # reconciliação: cada fechamento do EA é confirmado; o de stop aparece como fechamento externo com a razão
         assert sum(d.get("ev") == "fechamento_confirmado" for d in lat) + sum(d.get("ev") == "fechamento_externo" for d in lat) >= len(ea_s) - 1
-        assert all(d.get("v") == "lateral-r1 (O53)" for d in lat)
+        assert all(d.get("v") == "lateral-r1.1 (O53-B)" for d in lat)
         hist = [d for d in lat if d.get("ev") == "historico"]                          # o histórico do MT5 vai para a BabyMachine (replay)
         assert hist and all(len(d["barras"].split(";")) <= 60 for d in hist) and {d["tf"] for d in hist} == ({"H1"} if tf == 60 else {"M30", "H1"} if tf == 30 else {"M15", "H1"})
         tot["entradas"] += len(ea_e); tot["bloqueios"] += I.cont["bloq_espaco"] + I.cont["bloq_dentro_zona"]; tot["cortes"] += I.cont["saidas_corte"]; tot["reversoes"] += I.cont["rev_avaliadas"]
@@ -101,12 +101,12 @@ def test_2_sem_filtro_e_sem_corte_e_a_r0_da_o47():
 
 def test_3_gerador_entrega_o_ea_r1(A):
     lat = A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
-    assert 'BTLAT_VERSAO "lateral-r1 (O53)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
+    assert 'BTLAT_VERSAO "lateral-r1.1 (O53-B)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
     assert re.search(r"input\s+\w+\s+InpBTAlvoRR\s*=\s*0\.0;", lat) and re.search(r"input\s+\w+\s+InpBTTrailingBarra\s*=\s*false;", lat)
     assert "void BTvGravarEvento(const string linha_evento)" in lat                       # o canal confiável da BabyMachine existe no EA instrumentado
     assert A._mq5_sanidade(lat)[0]
-    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1 (O53)", "x")}         # cache antigo (R0) não pode voltar
-    assert "lateral-r1 (O53)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
+    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1.1 (O53-B)", "x")}         # cache antigo (R0) não pode voltar
+    assert "lateral-r1.1 (O53-B)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
     A._mq5_cache_buscar = lambda h: None
     assert "8.33-o53-lateral-r1" in A.API_VERSAO
 
@@ -195,3 +195,47 @@ def test_5_secao_5_do_diagnostico_e_pdf(A):
     def tab(cab, linhas, larg, lim=90): [p(" | ".join(D._t(x, 30) for x in l)) for l in [cab] + list(linhas)]
     D._pdf_secao_5(d, c["secao_5"], lambda t: p(t, True, 12), lambda t: p(t, True, 9), p, kv, tab, 186)
     out = bytes(d.output()); assert out[:4] == b"%PDF" and d.page_no() >= 2
+
+
+def test_6_ea_pivos_e_rev0_iguais_ao_replay_o53b(A):
+    """O53-B: cada pivô confirmado (O39, M15 fechado) e o estado da REV-0 em sombra que o EA registra = replay pivos_o53b (dados reais BTCUSD M15+H1)."""
+    import pivos_o53b as PV
+    tmp = tempfile.mkdtemp()
+    for f in ("mt5shim.h", "main.cpp"):
+        shutil.copy(os.path.join(REF53, "shim", f), tmp)
+    _traduzir(A._BT_LATERAL_R0_MQL5, os.path.join(tmp, "ea.cpp"))
+    r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", os.path.join(tmp, "sim"), os.path.join(tmp, "main.cpp")], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-1500:]
+    f15, fh1 = os.path.join(DADOS, "BTCUSD_M15_202610.csv"), os.path.join(DADOS, "BTCUSD_H1_202610.csv")
+    out = subprocess.run([os.path.join(tmp, "sim"), "15", f15, f15, "0", "0", fh1], capture_output=True, text=True).stdout.split("\n")
+    ev = [dict(p.split("=", 1) for p in l.split("|")[1:] if "=" in p) for l in out if l.startswith("EVT|")]
+    piv = [(int(e["t_extremo"]), float(e["extremo"]), int(e["confirmado_no_fechamento_de"])) for e in ev if e.get("ev") == "pivo"]
+    rev = {e["id"]: e["estado"] for e in ev if e.get("ev") == "rev0"}
+    assert all("SOMBRA" in e.get("modo", "SOMBRA") for e in ev if e.get("ev") == "rev0") and not any(l.startswith("ORDEM") for l in out if "rev" in l)
+    m15 = _ler(f15).iloc[:-1].reset_index(drop=True); h1 = _ler(fh1)
+    res = PV.auditar(m15, h1)
+    first = min(p[2] for p in piv)
+    conf = [p for p in res["pivos"] if p["situacao"] == "confirmado" and p["confirmado_em"] - 900 >= first]
+    assert piv == [(p["barra"], p["extremo"], p["confirmado_em"] - 900) for p in conf] and len(piv) >= 30
+    mp = {"sem rejeição": "sem rejeicao", "gatilho não alcançado": "gatilho nao alcancado", "entrou (sombra)": "entraria (sombra)", "aguardando barra seguinte": "armado"}
+    def est(p):
+        x = p["rev"]
+        if x["estado"] == "bloqueada pelo espaço":
+            return "bloqueada: " + ("entrada dentro da zona" if x["decisao"].startswith("entrada dentro") else "espaco insuficiente")
+        return mp.get(x["estado"], x["estado"])
+    assert rev == {("F-" if p["tipo"] == "fundo" else "T-") + str(p["barra"]): est(p) for p in conf}
+    assert len(set(rev.values())) >= 3
+
+
+def test_7_auditoria_de_pivos_no_diagnostico(A):
+    import validacao_o53 as V, datetime as dt_
+    d = _ler(os.path.join(DADOS, "BTCUSD_M15_202610.csv")); h = _ler(os.path.join(DADOS, "BTCUSD_H1_202610.csv"))
+    linhas = lambda tf, x: [{"simbolo": "BTCUSD", "tf": tf, "abertura_utc": _dt.datetime.fromtimestamp(int(e), _dt.timezone.utc).isoformat(), "o": o, "h": hh, "l": l, "c": c,
+                            "fechado": True, "ultimo_visto_utc": "x"} for e, o, hh, l, c in zip(x.ep, x.open, x.high, x.low, x.close)]
+    sb = _SB({"auditoria_candles": linhas("M15", d) + linhas("H1", h), "auditoria_leituras": [], "agente_eventos": []})
+    de = _dt.datetime(2026, 10, 15, 0, 0, tzinfo=_dt.timezone.utc); ate = _dt.datetime(2026, 10, 16, 11, 0, tzinfo=_dt.timezone.utc)
+    P = V.pivos_auditoria(sb, {"id": 15, "simbolo": "BTCUSD", "magic_number": 7}, "M15", de, ate, _dt.timezone.utc)
+    assert P["situacao"] == "ok" and len(P["pivos"]) >= 10 and P["janelas"]
+    assert all(x["onde_parou"] and x["confirmavel_em"] > x["hora_extremo"] for x in P["pivos"])
+    assert all(x["lm_registrou_em"] is None and x["ea_rev0"].startswith("sem evidência") for x in P["pivos"])
+    assert V.grafico_png(P["janelas"][0])[:4] == b"\x89PNG"

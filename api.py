@@ -822,7 +822,8 @@ API_VERSAO = "8.31-o51-lateral-r0 (ORDEM 051: cartão 'Rompimento de Lateraliza�
 API_VERSAO = "8.32.2-o52-leitura-continua (correção 8.32.2 / O51.1: EA do Lateral nasce com a disciplina neutra — sem alvo automático, sem trailing por barra, sem piso de stop) correção 8.32.1: a rota do resumo aceita sessao=\"leitura\" antes de procurar campanha) ORDEM 052: leitura do mercado gravada a cada snapshot para todo bot, com ou sem campanha — auditoria_candles/auditoria_leituras; só registro; resumo do bot sem campanha = a leitura do mercado no período, com janelas de gráfico) | " + API_VERSAO   # O52
 API_VERSAO = "8.33-o53-lateral-r1 (ORDEM 053: EA lateral-r1 — filtro de espaço de 1,0 R até a primeira zona (memória O39 do TF + H1, com spread), corte estrutural pela máxima/mínima da barra de entrada em cada barra fechada, reconciliação de fechamento (1 comando por barra; fechamento externo consultado no histórico; evento duplicado do mesmo ticket não vira órfã), reversão só em sombra; cada decisão vira evento tipo=lateral na BabyMachine; Diagnóstico geral da LM (O50) portado com a seção 5 replay × sombra × execução observada) | " + API_VERSAO
 API_VERSAO = "8.33.1-o53a-atualizar-ea (ORDEM 053-A: atualização do EA lateral-r1 pelo fluxo mt5_jobs → Conector, disparada no servidor por BT_O53_ATUALIZAR_BOTS, um bot por vez, idempotente) | " + API_VERSAO
-BUILD_TAG = "2026-11-08-lateral-r1-o53a"
+API_VERSAO = "8.34-o53b-pivos-rev0 (ORDEM 053-B: EA lateral-r1.1 registra cada pivô confirmado (O39, M15 fechado) e avalia a REV-0 — reversão no pivô com rejeição, gatilho na barra seguinte, espaço de 1 R — SÓ EM SOMBRA; Diagnóstico geral: auditoria de topos/fundos × leitura original da LM × EA) | " + API_VERSAO
+BUILD_TAG = "2026-11-09-o53b-pivos-rev0"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -18659,7 +18660,7 @@ def _mq5_cache_aprovar(gen_hash: str):
 # O51 — esqueleto do EA "Rompimento de Lateralização" (R0). Conferido tick a tick contra ao_vivo_o47
 # (testes/test_o51_lateral_ea.py). Só ASCII; instrumentado por _instrumentar_log_mql5 no gerador.
 _BT_LATERAL_R0_MQL5 = r'''//+------------------------------------------------------------------+
-//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1, ORDEM 053)   |
+//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1.1, O53/O53-B)|
 //| EXPERIMENTAL - SEM RESULTADO MEDIDO. Base: regra R0 da O44/O47     |
 //| (caixa de 12 barras <= 3 ATR; pivo com tentativa; fechamento alem |
 //| do nivel; entrada na barra seguinte quando o BID supera o extremo |
@@ -18675,6 +18676,7 @@ _BT_LATERAL_R0_MQL5 = r'''//+---------------------------------------------------
 //|  (3) RECONCILIACAO: no maximo 1 comando de fechar por barra;      |
 //|      fechamento sem comando do EA e consultado no historico.      |
 //|  (4) REVERSAO: so avaliada e registrada (sombra); nunca abre.     |
+//|  (5) O53-B: pivo confirmado (O39) e REV-0 no pivo, so em sombra.  |
 //| Cada decisao vai para a BabyMachine (evento tipo=lateral).        |
 //| Graficos M15, M30 ou H1; XAUUSD e BTCUSD (2 casas).               |
 //+------------------------------------------------------------------+
@@ -18685,7 +18687,7 @@ input int    InpStopLoss   = 0;     // nao usado: stop da regra = 2 ATR(14) do T
 input int    InpTakeProfit = 0;     // nao usado: saida pelo canal EMA20 High/Low ou corte estrutural
 CTrade trade;
 
-#define BTLAT_VERSAO "lateral-r1 (O53)"
+#define BTLAT_VERSAO "lateral-r1.1 (O53-B)"
 #define BTLAT_CAIXA 12
 #define BTLAT_NJAN  1200
 #define BTLAT_NATR  14
@@ -18717,6 +18719,16 @@ long     btLatPosTk     = 0;        // ticket da posicao do EA visto no ultimo t
 long     btLatCmdTk     = 0;        // ticket com comando de fechar enviado
 datetime btLatCmdBarra  = 0;        // barra em que o ultimo comando foi enviado
 bool     btLatZonasLog  = false;
+// O53-B — REV-0 (reversão no pivô) SÓ EM SOMBRA: [0] venda (topo), [1] compra (fundo)
+bool     btRevPend[2];
+double   btRevGat[2];
+double   btRevExt[2];
+double   btRevAtr[2];
+bool     btRevTemZona[2];
+double   btRevZb[2];
+double   btRevZt[2];
+string   btRevId[2];
+string   btRevZona[2];
 
 // ---------- memoria estrutural O39 (estrutura-0.1), incremental por barra fechada ----------
 class CBTMem
@@ -18751,6 +18763,16 @@ public:
    double   zBrH[];
    double   zBrL[];
    long     zText[];
+   // O53-B: pivôs confirmados/agrupados nesta alimentação e barras com rejeição registrada (para a REV-0 em sombra)
+   int      pvTipo[];
+   double   pvExt[];
+   long     pvT[];
+   int      pvBarra[];
+   double   pvZb[];
+   double   pvZt[];
+   double   pvAtr[];
+   int      rjBarra[];
+   int      rjFun[];
 
    void Init(string n,ENUM_TIMEFRAMES p)
      {
@@ -18759,6 +18781,31 @@ public:
       ArrayResize(cdTipo,0); ArrayResize(cdBarra,0); ArrayResize(cdExt,0); ArrayResize(cdAtr,0); ArrayResize(cdT,0);
       ArrayResize(zFun,0); ArrayResize(zExt,0); ArrayResize(zB,0); ArrayResize(zT,0); ArrayResize(zEst,0); ArrayResize(zTestes,0);
       ArrayResize(zRej,0); ArrayResize(zMemb,0); ArrayResize(zAg,0); ArrayResize(zBrH,0); ArrayResize(zBrL,0); ArrayResize(zText,0);
+      ArrayResize(rjBarra,0); ArrayResize(rjFun,0);
+      LimparPivos();
+     }
+
+   void LimparPivos()
+     {
+      ArrayResize(pvTipo,0); ArrayResize(pvExt,0); ArrayResize(pvT,0); ArrayResize(pvBarra,0); ArrayResize(pvZb,0); ArrayResize(pvZt,0); ArrayResize(pvAtr,0);
+     }
+
+   void AnotarPivo(int i,int k)
+     {
+      int m=ArraySize(pvTipo);
+      ArrayResize(pvTipo,m+1); ArrayResize(pvExt,m+1); ArrayResize(pvT,m+1); ArrayResize(pvBarra,m+1); ArrayResize(pvZb,m+1); ArrayResize(pvZt,m+1); ArrayResize(pvAtr,m+1);
+      pvTipo[m]=cdTipo[i]; pvExt[m]=cdExt[i]; pvT[m]=cdT[i]; pvBarra[m]=cdBarra[i]; pvZb[m]=zB[k]; pvZt[m]=zT[k]; pvAtr[m]=atr;
+     }
+
+   bool TemRejeicao(int barra,int fun)
+     {
+      int n=ArraySize(rjBarra);
+      for(int q=n-1;q>=0;q--)
+        {
+         if(rjBarra[q]<barra) break;
+         if(rjBarra[q]==barra && rjFun[q]==fun) return(true);
+        }
+      return(false);
      }
 
    void Atualizar(int k,double h,double l,double c)
@@ -18784,7 +18831,18 @@ public:
       if(toca)
         {
          zTestes[k]++;
-         if((sup && l<b) || (!sup && h>tz)) zRej[k]++;
+         if((sup && l<b) || (!sup && h>tz))
+           {
+            zRej[k]++;
+            int nr=ArraySize(rjBarra);
+            if(nr>=200)
+              {
+               for(int q=0;q<nr-1;q++) { rjBarra[q]=rjBarra[q+1]; rjFun[q]=rjFun[q+1]; }
+               nr--;
+              }
+            ArrayResize(rjBarra,nr+1); ArrayResize(rjFun,nr+1);
+            rjBarra[nr]=nb; rjFun[nr]=zFun[k];
+           }
          zEst[k]=BTZ_TESTE;
         }
      }
@@ -18807,12 +18865,14 @@ public:
          zMemb[mel]++;
          if(z0<zB[mel]) zB[mel]=z0;
          if(z1>zT[mel]) zT[mel]=z1;
+         AnotarPivo(i,mel);
          return;
         }
       ArrayResize(zFun,nz+1); ArrayResize(zExt,nz+1); ArrayResize(zB,nz+1); ArrayResize(zT,nz+1); ArrayResize(zEst,nz+1); ArrayResize(zTestes,nz+1);
       ArrayResize(zRej,nz+1); ArrayResize(zMemb,nz+1); ArrayResize(zAg,nz+1); ArrayResize(zBrH,nz+1); ArrayResize(zBrL,nz+1); ArrayResize(zText,nz+1);
       zFun[nz]=fun; zExt[nz]=x; zB[nz]=z0; zT[nz]=z1; zEst[nz]=BTZ_CONF; zTestes[nz]=0; zRej[nz]=0; zMemb[nz]=1; zAg[nz]=false;
       zBrH[nz]=0.0; zBrL[nz]=0.0; zText[nz]=cdT[i];
+      AnotarPivo(i,nz);
      }
 
    void Nova(datetime t,double h,double l,double c)
@@ -19147,6 +19207,75 @@ void BTLatLogZonas(double px)
      }
   }
 
+// O53-B — REV-0 em SOMBRA. (1) resolve o gatilho armado no fechamento anterior com a barra que acabou de fechar;
+// (2) para cada pivô confirmado agora (memória do TF do gráfico): rejeição, gatilho e zona à frente. Nunca envia ordem.
+void BTLatRev0(const MqlRates &r[],int b,bool aquecendo)
+  {
+   for(int k=0;k<2;k++)
+     {
+      if(!btRevPend[k]) continue;
+      btRevPend[k]=false;
+      int s=(k==0)?-1:1;
+      double g=btRevGat[k];
+      bool alc=(s>0)?(r[b].high>=g):(r[b].low<=g);
+      if(!alc)
+        {
+         BTLatEv("rev0","id="+btRevId[k]+"|lado="+IntegerToString(s)+"|estado=gatilho nao alcancado|gatilho="+DoubleToString(g,2)+"|modo=SOMBRA - nenhuma ordem");
+         continue;
+        }
+      double E=(s>0)?MathMax(r[b].open,g):MathMin(r[b].open,g);
+      double stop=NormalizeDouble(btRevExt[k]-s*BTLAT_KZONA*btRevAtr[k],2);
+      double R=MathAbs(E-stop);
+      string est="entraria (sombra)";
+      string esp="espaco_R=sem zona";
+      if(btRevTemZona[k])
+        {
+         double d=MathMax(0.0,(s>0)?(btRevZb[k]-E):(E-btRevZt[k]));
+         esp="espaco_pts="+DoubleToString(d,2)+"|espaco_R="+DoubleToString((R>0.0)?d/R:0.0,3)+"|"+btRevZona[k];
+         if(d==0.0) est="bloqueada: entrada dentro da zona";
+         else if(d<BTLAT_KESP*R-1e-9) est="bloqueada: espaco insuficiente";
+        }
+      BTLatEv("rev0","id="+btRevId[k]+"|lado="+IntegerToString(s)+"|estado="+est+"|entrada="+DoubleToString(E,2)+"|stop="+DoubleToString(stop,2)
+              +"|R="+DoubleToString(R,2)+"|"+esp+"|modo=SOMBRA - nenhuma ordem");
+     }
+   int np=ArraySize(btMemTF.pvTipo);
+   for(int m=0;m<np && !aquecendo;m++)
+     {
+      int s=(btMemTF.pvTipo[m]<0)?1:-1;           // fundo -> compra; topo -> venda
+      int k=(s>0)?1:0;
+      string id=((s>0)?"F-":"T-")+IntegerToString(btMemTF.pvT[m]);
+      BTLatEv("pivo","id="+id+"|tipo="+((s>0)?"fundo":"topo")+"|extremo="+DoubleToString(btMemTF.pvExt[m],2)+"|t_extremo="+IntegerToString(btMemTF.pvT[m])
+              +"|confirmado_no_fechamento_de="+IntegerToString((long)r[b].time)+"|zona_base="+DoubleToString(btMemTF.pvZb[m],2)+"|zona_topo="+DoubleToString(btMemTF.pvZt[m],2));
+      int ix=-1;
+      for(int q=b;q>=0;q--) if((long)r[q].time==btMemTF.pvT[m]) { ix=q; break; }
+      if(ix<0) { BTLatEv("rev0","id="+id+"|estado=barra do pivo fora da janela"); continue; }
+      double rng=r[ix].high-r[ix].low;
+      double somb=0.0;
+      if(rng>0.0) somb=(s>0)?(MathMin(r[ix].open,r[ix].close)-r[ix].low)/rng:(r[ix].high-MathMax(r[ix].open,r[ix].close))/rng;
+      bool rejz=btMemTF.TemRejeicao(btMemTF.pvBarra[m],(s>0)?-1:1);
+      if(!(somb>=0.5 || rejz))
+        {
+         BTLatEv("rev0","id="+id+"|lado="+IntegerToString(s)+"|estado=sem rejeicao|sombra_pct="+DoubleToString(100.0*somb,1)+"|modo=SOMBRA - nenhuma ordem");
+         continue;
+        }
+      double g=NormalizeDouble((s>0)?(r[b].high+BTLAT_TICK):(r[b].low-BTLAT_TICK),2);
+      double d=0.0; int qual=0;
+      int z=BTLatZona(s,g,d,qual);
+      btRevPend[k]=true; btRevGat[k]=g; btRevExt[k]=btMemTF.pvExt[m]; btRevAtr[k]=btMemTF.pvAtr[m]; btRevId[k]=id;
+      btRevTemZona[k]=(z>=0);
+      if(z>=0)
+        {
+         btRevZb[k]=(qual==1)?btMemTF.zB[z]:btMemH1.zB[z];
+         btRevZt[k]=(qual==1)?btMemTF.zT[z]:btMemH1.zT[z];
+         btRevZona[k]=(qual==1)?btMemTF.Desc(z):btMemH1.Desc(z);
+        }
+      BTLatEv("rev0","id="+id+"|lado="+IntegerToString(s)+"|estado=armado|sombra_pct="+DoubleToString(100.0*somb,1)+"|rejeicao_zona="+(rejz?"sim":"nao")
+              +"|gatilho="+DoubleToString(g,2)+"|valido_na_barra_seguinte=sim|modo=SOMBRA - nenhuma ordem");
+     }
+   btMemTF.LimparPivos();
+   btMemH1.LimparPivos();
+  }
+
 // fechamento de barra do TF do grafico
 bool BTLatBarra()
   {
@@ -19179,8 +19308,10 @@ bool BTLatBarra()
       btLatPendLado=0;
      }
    // (2) memorias estruturais (TF do grafico + H1), so barras fechadas
+   bool aquecendo=(btMemTF.ult==0);
    btMemTF.Alimentar();
    if(_Period!=PERIOD_H1) btMemH1.Alimentar();
+   BTLatRev0(r,b,aquecendo);
    if(!btLatZonasLog)
      {
       btLatZonasLog=true;
@@ -19881,7 +20012,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
             hit = _mq5_cache_buscar(gen_hash)
             texto = (hit or {}).get("mq5") or ""
-            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1 (O53)" not in texto:   # O53: cache do R0 antigo nunca volta
+            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1.1 (O53-B)" not in texto:   # O53/O53-B: cache de versão anterior nunca volta
                 texto = _instrumentar_log_mql5(_BT_LATERAL_R0_MQL5)
                 _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
                 print(f"[lateral-r0] EA deterministico gerado e cacheado ({gen_hash[:10]})")
@@ -32581,8 +32712,8 @@ def _o53_atualizar_eas():
             cod_ant = str(b.get("mq5_codigo") or "")
             if b.get("excluido") or "BTLatDetectar" not in cod_ant:
                 print(f"[o53-atualizar] bot {bid}: não é um bot Lateral ativo — ignorado"); continue
-            if "lateral-r1 (O53)" in cod_ant:
-                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1 (O53) — nada a fazer"); continue
+            if "lateral-r1.1 (O53-B)" in cod_ant:
+                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1.1 (O53-B) — nada a fazer"); continue
             pend = (sb.table("mt5_jobs").select("job_id").eq("bot_token", b["bot_token"]).eq("status", "validando").limit(1).execute().data or [])
             if pend:
                 print(f"[o53-atualizar] bot {bid}: já há job pendente {pend[0]['job_id']} — não duplica"); continue
@@ -32592,7 +32723,7 @@ def _o53_atualizar_eas():
                                              "ativo": ativo})
             mq5 = _bt_base_ligar(cod, mq5, ativo)
             ok_s = _mq5_sanidade(mq5 or "")[0]
-            if not mq5 or not ok_s or "lateral-r1 (O53)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
+            if not mq5 or not ok_s or "lateral-r1.1 (O53-B)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
                 print(f"[o53-atualizar] bot {bid}: geração reprovada na sanidade — job NÃO criado"); continue
             import uuid as _u53
             job_id = "o53" + _u53.uuid4().hex[:13]
