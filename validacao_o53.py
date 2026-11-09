@@ -369,7 +369,7 @@ def grafico_png(j):
         ax.add_patch(Rectangle((M["conf"] - 0.45, l_), 0.9, h_ - l_, fill=False, edgecolor="#eb6834", lw=2, zorder=5))
         ax.text(M["conf"], h_, "pivô confirmável\n(fechamento i+2)", color="#eb6834", fontsize=7, ha="center", va="bottom")
     if M.get("gatilho"):
-        ax.axhline(M["gatilho"], color="#6250d6", lw=1.1, ls="--", zorder=1, label=f"gatilho REV-0 {M['gatilho']:.2f}")
+        ax.axhline(M["gatilho"], color="#6250d6", lw=1.1, ls="--", zorder=1, label=f"gatilho {M['gatilho']:.2f}")
     if M.get("stop"):
         ax.axhline(M["stop"], color="#d63a3a", lw=1.0, ls=":", zorder=1, label=f"stop {M['stop']:.2f}")
     if M.get("ref"):
