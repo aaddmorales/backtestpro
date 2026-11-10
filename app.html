@@ -3954,7 +3954,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.93-o53c-trilha-rompimento';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.94-o53d-rompz-sinal-autorizacao';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9231,13 +9231,17 @@ function diagSec5(S5){
       h += (PV.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
     }
     const TZ = b.rompz || {};
-    h += '<h3>Trilha de rompimento (O53-C) — barra que fecha além da zona → gatilho → barra seguinte → ordem ou bloqueio</h3>';
+    h += '<h3>Trilha de rompimento (O53-C/D) — zona confirmada → fechamento além → extremo → superação na barra seguinte → próxima zona → decisão</h3>';
     if (TZ.situacao !== 'ok') h += `<div class="diag-vazio">${_diagE(TZ.situacao)}</div>`;
     else {
-      h += `<div class="diag-sit">${_diagE(TZ.nota)}</div>`;
-      h += _diagTab(['barra', 'lado', 'zonas rompidas', 'fechamento', 'gatilho', 'R0 do gráfico nesta barra', 'LM leu a barra', 'barra seguinte', '1º minuto além', 'espaço (R)', 'EA (registro)', 'ordem', 'onde parou'],
-                    (TZ.linhas || []).map(x => [`${x.n_barra_dia} · ${(x.barra_rompimento || '').slice(11, 16)}`, x.lado, (x.zonas_rompidas || []).map(z => z[0] + '–' + z[1]).join(' e '), x.fechamento, x.gatilho,
-                                                x.r0_na_barra, (x.lm_leu_a_barra_em || '—').slice(11, 19), x.n_barra_seguinte, (x.primeiro_minuto_alem || '—').slice(11, 16), x.espaco_R, x.ea, x.ordem, x.onde_parou]));
+      h += `<div class="diag-sit">${_diagE(TZ.nota)}</div>` + _diagKV(Object.entries(TZ.estados || {}).map(([k, v]) => [k.replace(/_/g, ' '), Array.isArray(v) ? v.join(' · ') : v]));
+      h += _diagTab(['barra', 'lado', 'zonas rompidas (confirmadas às)', 'fechamento', 'gatilho', 'barra seguinte', '1º minuto além', 'próxima zona', 'espaço (R)', 'R0 do gráfico', 'R1.2 com filtro', 'R1.2 sem filtro (sombra)', 'EA no terminal', 'ordem'],
+                    (TZ.linhas || []).map(x => { const ce = x.calculo_espaco || {}, z = ce.zona;
+                      return [`${x.n_barra_dia} · ${(x.barra_rompimento || '').slice(11, 16)}`, x.lado, (x.zonas_rompidas || []).map(z => `${z.base}–${z.topo} (${(z.confirmada_em_local || '').slice(11, 16)})`).join(' e '),
+                              x.fechamento, x.gatilho, x.n_barra_seguinte, (x.primeiro_minuto_alem || '—').slice(11, 16), z ? `${z.tf} ${z.funcao} ${z.base}–${z.topo}` : '—',
+                              ce.espaco_R ?? '—', (x.lado_a_lado || {})['R0 do gráfico'], (x.lado_a_lado || {})['R1.2 com filtro'], (x.lado_a_lado || {})['R1.2 sem filtro (sombra)'], x.ea_no_terminal, x.ordem]; }));
+      h += (TZ.linhas || []).filter(x => x.calculo_espaco).map(x => { const c = x.calculo_espaco;
+        return `<div class="diag-sit"><b>Cálculo do espaço ${_diagE(x.id)}</b> E ${c.E} · zona ${_diagE(c.zona ? c.zona.tf + ' ' + c.zona.base + '–' + c.zona.topo : 'nenhuma')} · d ${c.d} · spread ${c.spread} · líquido ${c.espaco_liq} · ATR ${c.atr} · R ${c.R} · <b>${c.espaco_R} R</b> (mínimo ${c.minimo_R} R) · histórico: ${_diagE(c.historico)}. ${_diagE(c.formula)}</div>`; }).join('');
       h += (TZ.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
     }
     h += (b.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
@@ -9251,6 +9255,7 @@ function diagSvg53(j){
   V.forEach(v => vals.push(v[2], v[3])); (j.ema20_high || []).concat(j.ema20_low || []).forEach(x => { if (x != null) vals.push(x); });
   ['stop', 'ref'].forEach(k => { if (M[k] != null) vals.push(+M[k]); });
   if (M.zona && M.zona.base != null) vals.push(+M.zona.base, +M.zona.topo);
+  if (M.zona_frente && M.zona_frente.base != null) vals.push(+M.zona_frente.base, +M.zona_frente.topo);
   ['entrada', 'saida_r0', 'saida_r1'].forEach(k => { if (M[k] && M[k][1] != null) vals.push(+M[k][1]); });
   const lo = Math.min(...vals), hi = Math.max(...vals), cw = (W - pl - pr) / (n + 2);
   const X = i => pl + (i + 0.5) * cw, Y = p => pt + (hi - p) / ((hi - lo) || 1) * (H - pt - pb);
@@ -9261,6 +9266,7 @@ function diagSvg53(j){
   const linha = (arr, cor) => '<polyline fill="none" stroke="' + cor + '" stroke-width="2.6" points="' + arr.map((x, i) => x == null ? '' : `${X(i)},${Y(x)}`).join(' ') + '"/>';
   s += linha(j.ema20_high || [], '#ffd60a') + linha(j.ema20_low || [], '#ffd60a');
   s += `<text x="${W - pr + 4}" y="${Y((j.ema20_high || [])[n - 1])}" fill="#8a6d00">EMA20 High</text><text x="${W - pr + 4}" y="${Y((j.ema20_low || [])[n - 1])}" fill="#8a6d00">EMA20 Low</text>`;
+  if (M.zona_frente && M.zona_frente.base != null) s += `<rect x="${pl}" width="${W - pl - pr}" y="${Y(M.zona_frente.topo)}" height="${Math.max(1, Y(M.zona_frente.base) - Y(M.zona_frente.topo))}" fill="#2a7de1" opacity=".16"/><text x="${pl + 4}" y="${Y(M.zona_frente.base) + 11}" fill="#2a7de1">próxima zona ${_diagE(M.zona_frente.tf)} ${M.zona_frente.base}–${M.zona_frente.topo}</text>`;
   if (M.zona_pivo) s += `<rect x="${pl}" width="${W - pl - pr}" y="${Y(M.zona_pivo[1])}" height="${Math.max(1, Y(M.zona_pivo[0]) - Y(M.zona_pivo[1]))}" fill="#8b3fd6" opacity=".14"/>`;
   if (M.gatilho != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.gatilho)}" y2="${Y(M.gatilho)}" stroke="#6250d6" stroke-dasharray="6 4"/><text x="${W - pr + 4}" y="${Y(M.gatilho)}" fill="#6250d6">gatilho ${M.gatilho}</text>`;
   if (M.pivo && M.pivo[0] != null) s += `<circle cx="${X(M.pivo[0])}" cy="${Y(M.pivo[1])}" r="7" fill="none" stroke="#8b3fd6" stroke-width="2.2"/><text x="${X(M.pivo[0]) + 9}" y="${Y(M.pivo[1])}" fill="#8b3fd6">extremo ${M.pivo[1]}</text>`;

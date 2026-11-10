@@ -18,7 +18,7 @@ import pivos_o53b as PV  # noqa: E402
 import rompz_o53c as RZ  # noqa: E402
 import romp_m15 as _RM  # noqa: E402
 
-VERSAO = "validacao-o53-1.1 (" + R1.VERSAO + " + " + RZ.VERSAO + ")"
+VERSAO = "validacao-o53-1.2 (" + R1.VERSAO + " + " + RZ.VERSAO + ")"
 UTC = _dt.timezone.utc
 SEMENTE = 53
 AMARELO = "#ffd60a"
@@ -361,6 +361,9 @@ def grafico_png(j):
     xs = list(range(n))
     ax.plot(xs, j["ema20_high"], color=AMARELO, lw=2.4, zorder=4, label="EMA20 High")
     ax.plot(xs, j["ema20_low"], color=AMARELO, lw=2.4, zorder=4, label="EMA20 Low")
+    zf = M.get("zona_frente")
+    if zf and zf.get("base") is not None:
+        ax.axhspan(zf["base"], zf["topo"], color="#2a7de1", alpha=0.16, zorder=0, label=f"próxima zona {zf.get('tf')} {zf['base']:.2f}–{zf['topo']:.2f} (1ª à frente)")
     zp = M.get("zona_pivo")
     if zp:
         ax.axhspan(zp[0], zp[1], color="#8b3fd6", alpha=0.14, zorder=0, label=f"zona do pivô (O39) {zp[0]:.2f}–{zp[1]:.2f}")
@@ -544,20 +547,70 @@ def _lm_por_barra(sb, bot, de, ate):
     return out
 
 
+_ACENTO = (("falta de espaco", "falta de espaço"), ("posicao", "posição"), ("distancia nao calculavel", "distância não calculável"),
+           ("historico insuficiente", "histórico insuficiente"), ("toque sem superacao", "toque sem superação"), ("nao alcancou", "não alcançou"))
+
+
+def _ac(x):
+    x = str(x or "")
+    for a, b in _ACENTO:
+        x = x.replace(a, b)
+    return x
+
+
+def _spread_mediano(sb, simbolo):
+    try:
+        rows = sb.table("auditoria_leituras").select("spread_pts,point").eq("simbolo", simbolo).order("id", desc=True).limit(3000).execute().data or []
+        v = sorted(float(r["spread_pts"]) * float(r["point"]) for r in rows if r.get("spread_pts") is not None and r.get("point"))
+        return round(v[len(v) // 2], 2) if v else 0.0
+    except Exception:
+        return 0.0
+
+
+def comparar_variantes(sb, simbolo, de, ate, spread=None):
+    """O53-D: ROMPZ com filtro (fluxo autorizado) × sem filtro (sombra) × caixa R1 × EA r1.2 completo, sobre os candles gravados (M1: 4 ticks por
+    minuto), com spread e comissão, contando SÓ posições fechadas (a que fica aberta no fim dos dados é listada à parte e não entra no resultado)."""
+    m15 = candles(sb, simbolo, "M15", de - _dt.timedelta(seconds=900 * 1229), ate)
+    h1 = candles(sb, simbolo, "H1", de - _dt.timedelta(hours=1229), ate)
+    m1 = candles(sb, simbolo, "M1", de, ate)
+    cob = {"M15": _cobertura(m15, "M15", de, ate), "H1": _cobertura(h1, "H1", de, ate), "M1": _cobertura(m1, "M1", de, ate)}
+    if m15 is None or len(m15) < 30 or m1 is None or not len(m1):
+        return {"situacao": "sem dados suficientes", "cobertura": cob}
+    sp = float(spread) if spread is not None else _spread_mediano(sb, simbolo)
+    ini = int(max(de.timestamp(), m15.ep.iloc[28] + 900))
+    V = {"ROMPZ com filtro 1,0 R (fluxo autorizado)": dict(caixa=False), "ROMPZ sem filtro (só sombra)": dict(caixa=False, filtro_rompz=False),
+         "caixa R1 (entrada atual)": dict(rompz=False), "EA r1.2 completo (caixa + ROMPZ com filtro)": dict()}
+    out = {}
+    for nome, kw in V.items():
+        I = RZ.rodar(m15, h1, m1, ini, sp, at=simbolo, enviar=True, **kw)
+        dec = {}
+        for e in I.eventos:
+            if e["tipo"] == "rompz_disparo":
+                dec[_ac(e["decisao"])] = dec.get(_ac(e["decisao"]), 0) + 1
+        out[nome] = {"resumo": RZ.resumo(I.ops), "sinais_rompz": dec, "armados_rompz": sum(1 for e in I.eventos if e["tipo"] == "rompz_armado"),
+                     "em_aberto_no_fim": None if I.pos is None else {"sinal": I.pos["sinal"], "entrada": round(I.pos["entrada"], 2), "nao_conta": True},
+                     "operacoes": [_op(o, simbolo) for o in I.ops]}
+    return {"situacao": "ok", "simbolo": simbolo, "spread_usado": sp, "custo": RZ.R1.CUSTO.get(simbolo), "inicio_efetivo": _iso(_dt.datetime.fromtimestamp(ini, UTC)),
+            "cobertura": cob, "variantes": out,
+            "nota": "Replay com candles gravados pelo conector (M1 com lacunas onde o coletor não gravou); 4 ticks por minuto; só posições fechadas contam."}
+
+
 def trilha_rompz(sb, bot, tf, de, ate, tz):
-    """cada barra que FECHOU além de um suporte/resistência da memória O39 (TF do gráfico) no período: o que a R0 do gráfico decidiu nela, o que a
-    LM leu, o gatilho na mínima/máxima, o 1º preço além dele na barra seguinte (M1 gravado — não há tick histórico), o espaço até a 1ª zona,
-    o que o EA registrou e se houve ordem. Só leitura."""
+    """cada barra que FECHOU além de um suporte/resistência JÁ CONFIRMADO da memória O39 (M15) no período: zonas e quando foram confirmadas, o que a
+    R0 do gráfico decidiu, o que a LM leu, o gatilho, o 1º minuto além dele na barra seguinte (M1 gravado — não há tick histórico), o próximo
+    suporte/resistência e o cálculo do espaço em R, a decisão com filtro e a variante sem filtro em sombra, o que o EA registrou e se houve ordem."""
     if tf != "M15":
-        return {"situacao": "a trilha de rompimento (O53-C) é só em M15"}
+        return {"situacao": "a trilha de rompimento (O53-C/D) é só em M15"}
     sim = str(bot.get("simbolo") or "").upper()
     m15 = candles(sb, sim, "M15", de - _dt.timedelta(seconds=900 * 1229), ate + _dt.timedelta(hours=6))
     h1 = candles(sb, sim, "H1", de - _dt.timedelta(hours=1229), ate)
     m1 = candles(sb, sim, "M1", de - _dt.timedelta(minutes=30), ate + _dt.timedelta(hours=6))
     if m15 is None or len(m15) < 30 or m1 is None or not len(m1):
         return {"situacao": "sem candles M15/M1 suficientes no período"}
+    sp = _spread_mediano(sb, sim)
     ini = max(int(de.timestamp()), int(m1.ep.iloc[0]))
-    ev = RZ.rodar(m15, h1, m1, ini, 0.0)
+    Ic = RZ.rodar(m15, h1, m1, ini, sp, at=sim, enviar=True)                                  # EA r1.2: caixa + ROMPZ com filtro (fluxo autorizado)
+    Is = RZ.rodar(m15, h1, m1, ini, sp, at=sim, enviar=True, caixa=False, filtro_rompz=False)  # sem filtro: só sombra
     ep = m15.ep.values.astype(np.int64); A = _RM.atr_wilder(m15.high, m15.low, m15.close)
     T = lambda x: np.rint(np.asarray(x, float) / 0.01).astype(np.int64)
     hT, lT, cT = T(m15.high), T(m15.low), T(m15.close)
@@ -565,17 +618,17 @@ def trilha_rompz(sb, bot, tf, de, ate, tz):
     mg = str(bot.get("magic_number") or "")
     try:
         evs = _pag(lambda: sb.table("agente_eventos").select("detalhe_json,criado_em").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg)
-                   .in_("detalhe_json->>ev", ["inicio", "rompz_armado", "rompz_disparo", "rompz_expirado", "barra"])
+                   .in_("detalhe_json->>ev", ["inicio", "rompz_armado", "rompz_disparo", "rompz_expirado", "barra", "ordem"])
                    .gte("criado_em", _iso(de - _dt.timedelta(days=3))).lte("criado_em", _iso(ate + _dt.timedelta(hours=7))).order("id"), 20000) if mg else []
     except Exception:
         evs = []
-    D = [dict(e.get("detalhe_json") or {}, **_kv((e.get("detalhe_json") or {}).get("raw"))) for e in evs]
-    off = next((int(float(x.get("off") or 0)) for x in reversed(D) if x.get("ev") == "inicio" and x.get("off") not in (None, "")), None)
+    D = [dict(e.get("detalhe_json") or {}, **_kv((e.get("detalhe_json") or {}).get("raw")), _criado=e.get("criado_em")) for e in evs]
+    inis = [x for x in D if x.get("ev") == "inicio"]
+    off = next((int(float(x.get("off") or 0)) for x in reversed(inis) if x.get("off") not in (None, "")), None)
     ea_r = {}
     for x in D:
-        if str(x.get("ev", "")).startswith("rompz") and x.get("sinal") and off is not None:
-            pre, n_ = x["sinal"][:3], x["sinal"][3:]
-            ea_r.setdefault(pre + str(int(n_) - off), []).append(x)
+        if (str(x.get("ev", "")).startswith("rompz") or x.get("ev") == "ordem") and x.get("sinal") and off is not None and x["sinal"][:3] in ("ZV-", "ZC-"):
+            ea_r.setdefault(x["sinal"][:3] + str(int(x["sinal"][3:]) - off), []).append(x)
     ea_barra = {int(x["t"]) - (off or 0): x for x in D if x.get("ev") == "barra" and x.get("t")}
     ops = sb.table("babymachine_operacoes").select("id,ts_entrada,decisao,status").eq("bot_id", int(bot["id"])) \
         .gte("ts_criada", _iso(de)).lte("ts_criada", _iso(ate + _dt.timedelta(hours=7))).order("id").execute().data or []
@@ -583,13 +636,15 @@ def trilha_rompz(sb, bot, tf, de, ate, tz):
     def num_barra(e):
         d = _dt.datetime.fromtimestamp(int(e), UTC).astimezone(tz)
         return (d.hour * 60 + d.minute) // 15 + 1
-    arm = {e["sinal"]: e for e in ev if e["ev"] == "rompz_armado"}; fim = {e["sinal"]: e for e in ev if e["ev"] in ("rompz_disparo", "rompz_expirado")}
+    sin_c = {p["id"]: p for p in Ic.sinais_rz}; sin_s = {p["id"]: p for p in Is.sinais_rz}
+    ops_s = {o["sinal"]: o for o in Is.ops}
+    arm = [e for e in Ic.eventos if e["tipo"] == "rompz_armado"]
     linhas = []
-    for sid, a in arm.items():
-        b0 = a["barra_rompimento"]
+    for a in arm:
+        sid = a["sinal"]; b0 = int(sid[3:])
         if not (de.timestamp() <= b0 < ate.timestamp()):
             continue
-        s = a["lado"]; b = int(np.searchsorted(ep, b0)); f = fim.get(sid) or {}
+        s = a["lado"]; b = int(np.searchsorted(ep, b0)); p = sin_c.get(sid) or {}; ps = sin_s.get(sid) or {}
         r0 = diag_r0(lT, hT, cT, A, b) if s < 0 else diag_r0(-hT, -lT, -cT, A, b)
         srv = _dt.datetime.fromtimestamp(b0 + (off if off is not None else 7200), UTC).strftime("%Y-%m-%d %H:%M:%S")
         t_lm, lmb = lm.get(srv) or (None, {})
@@ -599,34 +654,59 @@ def trilha_rompz(sb, bot, tf, de, ate, tz):
         p_ab = float(mm.open.iloc[0]) if len(mm) else None
         o = next((x for x in ops if x.get("ts_entrada") and nxt0 <= _dt_(x["ts_entrada"]).timestamp() < nxt1), None)
         er = ea_r.get(sid) or []
-        ea_txt = ("; ".join(f"{x['ev']}" + (f" t={x.get('t')} bid={x.get('bid')} espaço passa={x.get('espaco_passa')}" if x["ev"] == "rompz_disparo" else
-                                            f" {x.get('resultado')}" if x["ev"] == "rompz_expirado" else f" gatilho {x.get('gatilho')}") for x in er)
-                  if er else ("sem evidência: o EA no gráfico não registra o ROMPZ (só lateral-r1.2) — " +
-                              (f"registro da barra: R0 venda «{ea_barra[b0].get('r0_venda')}»" if ea_barra.get(b0) else "e o EA não registrou esta barra (R0 só escreve no log Experts do MT5)")))
-        lin = {"id": sid, "lado": "venda" if s < 0 else "compra", "barra_rompimento": L(b0), "n_barra_dia": num_barra(b0), "zonas_rompidas": a["zonas"],
+        if er:
+            ea_txt = "; ".join(x["ev"] + (f" t={x.get('t')} bid={x.get('bid')} decisão: {_ac(x.get('decisao'))}" if x["ev"] == "rompz_disparo" else
+                                          f" {_ac(x.get('resultado'))}" if x["ev"] == "rompz_expirado" else f" ordem {x.get('entrada')}: {x.get('envio') or ''}"
+                                          if x["ev"] == "ordem" else f" gatilho {x.get('gatilho')}") for x in er)
+        else:
+            ea_txt = ("sem evidência: o EA no gráfico não registra o ROMPZ (só lateral-r1.2) — " +
+                      (f"registro da barra: R0 {'venda' if s < 0 else 'compra'} «{ea_barra[b0].get('r0_venda' if s < 0 else 'r0_compra')}»" if ea_barra.get(b0)
+                       else "e o EA não registrou esta barra (R0 só escreve no log Experts do MT5)"))
+        zonas = [{"base": z["base"], "topo": z["topo"], "confirmada_em_local": L(z["confirmada_em"]), "confirmada_antes": z["confirmada_em"] <= b0,
+                  "extremo_em_local": L(z["t_extremo"]), "testes": z["testes"]} for z in a["zonas"]]
+        lin = {"id": sid, "lado": "venda" if s < 0 else "compra", "barra_rompimento": L(b0), "n_barra_dia": num_barra(b0), "zonas_rompidas": zonas,
                "fechamento": float(m15.close.iloc[b]), "extremo": a["extremo"], "gatilho": a["gatilho"], "atr": round(a["atr"], 2),
                "r0_na_barra": r0, "lm_na_barra": {"ultimo_fundo": lmb.get("ultimo_fundo"), "ultimo_topo": lmb.get("ultimo_topo"), "localizacao": lmb.get("localizacao"),
                                                    "eventos": lmb.get("eventos"), "barra_lida": lmb.get("barra_corretora")} if lmb else None,
                "lm_leu_a_barra_em": _loc(_dt_(t_lm), tz) if t_lm else None,
-               "lm_registra_suporte_rompido": None if not lmb else any(abs(float(lmb.get("ultimo_fundo" if s < 0 else "ultimo_topo") or 0) - z) < 0.02
-                                                                    for zz in a["zonas"] for z in zz),
+               "lm_registra_suporte_rompido": None if not lmb else any(abs(float(lmb.get("ultimo_fundo" if s < 0 else "ultimo_topo") or 0) - v) < 0.02
+                                                                    for z in a["zonas"] for v in (z["base"], z["topo"])),
                "barra_seguinte": L(nxt0), "n_barra_seguinte": num_barra(nxt0), "abertura_seguinte": p_ab,
                "primeiro_minuto_alem": L(int(cruz.ep.iloc[0])) if len(cruz) else None,
                "abriu_alem_do_gatilho": None if p_ab is None else (p_ab <= a["gatilho"] if s < 0 else p_ab >= a["gatilho"]),
-               "resultado_replay": f.get("ev", "aguardando").replace("rompz_", ""), "preco_disparo": f.get("bid" if s < 0 else "ask"),
-               "espaco_R": None if f.get("espaco_R") is None else round(f["espaco_R"], 3), "motivo_espaco": f.get("motivo"),
-               "zona_a_frente": f.get("zona_a_frente"), "ea": ea_txt, "ordem": (f"op {o['id']} ({o.get('status')})" if o else "nenhuma ordem na barra seguinte"),
-               "_b0": b0, "_t": f.get("t")}
-        if f.get("ev") == "rompz_disparo":
-            E = lin["preco_disparo"]; stop = round(E - s * 2.0 * a["atr"], 2)
-            t_s, px, mot = _saida_sombra(m15, m1, s, E, stop, int(f["t"]))
-            lin.update(stop=stop, saida_sombra=None if px is None else round(px, 2), saida_sombra_em=None if t_s is None else L(t_s), motivo_saida_sombra=mot,
-                       R_sombra=None if px is None else round((px - E) * s / abs(E - stop), 3), _ts=t_s)
-            lin["onde_parou"] = ("ordem enviada" if o else
-                                 "disparo válido na barra seguinte; " + ("o filtro de espaço O53 bloquearia (" + str(lin["motivo_espaco"]) + ")" if f.get("espaco_passa") == "nao" else "o filtro de espaço passaria")
-                                 + "; a R0 do gráfico não armou: " + r0)
+               "resultado_replay": p.get("resultado", "em aberto"), "ea_no_terminal": ea_txt,
+               "ordem": (f"op {o['id']} ({o.get('status')})" if o else "nenhuma ordem na barra seguinte"), "_b0": b0}
+        R0txt = ("não armou — " + r0) if not r0.startswith("formação ok") else "formação de caixa válida nesta barra (gatilho da R0 armado)"
+        if p.get("resultado") == "disparo":
+            esp = p["espaco"]; z = esp.get("zona") or {}
+            E = p["bid"] if s < 0 else p["ask"]; stop = round(E - s * 2.0 * a["atr"], 2)
+            lin.update(preco_disparo=E, stop=stop, decisao_com_filtro=_ac(p["decisao"]), sem_filtro_sombra=p.get("sem_filtro_sombra"),
+                       calculo_espaco={"zona": {k: (round(z[k], 2) if isinstance(z.get(k), float) else z.get(k)) for k in ("tf", "funcao", "base", "topo", "estado", "testes")} if z else None,
+                                       "E": E, "spread": round(esp["spread"], 2), "d": None if esp.get("d") is None else round(esp["d"], 2),
+                                       "espaco_liq": None if esp.get("espaco_liq") is None else round(esp["espaco_liq"], 2), "atr": round(a["atr"], 2), "R": round(esp["R"], 2),
+                                       "espaco_R": None if esp.get("espaco_R") is None else round(esp["espaco_R"], 3), "minimo_R": 1.0,
+                                       "formula": "d = E − topo da zona (venda) / base da zona − E (compra); líquido = d − spread; R = 2 × ATR14 M15; espaço = líquido ÷ R",
+                                       "historico_barras": p.get("historico_barras"),
+                                       "historico": "insuficiente: distância não calculável" if p.get("sem_historico") else "suficiente"})
+            osf = ops_s.get(sid)
+            if osf:
+                sf = (f"entrada simulada {round(osf['entrada'], 2)} às {L(osf['t_ent_ms'] // 1000)[11:16]}, stop {round(osf['stop'], 2)} → saída {round(osf['saida'], 2)} "
+                      f"({osf['motivo_saida']}) às {L(osf['t_sai_ms'] // 1000)[11:16]}: {osf['R']:+.2f} R realizado (com custos)")
+                lin.update(R_sombra=round(osf["R"], 3), R_sombra_realizado=True, _ts=osf["t_sai_ms"] // 1000, saida_sombra=round(osf["saida"], 2))
+            elif Is.pos is not None and Is.pos["sinal"] == sid:
+                sf = f"entrada simulada {round(Is.pos['entrada'], 2)} às {L(Is.pos['t_ent_ms'] // 1000)[11:16]}, stop {round(Is.pos['stop'], 2)} — em aberto no fim dos dados (não conta como resultado)"
+                lin.update(R_sombra=None, R_sombra_realizado=False)
+            else:
+                sf = "sem entrada simulada: " + _ac(ps.get("sem_filtro_sombra") or ps.get("decisao") or "outra posição sombra aberta")
+            lin["lado_a_lado"] = {"R0 do gráfico": R0txt, "R1.2 com filtro": _ac(p["decisao"]) + (f" (espaço {lin['calculo_espaco']['espaco_R']} R < 1,0 R até {z.get('tf')} "
+                                                                                                    f"{z.get('base', 0):.2f}–{z.get('topo', 0):.2f})" if z and not esp["passa"] else ""),
+                                  "R1.2 sem filtro (sombra)": sf}
+            lin["onde_parou"] = lin["lado_a_lado"]["R1.2 com filtro"] if not o else "ordem enviada"
         else:
-            lin["onde_parou"] = {"expirado": "gatilho não superado dentro da barra seguinte (" + str(f.get("resultado")) + ")"}.get(lin["resultado_replay"], "sem dados M1 até o fim da barra seguinte (resultado em aberto)")
+            res = p.get("resultado")
+            lin["lado_a_lado"] = {"R0 do gráfico": R0txt, "R1.2 com filtro": "gatilho expirado: " + _ac(res) if res else "sem dados M1 até o fim da barra seguinte",
+                                  "R1.2 sem filtro (sombra)": "sem entrada (o gatilho não foi superado)"}
+            lin["onde_parou"] = lin["lado_a_lado"]["R1.2 com filtro"]
         linhas.append(lin)
     rng = random.Random(SEMENTE)
     disp = [l_ for l_ in linhas if l_["resultado_replay"] == "disparo"][:8]; exp = [l_ for l_ in linhas if l_["resultado_replay"] != "disparo"]
@@ -635,30 +715,38 @@ def trilha_rompz(sb, bot, tf, de, ate, tz):
                                    "c": [float(v) for v in m15.close]}}
     jan = []
     for l_ in escolhidos:
-        z0 = l_["zonas_rompidas"][0]
-        mk = {"zona": {"tf": "M15", "funcao": "suporte rompido" if l_["lado"] == "venda" else "resistência rompida", "base": z0[0], "topo": z0[1], "estado": "ROMPIMENTO PENDENTE",
-                       "testes": "—"}, "conf": l_["_b0"], "gatilho": l_["gatilho"], "stop": l_.get("stop")}
-        if l_.get("_t"):
-            mk["entrada"] = [l_["_t"], l_["preco_disparo"]]
+        z0 = l_["zonas_rompidas"][0]; ce = l_.get("calculo_espaco") or {}; zf = ce.get("zona")
+        mk = {"zona": {"tf": "M15", "funcao": "suporte rompido" if l_["lado"] == "venda" else "resistência rompida", "base": z0["base"], "topo": z0["topo"],
+                       "estado": "confirmada " + z0["confirmada_em_local"][11:16], "testes": z0["testes"]},
+              "zona_frente": zf, "conf": l_["_b0"], "gatilho": l_["gatilho"], "stop": l_.get("stop")}
+        if l_.get("preco_disparo") is not None and l_.get("primeiro_minuto_alem"):
+            mk["entrada"] = [l_["_b0"] + 900, l_["preco_disparo"]]
         if l_.get("_ts"):
             mk["saida_r1"] = [l_["_ts"], l_["saida_sombra"]]; mk["R_r1"] = l_.get("R_sombra")
         tit = (f"{l_['lado']} · barra {l_['n_barra_dia']} ({l_['barra_rompimento'][11:16]}) fecha {l_['fechamento']:.2f} além de "
-               + " e ".join(f"{z[0]:.2f}–{z[1]:.2f}" for z in l_["zonas_rompidas"]) + f" · gatilho {l_['gatilho']:.2f} · barra {l_['n_barra_seguinte']}: "
-               + (f"1º minuto além {l_['primeiro_minuto_alem'][11:16]}, disparo {l_['preco_disparo']:.2f}" if l_["resultado_replay"] == "disparo" else l_["onde_parou"])
-               + f" · R0 do gráfico: {l_['r0_na_barra']} · {l_['ordem']}"
-               + (f" · DEIXOU PASSAR (sombra {l_['R_sombra']:+.2f} R, {l_['motivo_saida_sombra']})" if l_.get("R_sombra") is not None and not l_["ordem"].startswith("op") else ""))
-        j = _janela(rep, "rompz", tit, l_["_b0"] - 900 * 6, l_["_b0"] + 900 * 8, mk, "REPLAY M15 fechado + M1 gravado (sem tick histórico) — ROMPZ em SOMBRA, nenhuma ordem")
+               + " e ".join(f"{z['base']:.2f}–{z['topo']:.2f} (confirmada {z['confirmada_em_local'][11:16]})" for z in l_["zonas_rompidas"])
+               + f" · gatilho {l_['gatilho']:.2f} · barra {l_['n_barra_seguinte']}: "
+               + (f"1º minuto além {l_['primeiro_minuto_alem'][11:16]} → {l_['lado_a_lado']['R1.2 com filtro']}" if l_["resultado_replay"] == "disparo" else l_["onde_parou"])
+               + f" · R0 do gráfico: {l_['lado_a_lado']['R0 do gráfico']} · {l_['ordem']}"
+               + (" · DEIXOU PASSAR — sem filtro (sombra): " + (f"{l_['R_sombra']:+.2f} R realizado" if l_.get("R_sombra_realizado") else "em aberto, não conta")
+                  if l_["resultado_replay"] == "disparo" and not l_["ordem"].startswith("op") else ""))
+        j = _janela(rep, "rompz", tit, l_["_b0"] - 900 * 6, l_["_b0"] + 900 * 8, mk, "REPLAY M15 fechado + M1 gravado (sem tick histórico) — ordem só no fluxo autorizado")
         if j:
             j["marcas"]["rotulo_conf"] = "barra de rompimento"
-            j["marcas"]["rotulo_saida"] = "DEIXOU PASSAR — sombra" if not l_["ordem"].startswith("op") else "saída"
+            j["marcas"]["rotulo_saida"] = "DEIXOU PASSAR — sem filtro (sombra)"
             jan.append(j)
     for l_ in linhas:
-        for k in ("_b0", "_t", "_ts"):
+        for k in ("_b0", "_ts"):
             l_.pop(k, None)
-    return {"situacao": "ok", "versao": RZ.VERSAO, "linhas": linhas, "janelas": jan, "offset_servidor_s": off,
-            "nota": ("Rompimento = fechamento além de suporte/resistência da memória O39 do M15 (só barras fechadas). Gatilho = mínima (venda) / máxima (compra) da barra "
-                     "de rompimento ± 1 tick, válido só na barra seguinte. O 1º preço além é medido no M1 gravado: o tick exato não existe no histórico. "
-                     "Espaço = filtro O53 (1,0 R líquido até a 1ª zona, M15 + H1). Resultado da sombra com gestão R0 neutra (stop 2 ATR, saída no canal EMA20).")}
+    estados = {"replay": "motor de referência rompz-1 sobre candles gravados (EA ≡ referência provado no teste local)",
+               "versao_carregada_no_mt5": ([f"{x.get('versao')} às {_loc(_dt_(x['_criado']), tz)} (envio de ordens: {x.get('envio_ordens') or '—'})" for x in inis[-3:]]
+                                           or ["sem evento 'inicio' do EA lateral no período: a versão carregada não é r1.x (R0 não registra)"]),
+               "sinal_observado_no_terminal": sum(1 for x in D if x.get("ev") == "rompz_disparo")}
+    return {"situacao": "ok", "versao": RZ.VERSAO, "linhas": linhas, "janelas": jan, "offset_servidor_s": off, "spread_usado": sp, "estados": estados,
+            "nota": ("Rompimento = fechamento além de suporte/resistência JÁ CONFIRMADO na memória O39 do M15 (só barras fechadas). Gatilho = mínima (venda) / máxima "
+                     "(compra) da barra de rompimento ± 1 tick, válido só na barra seguinte. O 1º preço além é medido no M1 gravado: o tick exato não existe no histórico. "
+                     "Sinal ≠ ordem: a ordem passa pelo filtro de 1,0 R líquido até a 1ª zona (M15 + H1); a variante sem filtro é só sombra. "
+                     "Resultado só de posições fechadas, com spread e comissão.")}
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -680,7 +768,7 @@ def secao_5(sb, ids, de, ate, tz):
         cfg = b.get("config_operacional") or {}
         tf = TF_CFG.get(str(cfg.get("timeframe_envio") or "15m").lower(), "M15")
         cod = str(b.get("mq5_codigo") or "")
-        ea_v = "lateral-r1.2 (O53-C)" if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
+        ea_v = ("lateral-r1.2 (O53-D)" if "O53-D" in cod else "lateral-r1.2 (O53-C)") if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
         obs = observado(sb, b, de, ate, tz)
         try:
             rep = replay(sb, str(b.get("simbolo") or "").upper(), tf, de, ate, spread=None)

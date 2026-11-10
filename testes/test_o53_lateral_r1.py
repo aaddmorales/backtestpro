@@ -27,6 +27,13 @@ def _ler(arq):
     return d
 
 
+def _cfg(mq5, **kv):
+    """O53-D: fixa inputs do EA para o teste (ex.: InpEnviarOrdens=true, InpEntradaRompZ=false)."""
+    for k, v in kv.items():
+        mq5, n = re.subn(rf"(input\s+\w+\s+{k}\s*=\s*)[^;]+;", rf"\g<1>{v};", mq5); assert n == 1, k
+    return mq5
+
+
 def _traduzir(mq5, dst):
     s = mq5.replace("#include <Trade\\Trade.mqh>", '#include "mt5shim.h"')
     s = re.sub(r"^input\s+", "static ", s, flags=re.M)
@@ -46,7 +53,7 @@ def test_1_ea_tick_a_tick_igual_ao_motor_o53(A):
     tmp = tempfile.mkdtemp()
     for f in ("mt5shim.h", "main.cpp"):
         shutil.copy(os.path.join(REF53, "shim", f), tmp)
-    _traduzir(A._BT_LATERAL_R0_MQL5, os.path.join(tmp, "ea.cpp"))
+    _traduzir(_cfg(A._BT_LATERAL_R0_MQL5, InpEnviarOrdens="true", InpEntradaRompZ="false"), os.path.join(tmp, "ea.cpp"))   # O53-D: só a entrada de caixa, com envio
     r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", os.path.join(tmp, "sim"), os.path.join(tmp, "main.cpp")], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-1500:]
     m1f = os.path.join(DADOS, "BTCUSD_M1_202610.csv"); h1f = os.path.join(DADOS, "BTCUSD_H1_202610.csv")
@@ -70,7 +77,7 @@ def test_1_ea_tick_a_tick_igual_ao_motor_o53(A):
         assert sum(d.get("ev") == "gatilho_armado" for d in lat) == I.cont["gatilhos_armados"], tf
         # reconciliação: cada fechamento do EA é confirmado; o de stop aparece como fechamento externo com a razão
         assert sum(d.get("ev") == "fechamento_confirmado" for d in lat) + sum(d.get("ev") == "fechamento_externo" for d in lat) >= len(ea_s) - 1
-        assert all(d.get("v") == "lateral-r1.2 (O53-C)" for d in lat)
+        assert all(d.get("v") == "lateral-r1.2 (O53-D)" for d in lat)
         hist = [d for d in lat if d.get("ev") == "historico"]                          # o histórico do MT5 vai para a BabyMachine (replay)
         assert hist and all(len(d["barras"].split(";")) <= 60 for d in hist) and {d["tf"] for d in hist} == ({"H1"} if tf == 60 else {"M30", "H1"} if tf == 30 else {"M15", "H1"})
         tot["entradas"] += len(ea_e); tot["bloqueios"] += I.cont["bloq_espaco"] + I.cont["bloq_dentro_zona"]; tot["cortes"] += I.cont["saidas_corte"]; tot["reversoes"] += I.cont["rev_avaliadas"]
@@ -101,12 +108,12 @@ def test_2_sem_filtro_e_sem_corte_e_a_r0_da_o47():
 
 def test_3_gerador_entrega_o_ea_r1(A):
     lat = A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
-    assert 'BTLAT_VERSAO "lateral-r1.2 (O53-C)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
+    assert 'BTLAT_VERSAO "lateral-r1.2 (O53-D)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
     assert re.search(r"input\s+\w+\s+InpBTAlvoRR\s*=\s*0\.0;", lat) and re.search(r"input\s+\w+\s+InpBTTrailingBarra\s*=\s*false;", lat)
     assert "void BTvGravarEvento(const string linha_evento)" in lat                       # o canal confiável da BabyMachine existe no EA instrumentado
     assert A._mq5_sanidade(lat)[0]
-    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1.2 (O53-C)", "x")}         # cache antigo (R0) não pode voltar
-    assert "lateral-r1.2 (O53-C)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
+    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1.2 (O53-D)", "x")}         # cache antigo (R0) não pode voltar
+    assert "lateral-r1.2 (O53-D)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
     A._mq5_cache_buscar = lambda h: None
     assert "8.33-o53-lateral-r1" in A.API_VERSAO
 

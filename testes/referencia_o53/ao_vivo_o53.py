@@ -60,6 +60,7 @@ class Instancia:
     def __init__(self, at, tf, filtro=True, corte=True, reversao_sombra=True):
         self.at, self.tf = at, tf; self.dur_ms = TF_MIN[tf] * 60_000; self.K = CUSTO[at]
         self.filtro, self.corte, self.rev = filtro, corte, reversao_sombra
+        self.caixa = True                                                         # O53-D: a entrada de caixa (R0/R1) pode ser desligada
         self.usados = set(); self.pend = None; self.pos = None; self.sombra = None; self.ops = []; self.ops_sombra = []; self.eventos = []; self.sinais = []
         self.ult_barra_ms = None; self.ativo_desde_ms = None; self.mem = Memorias(at, tf)
         self.cont = {"barras": 0, "gatilhos_armados": 0, "superacoes": 0, "entradas": 0, "bloq_posicao": 0, "bloq_dentro_zona": 0, "bloq_espaco": 0,
@@ -97,6 +98,7 @@ class Instancia:
                 p["saida_pendente"] = True; p["saida_apos_ms"] = fim; p["motivo_dec"] = "corte estrutural" if corte else "canal"
                 self.ev("saida_decidida", fim, id=p["id"], motivo=p["motivo_dec"], c=float(C[b]), canal=float(EL[b] if s < 0 else EH[b]), ref=p["ref_inval"], canal_tambem=bool(corte and canal), sombra=nome == "sombra")
         # (4) formação → gatilho para a barra seguinte (R0 inalterada)
+        if not self.caixa: return
         if self.ativo_desde_ms is None or t_ab < self.ativo_desde_ms or not np.isfinite(ATR[b]): return
         hT, lT, cT = (np.rint(x / TICK).astype(np.int64) for x in (H, L, C))
         for s in (-1, 1):

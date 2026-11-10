@@ -15,7 +15,7 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel
 
-VERSAO = "diag-lm-1.2 (O50 + seção 5 da O53 + trilha de rompimento O53-C)"
+VERSAO = "diag-lm-1.3 (O50 + seção 5 da O53 + trilha de rompimento O53-C/D)"
 FUSO_PADRAO = "Europe/Kyiv"
 HORAS_PADRAO = 48
 MAX_DIAS = 31
@@ -863,16 +863,25 @@ def _pdf_secao_5(d, S5, h1, h2, p, kv, tab, W):
                     d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
                 d.ln(1.5)
         TZ = b.get("rompz") or {}
-        p("TRILHA DE ROMPIMENTO (O53-C) — barra que fecha além da zona → gatilho na mínima/máxima → barra seguinte → ordem ou bloqueio", b=True)
+        p("TRILHA DE ROMPIMENTO (O53-C/D) — zona confirmada → fechamento além → extremo da barra → superação na seguinte → próxima zona → decisão", b=True)
         if TZ.get("situacao") != "ok":
             p(str(TZ.get("situacao")), tam=7.6)
         else:
             p(TZ.get("nota") or "", tam=7.2)
-            tab(["barra", "lado", "zonas rompidas", "fech.", "gatilho", "R0 do gráfico na barra", "LM leu", "barra seg.", "1º min além", "espaço R", "EA", "ordem", "onde parou"],
-                [[f"{x['n_barra_dia']} {(x['barra_rompimento'] or '')[11:16]}", x["lado"], " ".join(f"{z[0]:.2f}-{z[1]:.2f}" for z in x["zonas_rompidas"]), x["fechamento"], x["gatilho"],
-                  x["r0_na_barra"], (x["lm_leu_a_barra_em"] or "—")[11:19], x["n_barra_seguinte"], (x["primeiro_minuto_alem"] or "—")[11:16], x["espaco_R"],
-                  (x["ea"] or "")[:40], x["ordem"], x["onde_parou"]] for x in TZ["linhas"]],
-                [12, 10, 30, 14, 14, 30, 12, 9, 11, 10, 20, 16, 40])
+            kv([(k.replace("_", " "), v) for k, v in (TZ.get("estados") or {}).items()])
+            tab(["barra", "lado", "zonas (confirmadas)", "fech.", "gatilho", "barra seg.", "1º min além", "próx. zona", "espaço R", "R0 do gráfico", "R1.2 com filtro", "sem filtro (sombra)", "EA no terminal"],
+                [[f"{x['n_barra_dia']} {(x['barra_rompimento'] or '')[11:16]}", x["lado"],
+                  " ".join(f"{z['base']:.2f}-{z['topo']:.2f}@{z['confirmada_em_local'][11:16]}" for z in x["zonas_rompidas"]), x["fechamento"], x["gatilho"],
+                  x["n_barra_seguinte"], (x["primeiro_minuto_alem"] or "—")[11:16],
+                  (lambda z: f"{z['tf']} {z['base']}-{z['topo']}" if z else "—")((x.get("calculo_espaco") or {}).get("zona")),
+                  (x.get("calculo_espaco") or {}).get("espaco_R"), x["lado_a_lado"]["R0 do gráfico"], x["lado_a_lado"]["R1.2 com filtro"],
+                  x["lado_a_lado"]["R1.2 sem filtro (sombra)"], (x["ea_no_terminal"] or "")[:60]] for x in TZ["linhas"]],
+                [11, 9, 28, 13, 13, 8, 10, 22, 9, 26, 26, 26, 22])
+            for x in TZ["linhas"]:
+                ce = x.get("calculo_espaco")
+                if ce:
+                    p(f"Cálculo do espaço ({x['id']}): E {ce['E']} · zona {ce['zona']} · d {ce['d']} · spread {ce['spread']} · líquido {ce['espaco_liq']} · ATR {ce['atr']} · "
+                      f"R {ce['R']} · espaço {ce['espaco_R']} R (mínimo {ce['minimo_R']} R) · histórico: {ce['historico']} {ce.get('historico_barras')}. {ce['formula']}", tam=7)
             for j in TZ.get("janelas") or []:
                 if d.get_y() > 185:
                     d.add_page()

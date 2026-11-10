@@ -824,7 +824,8 @@ API_VERSAO = "8.33-o53-lateral-r1 (ORDEM 053: EA lateral-r1 — filtro de espaç
 API_VERSAO = "8.33.1-o53a-atualizar-ea (ORDEM 053-A: atualização do EA lateral-r1 pelo fluxo mt5_jobs → Conector, disparada no servidor por BT_O53_ATUALIZAR_BOTS, um bot por vez, idempotente) | " + API_VERSAO
 API_VERSAO = "8.34-o53b-pivos-rev0 (ORDEM 053-B: EA lateral-r1.1 registra cada pivô confirmado (O39, M15 fechado) e avalia a REV-0 — reversão no pivô com rejeição, gatilho na barra seguinte, espaço de 1 R — SÓ EM SOMBRA; Diagnóstico geral: auditoria de topos/fundos × leitura original da LM × EA) | " + API_VERSAO
 API_VERSAO = "8.35-o53c-rompz-sombra (ORDEM 053-C: EA lateral-r1.2 — ROMPZ em sombra: fechamento além de suporte/resistência da memória O39 arma o gatilho na mínima/máxima da barra de rompimento, válido só na barra seguinte, 1º tick que supera em ≥ 1 tick é registrado; cada barra registra a 1ª condição da R0 que falhou; nenhuma ordem nova) | " + API_VERSAO
-BUILD_TAG = "2026-11-10-o53c-rompz-sombra"
+API_VERSAO = "8.36-o53d-rompz-entrada (ORDEM 053-D: EA lateral-r1.2 (O53-D) — ROMPZ é entrada própria: zona O39 já confirmada, gatilho na mínima/máxima da barra de rompimento, sinal no 1º tick além na barra seguinte; sinal separado da autorização (filtro 1,0 R; sem filtro só em sombra); InpEnviarOrdens=false = validação em sombra; instalação só com bot sem posição; amostra ampla no log) | " + API_VERSAO
+BUILD_TAG = "2026-11-10-o53d-rompz-entrada"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -18661,7 +18662,7 @@ def _mq5_cache_aprovar(gen_hash: str):
 # O51 — esqueleto do EA "Rompimento de Lateralização" (R0). Conferido tick a tick contra ao_vivo_o47
 # (testes/test_o51_lateral_ea.py). Só ASCII; instrumentado por _instrumentar_log_mql5 no gerador.
 _BT_LATERAL_R0_MQL5 = r'''//+------------------------------------------------------------------+
-//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1.2, O53-B/O53-C)|
+//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1.2, O53-C/O53-D)|
 //| EXPERIMENTAL - SEM RESULTADO MEDIDO. Base: regra R0 da O44/O47     |
 //| (caixa de 12 barras <= 3 ATR; pivo com tentativa; fechamento alem |
 //| do nivel; entrada na barra seguinte quando o BID supera o extremo |
@@ -18678,11 +18679,16 @@ _BT_LATERAL_R0_MQL5 = r'''//+---------------------------------------------------
 //|      fechamento sem comando do EA e consultado no historico.      |
 //|  (4) REVERSAO: so avaliada e registrada (sombra); nunca abre.     |
 //|  (5) O53-B: pivo confirmado (O39) e REV-0 no pivo, so em sombra.  |
-//|  (6) O53-C: ROMPIMENTO DE ZONA (ROMPZ) so em sombra: a barra que  |
-//|      fecha alem de um suporte/resistencia da memoria O39 arma o   |
-//|      gatilho na sua minima/maxima; o 1o tick que a supera em >= 1 |
-//|      tick DENTRO da barra seguinte e registrado. Nenhuma ordem.   |
+//|  (6) O53-C/D: ROMPIMENTO DE ZONA (ROMPZ), entrada propria, sem a  |
+//|      caixa de 3 ATR: o fechamento alem de um suporte/resistencia  |
+//|      JA CONFIRMADO na memoria O39 arma o gatilho na minima/maxima |
+//|      da barra; so na barra seguinte, o 1o tick >= 1 tick alem     |
+//|      dispara o SINAL. A ordem e autorizada a parte: filtro de     |
+//|      espaco 1,0 R (bloqueio = "sinal disparado; bloqueado por     |
+//|      falta de espaco"); a variante sem filtro so em sombra.       |
 //|      Cada barra registra a 1a condicao da R0 que falhou.          |
+//|  (7) InpEnviarOrdens=false: NENHUMA ordem (abrir ou fechar) - so  |
+//|      registro (validacao em sombra).                              |
 //| Cada decisao vai para a BabyMachine (evento tipo=lateral).        |
 //| Graficos M15, M30 ou H1; XAUUSD e BTCUSD (2 casas).               |
 //+------------------------------------------------------------------+
@@ -18691,9 +18697,14 @@ input long   InpMagic      = 0;
 input double InpLote       = 0.01;
 input int    InpStopLoss   = 0;     // nao usado: stop da regra = 2 ATR(14) do TF do grafico
 input int    InpTakeProfit = 0;     // nao usado: saida pelo canal EMA20 High/Low ou corte estrutural
+input bool   InpEnviarOrdens = false;  // O53-D: false = validacao em sombra (nenhuma ordem enviada, so registro)
+input bool   InpEntradaCaixa = true;   // entrada R0/R1 (rompimento de caixa <= 3 ATR)
+input bool   InpEntradaRompZ = true;   // entrada O53-D (rompimento de zona O39 ja confirmada)
+input bool   InpRompZFiltro  = true;   // filtro de espaco 1,0 R no fluxo autorizado do ROMPZ (false so para teste/sombra)
 CTrade trade;
 
-#define BTLAT_VERSAO "lateral-r1.2 (O53-C)"
+#define BTLAT_VERSAO "lateral-r1.2 (O53-D)"
+#define BTLAT_MINHIST 200
 #define BTLAT_CAIXA 12
 #define BTLAT_NJAN  1200
 #define BTLAT_NATR  14
@@ -18745,6 +18756,7 @@ datetime btRzFim[2];
 bool     btRzTocou[2];
 string   btRzId[2];
 string   btRzZonas[2];
+bool     btRzSemHist[2];
 
 // ---------- memoria estrutural O39 (estrutura-0.1), incremental por barra fechada ----------
 class CBTMem
@@ -18779,6 +18791,8 @@ public:
    double   zBrH[];
    double   zBrL[];
    long     zText[];
+   long     zTconf[];
+   long     curFim;
    // O53-B: pivôs confirmados/agrupados nesta alimentação e barras com rejeição registrada (para a REV-0 em sombra)
    int      pvTipo[];
    double   pvExt[];
@@ -18792,6 +18806,7 @@ public:
    // O53-C: zonas que entraram em ROMPIMENTO PENDENTE (barra nb, funcao, zona)
    int      rzNb[];
    int      rzFun[];
+   int      rzK[];
    double   rzB[];
    double   rzT[];
 
@@ -18801,9 +18816,9 @@ public:
       p1H=0.0; p1L=0.0; p2H=0.0; p2L=0.0;
       ArrayResize(cdTipo,0); ArrayResize(cdBarra,0); ArrayResize(cdExt,0); ArrayResize(cdAtr,0); ArrayResize(cdT,0);
       ArrayResize(zFun,0); ArrayResize(zExt,0); ArrayResize(zB,0); ArrayResize(zT,0); ArrayResize(zEst,0); ArrayResize(zTestes,0);
-      ArrayResize(zRej,0); ArrayResize(zMemb,0); ArrayResize(zAg,0); ArrayResize(zBrH,0); ArrayResize(zBrL,0); ArrayResize(zText,0);
+      ArrayResize(zRej,0); ArrayResize(zMemb,0); ArrayResize(zAg,0); ArrayResize(zBrH,0); ArrayResize(zBrL,0); ArrayResize(zText,0); ArrayResize(zTconf,0); curFim=0;
       ArrayResize(rjBarra,0); ArrayResize(rjFun,0);
-      ArrayResize(rzNb,0); ArrayResize(rzFun,0); ArrayResize(rzB,0); ArrayResize(rzT,0);
+      ArrayResize(rzNb,0); ArrayResize(rzFun,0); ArrayResize(rzB,0); ArrayResize(rzT,0); ArrayResize(rzK,0);
       LimparPivos();
      }
 
@@ -18854,11 +18869,11 @@ public:
          int nr=ArraySize(rzNb);
          if(nr>=100)
            {
-            for(int q=0;q<nr-1;q++) { rzNb[q]=rzNb[q+1]; rzFun[q]=rzFun[q+1]; rzB[q]=rzB[q+1]; rzT[q]=rzT[q+1]; }
+            for(int q=0;q<nr-1;q++) { rzNb[q]=rzNb[q+1]; rzFun[q]=rzFun[q+1]; rzB[q]=rzB[q+1]; rzT[q]=rzT[q+1]; rzK[q]=rzK[q+1]; }
             nr--;
            }
-         ArrayResize(rzNb,nr+1); ArrayResize(rzFun,nr+1); ArrayResize(rzB,nr+1); ArrayResize(rzT,nr+1);
-         rzNb[nr]=nb; rzFun[nr]=zFun[k]; rzB[nr]=b; rzT[nr]=tz;
+         ArrayResize(rzNb,nr+1); ArrayResize(rzFun,nr+1); ArrayResize(rzB,nr+1); ArrayResize(rzT,nr+1); ArrayResize(rzK,nr+1);
+         rzNb[nr]=nb; rzFun[nr]=zFun[k]; rzB[nr]=b; rzT[nr]=tz; rzK[nr]=k;
          return;
         }
       bool toca=sup?(l<=tz):(h>=b);
@@ -18904,6 +18919,7 @@ public:
         }
       ArrayResize(zFun,nz+1); ArrayResize(zExt,nz+1); ArrayResize(zB,nz+1); ArrayResize(zT,nz+1); ArrayResize(zEst,nz+1); ArrayResize(zTestes,nz+1);
       ArrayResize(zRej,nz+1); ArrayResize(zMemb,nz+1); ArrayResize(zAg,nz+1); ArrayResize(zBrH,nz+1); ArrayResize(zBrL,nz+1); ArrayResize(zText,nz+1);
+      ArrayResize(zTconf,nz+1); zTconf[nz]=curFim;
       zFun[nz]=fun; zExt[nz]=x; zB[nz]=z0; zT[nz]=z1; zEst[nz]=BTZ_CONF; zTestes[nz]=0; zRej[nz]=0; zMemb[nz]=1; zAg[nz]=false;
       zBrH[nz]=0.0; zBrL[nz]=0.0; zText[nz]=cdT[i];
       AnotarPivo(i,nz);
@@ -18921,6 +18937,7 @@ public:
         }
       else atr=(atr*(BTLAT_NATR-1)+tr)/BTLAT_NATR;
       nb++;
+      curFim=(long)t+PeriodSeconds(per);
       double lo=cpOk?MathMin(l,cp):l, hi=cpOk?MathMax(h,cp):h;
       // (1) niveis ja conhecidos
       int nz=ArraySize(zFun);
@@ -19079,6 +19096,11 @@ bool BTLatEspaco(int lado,double bid,double ask,double atr,string &motivo,string
 // comando de fechar com reconciliacao (item 4): no maximo 1 por barra e por ticket
 void BTLatFecharCmd(long tk,string motivo,datetime barra)
   {
+   if(!InpEnviarOrdens)
+     {
+      BTLatEv("comando_fechar_suprimido","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|razao=envio desligado (validacao em sombra)");
+      return;
+     }
    if(btLatCmdTk==tk && btLatCmdBarra==barra)
      {
       BTLatEv("comando_fechar_suprimido","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|razao=comando ja enviado nesta barra");
@@ -19311,6 +19333,8 @@ void BTLatRev0(const MqlRates &r[],int b,bool aquecendo)
   }
 
 // fechamento de barra do TF do grafico
+string BTLatEnviar(int s,double stop,string coment);
+
 // O53-C: primeira condicao da R0 que falhou na barra b (mesma conta do BTLatDetectar), para o registro da barra
 string BTLatDiagR0(const long &lo[],const long &hi[],const long &cl[],const double &atr[],int b)
   {
@@ -19366,7 +19390,8 @@ void BTLatRompZArmar(const MqlRates &r[],int b,double atr,datetime fim,int dur)
         {
          if(btMemTF.rzNb[q]<btMemTF.nb) break;
          if(btMemTF.rzNb[q]!=btMemTF.nb || btMemTF.rzFun[q]!=s) continue;
-         zs=zs+(nz>0?";":"")+DoubleToString(btMemTF.rzB[q],2)+"-"+DoubleToString(btMemTF.rzT[q],2);
+         zs=zs+(nz>0?";":"")+DoubleToString(btMemTF.rzB[q],2)+"-"+DoubleToString(btMemTF.rzT[q],2)
+            +"@conf="+IntegerToString(btMemTF.zTconf[btMemTF.rzK[q]]);
          nz++;
         }
       if(nz==0) continue;
@@ -19382,12 +19407,11 @@ void BTLatRompZArmar(const MqlRates &r[],int b,double atr,datetime fim,int dur)
       btRzZonas[k]=zs;
       BTLatEv("rompz_armado","sinal="+btRzId[k]+"|lado="+IntegerToString(s)+"|barra_rompimento="+IntegerToString((long)r[b].time)
               +"|fech="+DoubleToString(r[b].close,2)+"|zonas="+zs+"|extremo="+DoubleToString(ext,2)
-              +"|gatilho="+DoubleToString(btRzTT[k]*BTLAT_TICK,2)+"|valido_de="+IntegerToString((long)fim)+"|valido_ate="+IntegerToString((long)(fim+dur))
-              +"|modo=SOMBRA - nenhuma ordem");
+              +"|gatilho="+DoubleToString(btRzTT[k]*BTLAT_TICK,2)+"|valido_de="+IntegerToString((long)fim)+"|valido_ate="+IntegerToString((long)(fim+dur)));
      }
   }
 
-// O53-C: tick do ROMPZ em sombra (so dentro da barra seguinte a de rompimento; bid supera o extremo em >= 1 tick)
+// O53-D: tick do ROMPZ (so dentro da barra seguinte a de rompimento; bid supera o extremo em >= 1 tick): SINAL, depois a autorizacao da ordem
 void BTLatRompZTick()
   {
    if(btRzLado[0]==0 && btRzLado[1]==0) return;
@@ -19406,10 +19430,34 @@ void BTLatRompZTick()
       bool pos=BTLatPos(lado,tk,tAb);
       string mot="", txt="";
       bool passa=BTLatEspaco(s,q.bid,q.ask,btRzAtr[k],mot,txt);
+      bool semHist=(mot=="sem zona a frente") && (btMemTF.nb<BTLAT_MINHIST || (_Period!=PERIOD_H1 && btMemH1.nb<BTLAT_MINHIST));
+      if(semHist) { passa=false; txt=txt+"|historico=insuficiente (TF "+IntegerToString(btMemTF.nb)+" barras, H1 "+IntegerToString(btMemH1.nb)+" barras): distancia nao calculavel"; }
+      double px=(s<0)?q.bid:q.ask;
+      double stop=NormalizeDouble(px-s*BTLAT_KSTOP*btRzAtr[k],_Digits);
+      string dec;
+      if(pos) dec="sinal disparado; bloqueado: posicao aberta";
+      else if(semHist) dec="sinal disparado; bloqueado: distancia nao calculavel (historico insuficiente)";
+      else if(!passa) dec=(mot=="entrada dentro da zona")?"sinal disparado; bloqueado: entrada dentro da zona":"sinal disparado; bloqueado por falta de espaco";
+      else dec="sinal disparado; ordem autorizada";
+      string semf=pos?"bloqueado: posicao aberta":"entraria (sombra)";
       BTLatEv("rompz_disparo","sinal="+btRzId[k]+"|lado="+IntegerToString(s)+"|t="+IntegerToString((long)q.time)+"|t_msc="+IntegerToString((long)q.time_msc)
               +"|bid="+DoubleToString(q.bid,2)+"|ask="+DoubleToString(q.ask,2)+"|gatilho="+DoubleToString(btRzTT[k]*BTLAT_TICK,2)
-              +"|posicao_aberta="+(pos?"sim":"nao")+"|espaco_passa="+(passa?"sim":"nao")+"|"+txt+"|modo=SOMBRA - nenhuma ordem");
+              +"|posicao_aberta="+(pos?"sim":"nao")+"|espaco_passa="+(passa?"sim":"nao")+"|"+txt+"|stop="+DoubleToString(stop,_Digits)
+              +"|decisao="+dec+"|sem_filtro_sombra="+semf);
+      if(!pos && (passa || !InpRompZFiltro))
+        {
+         string env=BTLatEnviar(s,stop,(s>0)?"BT rompz compra":"BT rompz venda");
+         BTLatEv("ordem","sinal="+btRzId[k]+"|entrada=rompz|lado="+IntegerToString(s)+"|filtro="+(InpRompZFiltro?"ligado":"desligado")+"|"+env);
+        }
      }
+  }
+
+// O53-D: unica porta de envio de ordem (abrir); com InpEnviarOrdens=false so registra
+string BTLatEnviar(int s,double stop,string coment)
+  {
+   if(!InpEnviarOrdens) return("envio=nao enviada: envio desligado (validacao em sombra)");
+   bool ok=(s>0)?trade.Buy(InpLote,_Symbol,0.0,stop,0.0,coment):trade.Sell(InpLote,_Symbol,0.0,stop,0.0,coment);
+   return((ok?"envio=enviada":"envio=falhou")+string("|retcode=")+IntegerToString((long)trade.ResultRetcode()));
   }
 
 bool BTLatBarra()
@@ -19445,7 +19493,7 @@ bool BTLatBarra()
    for(int k=0;k<2;k++)
       if(btRzLado[k]!=0 && btRzFim[k]<=fim)
         {
-         BTLatEv("rompz_expirado","sinal="+btRzId[k]+"|resultado="+(btRzTocou[k]?"toque sem superacao":"nao alcancou")+"|modo=SOMBRA - nenhuma ordem");
+         BTLatEv("rompz_expirado","sinal="+btRzId[k]+"|resultado="+(btRzTocou[k]?"toque sem superacao":"nao alcancou"));
          btRzLado[k]=0;
         }
    // (2) memorias estruturais (TF do grafico + H1), so barras fechadas
@@ -19453,7 +19501,7 @@ bool BTLatBarra()
    btMemTF.Alimentar();
    if(_Period!=PERIOD_H1) btMemH1.Alimentar();
    BTLatRev0(r,b,aquecendo);
-   if(!aquecendo && A[b]>0.0) BTLatRompZArmar(r,b,A[b],fim,dur);
+   if(!aquecendo && A[b]>0.0 && InpEntradaRompZ) BTLatRompZArmar(r,b,A[b],fim,dur);
    string r0v=BTLatDiagR0(lT,hT,cT,A,b), r0c=BTLatDiagR0(mL,mH,mC,A,b);
    if(!btLatZonasLog)
      {
@@ -19500,7 +19548,7 @@ bool BTLatBarra()
       BTLatEv("barra","t="+IntegerToString((long)r[b].time)+"|c="+DoubleToString(C[b],2)+"|ema20h="+DoubleToString(EH[b],2)+"|ema20l="+DoubleToString(EL[b],2)
               +"|atr="+DoubleToString(A[b],4)+"|decisao="+dec+"|gatilho="+(btLatPendLado!=0?btLatPendId:"nenhum")+"|r0_venda="+r0v+"|r0_compra="+r0c);
    // (4) formacao na barra que acabou de fechar -> gatilho armado para a barra seguinte (R0 inalterada)
-   if(A[b]<=0.0) return(true);
+   if(A[b]<=0.0 || !InpEntradaCaixa) return(true);
    for(int k=0;k<2;k++)
      {
       int s=(k==0)?-1:1;
@@ -19554,8 +19602,8 @@ void BTLatTick()
    double stop=NormalizeDouble(px-s*BTLAT_KSTOP*btLatPendAtr,_Digits);
    BTLatEv("entrada","sinal="+btLatPendId+"|lado="+IntegerToString(s)+"|preco="+DoubleToString(px,_Digits)+"|stop="+DoubleToString(stop,_Digits)
            +"|ref_def="+((s<0)?"maxima da barra de entrada":"minima da barra de entrada")+"|"+txt);
-   if(s>0) trade.Buy(InpLote,_Symbol,0.0,stop,0.0,"BT lateral r1 compra");
-   else    trade.Sell(InpLote,_Symbol,0.0,stop,0.0,"BT lateral r1 venda");
+   string env=BTLatEnviar(s,stop,(s>0)?"BT lateral r1 compra":"BT lateral r1 venda");
+   BTLatEv("ordem","sinal="+btLatPendId+"|entrada=caixa|lado="+IntegerToString(s)+"|"+env);
   }
 
 int OnInit()
@@ -19570,7 +19618,8 @@ int OnInit()
    if(!btLatOk)
       Print("BT_LATERAL|inativo|use grafico M15, M30 ou H1 de XAUUSD ou BTCUSD (2 casas); nenhuma ordem sera aberta");
    else
-      BTLatEv("inicio","versao="+(string)BTLAT_VERSAO+"|off="+IntegerToString(BTLatOffset())+"|espaco_min_R="+DoubleToString(BTLAT_KESP,2)+"|invalidacao=maxima/minima da barra de entrada|rompz=sombra");
+      BTLatEv("inicio","versao="+(string)BTLAT_VERSAO+"|off="+IntegerToString(BTLatOffset())+"|espaco_min_R="+DoubleToString(BTLAT_KESP,2)+"|invalidacao=maxima/minima da barra de entrada|rompz="+(InpEntradaRompZ?"sim":"nao")+"|caixa="+(InpEntradaCaixa?"sim":"nao")
+              +"|envio_ordens="+(InpEnviarOrdens?"ligado":"desligado (sombra)")+"|tf="+BTLatTfNome(_Period)+"|magic="+IntegerToString(InpMagic));
    return(INIT_SUCCEEDED);
   }
 
@@ -20157,7 +20206,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
             hit = _mq5_cache_buscar(gen_hash)
             texto = (hit or {}).get("mq5") or ""
-            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1.2 (O53-C)" not in texto:   # O53/O53-B: cache de versão anterior nunca volta
+            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1.2 (O53-D)" not in texto:   # O53/O53-B: cache de versão anterior nunca volta
                 texto = _instrumentar_log_mql5(_BT_LATERAL_R0_MQL5)
                 _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
                 print(f"[lateral-r0] EA deterministico gerado e cacheado ({gen_hash[:10]})")
@@ -32857,8 +32906,20 @@ def _o53_atualizar_eas():
             cod_ant = str(b.get("mq5_codigo") or "")
             if b.get("excluido") or "BTLatDetectar" not in cod_ant:
                 print(f"[o53-atualizar] bot {bid}: não é um bot Lateral ativo — ignorado"); continue
-            if "lateral-r1.2 (O53-C)" in cod_ant:
-                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1.2 (O53-C) — nada a fazer"); continue
+            if "lateral-r1.2 (O53-D)" in cod_ant:
+                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1.2 (O53-D) — nada a fazer"); continue
+            # O53-D: só instala com o bot SEM posição, confirmado por snapshot recente do conector
+            sn = (sb.table("conector_snapshots").select("posicoes_abertas,criado_em").eq("magic_number", int(b["magic_number"])).order("id", desc=True)
+                  .limit(1).execute().data or [])
+            idade = None
+            if sn:
+                try:
+                    idade = (datetime.now(timezone.utc) - datetime.fromisoformat(str(sn[0]["criado_em"]).replace("Z", "+00:00"))).total_seconds()
+                except Exception:
+                    idade = None
+            if not sn or idade is None or idade > 600 or int(sn[0].get("posicoes_abertas") or 0) != 0:
+                print(f"[o53-atualizar] bot {bid}: posição aberta ou sem snapshot recente (snapshot={sn[:1]}, idade={idade}) — job NÃO criado"); continue
+            print(f"[o53-atualizar] bot {bid}: sem posição confirmado (snapshot de {sn[0]['criado_em']}, {int(idade)} s)")
             pend = (sb.table("mt5_jobs").select("job_id").eq("bot_token", b["bot_token"]).eq("status", "validando").limit(1).execute().data or [])
             if pend:
                 print(f"[o53-atualizar] bot {bid}: já há job pendente {pend[0]['job_id']} — não duplica"); continue
@@ -32868,7 +32929,7 @@ def _o53_atualizar_eas():
                                              "ativo": ativo})
             mq5 = _bt_base_ligar(cod, mq5, ativo)
             ok_s = _mq5_sanidade(mq5 or "")[0]
-            if not mq5 or not ok_s or "lateral-r1.2 (O53-C)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
+            if not mq5 or not ok_s or "lateral-r1.2 (O53-D)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
                 print(f"[o53-atualizar] bot {bid}: geração reprovada na sanidade — job NÃO criado"); continue
             import uuid as _u53
             job_id = "o53" + _u53.uuid4().hex[:13]
@@ -32880,6 +32941,37 @@ def _o53_atualizar_eas():
                   f"(sha256 {hashlib.sha256(mq5.encode('utf-8')).hexdigest()[:16]}, {len(mq5)} bytes)")
         except Exception as e:
             print(f"[o53-atualizar] bot {bid}: erro {str(e)[:200]}")
+
+
+def _o53d_amostra():
+    """O53-D: amostra ampla ROMPZ com filtro × sem filtro × caixa × EA completo, sobre os candles gravados (BT_O53D_AMOSTRA = símbolos).
+    Só leitura; o resumo vai para o log do serviço ([o53d-amostra])."""
+    sims = [x.strip().upper() for x in (os.getenv("BT_O53D_AMOSTRA") or "").split(",") if x.strip()]
+    sb = _sb_admin()
+    if not sims or sb is None:
+        return
+    import json as _j53, validacao_o53 as _v53
+    ate = datetime.now(timezone.utc); de = ate - timedelta(days=int(os.getenv("BT_O53D_DIAS") or 35))
+    for sim in sims:
+        try:
+            r = _v53.comparar_variantes(sb, sim, de, ate)
+            res = {"simbolo": sim, "situacao": r.get("situacao"), "spread": r.get("spread_usado"), "custo": r.get("custo"), "inicio": r.get("inicio_efetivo"),
+                   "cobertura": {k: {"barras": (v or {}).get("barras"), "lacunas": (v or {}).get("lacunas_total")} for k, v in (r.get("cobertura") or {}).items()},
+                   "variantes": {k: {"resumo": v["resumo"], "sinais_rompz": v["sinais_rompz"], "armados_rompz": v["armados_rompz"], "em_aberto": v["em_aberto_no_fim"]}
+                                 for k, v in (r.get("variantes") or {}).items()}}
+            print("[o53d-amostra] " + _j53.dumps(res, ensure_ascii=False, default=str))
+            for k, v in (r.get("variantes") or {}).items():
+                print("[o53d-amostra-ops] " + _j53.dumps({"simbolo": sim, "variante": k, "ops": [[o["t_entrada"][5:16], o["lado"][0], o["R"], o.get("motivo_saida")] for o in v["operacoes"]]},
+                                                          ensure_ascii=False, default=str))
+        except Exception as e:
+            print(f"[o53d-amostra] {sim}: erro {str(e)[:300]}")
+
+
+@app.on_event("startup")
+def _o53d_amostra_startup():
+    if os.getenv("RAILWAY_ENVIRONMENT_NAME") and os.getenv("BT_O53D_AMOSTRA"):
+        import threading as _th53d
+        _th53d.Thread(target=_o53d_amostra, daemon=True).start()
 
 
 @app.on_event("startup")
