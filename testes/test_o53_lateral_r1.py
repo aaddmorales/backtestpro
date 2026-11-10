@@ -70,7 +70,7 @@ def test_1_ea_tick_a_tick_igual_ao_motor_o53(A):
         assert sum(d.get("ev") == "gatilho_armado" for d in lat) == I.cont["gatilhos_armados"], tf
         # reconciliação: cada fechamento do EA é confirmado; o de stop aparece como fechamento externo com a razão
         assert sum(d.get("ev") == "fechamento_confirmado" for d in lat) + sum(d.get("ev") == "fechamento_externo" for d in lat) >= len(ea_s) - 1
-        assert all(d.get("v") == "lateral-r1.1 (O53-B)" for d in lat)
+        assert all(d.get("v") == "lateral-r1.2 (O53-C)" for d in lat)
         hist = [d for d in lat if d.get("ev") == "historico"]                          # o histórico do MT5 vai para a BabyMachine (replay)
         assert hist and all(len(d["barras"].split(";")) <= 60 for d in hist) and {d["tf"] for d in hist} == ({"H1"} if tf == 60 else {"M30", "H1"} if tf == 30 else {"M15", "H1"})
         tot["entradas"] += len(ea_e); tot["bloqueios"] += I.cont["bloq_espaco"] + I.cont["bloq_dentro_zona"]; tot["cortes"] += I.cont["saidas_corte"]; tot["reversoes"] += I.cont["rev_avaliadas"]
@@ -101,12 +101,12 @@ def test_2_sem_filtro_e_sem_corte_e_a_r0_da_o47():
 
 def test_3_gerador_entrega_o_ea_r1(A):
     lat = A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
-    assert 'BTLAT_VERSAO "lateral-r1.1 (O53-B)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
+    assert 'BTLAT_VERSAO "lateral-r1.2 (O53-C)"' in lat and "class CBTMem" in lat and "BTLatEspaco" in lat and "BTLatReconciliar" in lat
     assert re.search(r"input\s+\w+\s+InpBTAlvoRR\s*=\s*0\.0;", lat) and re.search(r"input\s+\w+\s+InpBTTrailingBarra\s*=\s*false;", lat)
     assert "void BTvGravarEvento(const string linha_evento)" in lat                       # o canal confiável da BabyMachine existe no EA instrumentado
     assert A._mq5_sanidade(lat)[0]
-    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1.1 (O53-B)", "x")}         # cache antigo (R0) não pode voltar
-    assert "lateral-r1.1 (O53-B)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
+    A._mq5_cache_buscar = lambda h: {"mq5": lat.replace("lateral-r1.2 (O53-C)", "x")}         # cache antigo (R0) não pode voltar
+    assert "lateral-r1.2 (O53-C)" in A._gerar_mq5_de_codigo(A.ESTRATEGIA_LATERAL_R0["codigo"], {"magic": 99, "stop_loss": 0, "take_profit": 0, "ativo": "BTC/USD"})
     A._mq5_cache_buscar = lambda h: None
     assert "8.33-o53-lateral-r1" in A.API_VERSAO
 

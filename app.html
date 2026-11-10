@@ -3954,7 +3954,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.92-o53b-pivos-rev0-sombra';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.93-o53c-trilha-rompimento';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9230,6 +9230,16 @@ function diagSec5(S5){
                                                `${x.sombra_pct}% / ${x.rejeicao_zona ? 'sim' : 'não'}`, x.gatilho, x.espaco_R, x.onde_parou, x.ea_rev0]));
       h += (PV.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
     }
+    const TZ = b.rompz || {};
+    h += '<h3>Trilha de rompimento (O53-C) — barra que fecha além da zona → gatilho → barra seguinte → ordem ou bloqueio</h3>';
+    if (TZ.situacao !== 'ok') h += `<div class="diag-vazio">${_diagE(TZ.situacao)}</div>`;
+    else {
+      h += `<div class="diag-sit">${_diagE(TZ.nota)}</div>`;
+      h += _diagTab(['barra', 'lado', 'zonas rompidas', 'fechamento', 'gatilho', 'R0 do gráfico nesta barra', 'LM leu a barra', 'barra seguinte', '1º minuto além', 'espaço (R)', 'EA (registro)', 'ordem', 'onde parou'],
+                    (TZ.linhas || []).map(x => [`${x.n_barra_dia} · ${(x.barra_rompimento || '').slice(11, 16)}`, x.lado, (x.zonas_rompidas || []).map(z => z[0] + '–' + z[1]).join(' e '), x.fechamento, x.gatilho,
+                                                x.r0_na_barra, (x.lm_leu_a_barra_em || '—').slice(11, 19), x.n_barra_seguinte, (x.primeiro_minuto_alem || '—').slice(11, 16), x.espaco_R, x.ea, x.ordem, x.onde_parou]));
+      h += (TZ.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
+    }
     h += (b.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
   }
   return _diagSec(S5.titulo || '5.', h, true);
@@ -9254,7 +9264,7 @@ function diagSvg53(j){
   if (M.zona_pivo) s += `<rect x="${pl}" width="${W - pl - pr}" y="${Y(M.zona_pivo[1])}" height="${Math.max(1, Y(M.zona_pivo[0]) - Y(M.zona_pivo[1]))}" fill="#8b3fd6" opacity=".14"/>`;
   if (M.gatilho != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.gatilho)}" y2="${Y(M.gatilho)}" stroke="#6250d6" stroke-dasharray="6 4"/><text x="${W - pr + 4}" y="${Y(M.gatilho)}" fill="#6250d6">gatilho ${M.gatilho}</text>`;
   if (M.pivo && M.pivo[0] != null) s += `<circle cx="${X(M.pivo[0])}" cy="${Y(M.pivo[1])}" r="7" fill="none" stroke="#8b3fd6" stroke-width="2.2"/><text x="${X(M.pivo[0]) + 9}" y="${Y(M.pivo[1])}" fill="#8b3fd6">extremo ${M.pivo[1]}</text>`;
-  if (M.conf != null && V[M.conf]) s += `<rect x="${X(M.conf) - cw * .45}" width="${cw * .9}" y="${Y(V[M.conf][2])}" height="${Math.max(1, Y(V[M.conf][3]) - Y(V[M.conf][2]))}" fill="none" stroke="#eb6834" stroke-width="2"/><text x="${X(M.conf)}" y="${Y(V[M.conf][2]) - 4}" text-anchor="middle" fill="#eb6834">confirmável</text>`;
+  if (M.conf != null && V[M.conf]) s += `<rect x="${X(M.conf) - cw * .45}" width="${cw * .9}" y="${Y(V[M.conf][2])}" height="${Math.max(1, Y(V[M.conf][3]) - Y(V[M.conf][2]))}" fill="none" stroke="#eb6834" stroke-width="2"/><text x="${X(M.conf)}" y="${Y(V[M.conf][2]) - 4}" text-anchor="middle" fill="#eb6834">${_diagE(M.rotulo_conf || 'confirmável')}</text>`;
   if (M.stop != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.stop)}" y2="${Y(M.stop)}" stroke="#d63a3a" stroke-dasharray="2 3"/><text x="${W - pr + 4}" y="${Y(M.stop)}" fill="#d63a3a">stop ${M.stop}</text>`;
   if (M.ref != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.ref)}" y2="${Y(M.ref)}" stroke="#6250d6" stroke-dasharray="6 4"/><text x="${W - pr + 4}" y="${Y(M.ref)}" fill="#6250d6">invalidação ${M.ref}</text>`;
   if (M.entrada && M.entrada[0] != null && M.entrada[1] != null) s += `<path d="M${X(M.entrada[0]) - 6},${Y(M.entrada[1]) - 8} h12 l-6,10 z" fill="#6250d6"/><text x="${X(M.entrada[0]) + 8}" y="${Y(M.entrada[1])}" fill="#6250d6">entrada ${M.entrada[1]}</text>`;

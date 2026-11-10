@@ -15,7 +15,7 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel
 
-VERSAO = "diag-lm-1.1 (O50 + seção 5 da O53)"
+VERSAO = "diag-lm-1.2 (O50 + seção 5 da O53 + trilha de rompimento O53-C)"
 FUSO_PADRAO = "Europe/Kyiv"
 HORAS_PADRAO = 48
 MAX_DIAS = 31
@@ -856,6 +856,24 @@ def _pdf_secao_5(d, S5, h1, h2, p, kv, tab, W):
                   f"{x['sombra_pct']}%/{'sim' if x['rejeicao_zona'] else 'não'}", x["gatilho"], x["espaco_R"], x["onde_parou"], (x["ea_rev0"] or "")[:22]] for x in PV["pivos"]],
                 [11, 17, 11, 15, 15, 17, 17, 13, 44, 26])
             for j in PV.get("janelas") or []:
+                if d.get_y() > 185:
+                    d.add_page()
+                p(j["titulo"], b=True, tam=7.6)
+                if j.get("velas"):
+                    d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
+                d.ln(1.5)
+        TZ = b.get("rompz") or {}
+        p("TRILHA DE ROMPIMENTO (O53-C) — barra que fecha além da zona → gatilho na mínima/máxima → barra seguinte → ordem ou bloqueio", b=True)
+        if TZ.get("situacao") != "ok":
+            p(str(TZ.get("situacao")), tam=7.6)
+        else:
+            p(TZ.get("nota") or "", tam=7.2)
+            tab(["barra", "lado", "zonas rompidas", "fech.", "gatilho", "R0 do gráfico na barra", "LM leu", "barra seg.", "1º min além", "espaço R", "EA", "ordem", "onde parou"],
+                [[f"{x['n_barra_dia']} {(x['barra_rompimento'] or '')[11:16]}", x["lado"], " ".join(f"{z[0]:.2f}-{z[1]:.2f}" for z in x["zonas_rompidas"]), x["fechamento"], x["gatilho"],
+                  x["r0_na_barra"], (x["lm_leu_a_barra_em"] or "—")[11:19], x["n_barra_seguinte"], (x["primeiro_minuto_alem"] or "—")[11:16], x["espaco_R"],
+                  (x["ea"] or "")[:40], x["ordem"], x["onde_parou"]] for x in TZ["linhas"]],
+                [12, 10, 30, 14, 14, 30, 12, 9, 11, 10, 20, 16, 40])
+            for j in TZ.get("janelas") or []:
                 if d.get_y() > 185:
                     d.add_page()
                 p(j["titulo"], b=True, tam=7.6)
