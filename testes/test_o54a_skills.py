@@ -4,7 +4,7 @@ import os, re, sys, json, subprocess
 AQUI = os.path.dirname(os.path.abspath(__file__)); RAIZ = os.path.dirname(AQUI); SK = os.path.join(RAIZ, ".claude", "skills")
 ESPERADAS = {"ml4t-point-in-time", "ml4t-lookahead-bias", "ml4t-regime-awareness", "ml4t-walk-forward-cv", "ml4t-cost-model", "backtest-expert",
              "pre-trade-check", "position-management", "post-trade-debrief", "risk-reward-sanity-check", "execution-plan-check", "position-sizing",
-             "post-trade-review", "bottested-trader-m15"}
+             "post-trade-review", "bottested-trader-m15", "technical-analyst"}
 
 
 def test_1_skills_carregaveis():

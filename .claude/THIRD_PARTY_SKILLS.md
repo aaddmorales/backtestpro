@@ -28,6 +28,7 @@ fala com corretora ou exige credencial. Instruções revisadas antes da instala�
 | execution-plan-check | marian2js | auxiliar | — |
 | position-sizing | marian2js | auxiliar | usa `_lib/calculations.py` (stdlib) |
 | post-trade-review | marian2js | auxiliar | — |
+| technical-analyst | tradermonty (mesmo commit `4251eaae…`) | sim (complemento ORDEM 055, 12/11) | só leitura de gráfico; `scripts/` NÃO importada (exige `requests`, rede e FMP_API_KEY). Feita para gráfico semanal; nota de instalação inserida após o frontmatter |
 
 Excluído de propósito: `live-trade/etoro` (acesso a corretora) e qualquer skill fora da lista da ordem.
 
@@ -35,6 +36,10 @@ Excluído de propósito: `live-trade/etoro` (acesso a corretora) e qualquer skil
 
 - `backtest-expert/SKILL.md`: `skills/backtest-expert/` → `.claude/skills/backtest-expert/`.
 - `references/calculation-helpers.md` (position-sizing, risk-reward-sanity-check): `skills/_lib/calculations.py` → `.claude/skills/_lib/calculations.py`.
+
+## Patch adicional
+
+- `technical-analyst/SKILL.md`: nota de instalação BotTested após o frontmatter (scripts desligados, referência = bottested-trader-m15).
 
 ## Arquivos importados (sha256, 16 primeiros caracteres)
 
@@ -74,3 +79,7 @@ Excluído de propósito: `live-trade/etoro` (acesso a corretora) e qualquer skil
 | `skills_licencas/ml4t-skills_LICENSE_Apache-2.0` | `e97825a2b0db1501` |
 | `skills_licencas/ml4t-skills_NOTICE` | `a8f05028aa76c237` |
 | `skills_licencas/tradermonty_LICENSE_MIT` | `87c93cde8c3a000c` |
+| `skills/technical-analyst/SKILL.md` | `2584efcd1fbfbe4f` (com nota) |
+| `skills/technical-analyst/assets/analysis_template.md` | `0f9a703857cbfa08` |
+| `skills/technical-analyst/references/contrarian-confirmation-checklist.md` | `2ae0a6900a30f005` |
+| `skills/technical-analyst/references/technical_analysis_framework.md` | `a530ffebf10c04f2` |
