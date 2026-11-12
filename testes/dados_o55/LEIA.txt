@@ -1,0 +1,6 @@
+XAUUSD M15/H1/M1 usados na ORDEM 054-B/055 (horários UTC; servidor = UTC+2).
+- M15 e H1 até 09/11 03:45 UTC: histórico ORIGINAL do MT5, enviado pelo EA do Bot 02 (evento 'historico', 1200 barras de cada).
+- Depois: velas gravadas pelo Conector (auditoria_candles, homolog), sem as cópias falsas da virada do dia (22:00–22:59 UTC).
+- LACUNA do Conector em 11/11 (09:29–16:21 UTC): as barras M15 de 09:15 a 11:45 UTC (op42–op52 do gráfico do dono, 11:15–13:45 srv)
+  foram LIDAS DO PRINT do dono (±0,5) — estimativa visual, não dado do MT5. H1 09/10/11 UTC de 11/11 agregados dessas M15.
+- M1: real nas 41 barras com disparo/entrada/saída da O54-B; nas demais (e na lacuna) 1 linha sintética por barra M15 (OHLC da M15).

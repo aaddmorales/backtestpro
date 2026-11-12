@@ -1,0 +1,23 @@
+ORDEM 055 — COMPZ: "última vela que respeitou o suporte/resistência" (congelada em 12/11/2026 ~22:30 Kyiv, ANTES do replay de validação)
+
+Contexto do dono (complemento da ORDEM 055): confirmar a mudança de estrutura, mapear a pequena compressão que vem depois e guardar a mínima
+(máxima) da última vela FECHADA que ainda respeitou o suporte (resistência); o sinal é o primeiro cruzamento válido dessa referência.
+NÃO usar a mínima da vela que já fechou fora da zona (isso é a ROMPZ, que continua existindo como entrada separada).
+
+Detectores reaproveitados: pivôs = memória estrutural O39 (fractal estrito 2+2, confirmado no fechamento de i+2); EMA20 High/Low do gráfico;
+ATR14 Wilder; filtro de espaço vigente (avaliar_espaco, 1,0 R); gestão R1 (stop 2 ATR, corte, canal). Nada novo além do estado abaixo.
+
+VENDA (compra = espelho: topo↔fundo, suporte↔resistência, mínima↔máxima, EMA20 Low↔EMA20 High, abaixo↔acima):
+1) MUDANÇA DE ESTRUTURA (barra c, no fechamento): existem ≥2 topos O39 confirmados; o último é MAIS BAIXO que o anterior (LH);
+   o extremo do LH está a no máximo 12 barras de c; e o fechamento de c é < EMA20 Low(c). Registra LH e ATR(c). Uma mudança por LH.
+2) COMPRESSÃO: a partir de c+1, caixa = [mín. das mínimas, máx. das máximas] das barras c+1..k.
+   Cancela se: altura da caixa > 2,0·ATR(c); máxima > LH; fechamento > EMA20 High; mais de 16 barras; ou fechamento abaixo do suporte
+   sem disparo anterior (rompeu sem referência válida).
+3) SUPORTE e VELA QUE RESPEITA: suporte = mínima da caixa. A barra k "respeita e testa" se fecha ≥ suporte anterior a ela
+   e sua mínima está na faixa [suporte, suporte + 0,25·ATR(c)]. A referência passa a ser a mínima da ÚLTIMA barra assim (atualiza a cada nova).
+4) ARMADO quando a caixa tem ≥ 3 barras e há referência. SINAL = primeiro tick com BID ≤ referência − 1 tick, em qualquer barra posterior
+   à barra de referência enquanto a compressão vive. Igualar não dispara. Um sinal por mudança.
+5) AUTORIZAÇÃO separada do sinal (igual à ROMPZ): posição aberta → "bloqueado: posicao aberta" (continuidade); histórico insuficiente;
+   entrada dentro da zona; falta de espaço (< 1,0 R); senão "ordem autorizada". Sem filtro = só sombra.
+6) GESTÃO: a da R1 (stop 2 ATR, corte pela máx./mín. da barra de entrada, canal EMA20). Envio continua DESLIGADO (sombra).
+Parâmetros congelados: LH_JANELA=12, K_CAIXA=2,0, K_BANDA=0,25, N_MIN=3, N_MAX=16.

@@ -3,11 +3,11 @@ name: bottested-trader-m15
 description: Leitura e auditoria da entrada M15 ensinada pelo dono do BotTested (exaustão → lateralização → zona já conhecida → fechamento além da zona → superação da mínima/máxima na vela seguinte → gestão). Use ao auditar sinais dos bots da BabyMachine (Bot 01 BTCUSD, Bot 02 XAUUSD), ao explicar por que o bot entrou ou não entrou, ao montar replays sem ordens e ao separar sinal de autorização de ordem.
 ---
 
-# bottested-trader-m15 — v1.0 (ORDEM 054-A, 12/11/2026)
+# bottested-trader-m15 — v1.1 (ORDEM 054-A + ORDEM 055, 12/11/2026)
 
 Skill própria do projeto. Ela descreve e audita a regra; **não executa nada no MT5**. Instalar esta skill no agente
 não significa que o bot já faz a leitura no terminal: o que roda no MT5 é só o que está no EA (`api.py`, `_BT_LATERAL_R0_MQL5`,
-`BTLAT_VERSAO "lateral-r1.2 (O53-D)"`) e foi instalado pelo Conector HOMOLOG.
+`BTLAT_VERSAO "lateral-r1.3 (O55)"`) e foi instalado pelo Conector HOMOLOG.
 
 ## 1. Sequência ensinada (ordem obrigatória)
 
@@ -48,9 +48,27 @@ Mapeamento das strings do motor:
 Cálculo do espaço (D3): `d = E − topo da zona à frente` (venda; espelhado na compra), `espaço líquido = d − spread`,
 `R = 2 ATR`, `espaço_R = espaço líquido / R`, mínimo **1,0 R**. Sem zona à frente e memória < 200 barras → não calculável → bloqueia.
 
+
+## 2b. As três entradas do EA (não confundir)
+
+| Entrada | Referência do gatilho | Onde |
+|---|---|---|
+| CAIXA (R0/R1) | mín./máx. da barra de rompimento da caixa de 12 barras ≤ 3 ATR, válida só na barra seguinte | EA desde a O47/O53 |
+| ROMPZ (O53-D) | mín./máx. da vela que FECHOU FORA de uma zona O39 já confirmada, válida só na barra seguinte | EA r1.2+ |
+| **COMPZ (O55)** | mín./máx. da **ÚLTIMA vela fechada que ainda respeitou e testou** o suporte/resistência da compressão que veio **depois da mudança de estrutura** | EA r1.3 (sombra) |
+
+COMPZ (especificação congelada em `testes/referencia_o55/O55_especificacao_congelada.txt`):
+1. Mudança de estrutura (venda): último topo O39 confirmado MAIS BAIXO que o anterior (≤ 12 barras) + fechamento abaixo da EMA20 Low.
+2. Compressão a partir da barra seguinte: caixa ≤ 2,0 ATR; cancela se superar o topo da mudança, fechar acima da EMA20 High, passar de 16 barras ou fechar abaixo do suporte sem disparo.
+3. Vela que respeita e testa: fecha ≥ suporte e a mínima fica até 0,25 ATR acima dele → vira a referência (atualiza a cada nova).
+4. Sinal: 1º tick ≥ 1 tick abaixo da referência, em qualquer barra posterior, com a caixa ≥ 3 barras. Autorização separada (mesmo filtro de 1,0 R).
+
+Caso de aceitação: XAU 11/11 — mudança no fechamento da op42 (11:30 srv), referências op43 → op47 → **op51 (4047,20)**, sinal na op52 (13:45) a 4047,00; o filtro vigente bloqueia ("entrada dentro da zona": a zona M15 4045,85–4052,90 é o próprio suporte da compressão). Sem filtro (sombra): saída pelo canal 12/11 02:45 a 3985,50.
+
 ## 3. O que NÃO pode ser alterado por esta skill
 
 - O filtro de espaço de 1,0 R continua no fluxo autorizado. A variante sem filtro existe **só em sombra** (`InpRompZFiltro=false` apenas em teste).
+- **Caixa ≠ ROMPZ ≠ COMPZ.** São três entradas separadas, cada uma com sua referência.
 - **Regra da caixa ≠ regra da zona.** A R0/R1 de caixa (12 barras ≤ 3 ATR, `formacao_o44.detectar_venda`) é uma entrada; o ROMPZ (zona O39 já confirmada) é outra.
   Uma falhar não invalida a outra (ex.: BTC 10/11 barra 70: caixa falha por 1402,52 > 3 ATR 1013,22; ROMPZ arma e dispara na 71).
 - Nada de abrir, fechar ou mexer em posição para gerar evidência. Nada em produção. Mudança de regra só por ORDEM do dono.
