@@ -1,7 +1,7 @@
 """ORDEM 056-A — saída por exaustão (exaustao-1), EA lateral-r1.4 (O56).
 (1) caso BTC 13/11 (ZV-1794542400): gestão anterior sai no canal em 68998,02 (+2,41 R, igual ao acompanhamento externo);
     com exaustão: reação na barra 06:00 UTC (08:00 srv), gatilho 68306,81 superado na barra seguinte → saída (+3,50 R no replay M1);
-(2) controle: barra 04:30 UTC esticada (2,49 ATR) e compradora SEM desaceleração → mantém; a queda continuou até 67508,90;
+(2) controle: barra 04:15 UTC (06:15 srv, fecha 06:30) esticada (2,49 ATR) e compradora SEM desaceleração → mantém; a queda continuou até 67508,90;
 (3) gatilho: tocar não fecha; renovar a mínima da reação cancela; mesma M1 cruza e renova = indeterminado (mantém);
 (4) EA (C++ no shim) ≡ referência Python no XAU 30/10–12/11 com envio ligado e filtros desligados (mais posições);
 (5) conta não DEMO: nenhuma ordem sai (bloqueio fixo)."""
@@ -56,7 +56,7 @@ def test_1_caso_btc_1311_canal_x_exaustao():
 def test_2_controle_esticado_continua():
     b = _caso_btc(True)
     ctx = {e["barra_ms"] // 1000: e for e in b.eventos if e["tipo"] == "exaustao_contexto"}
-    e = ctx[1794543300]                         # 04:30 UTC (06:30 srv): 2,49 ATR abaixo da EMA20 Low, barra compradora
+    e = ctx[1794543300]                         # barra 04:15 UTC (06:15 srv): 2,49 ATR abaixo da EMA20 Low, barra compradora
     assert e["contexto"] and e["dist_atr"] > 2.4 and not e["desaceleracao"] and not e["alerta"] and not e["reacao"]
     assert len(ctx) >= 12                        # esticada desde 02:45 UTC, sem saída
     m15 = _ler(os.path.join(D56, "BTCUSD_M15_1113.csv"))
