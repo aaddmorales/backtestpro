@@ -22,7 +22,7 @@ SP = 1500
 def A():
     os.environ["BT_CARD_TESTE_USER"] = "u-master"
     import api as A
-    assert 'BTLAT_VERSAO "lateral-r1.3 (O55)"' in A._BT_LATERAL_R0_MQL5
+    assert 'BTLAT_VERSAO "lateral-r1.4 (O56)"' in A._BT_LATERAL_R0_MQL5
     return A
 
 
@@ -36,7 +36,7 @@ def _sim(A, **cfg):
         tmp = tempfile.mkdtemp()
         for f in ("mt5shim.h", "main.cpp"):
             shutil.copy(os.path.join(REF53, "shim", f), tmp)
-        _traduzir(_cfg(A._BT_LATERAL_R0_MQL5, **{"InpEntradaCompz": "false", **cfg}), os.path.join(tmp, "ea.cpp"))   # O55: COMPZ desligada nos testes da ROMPZ
+        _traduzir(_cfg(A._BT_LATERAL_R0_MQL5, **{"InpEntradaCompz": "false", "InpEnviarOrdens": "false", "InpExaustao": "false", **cfg}), os.path.join(tmp, "ea.cpp"))   # O55: COMPZ desligada nos testes da ROMPZ
         r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", os.path.join(tmp, "sim"), os.path.join(tmp, "main.cpp")], capture_output=True, text=True)
         assert r.returncode == 0, r.stderr[-1500:]
         _SIMS[k] = (os.path.join(tmp, "sim"), tmp)
@@ -196,7 +196,7 @@ def test_4_ea_igual_referencia_com_envio_e_sem_envio(A):
     assert all(e.get("ev") != "ordem" or e.get("retcode") is None for e in ev0)
     assert any(e.get("ev") == "ordem" for e in ev0) and all(e["envio"].startswith("nao enviada: envio desligado") for e in ev0 if e.get("ev") == "ordem")
     inicio = [e for e in ev0 if e.get("ev") == "inicio"][0]
-    assert inicio["versao"] == "lateral-r1.3 (O55)" and inicio["envio_ordens"] == "desligado (sombra)" and inicio["tf"] == "M15" and inicio["rompz"] == "sim"
+    assert inicio["versao"] == "lateral-r1.4 (O56)" and inicio["envio_ordens"] == "desligado (sombra)" and inicio["tf"] == "M15" and inicio["rompz"] == "sim"
 
 
 def test_5_trilha_no_diagnostico_geral_e_pdf():

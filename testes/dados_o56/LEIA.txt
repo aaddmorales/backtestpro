@@ -1,0 +1,6 @@
+BTCUSD 13/11/2026 (ORDEM 056-A). Horários UTC (servidor = UTC+2).
+- BTCUSD_M15_1113.csv: velas M15 gravadas pelo Conector (auditoria_candles, homolog) de 11/11 22:00 a 13/11 15:00 UTC.
+- BTCUSD_M1_1113_0400_0900srv.csv: velas M1 do Conector de 02:00 a 06:59 UTC (04:00–08:59 srv) + 1 linha 07:00 UTC com a
+  abertura da M15 das 07:00 (só para executar a saída pelo canal decidida no fechamento das 06:45 UTC).
+Posição do caso: ZV-1794542400, venda autorizada pelo EA r1.2 (registro original agente_eventos: rompz_disparo 02:17:21 UTC,
+bid 70418,07, stop 71008,32, R 590,25) — NÃO enviada (envio desligado). No replay a posição é injetada com esses valores.

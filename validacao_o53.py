@@ -10,7 +10,7 @@ import os, sys, random, datetime as _dt
 import numpy as np, pandas as pd
 
 _AQUI = os.path.dirname(os.path.abspath(__file__))
-for _p in (os.path.join(_AQUI, "testes", "referencia_o55"), os.path.join(_AQUI, "testes", "referencia_o53"), os.path.join(_AQUI, "testes", "referencia_o51")):
+for _p in (os.path.join(_AQUI, "testes", "referencia_o56"), os.path.join(_AQUI, "testes", "referencia_o55"), os.path.join(_AQUI, "testes", "referencia_o53"), os.path.join(_AQUI, "testes", "referencia_o51")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import ao_vivo_o53 as R1  # noqa: E402
@@ -18,8 +18,9 @@ import pivos_o53b as PV  # noqa: E402
 import rompz_o53c as RZ  # noqa: E402
 import romp_m15 as _RM  # noqa: E402
 import compz_o55 as CZ  # noqa: E402
+import exaustao_o56 as EX  # noqa: E402
 
-VERSAO = "validacao-o53-1.3 (" + R1.VERSAO + " + " + RZ.VERSAO + " + " + CZ.VERSAO + ")"
+VERSAO = "validacao-o53-1.4 (" + R1.VERSAO + " + " + RZ.VERSAO + " + " + CZ.VERSAO + " + " + EX.VERSAO + ")"
 UTC = _dt.timezone.utc
 SEMENTE = 53
 AMARELO = "#ffd60a"
@@ -851,6 +852,127 @@ def trilha_compz(sb, bot, tf, de, ate, tz):
 
 
 # ════════════════════════════════════════════════════════════════════════
+# ORDEM 056-A — saída por exaustão (gestão) e cadeia DEMO por bot
+# ════════════════════════════════════════════════════════════════════════
+def gestao_exaustao(sb, bot, tf, de, ate, tz):
+    """para cada entrada AUTORIZADA (sombra ou DEMO) do bot no período: replay da gestão anterior (corte/canal/stop) × gestão com a saída por
+    exaustão (exaustao-1 ≡ EA lateral-r1.4), com a posição injetada pelo registro do terminal (preço, stop e horário do EA)."""
+    if tf != "M15":
+        return {"situacao": "a saída por exaustão (O56) é avaliada em M15"}
+    sim = str(bot.get("simbolo") or "").upper(); mg = str(bot.get("magic_number") or "")
+    try:
+        evs = _pag(lambda: sb.table("agente_eventos").select("detalhe_json,criado_em").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg)
+                   .in_("detalhe_json->>ev", ["inicio", "rompz_disparo", "compz_disparo", "entrada", "ordem", "exaustao_alerta", "exaustao_reacao", "exaustao_saida",
+                                               "exaustao_cancelada", "exaustao_expirada", "saida", "fechamento_confirmado", "fechamento_externo"])
+                   .gte("criado_em", _iso(de - _dt.timedelta(days=3))).lte("criado_em", _iso(ate + _dt.timedelta(hours=7))).order("id"), 20000) if mg else []
+    except Exception:
+        evs = []
+    D = [dict(e.get("detalhe_json") or {}, **_kv((e.get("detalhe_json") or {}).get("raw")), _criado=e.get("criado_em")) for e in evs]
+    vistos = set(); D = [x for x in D if not (x.get("raw") in vistos or vistos.add(x.get("raw")))]          # o EA reenvia: dedup pelo texto
+    off = next((int(float(x.get("off") or 0)) for x in reversed([y for y in D if y.get("ev") == "inicio"]) if x.get("off") not in (None, "")), 7200)
+    pos = []
+    for x in D:
+        if x.get("ev") in ("rompz_disparo", "compz_disparo") and "ordem autorizada" in str(x.get("decisao") or ""):
+            try:
+                pos.append({"sinal": x.get("sinal"), "lado": int(x.get("lado")), "E": float(x.get("E")), "stop": float(x.get("stop")), "t": int(x.get("t")) - off,
+                            "origem": "registro do terminal (" + x["ev"] + ", " + str(x.get("v") or "") + ")"})
+            except Exception:
+                pass
+    pos = [p for p in pos if de.timestamp() <= p["t"] < ate.timestamp()]
+    if not pos:
+        return {"situacao": "nenhuma entrada autorizada no período", "eventos_no_terminal": [x["ev"] + " " + str(x.get("sinal") or "") for x in D if str(x.get("ev", "")).startswith("exaustao")]}
+    m15 = candles(sb, sim, "M15", de - _dt.timedelta(seconds=900 * 1229), ate + _dt.timedelta(hours=12))
+    m1 = candles(sb, sim, "M1", de - _dt.timedelta(minutes=30), ate + _dt.timedelta(hours=12))
+    if m15 is None or len(m15) < 30 or m1 is None or not len(m1):
+        return {"situacao": "sem candles M15/M1 suficientes no período"}
+    sp = _spread_mediano(sb, sim) or 0.0
+    L = lambda e: _loc(_dt.datetime.fromtimestamp(int(e), UTC), tz)
+    rep = {"tf": "M15", "_velas": {"ep": [int(v) for v in m15.ep.values], "o": [float(v) for v in m15.open], "h": [float(v) for v in m15.high],
+                                   "l": [float(v) for v in m15.low], "c": [float(v) for v in m15.close]}}
+    linhas, jan = [], []
+    for p in pos[:8]:
+        a = EX.gerir(m15, m1, p["lado"], p["E"], p["stop"], p["t"], sp, exaustao=False, sinal=p["sinal"], at=sim)
+        b = EX.gerir(m15, m1, p["lado"], p["E"], p["stop"], p["t"], sp, exaustao=True, sinal=p["sinal"], at=sim)
+        R0 = abs(p["E"] - p["stop"])
+        f = lambda I: (lambda o: {"motivo": o["motivo_saida"], "saida": round(o["saida"], 2), "quando": L(o["t_sai_ms"] // 1000), "pts": round(o["pts"], 2),
+                                  "R": round(o["pts"] / R0, 2)})(I.ops[0]) if I.ops else {"motivo": "posição ainda aberta no fim dos dados"}
+        ga, gb = f(a), f(b)
+        ev_ex = [{"tipo": e["tipo"], "quando": L(e["t_ms"] // 1000), **{k: e[k] for k in ("dist_atr", "dist_max", "desaceleracao", "clv_ant", "clv", "gat", "cancel", "gatilho", "bid") if k in e}}
+                 for e in b.eventos if e["tipo"] in ("exaustao_alerta", "exaustao_reacao", "exaustao_saida", "exaustao_cancelada", "exaustao_expirada", "exaustao_indeterminada")]
+        ctx = [e for e in b.eventos if e["tipo"] == "exaustao_contexto"]
+        mantida = next((e for e in ctx if e.get("dist_atr", 0) >= 2.0 and not e.get("alerta")), None)
+        obs = [x["ev"] + " " + (x.get("motivo") or x.get("razao") or "") for x in D if str(x.get("sinal") or x.get("ticket") or "") and x.get("ev") in ("saida", "exaustao_saida", "fechamento_confirmado")
+               and (str(x.get("sinal")) == p["sinal"])]
+        lin = {"sinal": p["sinal"], "lado": "venda" if p["lado"] < 0 else "compra", "entrada": {"preco": p["E"], "quando": L(p["t"]), "stop": p["stop"], "R_pts": round(R0, 2),
+               "origem": p["origem"]}, "gestao_anterior": ga, "com_exaustao": gb,
+               "diferenca": ({"pts": round(gb["pts"] - ga["pts"], 2), "R": round(gb["R"] - ga["R"], 2)} if "pts" in ga and "pts" in gb else None),
+               "eventos_exaustao_replay": ev_ex, "barras_esticadas_sem_alerta": len([e for e in ctx if not e.get("alerta")]),
+               "exemplo_esticado_mantido": ({"quando": L(mantida["barra_ms"] // 1000), "dist_atr": mantida["dist_atr"], "desaceleracao": mantida["desaceleracao"],
+                                             "clv_ant": mantida["clv_ant"], "clv": mantida["clv"], "decisao": "manter (afastamento sozinho só gera contexto)"} if mantida else None),
+               "fonte": "replay exaustao-1 (≡ EA lateral-r1.4 no teste local) sobre M15/M1 gravados; posição injetada pelo registro do terminal",
+               "observado_no_terminal": obs or ["sem posição real (envio desligado ou ainda sem execução DEMO)"]}
+        linhas.append(lin)
+        reac = next((e for e in b.eventos if e["tipo"] == "exaustao_reacao"), None)
+        alerta = next((e for e in b.eventos if e["tipo"] in ("exaustao_alerta", "exaustao_reacao")), None)
+        mk = {"entrada": [p["t"], p["E"]], "stop": p["stop"]}
+        if "saida" in ga: mk["saida_r0"] = [a.ops[0]["t_sai_ms"] // 1000, ga["saida"]]
+        if "saida" in gb: mk["saida_r1"] = [b.ops[0]["t_sai_ms"] // 1000, gb["saida"]]; mk["rotulo_saida"] = f"{gb['motivo']} {gb['R']:+.2f} R"
+        if alerta: mk["conf"] = alerta["barra_ms"] // 1000; mk["rotulo_conf"] = "alerta de exaustão"
+        if reac: mk["pivo"] = [reac["barra_ms"] // 1000, (reac.get("gat") or 0) - 0.01 * -p["lado"]]; mk["rotulo_pivo"] = "barra de reação (máxima)" if p["lado"] < 0 else "barra de reação (mínima)"; mk["gatilho"] = reac["gat"]
+        tit = (f"{lin['lado']} {p['sinal']} @ {p['E']} ({lin['entrada']['quando'][11:16]}) · anterior: {ga.get('motivo')} {ga.get('saida', '')} ({ga.get('R', '—')} R) · "
+               f"exaustão: {gb.get('motivo')} {gb.get('saida', '')} ({gb.get('R', '—')} R)")
+        t_fim = max([o["t_sai_ms"] // 1000 for o in a.ops + b.ops] or [p["t"] + 900 * 16])
+        j = _janela(rep, "exaustao", tit, p["t"] - 900 * 6, t_fim + 900 * 3, mk, "REPLAY exaustao-1 — gestão anterior (X cinza) × saída por exaustão (X colorido)")
+        if j:
+            jan.append(j)
+    return {"situacao": "ok", "versao": EX.VERSAO, "linhas": linhas, "janelas": jan, "spread_usado": sp,
+            "eventos_exaustao_no_terminal": [{"ev": x["ev"], "quando": _loc(_dt_(x["_criado"]), tz), "sinal": x.get("sinal"), "v": x.get("v")} for x in D if str(x.get("ev", "")).startswith("exaustao")],
+            "parametros": {"K_AF_atr": EX.K_AF, "janela_afastamento": EX.JANELA_AF, "clv_fraco": EX.CLV_FRACO, "clv_reacao": EX.CLV_REACAO},
+            "nota": ("Saída por exaustão (O56): afastamento ≥ 1,5 ATR da EMA20 do lado da posição (contexto) → perda de força (fundo novo avança menos e duas barras fecham "
+                     "longe da mínima) → barra de reação (compradora, sem fundo novo, CLV ≥ 0,6) → só na barra seguinte, superar a máxima da reação em 1 tick fecha; tocar mantém; "
+                     "renovar a mínima da reação cancela; sem superação expira. Stop 2 ATR continua; a saída nunca abre ordem contrária.")}
+
+
+def cadeia_demo(sb, bot, de, ate, tz):
+    """compilado → carregado → lendo M15 → envio DEMO ativo → 1º sinal elegível → retorno do MT5 → ticket e execução confirmada."""
+    mg = str(bot.get("magic_number") or ""); tok = bot.get("bot_token")
+    try:
+        jobs = sb.table("mt5_jobs").select("job_id,status,aprovado,criado_em,log").eq("bot_token", tok).order("criado_em", desc=True).limit(1).execute().data or [] if tok else []
+    except Exception:
+        jobs = []
+    try:
+        evs = _pag(lambda: sb.table("agente_eventos").select("detalhe_json,criado_em").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg)
+                   .in_("detalhe_json->>ev", ["inicio", "ordem", "fechamento_confirmado", "fechamento_externo", "comando_fechar"])
+                   .gte("criado_em", _iso(de - _dt.timedelta(days=2))).lte("criado_em", _iso(ate + _dt.timedelta(hours=1))).order("id"), 5000) if mg else []
+    except Exception:
+        evs = []
+    D = [dict(e.get("detalhe_json") or {}, **_kv((e.get("detalhe_json") or {}).get("raw")), _criado=e.get("criado_em")) for e in evs]
+    inis = [x for x in D if x.get("ev") == "inicio" and "O56" in str(x.get("versao") or "")]
+    ini = inis[-1] if inis else None
+    try:
+        nb = sb.table("agente_eventos").select("id", count="exact").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg).eq("detalhe_json->>ev", "barra") \
+            .like("detalhe_json->>raw", "%lateral-r1.4 (O56)%").execute().count if (mg and ini) else 0
+    except Exception:
+        nb = None
+    ords = [x for x in D if x.get("ev") == "ordem" and "O56" in str(x.get("v") or "")]
+    env = [x for x in ords if str(x.get("envio") or "").startswith("enviada")]
+    try:
+        ops = sb.table("babymachine_operacoes").select("*").eq("magic_number", int(mg)).gte("criado_em", _iso(de)).order("criado_em").limit(5).execute().data or [] if mg else []
+    except Exception:
+        ops = []
+    L = lambda x: _loc(_dt_(x["_criado"]), tz)
+    return {"compilado": (f"{jobs[0].get('status')} (job {jobs[0].get('job_id')}, {str(jobs[0].get('criado_em'))[:19]})" if jobs else "sem job"),
+            "carregado": (f"{ini.get('versao')} às {L(ini)} (símbolo {bot.get('simbolo')}, tf {ini.get('tf')}, exaustão={ini.get('exaustao')}, conta={ini.get('conta')})" if ini
+                          else "PENDENTE — sem evento 'inicio' da lateral-r1.4 (O56): reanexar o EA no gráfico"),
+            "lendo_m15": (f"{nb} barras da r1.4" if nb else "nenhuma barra da r1.4 ainda") if ini else "—",
+            "envio_demo_ativo": (ini.get("envio_ordens") if ini else "—"),
+            "primeiro_sinal_elegivel": (f"{ords[0].get('sinal')} às {L(ords[0])} ({ords[0].get('entrada')})" if ords else "DEMO ativo, aguardando sinal elegível" if ini else "—"),
+            "retorno_mt5": (f"{env[0].get('envio')} retcode={env[0].get('retcode')} preço={env[0].get('preco_exec')}" if env else (ords[0].get("envio") if ords else "pendente")),
+            "ticket_execucao": (f"negócio {env[0].get('negocio')}; reconciliado na BabyMachine: {'sim' if ops else 'pendente'}" if env else "pendente (sem negócio elegível ainda)"),
+            "comprovacao_ponta_a_ponta": "sim" if (env and ops) else "pendente"}
+
+
+# ════════════════════════════════════════════════════════════════════════
 # seção 5
 # ════════════════════════════════════════════════════════════════════════
 def _eh_lateral(b):
@@ -869,7 +991,7 @@ def secao_5(sb, ids, de, ate, tz):
         cfg = b.get("config_operacional") or {}
         tf = TF_CFG.get(str(cfg.get("timeframe_envio") or "15m").lower(), "M15")
         cod = str(b.get("mq5_codigo") or "")
-        ea_v = "lateral-r1.3 (O55)" if "lateral-r1.3" in cod else ("lateral-r1.2 (O53-D)" if "O53-D" in cod else "lateral-r1.2 (O53-C)") if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
+        ea_v = "lateral-r1.4 (O56)" if "lateral-r1.4" in cod else "lateral-r1.3 (O55)" if "lateral-r1.3" in cod else ("lateral-r1.2 (O53-D)" if "O53-D" in cod else "lateral-r1.2 (O53-C)") if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
         obs = observado(sb, b, de, ate, tz)
         try:
             rep = replay(sb, str(b.get("simbolo") or "").upper(), tf, de, ate, spread=None)
@@ -888,10 +1010,18 @@ def secao_5(sb, ids, de, ate, tz):
             tcz = trilha_compz(sb, b, tf, de, ate, tz)
         except Exception as e:
             tcz = {"situacao": f"trilha COMPZ falhou: {str(e)[:200]}"}
+        try:
+            tex = gestao_exaustao(sb, b, tf, de, ate, tz)
+        except Exception as e:
+            tex = {"situacao": f"gestão por exaustão falhou: {str(e)[:200]}"}
+        try:
+            dem = cadeia_demo(sb, b, de, ate, tz)
+        except Exception as e:
+            dem = {"situacao": f"cadeia DEMO falhou: {str(e)[:200]}"}
         if isinstance(rep, dict):
             rep.pop("_velas", None)
         bots.append({"bot_id": int(b["id"]), "bot": b.get("nome"), "simbolo": b.get("simbolo"), "tf": tf, "ea_registrado_na_plataforma": ea_v,
-                     "replay": rep, "observado": obs, "janelas": jan, "pivos": piv, "rompz": trz, "compz": tcz})
+                     "replay": rep, "observado": obs, "janelas": jan, "pivos": piv, "rompz": trz, "compz": tcz, "exaustao": tex, "demo": dem})
     return {"titulo": "5. Lateral (O53): replay × sombra × execução observada", "versao": VERSAO, "especificacao_congelada": ESPEC,
             "estados": {"replay": "motor de referência sobre candles gravados (equivalência tick a tick com o EA provada no teste local)",
                         "sombra": "decisões avaliadas sem ordem (reversão)", "execucao_observada": "negócios e eventos confirmados pelo MT5 via conector",

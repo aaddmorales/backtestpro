@@ -825,8 +825,8 @@ API_VERSAO = "8.33.1-o53a-atualizar-ea (ORDEM 053-A: atualização do EA lateral
 API_VERSAO = "8.34-o53b-pivos-rev0 (ORDEM 053-B: EA lateral-r1.1 registra cada pivô confirmado (O39, M15 fechado) e avalia a REV-0 — reversão no pivô com rejeição, gatilho na barra seguinte, espaço de 1 R — SÓ EM SOMBRA; Diagnóstico geral: auditoria de topos/fundos × leitura original da LM × EA) | " + API_VERSAO
 API_VERSAO = "8.35-o53c-rompz-sombra (ORDEM 053-C: EA lateral-r1.2 — ROMPZ em sombra: fechamento além de suporte/resistência da memória O39 arma o gatilho na mínima/máxima da barra de rompimento, válido só na barra seguinte, 1º tick que supera em ≥ 1 tick é registrado; cada barra registra a 1ª condição da R0 que falhou; nenhuma ordem nova) | " + API_VERSAO
 API_VERSAO = "8.36-o53d-rompz-entrada (ORDEM 053-D: EA lateral-r1.2 (O53-D) — ROMPZ é entrada própria: zona O39 já confirmada, gatilho na mínima/máxima da barra de rompimento, sinal no 1º tick além na barra seguinte; sinal separado da autorização (filtro 1,0 R; sem filtro só em sombra); InpEnviarOrdens=false = validação em sombra; instalação só com bot sem posição; amostra ampla no log) | " + API_VERSAO
-API_VERSAO = "8.37-o55-compz-sombra (ORDEM 055: EA lateral-r1.3 (O55) — COMPZ em sombra: mudança de estrutura (topo O39 mais baixo + fechamento além da EMA20 do lado oposto), compressão seguinte (≤ 2 ATR), referência = mínima/máxima da ÚLTIMA vela fechada que respeitou e testou o suporte/resistência; sinal no 1º tick ≥ 1 tick além; autorização separada com o filtro vigente de 1,0 R; ROMPZ e caixa intactas; envio continua desligado) | " + API_VERSAO
-BUILD_TAG = "2026-11-12-o55-compz-sombra"
+API_VERSAO = "8.38-o56-exaustao-demo (ORDEM 056-A: EA lateral-r1.4 (O56) — saída por exaustão da posição aberta: afastamento ≥ 1,5 ATR da EMA20 do lado da posição → perda de força (fundo novo avança menos + 2 barras longe da mínima) → barra de reação → só na barra seguinte superar a máxima da reação em 1 tick fecha; tocar mantém; renovar a mínima cancela; sem superação expira; stop 2 ATR mantido; nunca abre contrária; envio de ordens ligado SÓ em conta DEMO (bloqueio fixo no código), ticket/negócio no evento ordem; Diagnóstico Geral: cadeia DEMO por bot + gestão anterior × exaustão com gráfico; app v10.96) | 8.37-o55-compz-sombra (ORDEM 055: EA lateral-r1.3 (O55) — COMPZ em sombra: mudança de estrutura (topo O39 mais baixo + fechamento além da EMA20 do lado oposto), compressão seguinte (≤ 2 ATR), referência = mínima/máxima da ÚLTIMA vela fechada que respeitou e testou o suporte/resistência; sinal no 1º tick ≥ 1 tick além; autorização separada com o filtro vigente de 1,0 R; ROMPZ e caixa intactas; envio continua desligado) | " + API_VERSAO
+BUILD_TAG = "2026-11-13-o56-exaustao-demo"
 
 def _bt_base_ligar(codigo, mq5, ativo):
     """v7.46 — A BASE NASCE LIGADA. Celulas da casa nascem com as chaves do
@@ -18663,7 +18663,7 @@ def _mq5_cache_aprovar(gen_hash: str):
 # O51 — esqueleto do EA "Rompimento de Lateralização" (R0). Conferido tick a tick contra ao_vivo_o47
 # (testes/test_o51_lateral_ea.py). Só ASCII; instrumentado por _instrumentar_log_mql5 no gerador.
 _BT_LATERAL_R0_MQL5 = r'''//+------------------------------------------------------------------+
-//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1.3, O53-D/O55) |
+//| BotTested - ROMPIMENTO DE LATERALIZACAO (lateral-r1.4, O55/O56)  |
 //| EXPERIMENTAL - SEM RESULTADO MEDIDO. Base: regra R0 da O44/O47     |
 //| (caixa de 12 barras <= 3 ATR; pivo com tentativa; fechamento alem |
 //| do nivel; entrada na barra seguinte quando o BID supera o extremo |
@@ -18690,6 +18690,13 @@ _BT_LATERAL_R0_MQL5 = r'''//+---------------------------------------------------
 //|      Cada barra registra a 1a condicao da R0 que falhou.          |
 //|  (7) InpEnviarOrdens=false: NENHUMA ordem (abrir ou fechar) - so  |
 //|      registro (validacao em sombra).                              |
+//|  (8) O56: SAIDA POR EXAUSTAO (posicao aberta): afastamento >= 1,5 |
+//|      ATR da EMA20 do lado da posicao + perda de forca (fundo novo |
+//|      avanca menos e 2 barras fecham longe da minima) + barra de   |
+//|      reacao -> gatilho na maxima +1 tick so na barra seguinte;    |
+//|      renovar a minima da reacao cancela; sem superacao expira.    |
+//|      Fecha a posicao; nunca abre contraria. Stop 2 ATR mantido.   |
+//|  (9) O56: envio SO em conta DEMO (bloqueio fixo no codigo).       |
 //| Cada decisao vai para a BabyMachine (evento tipo=lateral).        |
 //| Graficos M15, M30 ou H1; XAUUSD e BTCUSD (2 casas).               |
 //+------------------------------------------------------------------+
@@ -18698,15 +18705,19 @@ input long   InpMagic      = 0;
 input double InpLote       = 0.01;
 input int    InpStopLoss   = 0;     // nao usado: stop da regra = 2 ATR(14) do TF do grafico
 input int    InpTakeProfit = 0;     // nao usado: saida pelo canal EMA20 High/Low ou corte estrutural
-input bool   InpEnviarOrdens = false;  // O53-D: false = validacao em sombra (nenhuma ordem enviada, so registro)
+input bool   InpEnviarOrdens = true;   // O56-A: envio ligado SO em conta DEMO (conta real: bloqueio fixo no codigo, nada e enviado)
 input bool   InpEntradaCaixa = true;   // entrada R0/R1 (rompimento de caixa <= 3 ATR)
 input bool   InpEntradaRompZ = true;   // entrada O53-D (rompimento de zona O39 ja confirmada)
 input bool   InpRompZFiltro  = true;   // filtro de espaco 1,0 R no fluxo autorizado do ROMPZ (false so para teste/sombra)
 input bool   InpEntradaCompz = true;   // O55: ultima vela que respeitou o suporte/resistencia apos mudanca de estrutura
 input bool   InpCompzFiltro  = true;   // O55: filtro de espaco 1,0 R no fluxo autorizado da COMPZ (false so para teste/sombra)
+input bool   InpExaustao     = true;   // O56: saida por exaustao da posicao aberta
 CTrade trade;
 
-#define BTLAT_VERSAO "lateral-r1.3 (O55)"
+#define BTLAT_VERSAO "lateral-r1.4 (O56)"
+#define BTEX_KAF    1.5
+#define BTEX_CLVF   0.5
+#define BTEX_CLVR   0.6
 #define BTCZ_LHJAN  12
 #define BTCZ_KCAIXA 2.0
 #define BTCZ_KBANDA 0.25
@@ -18742,6 +18753,14 @@ string   btLatPendId    = "";
 string   btLatUsados[];
 long     btLatPosTk     = 0;        // ticket da posicao do EA visto no ultimo tick (reconciliacao)
 long     btLatCmdTk     = 0;        // ticket com comando de fechar enviado
+bool     exArm          = false;    // O56: gatilho de saida por exaustao armado
+long     exTk           = 0;
+int      exLado         = 0;
+long     exGatT         = 0;
+long     exCanT         = 0;
+datetime exIni          = 0;
+datetime exFim          = 0;
+string   exId           = "";
 datetime btLatCmdBarra  = 0;        // barra em que o ultimo comando foi enviado
 bool     btLatZonasLog  = false;
 // O53-B — REV-0 (reversão no pivô) SÓ EM SOMBRA: [0] venda (topo), [1] compra (fundo)
@@ -19121,11 +19140,21 @@ bool BTLatEspaco(int lado,double bid,double ask,double atr,string &motivo,string
   }
 
 // comando de fechar com reconciliacao (item 4): no maximo 1 por barra e por ticket
+bool BTLatDemo()
+  {
+   return(AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO);
+  }
+
 void BTLatFecharCmd(long tk,string motivo,datetime barra)
   {
    if(!InpEnviarOrdens)
      {
       BTLatEv("comando_fechar_suprimido","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|razao=envio desligado (validacao em sombra)");
+      return;
+     }
+   if(!BTLatDemo())
+     {
+      BTLatEv("comando_fechar_suprimido","ticket="+IntegerToString(tk)+"|motivo="+motivo+"|razao=conta nao e DEMO (bloqueio fixo O56)");
       return;
      }
    if(btLatCmdTk==tk && btLatCmdBarra==barra)
@@ -19597,8 +19626,82 @@ void BTLatCompzTick()
 string BTLatEnviar(int s,double stop,string coment)
   {
    if(!InpEnviarOrdens) return("envio=nao enviada: envio desligado (validacao em sombra)");
+   if(!BTLatDemo()) return("envio=nao enviada: conta nao e DEMO (bloqueio fixo O56)");
    bool ok=(s>0)?trade.Buy(InpLote,_Symbol,0.0,stop,0.0,coment):trade.Sell(InpLote,_Symbol,0.0,stop,0.0,coment);
-   return((ok?"envio=enviada":"envio=falhou")+string("|retcode=")+IntegerToString((long)trade.ResultRetcode()));
+   return((ok?"envio=enviada":"envio=falhou")+string("|retcode=")+IntegerToString((long)trade.ResultRetcode())
+          +"|negocio="+IntegerToString((long)trade.ResultDeal())+"|preco_exec="+DoubleToString(trade.ResultPrice(),_Digits)
+          +"|lote="+DoubleToString(InpLote,2)+"|stop="+DoubleToString(stop,_Digits));
+  }
+
+// O56: CLV do lado da posicao (venda: fechamento longe da minima; compra: longe da maxima)
+double BTExClv(int lado,double h,double l,double c)
+  {
+   double a=h-l;
+   if(a<=0.0) return(0.0);
+   return((lado<0)?(c-l)/a:(h-c)/a);
+  }
+
+// O56: avalia exaustao na barra fechada b (so barras ja fechadas; nada posterior)
+void BTExAvaliar(const MqlRates &r[],int b,const double &A[],const double &EH[],const double &EL[],int lado,long tk,datetime fim,int dur,string &txt)
+  {
+   txt="";
+   if(b<3 || A[b]<=0.0) return;
+   double dmax=-1e9, d0=0.0;
+   for(int i=b-2;i<=b;i++)
+     {
+      if(A[i]<=0.0) return;
+      double d=((lado<0)?(EL[i]-r[i].close):(r[i].close-EH[i]))/A[i];
+      if(d>dmax) dmax=d;
+      if(i==b) d0=d;
+     }
+   double av0=(lado<0)?(r[b-1].low-r[b].low):(r[b].high-r[b-1].high);
+   double av1=(lado<0)?(r[b-2].low-r[b-1].low):(r[b-1].high-r[b-2].high);
+   double k1=BTExClv(lado,r[b-1].high,r[b-1].low,r[b-1].close), k0=BTExClv(lado,r[b].high,r[b].low,r[b].close);
+   bool ctx=(dmax>=BTEX_KAF-1e-12), desac=(av0<av1), longe=(k1>=BTEX_CLVF && k0>=BTEX_CLVF);
+   bool alerta=ctx && desac && longe;
+   bool reac=false;
+   if(lado<0) reac=(r[b].close>r[b].open && r[b].close>r[b-1].close && r[b].low>r[b-1].low && k0>=BTEX_CLVR);
+   else       reac=(r[b].close<r[b].open && r[b].close<r[b-1].close && r[b].high<r[b-1].high && k0>=BTEX_CLVR);
+   txt="|exa_dist_atr="+DoubleToString(d0,3)+"|exa_dist_max="+DoubleToString(dmax,3)+"|exa_contexto="+(ctx?"sim":"nao")+"|exa_av="+DoubleToString(av0,2)+"|exa_av_ant="+DoubleToString(av1,2)
+       +"|exa_desacel="+(desac?"sim":"nao")+"|exa_clv_ant="+DoubleToString(k1,3)+"|exa_clv="+DoubleToString(k0,3)+"|exa_alerta="+(alerta?"sim":"nao")+"|exa_reacao="+((alerta && reac)?"sim":"nao");
+   if(alerta && !reac)
+      BTLatEv("exaustao_alerta","ticket="+IntegerToString(tk)+"|lado="+IntegerToString(lado)+"|t="+IntegerToString((long)r[b].time)+txt);
+   if(alerta && reac)
+     {
+      double ext=(lado<0)?r[b].high:r[b].low, can=(lado<0)?r[b].low:r[b].high;
+      exArm=true; exTk=tk; exLado=lado;
+      exGatT=BTLatTk(ext)-lado; exCanT=BTLatTk(can)+lado;
+      exIni=fim; exFim=fim+dur;
+      exId="EX-"+IntegerToString((long)r[b].time);
+      BTLatEv("exaustao_reacao","sinal="+exId+"|ticket="+IntegerToString(tk)+"|lado="+IntegerToString(lado)+"|t="+IntegerToString((long)r[b].time)
+              +"|maxima_reacao="+DoubleToString(r[b].high,_Digits)+"|minima_reacao="+DoubleToString(r[b].low,_Digits)
+              +"|gatilho="+DoubleToString(exGatT*BTLAT_TICK,2)+"|cancela="+DoubleToString(exCanT*BTLAT_TICK,2)+"|valido_de="+IntegerToString((long)exIni)+"|valido_ate="+IntegerToString((long)exFim)+txt);
+     }
+  }
+
+// O56: tick da saida por exaustao (so na barra seguinte a barra de reacao)
+void BTExTick()
+  {
+   if(!exArm) return;
+   int lado=0; long tk=0; datetime tAb=0;
+   if(!BTLatPos(lado,tk,tAb) || tk!=exTk) { BTLatEv("exaustao_descartada","sinal="+exId+"|razao=posicao ja encerrada"); exArm=false; return; }
+   MqlTick q;
+   if(!SymbolInfoTick(_Symbol,q)) return;
+   if(q.time<exIni || q.time>=exFim) return;
+   long bt=BTLatTk(q.bid);
+   bool sup=(exLado<0)?(bt>=exGatT):(bt<=exGatT);
+   bool can=(exLado<0)?(bt<=exCanT):(bt>=exCanT);
+   if(can)
+     {
+      BTLatEv("exaustao_cancelada","sinal="+exId+"|bid="+DoubleToString(q.bid,_Digits)+"|razao=renovou o extremo da barra de reacao antes do gatilho");
+      exArm=false; return;
+     }
+   if(!sup) return;
+   exArm=false;
+   BTLatEv("exaustao_saida","sinal="+exId+"|ticket="+IntegerToString(tk)+"|lado="+IntegerToString(exLado)+"|gatilho="+DoubleToString(exGatT*BTLAT_TICK,2)
+           +"|bid="+DoubleToString(q.bid,_Digits)+"|ask="+DoubleToString(q.ask,_Digits));
+   BTLatEv("saida","ticket="+IntegerToString(tk)+"|lado="+IntegerToString(exLado)+"|motivo=exaustao|gatilho="+DoubleToString(exGatT*BTLAT_TICK,2));
+   BTLatFecharCmd(tk,"exaustao",exFim);
   }
 
 bool BTLatBarra()
@@ -19637,6 +19740,11 @@ bool BTLatBarra()
          BTLatEv("rompz_expirado","sinal="+btRzId[k]+"|resultado="+(btRzTocou[k]?"toque sem superacao":"nao alcancou"));
          btRzLado[k]=0;
         }
+   if(exArm && exFim<=fim)
+     {
+      BTLatEv("exaustao_expirada","sinal="+exId+"|resultado=barra seguinte terminou sem superar a maxima da reacao");
+      exArm=false;
+     }
    // (2) memorias estruturais (TF do grafico + H1), so barras fechadas
    bool aquecendo=(btMemTF.ult==0);
    btMemTF.Alimentar();
@@ -19669,9 +19777,12 @@ bool BTLatBarra()
       else if(temRef)
          corte=(lado<0)?(C[b]>ref):(C[b]<ref);
       dec=corte?"corte estrutural":canal?"saida pelo canal":"manter";
+      string exTxt="";
+      if(InpExaustao && !corte && !canal && r[b].time>bEnt && !exArm) BTExAvaliar(r,b,A,EH,EL,lado,tk,fim,dur,exTxt);
+      if(InpExaustao && exArm && exTk==tk) exTxt=exTxt+"|exa_gatilho_armado="+exId;
       BTLatEv("barra","t="+IntegerToString((long)r[b].time)+"|c="+DoubleToString(C[b],2)+"|ema20h="+DoubleToString(EH[b],2)+"|ema20l="+DoubleToString(EL[b],2)
               +"|atr="+DoubleToString(A[b],4)+"|ticket="+IntegerToString(tk)+"|lado="+IntegerToString(lado)+"|ref="+(temRef?DoubleToString(ref,2):"pendente")
-              +"|canal="+(canal?"sim":"nao")+"|corte="+(corte?"sim":"nao")+"|decisao="+dec+"|r0_venda="+r0v+"|r0_compra="+r0c);
+              +"|canal="+(canal?"sim":"nao")+"|corte="+(corte?"sim":"nao")+"|decisao="+dec+exTxt+"|r0_venda="+r0v+"|r0_compra="+r0c);
       if(corte || canal)
         {
          MqlTick q;
@@ -19684,6 +19795,7 @@ bool BTLatBarra()
             bool passa=BTLatEspaco(-lado,q.bid,q.ask,A[b],mot,txt);
             BTLatEv("reversao_sombra","lado="+IntegerToString(-lado)+"|passa="+(passa?"sim":"nao")+"|"+txt+"|modo=SOMBRA - nenhuma ordem");
            }
+         exArm=false;
          BTLatFecharCmd(tk,corte?"corte estrutural":"canal",r[b].time+dur);
         }
      }
@@ -19757,12 +19869,14 @@ int OnInit()
            && _Digits==2;
    btMemTF.Init("TF",_Period);
    btMemH1.Init("H1",PERIOD_H1);
+   exArm=false; exTk=0;
    for(int k=0;k<2;k++) { btRzLado[k]=0; btRzTocou[k]=false; czFase[k]=0; czArm[k]=false; czPvN[k]=0; czTemRef[k]=false; czTemCaixa[k]=false; }
    if(!btLatOk)
       Print("BT_LATERAL|inativo|use grafico M15, M30 ou H1 de XAUUSD ou BTCUSD (2 casas); nenhuma ordem sera aberta");
    else
       BTLatEv("inicio","versao="+(string)BTLAT_VERSAO+"|off="+IntegerToString(BTLatOffset())+"|espaco_min_R="+DoubleToString(BTLAT_KESP,2)+"|invalidacao=maxima/minima da barra de entrada|rompz="+(InpEntradaRompZ?"sim":"nao")+"|caixa="+(InpEntradaCaixa?"sim":"nao")+"|compz="+(InpEntradaCompz?"sim":"nao")
-              +"|envio_ordens="+(InpEnviarOrdens?"ligado":"desligado (sombra)")+"|tf="+BTLatTfNome(_Period)+"|magic="+IntegerToString(InpMagic));
+              +"|exaustao="+(InpExaustao?"sim":"nao")+"|conta="+(BTLatDemo()?"DEMO":"NAO-DEMO")
+              +"|envio_ordens="+(InpEnviarOrdens?(BTLatDemo()?"ligado (DEMO)":"bloqueado (conta nao e DEMO)"):"desligado (sombra)")+"|lote="+DoubleToString(InpLote,2)+"|tf="+BTLatTfNome(_Period)+"|magic="+IntegerToString(InpMagic));
    return(INIT_SUCCEEDED);
   }
 
@@ -19779,6 +19893,7 @@ void OnTick()
      {
       if(BTLatBarra()) btLatUltBarra=t0;
      }
+   BTExTick();
    BTLatTick();
    BTLatRompZTick();
    BTLatCompzTick();
@@ -20350,7 +20465,7 @@ def _gerar_mq5_de_codigo(codigo_python, params, idioma="pt"):
             gen_hash = _mq5_hash_geracao(codigo_python, sl, tp)
             hit = _mq5_cache_buscar(gen_hash)
             texto = (hit or {}).get("mq5") or ""
-            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1.3 (O55)" not in texto:   # O53/O53-B: cache de versão anterior nunca volta
+            if not texto or "BT_EVT_V2" not in texto or "BT_DISCIPLINA_V3" not in texto or "BT_OTT_V2" not in texto or "BT_MAGIC_ISO_V1" not in texto or "BT_CICLO_V1" not in texto or "BT_NIVEIS_V1" not in texto or "BT_CICLOVERIF_V3" not in texto or "BTLatDetectar" not in texto or "lateral-r1.4 (O56)" not in texto:   # O53/O53-B: cache de versão anterior nunca volta
                 texto = _instrumentar_log_mql5(_BT_LATERAL_R0_MQL5)
                 _mq5_cache_guardar(gen_hash, _neutralizar_magic_mql5(texto))
                 print(f"[lateral-r0] EA deterministico gerado e cacheado ({gen_hash[:10]})")
@@ -33050,8 +33165,8 @@ def _o53_atualizar_eas():
             cod_ant = str(b.get("mq5_codigo") or "")
             if b.get("excluido") or "BTLatDetectar" not in cod_ant:
                 print(f"[o53-atualizar] bot {bid}: não é um bot Lateral ativo — ignorado"); continue
-            if "lateral-r1.3 (O55)" in cod_ant:
-                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1.3 (O55) — nada a fazer"); continue
+            if "lateral-r1.4 (O56)" in cod_ant:
+                print(f"[o53-atualizar] bot {bid}: já está com lateral-r1.4 (O56) — nada a fazer"); continue
             # O53-D: só instala com o bot SEM posição, confirmado por snapshot recente do conector
             sn = (sb.table("conector_snapshots").select("posicoes_abertas,criado_em").eq("magic_number", int(b["magic_number"])).order("id", desc=True)
                   .limit(1).execute().data or [])
@@ -33073,7 +33188,7 @@ def _o53_atualizar_eas():
                                              "ativo": ativo})
             mq5 = _bt_base_ligar(cod, mq5, ativo)
             ok_s = _mq5_sanidade(mq5 or "")[0]
-            if not mq5 or not ok_s or "lateral-r1.3 (O55)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
+            if not mq5 or not ok_s or "lateral-r1.4 (O56)" not in mq5 or f"= {int(b['magic_number'])};" not in mq5:
                 print(f"[o53-atualizar] bot {bid}: geração reprovada na sanidade — job NÃO criado"); continue
             import uuid as _u53
             job_id = "o53" + _u53.uuid4().hex[:13]

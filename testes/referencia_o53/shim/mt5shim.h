@@ -42,7 +42,10 @@ inline bool HistorySelectByPosition(long tk) { return tk == SIM_ULT_TICKET; }
 inline int HistoryDealsTotal() { return 1; } inline ulong HistoryDealGetTicket(int) { return 1; }
 inline long HistoryDealGetInteger(ulong, int k) { return k == DEAL_ENTRY ? DEAL_ENTRY_OUT : SIM_ULT_RAZAO; }
 inline double HistoryDealGetDouble(ulong, int) { return SIM_ULT_PX; }
+enum { ACCOUNT_TRADE_MODE = 32, ACCOUNT_TRADE_MODE_DEMO = 0, ACCOUNT_TRADE_MODE_REAL = 2 };
+extern int SIM_CONTA_MODO; inline long AccountInfoInteger(int) { return SIM_CONTA_MODO; }
 struct CTrade { unsigned rc = 10009; void SetExpertMagicNumber(long m) { SIM_MAGIC = m; } unsigned ResultRetcode() { return rc; }
+  unsigned long ResultOrder() { return (unsigned long)SIM_ULT_TICKET; } unsigned long ResultDeal() { return (unsigned long)SIM_ULT_TICKET; } double ResultPrice() { return SIM_POS.entrada; }
   bool Buy(double, const string&, double, double sl, double, const string&) { SIM_POS = {true, 1, SIM_TICK.ask, sl, SIM_TICK.time, ++SIM_ULT_TICKET}; SIM_LOG.push_back("ORDEM|buy|" + std::to_string(SIM_TICK.time) + "|" + DoubleToString(SIM_TICK.ask, 2) + "|" + DoubleToString(sl, 2)); return true; }
   bool Sell(double, const string&, double, double sl, double, const string&) { SIM_POS = {true, -1, SIM_TICK.bid, sl, SIM_TICK.time, ++SIM_ULT_TICKET}; SIM_LOG.push_back("ORDEM|sell|" + std::to_string(SIM_TICK.time) + "|" + DoubleToString(SIM_TICK.bid, 2) + "|" + DoubleToString(sl, 2)); return true; }
   bool PositionClose(ulong) { double px = SIM_POS.lado < 0 ? SIM_TICK.ask : SIM_TICK.bid; SIM_LOG.push_back("FECHA|cmd|" + std::to_string(SIM_TICK.time) + "|" + DoubleToString(px, 2)); SIM_POS.aberta = false; SIM_ULT_RAZAO = DEAL_REASON_EXPERT; SIM_ULT_PX = px; return true; } };

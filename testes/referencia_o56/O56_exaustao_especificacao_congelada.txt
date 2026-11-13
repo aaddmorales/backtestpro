@@ -1,0 +1,36 @@
+ORDEM 056-A — SAÍDA POR EXAUSTÃO (exaustao-1) — especificação congelada ANTES do replay (13/11/2026, 19:40 Kyiv)
+
+Vale para posição aberta (venda descrita; compra = espelho com EMA20 High e reação vendedora). Medido só em barras M15 FECHADAS
+depois da barra de entrada (a barra de entrada não conta). Nada posterior à decisão é usado.
+
+1) AFASTAMENTO DAS MÉDIAS (contexto)
+   dist_b = (EMA20Low_b − Fechamento_b) / ATR14_b          (compra: (Fechamento_b − EMA20High_b) / ATR14_b)
+   contexto esticado na barra b quando max(dist_{b-2}, dist_{b-1}, dist_b) >= K_AF = 1,5 ATR.
+   Afastamento sozinho só gera contexto (evento exaustao_contexto); não fecha nada.
+
+2) PERDA DE FORÇA DA QUEDA (na barra b)
+   avanço do fundo av_i = Mínima_{i-1} − Mínima_i            (compra: Máxima_i − Máxima_{i-1})
+   desaceleração: av_b < av_{b-1}  (o fundo novo avançou menos que o anterior, ou não houve fundo novo)
+   fechamento longe da mínima: CLV_i = (Fech_i − Mín_i)/(Máx_i − Mín_i) >= 0,5 em b-1 E em b
+   (compra: (Máx_i − Fech_i)/(Máx_i − Mín_i)); barra sem amplitude = CLV 0.
+   Perda de força = desaceleração E fechamento longe da mínima nas duas barras. Um pavio isolado (uma barra só) não basta.
+   ALERTA DE EXAUSTÃO = contexto esticado E perda de força (evento exaustao_alerta).
+
+3) REAÇÃO COMPRADORA (barra de reação, na barra b com ALERTA ativo)
+   Fech_b > Abert_b  E  Fech_b > Fech_{b-1}  E  Mín_b > Mín_{b-1} (perda de continuidade: não fez fundo novo)  E  CLV_b >= 0,6
+   (compra: Fech_b < Abert_b, Fech_b < Fech_{b-1}, Máx_b < Máx_{b-1}, CLV_b >= 0,6)
+   Marca a MÁXIMA da barra de reação: gatilho = Máx_b + 1 tick; referência de cancelamento = Mín_b − 1 tick.
+
+4) GATILHO (só na barra b+1)
+   - primeiro tick com BID >= gatilho  → FECHA a venda (motivo "exaustao"); igualar a máxima (tocar) mantém.
+   - BID <= Mín_b − 1 tick antes do gatilho → gatilho CANCELADO (a queda renovou a mínima da barra de reação).
+   - barra b+1 termina sem nenhum dos dois → gatilho EXPIRA.
+   - replay com M1: se a mesma M1 cruza o gatilho e renova a mínima, a ordem é desconhecida → INDETERMINADO (registrado; a posição é mantida).
+   (compra: espelho; BID <= Mín_b − 1 tick fecha; BID >= Máx_b + 1 tick cancela)
+
+5) PRIORIDADES E LIMITES
+   - corte estrutural e saída pelo canal decididos no mesmo fechamento têm prioridade (a barra não arma gatilho de exaustão);
+   - stop de proteção (2 ATR) continua ativo; um gatilho por vez; a saída por exaustão só ENCERRA — nunca abre ordem contrária;
+   - nenhuma regra de entrada muda; filtro de 1,0 R mantido.
+
+Parâmetros: K_AF=1,5; JANELA_AF=3 barras; CLV_FRACO=0,5 (b-1 e b); CLV_REACAO=0,6; tick 0,01.

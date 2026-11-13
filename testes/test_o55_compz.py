@@ -31,7 +31,7 @@ def _ler(arq):
 def A():
     os.environ["BT_CARD_TESTE_USER"] = "u-master"
     import api as A
-    assert 'BTLAT_VERSAO "lateral-r1.3 (O55)"' in A._BT_LATERAL_R0_MQL5 and "BTLatCompzTick" in A._BT_LATERAL_R0_MQL5
+    assert 'BTLAT_VERSAO "lateral-r1.4 (O56)"' in A._BT_LATERAL_R0_MQL5 and "BTLatCompzTick" in A._BT_LATERAL_R0_MQL5
     return A
 
 
@@ -40,7 +40,7 @@ def _sim(A, **cfg):
     tmp = tempfile.mkdtemp()
     for f in ("mt5shim.h", "main.cpp"):
         shutil.copy(os.path.join(REF53, "shim", f), tmp)
-    _traduzir(_cfg(A._BT_LATERAL_R0_MQL5, **cfg), os.path.join(tmp, "ea.cpp"))
+    _traduzir(_cfg(A._BT_LATERAL_R0_MQL5, **{"InpEnviarOrdens": "false", "InpExaustao": "false", **cfg}), os.path.join(tmp, "ea.cpp"))
     r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", os.path.join(tmp, "sim"), os.path.join(tmp, "main.cpp")], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-1500:]
     return os.path.join(tmp, "sim")
@@ -104,7 +104,7 @@ def test_3_ea_igual_referencia_xau_e_btc(A):
     assert _norm_motivo(ea) == _norm_motivo(_cz_py(I)) and len(ea) > 50
     assert not any(l.startswith("ORDEM") for l in out)
     ini_ev = [e for e in ev if e.get("ev") == "inicio"][0]
-    assert ini_ev["versao"] == "lateral-r1.3 (O55)" and ini_ev["compz"] == "sim" and ini_ev["envio_ordens"] == "desligado (sombra)"
+    assert ini_ev["versao"] == "lateral-r1.4 (O56)" and ini_ev["compz"] == "sim" and ini_ev["envio_ordens"] == "desligado (sombra)"
     # BTC outubro, envio LIGADO e filtro da COMPZ desligado (só para provar a execução): entradas e saídas iguais
     f15, f1, fh = (os.path.join(D55, f"BTCUSD_{x}_202610.csv") for x in ("M15", "M1", "H1"))
     b, m1 = _ler(f15), _ler(f1); ini = int(max(b.ep.iloc[0] + 29 * 900, m1.ep.iloc[0]))

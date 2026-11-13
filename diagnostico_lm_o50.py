@@ -911,6 +911,36 @@ def _pdf_secao_5(d, S5, h1, h2, p, kv, tab, W):
                 if j.get("velas"):
                     d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
                 d.ln(1.5)
+        DM = b.get("demo") or {}
+        p("CADEIA DEMO (O56) — compilado → carregado → lendo M15 → envio DEMO ativo → 1º sinal elegível → retorno do MT5 → ticket e execução", b=True)
+        kv([(k.replace("_", " "), v) for k, v in DM.items()])
+        EXt = b.get("exaustao") or {}
+        p("SAÍDA POR EXAUSTÃO (O56) — afastamento → perda de força → barra de reação → superação da máxima/mínima (gestão anterior × exaustão)", b=True)
+        if EXt.get("situacao") != "ok":
+            p(str(EXt.get("situacao")), tam=7.6)
+        else:
+            p(EXt.get("nota") or "", tam=7.2)
+            kv([(k, v) for k, v in (EXt.get("parametros") or {}).items()])
+            tab(["sinal", "lado", "entrada", "stop", "gestão anterior", "R", "com exaustão", "R", "diferença", "fonte"],
+                [[x["sinal"], x["lado"], f"{x['entrada']['preco']} {x['entrada']['quando'][11:19]}", x["entrada"]["stop"],
+                  f"{x['gestao_anterior'].get('motivo')} {x['gestao_anterior'].get('saida', '')} {str(x['gestao_anterior'].get('quando', ''))[11:16]}", x["gestao_anterior"].get("R", "—"),
+                  f"{x['com_exaustao'].get('motivo')} {x['com_exaustao'].get('saida', '')} {str(x['com_exaustao'].get('quando', ''))[11:16]}", x["com_exaustao"].get("R", "—"),
+                  (f"{x['diferenca']['pts']:+} pts / {x['diferenca']['R']:+} R" if x.get("diferenca") else "—"), "replay (posição do registro do terminal)"] for x in EXt["linhas"]],
+                [22, 9, 26, 14, 30, 8, 30, 8, 22, 22])
+            for x in EXt["linhas"]:
+                for e in x.get("eventos_exaustao_replay") or []:
+                    p(f"  {x['sinal']} · {e['tipo']} {e['quando']} " + " ".join(f"{k}={v}" for k, v in e.items() if k not in ("tipo", "quando")), tam=7)
+                if x.get("exemplo_esticado_mantido"):
+                    m = x["exemplo_esticado_mantido"]
+                    p(f"  esticado e mantido: {m['quando']} dist {m['dist_atr']} ATR, desaceleração={m['desaceleracao']}, CLV {m['clv_ant']}/{m['clv']} → {m['decisao']}", tam=7)
+                p(f"  observado no terminal: {'; '.join(x.get('observado_no_terminal') or [])}", tam=7)
+            for j in EXt.get("janelas") or []:
+                if d.get_y() > 185:
+                    d.add_page()
+                p(j["titulo"], b=True, tam=7.6)
+                if j.get("velas"):
+                    d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
+                d.ln(1.5)
         for j in b.get("janelas") or []:
             if d.get_y() > 185:
                 d.add_page()

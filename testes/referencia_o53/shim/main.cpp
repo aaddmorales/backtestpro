@@ -1,6 +1,6 @@
 #include "ea.cpp"
 int SIM_TF_MIN = 15; int _Period = PERIOD_M15; std::vector<MqlRates> SIM_BARS, SIM_H1; MqlTick SIM_TICK; SimPos SIM_POS; std::vector<string> SIM_LOG; long SIM_MAGIC = 0;
-long long SIM_ULT_TICKET = 0; int SIM_ULT_RAZAO = 0; double SIM_ULT_PX = 0;
+long long SIM_ULT_TICKET = 0; int SIM_CONTA_MODO = getenv("SIM_CONTA_REAL") ? 2 : 0; int SIM_ULT_RAZAO = 0; double SIM_ULT_PX = 0;
 static std::vector<MqlRates> ler(const char* f) {
   std::ifstream in(f); string ln; std::getline(in, ln); std::vector<MqlRates> v;
   while (std::getline(in, ln)) { std::istringstream ss(ln); string d, t; MqlRates r{}; ss >> d >> t >> r.open >> r.high >> r.low >> r.close;

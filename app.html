@@ -3954,7 +3954,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.95-o55-compz-trilha';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.96-o56-exaustao-demo';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9256,6 +9256,21 @@ function diagSec5(S5){
                               `${(x.zona || {}).funcao} ${(x.zona || {}).nivel ?? '—'}`, u ? `${u.n_barra} · ${(u.barra || '').slice(11, 16)} @ ${u.preco}` : '—', x.gatilho ?? '—',
                               (x.disparo || '—').slice(11, 19), x.decisao, x.espaco_R ?? '—', x.ea_no_terminal]; }));
       h += (CZ.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
+    }
+    const DM = b.demo || {};
+    h += '<h3>Cadeia DEMO (O56) — compilado → carregado → lendo M15 → envio DEMO ativo → 1º sinal elegível → retorno do MT5 → ticket e execução</h3>';
+    h += _diagKV(Object.entries(DM).map(([k, v]) => [k.replace(/_/g, ' '), v]));
+    const EXt = b.exaustao || {};
+    h += '<h3>Saída por exaustão (O56) — afastamento → perda de força → barra de reação → superação (gestão anterior × exaustão)</h3>';
+    if (EXt.situacao !== 'ok') h += `<div class="diag-vazio">${_diagE(EXt.situacao)}</div>`;
+    else {
+      h += `<div class="diag-sit">${_diagE(EXt.nota)}</div>` + _diagKV(Object.entries(EXt.parametros || {}));
+      h += _diagTab(['sinal', 'lado', 'entrada', 'stop', 'gestão anterior', 'R', 'com exaustão', 'R', 'diferença', 'esticado e mantido', 'fonte'],
+                    (EXt.linhas || []).map(x => { const ga = x.gestao_anterior || {}, gb = x.com_exaustao || {}, m = x.exemplo_esticado_mantido;
+                      return [x.sinal, x.lado, `${(x.entrada || {}).preco} ${((x.entrada || {}).quando || '').slice(11, 19)}`, (x.entrada || {}).stop,
+                              `${ga.motivo} ${ga.saida ?? ''} ${(ga.quando || '').slice(11, 16)}`, ga.R ?? '—', `${gb.motivo} ${gb.saida ?? ''} ${(gb.quando || '').slice(11, 16)}`, gb.R ?? '—',
+                              x.diferenca ? `${x.diferenca.pts} pts / ${x.diferenca.R} R` : '—', m ? `${(m.quando || '').slice(11, 16)} · ${m.dist_atr} ATR · manter` : '—', x.fonte]; }));
+      h += (EXt.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
     }
     h += (b.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
   }
