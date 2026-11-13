@@ -10,15 +10,16 @@ import os, sys, random, datetime as _dt
 import numpy as np, pandas as pd
 
 _AQUI = os.path.dirname(os.path.abspath(__file__))
-for _p in (os.path.join(_AQUI, "testes", "referencia_o53"), os.path.join(_AQUI, "testes", "referencia_o51")):
+for _p in (os.path.join(_AQUI, "testes", "referencia_o55"), os.path.join(_AQUI, "testes", "referencia_o53"), os.path.join(_AQUI, "testes", "referencia_o51")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import ao_vivo_o53 as R1  # noqa: E402
 import pivos_o53b as PV  # noqa: E402
 import rompz_o53c as RZ  # noqa: E402
 import romp_m15 as _RM  # noqa: E402
+import compz_o55 as CZ  # noqa: E402
 
-VERSAO = "validacao-o53-1.2 (" + R1.VERSAO + " + " + RZ.VERSAO + ")"
+VERSAO = "validacao-o53-1.3 (" + R1.VERSAO + " + " + RZ.VERSAO + " + " + CZ.VERSAO + ")"
 UTC = _dt.timezone.utc
 SEMENTE = 53
 AMARELO = "#ffd60a"
@@ -368,7 +369,7 @@ def grafico_png(j):
     if zp:
         ax.axhspan(zp[0], zp[1], color="#8b3fd6", alpha=0.14, zorder=0, label=f"zona do pivô (O39) {zp[0]:.2f}–{zp[1]:.2f}")
     if M.get("pivo") and M["pivo"][0] is not None:
-        ax.plot(M["pivo"][0], M["pivo"][1], marker="o", ms=11, mfc="none", mec="#8b3fd6", mew=2.2, zorder=7, label=f"extremo {M['pivo'][1]:.2f}")
+        ax.plot(M["pivo"][0], M["pivo"][1], marker="o", ms=11, mfc="none", mec="#8b3fd6", mew=2.2, zorder=7, label=f"{M.get('rotulo_pivo') or 'extremo'} {M['pivo'][1]:.2f}")
     if M.get("conf") is not None and 0 <= M["conf"] < n:
         t_, o_, h_, l_, c_ = V[M["conf"]]
         ax.add_patch(Rectangle((M["conf"] - 0.45, l_), 0.9, h_ - l_, fill=False, edgecolor="#eb6834", lw=2, zorder=5))
@@ -749,6 +750,106 @@ def trilha_rompz(sb, bot, tf, de, ate, tz):
                      "Resultado só de posições fechadas, com spread e comissão.")}
 
 
+def _cz_txt(dec):
+    """registro da O55: sinal que disparou e não virou ordem = 'sinal reconhecido; entrada bloqueada — motivo'."""
+    d = _ac(dec or "")
+    if not d:
+        return ""
+    if "autorizada" in d:
+        return "sinal reconhecido; entrada autorizada (envio desligado: sombra)"
+    return "sinal reconhecido; entrada bloqueada — " + d.split("bloqueado", 1)[-1].lstrip(": ").replace("por ", "")
+
+
+def trilha_compz(sb, bot, tf, de, ate, tz):
+    """ORDEM 055 — COMPZ: mudança de estrutura → compressão → zona (suporte/resistência da compressão) → ÚLTIMA vela que respeitou o nível →
+    gatilho → decisão e motivo. Replay da referência compz-1 (≡ EA lateral-r1.3) sobre os candles gravados + o que o EA registrou no terminal."""
+    if tf != "M15":
+        return {"situacao": "a trilha COMPZ (O55) é só em M15"}
+    sim = str(bot.get("simbolo") or "").upper()
+    m15 = candles(sb, sim, "M15", de - _dt.timedelta(seconds=900 * 1229), ate + _dt.timedelta(hours=6))
+    h1 = candles(sb, sim, "H1", de - _dt.timedelta(hours=1229), ate)
+    m1 = candles(sb, sim, "M1", de - _dt.timedelta(minutes=30), ate + _dt.timedelta(hours=6))
+    if m15 is None or len(m15) < 30 or m1 is None or not len(m1):
+        return {"situacao": "sem candles M15/M1 suficientes no período"}
+    sp = _spread_mediano(sb, sim)
+    ini = max(int(de.timestamp()), int(m1.ep.iloc[0]))
+    I = CZ.rodar(m15, h1, m1, ini, sp, at=sim, caixa=False, rompz=False, compz=True, enviar=False)
+    mg = str(bot.get("magic_number") or "")
+    try:
+        evs = _pag(lambda: sb.table("agente_eventos").select("detalhe_json,criado_em").eq("tipo", "bot_lateral").eq("detalhe_json->>magic", mg)
+                   .in_("detalhe_json->>ev", ["inicio", "compz_mudanca", "compz_referencia", "compz_cancelado", "compz_disparo", "ordem", "barra"])
+                   .gte("criado_em", _iso(de - _dt.timedelta(days=3))).lte("criado_em", _iso(ate + _dt.timedelta(hours=7))).order("id"), 20000) if mg else []
+    except Exception:
+        evs = []
+    D = [dict(e.get("detalhe_json") or {}, **_kv((e.get("detalhe_json") or {}).get("raw")), _criado=e.get("criado_em")) for e in evs]
+    inis = [x for x in D if x.get("ev") == "inicio"]
+    off = next((int(float(x.get("off") or 0)) for x in reversed(inis) if x.get("off") not in (None, "")), None)
+    ini_cz = [x for x in inis if x.get("compz") == "sim"]
+    barras_r13 = [x for x in D if x.get("ev") == "barra" and "O55" in str(x.get("v") or "")]
+    ea = {}
+    for x in D:
+        s_ = str(x.get("sinal") or "")
+        if (str(x.get("ev", "")).startswith("compz") or (x.get("ev") == "ordem" and x.get("entrada") == "compz")) and s_[:3] in ("CV-", "CC-") and off is not None:
+            ea.setdefault(s_[:3] + str(int(s_[3:]) - off), []).append(x)
+    L = lambda e: _loc(_dt.datetime.fromtimestamp(int(e), UTC), tz)
+    nb = lambda e: (lambda d: (d.hour * 60 + d.minute) // 15 + 1)(_dt.datetime.fromtimestamp(int(e), UTC).astimezone(tz))
+    zs = list(I.sinais_cz) + [z for z in I.cz.values() if z]
+    linhas = []
+    for z in zs:
+        b0 = z["barra_mudanca"]
+        if not (de.timestamp() <= b0 < ate.timestamp()):
+            continue
+        s = z["lado"]; res = z.get("resultado") or ("em andamento" if z.get("armado") else "em compressão")
+        lin = {"id": z["id"], "lado": "venda" if s < 0 else "compra",
+               "mudanca": {"barra": L(b0), "n_barra": nb(b0), "lh" if s < 0 else "hl": z["ext_lh"], "anterior": z["ext_ant"], "fechamento": round(z["fechamento"], 2),
+                           ("ema20_low" if s < 0 else "ema20_high"): round(z["ema"], 2)},
+               "compressao": {"caixa": [None if z["lo"] is None else round(z["lo"], 2), None if z["hi"] is None else round(z["hi"], 2)], "barras": z["n"], "limite": "≤ 2,0 ATR"},
+               "zona": {"funcao": "suporte" if s < 0 else "resistência", "nivel": z.get("suporte")},
+               "ultima_vela": ({"barra": L(z["ref_t"]), "n_barra": nb(z["ref_t"]), "preco": z["ref"]} if z.get("ref") is not None else None),
+               "gatilho": z.get("gat")}
+        if res == "disparo":
+            esp = z["espaco"]; zz = esp.get("zona") or {}
+            lin.update(disparo=L(z["t"]), preco=z["bid"] if s < 0 else z["ask"], decisao=_cz_txt(z["decisao"]), motivo=_ac(esp.get("motivo")),
+                       espaco_R=None if esp.get("espaco_R") is None else round(esp["espaco_R"], 3),
+                       zona_a_frente=({"tf": zz.get("tf"), "base": round(zz["base"], 2), "topo": round(zz["topo"], 2)} if zz else None))
+        else:
+            lin.update(disparo=None, decisao=("cancelado: " + _ac(res.split(": ", 1)[-1])) if str(res).startswith("cancelado") else
+                       ("versão carregada e processando; gatilho ainda não observado" if res in ("em andamento", "em compressão") else _ac(res)))
+        er = ea.get(z["id"]) or []
+        lin["ea_no_terminal"] = ("; ".join(x["ev"] + (" " + _cz_txt(x.get("decisao")) if x["ev"] == "compz_disparo" else f" {x.get('motivo') or x.get('ref') or x.get('lh') or ''}") for x in er)
+                                 if er else ("sem registro do EA (antes da lateral-r1.3 ou fora do terminal)"))
+        lin["_b0"] = b0; lin["_z"] = z
+        linhas.append(lin)
+    rep = {"tf": "M15", "_velas": {"ep": [int(x) for x in m15.ep.values], "o": [float(v) for v in m15.open], "h": [float(v) for v in m15.high],
+                                   "l": [float(v) for v in m15.low], "c": [float(v) for v in m15.close]}}
+    jan = []
+    for l_ in sorted([x for x in linhas if x["disparo"]], key=lambda x: x["_b0"])[:6]:
+        z = l_["_z"]
+        mk = {"zona": {"tf": "M15", "funcao": "suporte" if z["lado"] < 0 else "resistência", "base": z["lo"], "topo": z["hi"],
+                       "estado": f"compressão {z['n']} barras", "testes": z["n"]},
+              "zona_frente": l_.get("zona_a_frente"), "conf": l_["_b0"], "rotulo_conf": "mudança de estrutura", "gatilho": l_["gatilho"],
+              "pivo": [z["ref_t"], z["ref"]], "rotulo_pivo": "última vela que respeitou", "entrada": [z["t"], l_["preco"]]}
+        tit = (f"{l_['lado']} · mudança {l_['mudanca']['barra'][11:16]} (topo/fundo {z['ext_lh']} vs {z['ext_ant']}) · compressão {z['n']} barras "
+               f"{l_['compressao']['caixa'][0]}–{l_['compressao']['caixa'][1]} · última vela {l_['ultima_vela']['barra'][11:16]} @ {z['ref']} · gatilho {l_['gatilho']} · "
+               f"disparo {l_['disparo'][11:19]} {l_['preco']} → {l_['decisao']}")
+        j = _janela(rep, "compz", tit, l_["_b0"] - 900 * 6, int(z["t"]) + 900 * 4, mk, "REPLAY compz-1 (≡ EA lateral-r1.3) — nenhuma ordem")
+        if j:
+            jan.append(j)
+    for l_ in linhas:
+        l_.pop("_b0", None); l_.pop("_z", None)
+    obs = sum(1 for x in D if x.get("ev") == "compz_disparo")
+    estados = {"replay": "referência compz-1 sobre candles gravados (EA lateral-r1.3 ≡ referência provado no teste local)",
+               "versao_carregada_no_mt5": ([f"{x.get('versao')} às {_loc(_dt_(x['_criado']), tz)} (compz={x.get('compz') or 'não'}, envio: {x.get('envio_ordens') or '—'})" for x in inis[-3:]]
+                                           or ["sem evento 'inicio' do EA lateral no período"]),
+               "compz_ativa_no_terminal": ("sim — " + L(int(_dt_(ini_cz[-1]['_criado']).timestamp()))) if ini_cz else "não (EA anterior à lateral-r1.3)",
+               "m15_processado_pela_r1.3": (f"{len(barras_r13)} barras; última t={barras_r13[-1].get('t')} c={barras_r13[-1].get('c')}" if barras_r13 else "nenhuma"),
+               "sinal_compz_observado_no_terminal": obs if obs else ("versão carregada e processando; gatilho ainda não observado" if ini_cz else "—")}
+    return {"situacao": "ok", "versao": CZ.VERSAO, "linhas": linhas, "janelas": jan, "offset_servidor_s": off, "spread_usado": sp, "estados": estados,
+            "nota": ("COMPZ (O55): mudança de estrutura (último topo O39 mais baixo + fechamento além da EMA20 do lado oposto; compra = espelho) → compressão seguinte "
+                     "(caixa ≤ 2,0 ATR) → suporte/resistência da compressão → ÚLTIMA vela fechada que respeitou e testou o nível (referência) → gatilho = referência ± 1 tick → "
+                     "1º tick além = sinal; autorização separada com o filtro vigente de 1,0 R. Toque não dispara. Bloqueio = 'sinal reconhecido; entrada bloqueada'.")}
+
+
 # ════════════════════════════════════════════════════════════════════════
 # seção 5
 # ════════════════════════════════════════════════════════════════════════
@@ -768,7 +869,7 @@ def secao_5(sb, ids, de, ate, tz):
         cfg = b.get("config_operacional") or {}
         tf = TF_CFG.get(str(cfg.get("timeframe_envio") or "15m").lower(), "M15")
         cod = str(b.get("mq5_codigo") or "")
-        ea_v = ("lateral-r1.2 (O53-D)" if "O53-D" in cod else "lateral-r1.2 (O53-C)") if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
+        ea_v = "lateral-r1.3 (O55)" if "lateral-r1.3" in cod else ("lateral-r1.2 (O53-D)" if "O53-D" in cod else "lateral-r1.2 (O53-C)") if "lateral-r1.2" in cod else "lateral-r1.1 (O53-B)" if "lateral-r1.1" in cod else ("lateral-r1 (O53)" if "lateral-r1" in cod else "R0 (O51)")
         obs = observado(sb, b, de, ate, tz)
         try:
             rep = replay(sb, str(b.get("simbolo") or "").upper(), tf, de, ate, spread=None)
@@ -783,10 +884,14 @@ def secao_5(sb, ids, de, ate, tz):
             trz = trilha_rompz(sb, b, tf, de, ate, tz)
         except Exception as e:
             trz = {"situacao": f"trilha de rompimento falhou: {str(e)[:200]}"}
+        try:
+            tcz = trilha_compz(sb, b, tf, de, ate, tz)
+        except Exception as e:
+            tcz = {"situacao": f"trilha COMPZ falhou: {str(e)[:200]}"}
         if isinstance(rep, dict):
             rep.pop("_velas", None)
         bots.append({"bot_id": int(b["id"]), "bot": b.get("nome"), "simbolo": b.get("simbolo"), "tf": tf, "ea_registrado_na_plataforma": ea_v,
-                     "replay": rep, "observado": obs, "janelas": jan, "pivos": piv, "rompz": trz})
+                     "replay": rep, "observado": obs, "janelas": jan, "pivos": piv, "rompz": trz, "compz": tcz})
     return {"titulo": "5. Lateral (O53): replay × sombra × execução observada", "versao": VERSAO, "especificacao_congelada": ESPEC,
             "estados": {"replay": "motor de referência sobre candles gravados (equivalência tick a tick com o EA provada no teste local)",
                         "sombra": "decisões avaliadas sem ordem (reversão)", "execucao_observada": "negócios e eventos confirmados pelo MT5 via conector",

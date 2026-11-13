@@ -119,3 +119,50 @@ def test_3_ea_igual_referencia_xau_e_btc(A):
     py_s = [(e["t_ms"] // 1000, "stop" if e["motivo"].startswith("stop") else "cmd", round(e["preco"], 2)) for e in I2.eventos if e["tipo"] == "saida_virtual"]
     assert ea_e == py_e and ea_s == py_s and len(ea_e) >= 1
     assert any(e.get("ev") == "ordem" and e.get("entrada") == "compz" for e in ev2)
+
+
+def test_4_toque_nao_dispara_e_ultima_vela():
+    """se a barra seguinte só IGUALA a mínima da última vela que respeitou (toque), não há sinal; a referência é sempre a última vela."""
+    m15, m1 = _ler(XAU("M15")), _ler(XAU("M1"))
+    k15 = m15.ep == OP(52); k1 = m1.ep.between(OP(52), OP(53) - 1)
+    for d in (m15.loc[k15], m1.loc[k1]):
+        pass
+    m15.loc[k15, ["open", "high", "low", "close"]] = [4048.0, 4049.5, 4047.20, 4048.5]        # op52 só toca 4047,20 (= mínima da op51)
+    m1.loc[k1, ["open", "high", "low", "close"]] = [4048.0, 4049.5, 4047.20, 4048.5]
+    I = CZ.rodar(m15, _ler(XAU("H1")), m1, INI, 0.10, caixa=False, rompz=False, compz=True)
+    d = [e for e in I.eventos if e["tipo"] == "compz_disparo" and e["sinal"] == f"CV-{OP(42)}"]
+    assert not d or d[0]["t_ms"] // 1000 >= OP(53)                                            # nada na op52: toque não dispara
+    ref = [(e["barra_ref"], e["ref"]) for e in I.eventos if e["tipo"] == "compz_referencia" and e["sinal"] == f"CV-{OP(42)}"]
+    assert ref[:3] == [(OP(43), 4046.4), (OP(47), 4047.0), (OP(51), 4047.2)]
+
+
+def test_5_trilha_compz_no_diagnostico_e_pdf():
+    import datetime as dt, json, validacao_o53 as V
+    from zoneinfo import ZoneInfo
+    from test_o53_lateral_r1 import _SB
+    iso = lambda e: dt.datetime.fromtimestamp(int(e), dt.timezone.utc).isoformat()
+    def linhas(tf, x):
+        return [{"simbolo": "XAUUSD", "tf": tf, "abertura_utc": iso(e), "o": o, "h": h, "l": l, "c": c, "fechado": True, "ultimo_visto_utc": "x"}
+                for e, o, h, l, c in zip(x.ep, x.open, x.high, x.low, x.close)]
+    m15, m1, h1 = (_ler(XAU(x)) for x in ("M15", "M1", "H1"))
+    ev = [{"tipo": "bot_lateral", "criado_em": "2026-11-11T07:40:00+00:00", "detalhe_json": {"magic": "444198325", "ev": "inicio",
+           "raw": "tipo=lateral|simbolo=XAUUSD|v=lateral-r1.3 (O55)|ev=inicio|versao=lateral-r1.3 (O55)|off=7200|compz=sim|envio_ordens=desligado (sombra)|tf=M15"}}]
+    sb = _SB({"auditoria_candles": linhas("M15", m15) + linhas("M1", m1) + linhas("H1", h1), "auditoria_leituras": [], "agente_eventos": ev, "babymachine_operacoes": []})
+    de, ate = dt.datetime(2026, 11, 11, 8, 0, tzinfo=dt.timezone.utc), dt.datetime(2026, 11, 11, 13, 0, tzinfo=dt.timezone.utc)
+    T = V.trilha_compz(sb, {"id": 16, "simbolo": "XAUUSD", "magic_number": 444198325, "user_id": "u"}, "M15", de, ate, ZoneInfo("Europe/Kyiv"))
+    assert T["situacao"] == "ok"
+    x = [l for l in T["linhas"] if l["id"] == f"CV-{OP(42)}"][0]
+    assert x["mudanca"]["lh"] == 4061.77 and x["mudanca"]["anterior"] == 4066.91 and x["ultima_vela"]["preco"] == 4047.2 and x["gatilho"] == 4047.19
+    assert x["disparo"][11:16] == "13:45" and x["decisao"] == "sinal reconhecido; entrada bloqueada — entrada dentro da zona"
+    assert T["estados"]["compz_ativa_no_terminal"].startswith("sim") and T["janelas"] and V.grafico_png(T["janelas"][0])[:4] == b"\x89PNG"
+    import diagnostico_lm_o50 as D
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+    d = FPDF(); d.set_auto_page_break(True, margin=14); d.add_page()
+    def p(t, b=False, tam=8): d.set_font("Helvetica", "B" if b else "", tam); d.multi_cell(0, 4, D._t(t), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    def tab(cab, linhas, larg, lim=90): [p(" | ".join(D._t(x, 30) for x in l)) for l in [cab] + list(linhas)]
+    S5 = {"titulo": "5.", "estados": {}, "bots": [{"bot": "ML New Bot 02", "simbolo": "XAUUSD", "tf": "M15", "bot_id": 16, "ea_registrado_na_plataforma": "lateral-r1.3 (O55)",
+                                                     "observado": {"operacoes": []}, "replay": {"situacao": "x"}, "pivos": {"situacao": "x"}, "janelas": [],
+                                                     "rompz": {"situacao": "x"}, "compz": json.loads(json.dumps(T, default=str))}]}
+    D._pdf_secao_5(d, S5, lambda t: p(t, True, 12), lambda t: p(t, True, 9), p, lambda ps: [p(f"{k}: {v}") for k, v in ps], tab, 186)
+    assert bytes(d.output())[:4] == b"%PDF"

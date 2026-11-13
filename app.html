@@ -3954,7 +3954,7 @@ initAuth();
 
 <script>
 const API = 'https://CONFIGURAR-API-ISOLADA.invalid';
-const APP_VERSAO = 'v10.94-o53d-rompz-sinal-autorizacao';  // marca de versão do frontend (ver comentário no topo)
+const APP_VERSAO = 'v10.95-o55-compz-trilha';  // marca de versão do frontend (ver comentário no topo)
 try { console.log('%cBotTested ' + APP_VERSAO, 'color:#00d084;font-weight:700'); } catch(_) {}
 /* R4 (etapa 1A-S): cabecalhos autenticados pros consumidores da api v7.56 —
    anexa Authorization Bearer com o token da sessao Supabase quando ha sessao;
@@ -9244,6 +9244,19 @@ function diagSec5(S5){
         return `<div class="diag-sit"><b>Cálculo do espaço ${_diagE(x.id)}</b> E ${c.E} · zona ${_diagE(c.zona ? c.zona.tf + ' ' + c.zona.base + '–' + c.zona.topo : 'nenhuma')} · d ${c.d} · spread ${c.spread} · líquido ${c.espaco_liq} · ATR ${c.atr} · R ${c.R} · <b>${c.espaco_R} R</b> (mínimo ${c.minimo_R} R) · histórico: ${_diagE(c.historico)}. ${_diagE(c.formula)}</div>`; }).join('');
       h += (TZ.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
     }
+    const CZ = b.compz || {};
+    h += '<h3>Trilha COMPZ (O55) — mudança de estrutura → compressão → zona → última vela que respeitou o nível → gatilho → decisão e motivo</h3>';
+    if (CZ.situacao !== 'ok') h += `<div class="diag-vazio">${_diagE(CZ.situacao)}</div>`;
+    else {
+      h += `<div class="diag-sit">${_diagE(CZ.nota)}</div>` + _diagKV(Object.entries(CZ.estados || {}).map(([k, v]) => [k.replace(/_/g, ' '), Array.isArray(v) ? v.join(' · ') : v]));
+      if (!(CZ.linhas || []).length) h += '<div class="diag-vazio">Nenhuma mudança de estrutura com compressão no período.</div>';
+      h += _diagTab(['mudança', 'lado', 'topo/fundo × anterior', 'compressão', 'zona', 'última vela que respeitou', 'gatilho', 'disparo', 'decisão e motivo', 'espaço (R)', 'EA no terminal'],
+                    (CZ.linhas || []).map(x => { const m = x.mudanca || {}, c = x.compressao || {}, u = x.ultima_vela;
+                      return [`${m.n_barra} · ${(m.barra || '').slice(11, 16)}`, x.lado, `${m.lh ?? m.hl} × ${m.anterior}`, `${c.barras} barras ${(c.caixa || []).join('–')}`,
+                              `${(x.zona || {}).funcao} ${(x.zona || {}).nivel ?? '—'}`, u ? `${u.n_barra} · ${(u.barra || '').slice(11, 16)} @ ${u.preco}` : '—', x.gatilho ?? '—',
+                              (x.disparo || '—').slice(11, 19), x.decisao, x.espaco_R ?? '—', x.ea_no_terminal]; }));
+      h += (CZ.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
+    }
     h += (b.janelas || []).map(j => `<div class="diag-jan"><b>${_diagE(j.titulo)}</b>${j.velas ? diagSvg53(j) : ''}</div>`).join('');
   }
   return _diagSec(S5.titulo || '5.', h, true);
@@ -9269,7 +9282,7 @@ function diagSvg53(j){
   if (M.zona_frente && M.zona_frente.base != null) s += `<rect x="${pl}" width="${W - pl - pr}" y="${Y(M.zona_frente.topo)}" height="${Math.max(1, Y(M.zona_frente.base) - Y(M.zona_frente.topo))}" fill="#2a7de1" opacity=".16"/><text x="${pl + 4}" y="${Y(M.zona_frente.base) + 11}" fill="#2a7de1">próxima zona ${_diagE(M.zona_frente.tf)} ${M.zona_frente.base}–${M.zona_frente.topo}</text>`;
   if (M.zona_pivo) s += `<rect x="${pl}" width="${W - pl - pr}" y="${Y(M.zona_pivo[1])}" height="${Math.max(1, Y(M.zona_pivo[0]) - Y(M.zona_pivo[1]))}" fill="#8b3fd6" opacity=".14"/>`;
   if (M.gatilho != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.gatilho)}" y2="${Y(M.gatilho)}" stroke="#6250d6" stroke-dasharray="6 4"/><text x="${W - pr + 4}" y="${Y(M.gatilho)}" fill="#6250d6">gatilho ${M.gatilho}</text>`;
-  if (M.pivo && M.pivo[0] != null) s += `<circle cx="${X(M.pivo[0])}" cy="${Y(M.pivo[1])}" r="7" fill="none" stroke="#8b3fd6" stroke-width="2.2"/><text x="${X(M.pivo[0]) + 9}" y="${Y(M.pivo[1])}" fill="#8b3fd6">extremo ${M.pivo[1]}</text>`;
+  if (M.pivo && M.pivo[0] != null) s += `<circle cx="${X(M.pivo[0])}" cy="${Y(M.pivo[1])}" r="7" fill="none" stroke="#8b3fd6" stroke-width="2.2"/><text x="${X(M.pivo[0]) + 9}" y="${Y(M.pivo[1])}" fill="#8b3fd6">${_diagE(M.rotulo_pivo || 'extremo')} ${M.pivo[1]}</text>`;
   if (M.conf != null && V[M.conf]) s += `<rect x="${X(M.conf) - cw * .45}" width="${cw * .9}" y="${Y(V[M.conf][2])}" height="${Math.max(1, Y(V[M.conf][3]) - Y(V[M.conf][2]))}" fill="none" stroke="#eb6834" stroke-width="2"/><text x="${X(M.conf)}" y="${Y(V[M.conf][2]) - 4}" text-anchor="middle" fill="#eb6834">${_diagE(M.rotulo_conf || 'confirmável')}</text>`;
   if (M.stop != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.stop)}" y2="${Y(M.stop)}" stroke="#d63a3a" stroke-dasharray="2 3"/><text x="${W - pr + 4}" y="${Y(M.stop)}" fill="#d63a3a">stop ${M.stop}</text>`;
   if (M.ref != null) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(M.ref)}" y2="${Y(M.ref)}" stroke="#6250d6" stroke-dasharray="6 4"/><text x="${W - pr + 4}" y="${Y(M.ref)}" fill="#6250d6">invalidação ${M.ref}</text>`;

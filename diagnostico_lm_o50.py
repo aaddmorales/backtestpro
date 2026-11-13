@@ -889,6 +889,28 @@ def _pdf_secao_5(d, S5, h1, h2, p, kv, tab, W):
                 if j.get("velas"):
                     d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
                 d.ln(1.5)
+        CZt = b.get("compz") or {}
+        p("TRILHA COMPZ (O55) — mudança de estrutura → compressão → zona → última vela que respeitou o nível → gatilho → decisão e motivo", b=True)
+        if CZt.get("situacao") != "ok":
+            p(str(CZt.get("situacao")), tam=7.6)
+        else:
+            p(CZt.get("nota") or "", tam=7.2)
+            kv([(k.replace("_", " "), " · ".join(v) if isinstance(v, list) else v) for k, v in (CZt.get("estados") or {}).items()])
+            if not CZt["linhas"]:
+                p("Nenhuma mudança de estrutura com compressão no período.", tam=7.4)
+            tab(["mudança", "lado", "topo/fundo × anterior", "compressão", "zona", "última vela", "gatilho", "disparo", "decisão", "espaço R", "EA no terminal"],
+                [[f"{x['mudanca']['n_barra']} {x['mudanca']['barra'][11:16]}", x["lado"], f"{x['mudanca'].get('lh', x['mudanca'].get('hl'))} × {x['mudanca']['anterior']}",
+                  f"{x['compressao']['barras']}b {x['compressao']['caixa'][0]}-{x['compressao']['caixa'][1]}", f"{x['zona']['funcao']} {x['zona']['nivel']}",
+                  (f"{x['ultima_vela']['n_barra']} {x['ultima_vela']['barra'][11:16]} @ {x['ultima_vela']['preco']}" if x.get("ultima_vela") else "—"), x.get("gatilho") or "—",
+                  (x.get("disparo") or "—")[11:19], x["decisao"], x.get("espaco_R") if x.get("espaco_R") is not None else "—", (x["ea_no_terminal"] or "")[:60]] for x in CZt["linhas"]],
+                [14, 9, 22, 24, 20, 24, 12, 12, 40, 9, 30])
+            for j in CZt.get("janelas") or []:
+                if d.get_y() > 185:
+                    d.add_page()
+                p(j["titulo"], b=True, tam=7.6)
+                if j.get("velas"):
+                    d.image(io.BytesIO(_v53.grafico_png(j)), x=12, w=W)
+                d.ln(1.5)
         for j in b.get("janelas") or []:
             if d.get_y() > 185:
                 d.add_page()
